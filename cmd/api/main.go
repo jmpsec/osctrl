@@ -28,6 +28,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
+	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -97,6 +98,8 @@ const (
 	apiTagsPath = "/tags"
 	// API settings path
 	apiSettingsPath = "/settings"
+	// API service config path
+	apiServiceConfigPath = "/service-config"
 	// API features path
 	apiFeaturesPath = "/features"
 	// API file explorer path
@@ -374,6 +377,11 @@ func osctrlAPIService() {
 	if err := loadingSettings(settingsmgr, flagParams); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
 	}
+	log.Info().Msg("Seeding service config from YAML")
+	serviceConfigMgr := serviceconfig.NewServiceConfigManager(db.Conn)
+	if err := serviceConfigMgr.Seed(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
+		log.Fatal().Msgf("Error seeding service config - %v", err)
+	}
 	// Initialize audit log manager
 	if flagParams.Service.AuditLog {
 		log.Info().Msg("Initialize audit log")
@@ -432,6 +440,7 @@ func osctrlAPIService() {
 		handlers.WithFileExplorer(fileexplorermgr),
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
+		handlers.WithServiceConfig(serviceConfigMgr),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
 		handlers.WithGeoIP(geoIPResolver),
 		handlers.WithPosture(posturemgr),
@@ -865,6 +874,16 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"PATCH "+_apiPath(apiSettingsPath)+"/{service}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: service config (read-only phase 1)
+	muxAPI.Handle(
+		"GET "+_apiPath(apiServiceConfigPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"GET "+_apiPath(apiServiceConfigPath)+"/{service}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigServiceHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"GET "+_apiPath(apiServiceConfigPath)+"/{service}/{section}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigSectionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: audit log
 	if flagParams.Service.AuditLog {
 		muxAPI.Handle(

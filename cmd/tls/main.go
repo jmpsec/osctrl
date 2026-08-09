@@ -24,6 +24,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
+	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -256,6 +257,11 @@ func osctrlService() {
 	log.Info().Msg("Loading service settings")
 	if err := loadingSettings(settingsmgr, flagParams); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
+	}
+	log.Info().Msg("Seeding service config from YAML")
+	serviceConfigMgr := serviceconfig.NewServiceConfigManager(db.Conn)
+	if err := serviceConfigMgr.Seed(config.ServiceTLS, flagParams, settings.NoEnvironmentID); err != nil {
+		log.Fatal().Msgf("Error seeding service config - %v", err)
 	}
 	settingsCacheTTL := time.Duration(settingsmgr.RefreshSettings(config.ServiceTLS)) * time.Second
 	if settingsCacheTTL <= 0 {

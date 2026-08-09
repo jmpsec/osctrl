@@ -13,6 +13,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -44,6 +45,7 @@ type HandlersApi struct {
 	FileExplorer    *fileexplorer.Manager
 	Carves          *carves.Carves
 	Settings        *settings.Settings
+	ServiceConfig   *serviceconfig.ServiceConfigManager
 	Activity        activityReader
 	GeoIP           *geoip.GeoIPResolver
 	Posture         *posture.PostureManager
@@ -155,6 +157,12 @@ func WithCarves(carves *carves.Carves) HandlersOption {
 func WithSettings(settings *settings.Settings) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Settings = settings
+	}
+}
+
+func WithServiceConfig(mgr *serviceconfig.ServiceConfigManager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.ServiceConfig = mgr
 	}
 }
 
