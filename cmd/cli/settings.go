@@ -97,7 +97,7 @@ func updateSetting(ctx context.Context, cmd *cli.Command) error {
 	case settings.TypeBoolean:
 		err = settingsmgr.SetBoolean(cmd.Bool("true"), service, name, settings.NoEnvironmentID)
 	case settings.TypeString:
-		err = settingsmgr.SetString(cmd.String("string"), service, name, false, settings.NoEnvironmentID)
+		err = settingsmgr.SetString(cmd.String("string"), service, name, settings.NoEnvironmentID)
 	}
 	if err != nil {
 		return fmt.Errorf("error set type - %w", err)

@@ -48,7 +48,7 @@ func TestInactiveHours_DefaultsOnNonPositive(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			db := setupSettingsTestDB(t)
 			conf := &Settings{DB: db}
-			require.NoError(t, conf.NewIntegerValue(config.ServiceAdmin, InactiveHours, tt.value, NoEnvironmentID))
+			require.NoError(t, conf.NewIntegerValue(config.ServiceAPI, InactiveHours, tt.value, NoEnvironmentID))
 			got := conf.InactiveHours(NoEnvironmentID)
 			assert.Equal(t, DefaultInactiveHours, got,
 				"InactiveHours should fall back to DefaultInactiveHours for non-positive stored value")
@@ -61,7 +61,7 @@ func TestInactiveHours_ReturnsConfigured(t *testing.T) {
 	db := setupSettingsTestDB(t)
 	conf := &Settings{DB: db}
 	const configured = int64(168)
-	require.NoError(t, conf.NewIntegerValue(config.ServiceAdmin, InactiveHours, configured, NoEnvironmentID))
+	require.NoError(t, conf.NewIntegerValue(config.ServiceAPI, InactiveHours, configured, NoEnvironmentID))
 	got := conf.InactiveHours(NoEnvironmentID)
 	assert.Equal(t, configured, got,
 		"InactiveHours should return the stored positive value")

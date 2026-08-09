@@ -28,26 +28,6 @@ func GenerateTLSConfigFile(path string, cfg *ServiceParameters, overwrite bool) 
 	return GenerateGenericConfigFile(path, cfgTLS, overwrite)
 }
 
-// Helper to generate an example Admin configuration file
-func GenerateAdminConfigFile(path string, cfg *ServiceParameters, overwrite bool) error {
-	cfgAdmin := AdminConfiguration{
-		Service: *cfg.Service,
-		DB:      *cfg.DB,
-		Redis:   *cfg.Redis,
-		Osquery: *cfg.Osquery,
-		Osctrld: *cfg.Osctrld,
-		SAML:    *cfg.SAML,
-		OIDC:    *cfg.OIDC,
-		JWT:     *cfg.JWT,
-		TLS:     *cfg.TLS,
-		Logger:  *cfg.Logger,
-		Carver:  *cfg.Carver,
-		Admin:   *cfg.Admin,
-		Debug:   *cfg.Debug,
-	}
-	return GenerateGenericConfigFile(path, cfgAdmin, overwrite)
-}
-
 // Helper to generate an example API configuration file
 func GenerateAPIConfigFile(path string, cfg *ServiceParameters, overwrite bool) error {
 	cfgAPI := APIConfiguration{

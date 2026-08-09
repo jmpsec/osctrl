@@ -29,16 +29,8 @@ const (
 	defTLSCertificateFile string = "./config/tls.crt"
 	// Default TLS private key file
 	defTLSKeyFile string = "./config/tls.key"
-	// Static files folder
-	defStaticFilesFolder string = "./static"
-	// Default templates folder
-	defTemplatesFolder string = "./tmpl_admin"
 	// Default carved files folder
 	defCarvedFolder string = "./carved_files/"
-	// Default background image file
-	defBackgroundImageFile string = defStaticFilesFolder + "/img/circuit.svg"
-	// Default branding image file
-	defBrandingImageFile string = defStaticFilesFolder + "/img/brand.png"
 	// Default db filepath for sqlite
 	defSQLiteDBFile string = "./osctrl.db"
 )
@@ -77,8 +69,6 @@ type ServiceParameters struct {
 	Logger *YAMLConfigurationLogger
 	// Carver configuration values
 	Carver *YAMLConfigurationCarver
-	// Admin configuration values
-	Admin *YAMLConfigurationAdmin
 	// Debug configuration values
 	Debug *YAMLConfigurationDebug
 }
@@ -121,7 +111,7 @@ func InitTLSFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
 	allFlags = append(allFlags, initOsctrldFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
-	allFlags = append(allFlags, initCarverFlags(params, ServiceTLS)...)
+	allFlags = append(allFlags, initCarverFlags(params)...)
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initKafkaFlags(params)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceTLS)...)
@@ -164,7 +154,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initOIDCFlags(params)...)
 	allFlags = append(allFlags, initSAMLFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
-	allFlags = append(allFlags, initCarverFlags(params, ServiceAPI)...)
+	allFlags = append(allFlags, initCarverFlags(params)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, &cli.BoolFlag{
 		Name:        "db-health-check",
@@ -563,7 +553,7 @@ func initTLSSecurityFlags(params *ServiceParameters) []cli.Flag {
 }
 
 // initCarverFlags initializes carver-related flags
-func initCarverFlags(params *ServiceParameters, service string) []cli.Flag {
+func initCarverFlags(params *ServiceParameters) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:        "carver-type",
@@ -824,7 +814,7 @@ func initSAMLFlags(params *ServiceParameters) []cli.Flag {
 	return []cli.Flag{
 		&cli.BoolFlag{
 			Name:        "saml-enabled",
-			Usage:       "Enable the SAML 2.0 federated-login surface on osctrl-api (osctrl-admin uses --auth=saml instead and ignores this flag)",
+			Usage:       "Enable the SAML 2.0 federated-login surface on osctrl-api",
 			Sources:     cli.EnvVars("SAML_ENABLED"),
 			Destination: &params.SAML.Enabled,
 		},

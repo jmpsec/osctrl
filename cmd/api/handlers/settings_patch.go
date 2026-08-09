@@ -110,7 +110,7 @@ func (h *HandlersApi) SettingPatchHandler(w http.ResponseWriter, r *http.Request
 			apiErrorResponse(w, "setting is string — provide `string` in body", http.StatusBadRequest, nil)
 			return
 		}
-		if err := h.Settings.SetString(*body.String, service, name, existing.JSON, settings.NoEnvironmentID); err != nil {
+		if err := h.Settings.SetString(*body.String, service, name, settings.NoEnvironmentID); err != nil {
 			apiErrorResponse(w, "error updating setting", http.StatusInternalServerError, err)
 			return
 		}

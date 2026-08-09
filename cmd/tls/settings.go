@@ -21,9 +21,5 @@ func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) erro
 			return fmt.Errorf("failed to add %s to configuration: %w", settings.OnelinerExpiration, err)
 		}
 	}
-	// Write JSON config to settings
-	if err := mgr.SetTLSJSON(cfg, settings.NoEnvironmentID); err != nil {
-		return fmt.Errorf("failed to add JSON values to configuration: %w", err)
-	}
 	return nil
 }

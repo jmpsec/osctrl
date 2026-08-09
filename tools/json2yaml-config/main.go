@@ -1,15 +1,15 @@
 // json2yaml-config converts the old (pre 0.5.0) osctrl JSON configuration
-// files into the single YAML configuration file used by osctrl-tls,
-// osctrl-admin and osctrl-api since the YAML migration.
+// files into the single YAML configuration file used by osctrl-tls and
+// osctrl-api since the YAML migration.
 //
 // The old configuration was split in multiple JSON files, each one wrapped
 // in a top-level key:
 //
-//	tls.json / admin.json / api.json  -> {"tls": {...}} service values
+//	tls.json / api.json                -> {"tls": {...}} service values
 //	db.json                           -> {"db": {...}} PostgreSQL backend
 //	redis.json                        -> {"redis": {...}} cache
-//	jwt.json                          -> {"jwt": {...}} JWT for admin/api
-//	saml.json                         -> {"saml": {...}} SAML for admin
+//	jwt.json                          -> {"jwt": {...}} JWT for api
+//	saml.json                         -> {"saml": {...}} SAML
 //	logger_<service>.json             -> {"graylog": {...}} et al, keyed by logger type
 //	carver_<service>.json             -> {"s3": {...}} S3 carver
 //
@@ -93,7 +93,6 @@ type oldService struct {
 	Auth            string  `json:"auth"`
 	Logger          string  `json:"logger"`
 	Carver          string  `json:"carver"`
-	SessionKey      string  `json:"sessionKey"`
 }
 
 type oldDB struct {
@@ -384,14 +383,6 @@ type yamlCarver struct {
 	Local yamlLocalCarver `yaml:"local"`
 }
 
-type yamlAdmin struct {
-	SessionKey      string `yaml:"sessionKey"`
-	StaticDir       string `yaml:"staticDir"`
-	TemplatesDir    string `yaml:"templatesDir"`
-	BrandingImage   string `yaml:"brandingImage"`
-	BackgroundImage string `yaml:"backgroundImage"`
-}
-
 type yamlDebug struct {
 	EnableHTTP bool   `yaml:"enableHttp"`
 	HTTPFile   string `yaml:"httpFile"`
@@ -412,7 +403,6 @@ type yamlConfig struct {
 	TLS         yamlTLS      `yaml:"tls"`
 	Logger      yamlLogger   `yaml:"logger"`
 	Carver      yamlCarver   `yaml:"carver"`
-	Admin       *yamlAdmin   `yaml:"admin,omitempty"`
 	Debug       yamlDebug    `yaml:"debug"`
 }
 
@@ -486,20 +476,20 @@ const (
 
 func main() {
 	var (
-		service    = flag.String("service", "", "Service to convert the configuration for: tls, admin or api")
-		configFile = flag.String("config", "", "Path to the old service JSON file (tls.json, admin.json or api.json)")
+		service    = flag.String("service", "", "Service to convert the configuration for: tls or api")
+		configFile = flag.String("config", "", "Path to the old service JSON file (tls.json or api.json)")
 		dbFile     = flag.String("db", "", "Path to the old db.json file (optional)")
 		redisFile  = flag.String("redis", "", "Path to the old redis.json file (optional)")
-		jwtFile    = flag.String("jwt", "", "Path to the old jwt.json file (optional, admin/api only)")
-		samlFile   = flag.String("saml", "", "Path to the old saml.json file (optional, admin only)")
+		jwtFile    = flag.String("jwt", "", "Path to the old jwt.json file (optional, api only)")
+		samlFile   = flag.String("saml", "", "Path to the old saml.json file (optional)")
 		loggerFile = flag.String("logger", "", "Path to the old logger JSON file, keyed by logger type (optional)")
 		carverFile = flag.String("carver", "", "Path to the old S3 carver JSON file (optional)")
 		outFile    = flag.String("output", "", "Path to write the YAML output to (default: <service>.yml, use - for stdout)")
 	)
 	flag.Parse()
 
-	if *service != "tls" && *service != "admin" && *service != "api" {
-		fatalf("-service must be one of: tls, admin, api")
+	if *service != "tls" && *service != "api" {
+		fatalf("-service must be one of: tls, api")
 	}
 	if *configFile == "" {
 		fatalf("-config is required (path to the old %s.json)", *service)
@@ -585,23 +575,6 @@ func main() {
 			Enabled:  svc.MetricsEnabled,
 			Listener: defaultString(svc.MetricsListener, "127.0.0.1"),
 			Port:     defaultInt(int(svc.MetricsPort), 9090),
-		}
-	case "admin":
-		out.Osctrld = &yamlOsctrld{Enabled: false}
-		out.SAML = &yamlSAML{}
-		out.OIDC = &yamlOIDC{
-			Scopes:         []string{"openid", "profile", "email"},
-			UsernameClaim:  "preferred_username",
-			GroupsClaim:    "groups",
-			RequiredGroups: []string{},
-		}
-		out.JWT = &yamlJWT{HoursToExpire: 3}
-		out.Admin = &yamlAdmin{
-			SessionKey:      svc.SessionKey,
-			StaticDir:       "./static",
-			TemplatesDir:    "./tmpl_admin",
-			BrandingImage:   "./static/img/brand.png",
-			BackgroundImage: "./static/img/circuit.svg",
 		}
 	case "api":
 		out.JWT = &yamlJWT{HoursToExpire: 3}
