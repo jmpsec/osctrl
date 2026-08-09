@@ -14,14 +14,11 @@ import { SettingsPage } from './SettingsPage';
 import type { SettingValue } from '$/api/settings';
 
 const mockList = vi.fn<(service: string) => Promise<SettingValue[]>>();
-const mockListJSON = vi.fn<(service: string) => Promise<SettingValue[]>>();
 const mockPatch = vi.fn();
 
 vi.mock('$/api/settings', () => ({
   listServiceSettings: (service: string) => mockList(service),
   patchSetting: (...args: unknown[]) => mockPatch(...args),
-  listAllSettings: vi.fn(),
-  listServiceJSONSettings: (service: string) => mockListJSON(service),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -47,7 +44,6 @@ function makeSetting(overrides: Partial<SettingValue> = {}): SettingValue {
     Name: 'service_metrics',
     Service: 'api',
     EnvironmentID: 0,
-    JSON: false,
     Type: 'boolean',
     String: '',
     Boolean: false,
@@ -55,18 +51,6 @@ function makeSetting(overrides: Partial<SettingValue> = {}): SettingValue {
     Info: 'Metrics endpoint',
     ...overrides,
   };
-}
-
-function makeJSONSetting(overrides: Partial<SettingValue> = {}): SettingValue {
-  return makeSetting({
-    ID: 100,
-    Name: 'json_listener',
-    JSON: true,
-    Type: 'string',
-    String: '0.0.0.0',
-    Info: '',
-    ...overrides,
-  });
 }
 
 function makeTestRouter(initialPath = '/_app/settings/api') {
@@ -108,28 +92,20 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockListJSON.mockResolvedValue([]);
   });
 
-  it('renders api flag parameters and editable stored settings', async () => {
+  it('renders editable stored settings', async () => {
     mockList.mockResolvedValue([
       makeSetting(),
       makeSetting({ ID: 2, Name: 'refresh_settings', Type: 'integer', Integer: 30 }),
     ]);
-    mockListJSON.mockResolvedValue([
-      makeJSONSetting(),
-      makeJSONSetting({ ID: 101, Name: 'json_port', String: '9000' }),
-    ]);
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByText('json_listener')).toBeInTheDocument();
+      expect(screen.getByText('service_metrics')).toBeInTheDocument();
     });
-    expect(screen.getByText('json_port')).toBeInTheDocument();
-    expect(screen.getByText('service_metrics')).toBeInTheDocument();
     expect(screen.getByText('refresh_settings')).toBeInTheDocument();
     expect(mockList).toHaveBeenCalledWith('api');
-    expect(mockListJSON).toHaveBeenCalledWith('api');
   });
 
   it('does not expose osctrl-admin in the settings tabs', async () => {
@@ -143,22 +119,17 @@ describe('SettingsPage', () => {
     expect(screen.queryByRole('tab', { name: 'osctrl-admin' })).not.toBeInTheDocument();
   });
 
-  it('shows flag parameters and editable settings for tls when they are available', async () => {
+  it('shows settings for tls when they are available', async () => {
     mockList.mockResolvedValue([
       makeSetting({ ID: 2, Name: 'accelerated_seconds', Service: 'tls', Type: 'integer', Integer: 5 }),
-    ]);
-    mockListJSON.mockResolvedValue([
-      makeJSONSetting({ ID: 1, Name: 'json_carver', Service: 'tls', String: 'db' }),
     ]);
 
     renderWithProviders(makeTestRouter('/_app/settings/tls'));
 
     await waitFor(() => {
-      expect(screen.getByText('json_carver')).toBeInTheDocument();
+      expect(screen.getByText('accelerated_seconds')).toBeInTheDocument();
     });
-    expect(screen.getByText('accelerated_seconds')).toBeInTheDocument();
     expect(mockList).toHaveBeenCalledWith('tls');
-    expect(mockListJSON).toHaveBeenCalledWith('tls');
   });
 
   it('shows empty state when no settings exist', async () => {
