@@ -322,7 +322,32 @@ describe('ServiceConfigPage', () => {
     });
   });
 
-  it('calls applyServiceConfig when Apply & Restart is clicked', async () => {
+  it('calls applyServiceConfig when Apply & Restart is confirmed', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true })]);
+    mockApply.mockResolvedValue({ message: 'Restart triggered.' });
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Apply & Restart/i })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: /Apply & Restart/i }));
+
+    // Confirmation dialog appears.
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('dialog')).toHaveTextContent('debug');
+    expect(screen.getByRole('button', { name: 'Restart now' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Restart now' }));
+
+    await waitFor(() => {
+      expect(mockApply).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('does not call applyServiceConfig when Apply is cancelled', async () => {
     const user = userEvent.setup();
     mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true })]);
     mockApply.mockResolvedValue({ message: 'Restart triggered.' });
@@ -334,7 +359,14 @@ describe('ServiceConfigPage', () => {
     await user.click(screen.getByRole('button', { name: /Apply & Restart/i }));
 
     await waitFor(() => {
-      expect(mockApply).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // Dialog closes, apply not called.
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(mockApply).not.toHaveBeenCalled();
   });
 });

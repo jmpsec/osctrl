@@ -13,6 +13,7 @@ import { cn } from '$/lib/cn';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { CodeEditor } from '$/components/forms/CodeEditor';
+import { ModalShell } from '$/components/feedback/ModalShell';
 import { formatRelative } from '$/lib/time';
 
 const SERVICES = ['api', 'tls'] as const;
@@ -29,6 +30,7 @@ export function ServiceConfigPage() {
 
   const [applyErr, setApplyErr] = useState<string | null>(null);
   const [applyFlash, setApplyFlash] = useState(false);
+  const [showApplyConfirm, setShowApplyConfirm] = useState(false);
   const qc = useQueryClient();
   const {
     data,
@@ -86,7 +88,7 @@ export function ServiceConfigPage() {
           <button
             type="button"
             disabled={applyMutation.isPending}
-            onClick={() => applyMutation.mutate()}
+            onClick={() => setShowApplyConfirm(true)}
             className={cn(
               'px-3 py-1 text-xs font-medium rounded transition-colors',
               applyMutation.isPending
@@ -192,6 +194,18 @@ export function ServiceConfigPage() {
           </div>
         )}
       </div>
+
+      {showApplyConfirm && (
+        <ApplyConfirmDialog
+          pendingSections={sections.filter((s) => s.Source === 'db')}
+          isPending={applyMutation.isPending}
+          onConfirm={() => {
+            applyMutation.mutate();
+            setShowApplyConfirm(false);
+          }}
+          onCancel={() => setShowApplyConfirm(false)}
+        />
+      )}
     </div>
   );
 }
@@ -382,3 +396,76 @@ function ConfigSectionCard({
 }
 
 export default ServiceConfigPage;
+
+function ApplyConfirmDialog({
+  pendingSections,
+  isPending,
+  onConfirm,
+  onCancel,
+}: {
+  pendingSections: ServiceConfig[];
+  isPending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <ModalShell
+      title="Apply & Restart"
+      titleId="apply-confirm-title"
+      onClose={onCancel}
+      panelClassName="max-w-md"
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-[color:var(--text-1)]">
+          This will restart the osctrl-api service to apply the following
+          configuration changes. The service will be briefly unavailable.
+        </p>
+        <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-0)] p-3">
+          <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-3)] mb-2">
+            Pending changes ({pendingSections.length})
+          </p>
+          <ul className="space-y-1">
+            {pendingSections.map((s) => (
+              <li
+                key={s.ID}
+                className="flex items-center gap-2 text-xs text-[color:var(--text-2)]"
+              >
+                <span className="font-mono-tabular text-[color:var(--text-1)]">
+                  {s.Name}
+                </span>
+                {s.Info && (
+                  <span className="text-[color:var(--text-3)] truncate">
+                    — {s.Info}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isPending}
+            className="px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+              'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.16)] text-[color:var(--warning)]',
+              'hover:bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.24)]',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+            )}
+          >
+            {isPending ? 'Restarting…' : 'Restart now'}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
