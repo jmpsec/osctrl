@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -501,6 +502,13 @@ type SettingPatchRequest struct {
 	String  *string `json:"string,omitempty"`
 	Boolean *bool   `json:"boolean,omitempty"`
 	Integer *int64  `json:"integer,omitempty"`
+}
+
+// ServiceConfigUpdateRequest is the body for PUT
+// /api/v1/service-config/{service}/{section}. Value is a raw JSON object
+// representing the new section contents.
+type ServiceConfigUpdateRequest struct {
+	Value json.RawMessage `json:"value"`
 }
 
 // TLSEnvironmentView is the low-privilege projection of an environment.
