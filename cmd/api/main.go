@@ -874,7 +874,7 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"PATCH "+_apiPath(apiSettingsPath)+"/{service}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	// API: service config (read-only phase 1)
+	// API: service config (phase 1 read + phase 2 editable PUT)
 	muxAPI.Handle(
 		"GET "+_apiPath(apiServiceConfigPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -884,6 +884,9 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiServiceConfigPath)+"/{service}/{section}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigSectionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PUT "+_apiPath(apiServiceConfigPath)+"/{service}/{section}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: audit log
 	if flagParams.Service.AuditLog {
 		muxAPI.Handle(

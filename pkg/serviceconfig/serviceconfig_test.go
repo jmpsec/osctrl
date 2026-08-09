@@ -100,14 +100,17 @@ func TestSeed_CreatesAllSections(t *testing.T) {
 
 	// Every registered section name should be present.
 	names := make(map[string]bool, len(rows))
+	editableByRow := make(map[string]bool, len(rows))
 	for _, r := range rows {
 		names[r.Name] = true
+		editableByRow[r.Name] = r.Editable
 		assert.Equal(t, SourceYAML, r.Source)
-		assert.False(t, r.Editable) // phase 1 — none editable
 		assert.Equal(t, "json", r.Type)
 	}
 	for _, spec := range SectionRegistry[config.ServiceTLS] {
 		assert.True(t, names[spec.Name], "missing section %s", spec.Name)
+		assert.Equal(t, spec.Editable, editableByRow[spec.Name],
+			"editable flag mismatch for %s", spec.Name)
 	}
 }
 
@@ -293,4 +296,93 @@ func sectionNames(rows []ServiceConfig) map[string]bool {
 		out[r.Name] = true
 	}
 	return out
+}
+
+// UpdateSection must update the value and flip source to "db" for an editable
+// section.
+func TestUpdateSection_Success(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	require.NoError(t, m.Seed(config.ServiceTLS, testTLSParams(), 0))
+
+	newValue := `{"enableHttp":true,"httpFile":"/tmp/debug.log","showBody":true}`
+	updated, err := m.UpdateSection(config.ServiceTLS, "debug", newValue, 0)
+	require.NoError(t, err)
+	assert.Equal(t, newValue, updated.Value)
+	assert.Equal(t, SourceDB, updated.Source)
+}
+
+// UpdateSection must reject a non-editable section with ErrSectionNotEditable.
+func TestUpdateSection_NotEditable(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	require.NoError(t, m.Seed(config.ServiceTLS, testTLSParams(), 0))
+
+	_, err := m.UpdateSection(config.ServiceTLS, "db", `{"host":"x"}`, 0)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrSectionNotEditable)
+}
+
+// UpdateSection must reject invalid JSON.
+func TestUpdateSection_InvalidJSON(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	require.NoError(t, m.Seed(config.ServiceTLS, testTLSParams(), 0))
+
+	_, err := m.UpdateSection(config.ServiceTLS, "debug", "not-json", 0)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not valid JSON")
+}
+
+// UpdateSection must reject an unknown service.
+func TestUpdateSection_UnknownService(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	_, err := m.UpdateSection("bogus", "debug", `{}`, 0)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown service")
+}
+
+// UpdateSection must reject a section that doesn't exist in the DB.
+func TestUpdateSection_SectionNotFound(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	// "debug" is editable but we haven't seeded — should fail on GetSection.
+	_, err := m.UpdateSection(config.ServiceTLS, "debug", `{}`, 0)
+	require.Error(t, err)
+}
+
+// IsEditable must return true for editable sections and false for
+// non-editable or unknown sections.
+func TestIsEditable(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+
+	assert.True(t, m.IsEditable(config.ServiceTLS, "debug"))
+	assert.True(t, m.IsEditable(config.ServiceAPI, "debug"))
+	assert.False(t, m.IsEditable(config.ServiceTLS, "db"))
+	assert.False(t, m.IsEditable(config.ServiceTLS, "logger"))
+	assert.False(t, m.IsEditable(config.ServiceTLS, "nonexistent"))
+	assert.False(t, m.IsEditable("bogus", "debug"))
+}
+
+// After UpdateSection flips source to "db", a subsequent Seed must not
+// overwrite the edited value.
+func TestUpdateSection_SeedDoesNotClobber(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	newValue := `{"enableHttp":true,"httpFile":"/tmp/x.log","showBody":false}`
+	_, err := m.UpdateSection(config.ServiceTLS, "debug", newValue, 0)
+	require.NoError(t, err)
+
+	// Re-seed — debug is create-if-missing so the DB value survives.
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	sc, err := m.GetSection(config.ServiceTLS, "debug", 0)
+	require.NoError(t, err)
+	assert.Equal(t, newValue, sc.Value)
+	assert.Equal(t, SourceDB, sc.Source)
 }

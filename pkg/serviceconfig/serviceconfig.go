@@ -79,7 +79,7 @@ var SectionRegistry = map[string][]SectionSpec{
 		{"tls", false, "TLS termination certificate/key paths"},
 		{"logger", false, "Log sinks (future: editable)"},
 		{"carver", false, "File carver configuration"},
-		{"debug", false, "HTTP debug dump settings"},
+		{"debug", true, "HTTP debug dump settings"},
 	},
 	config.ServiceAPI: {
 		{"service", false, "Core service listener, port, log level, auth mode"},
@@ -92,7 +92,7 @@ var SectionRegistry = map[string][]SectionSpec{
 		{"tls", false, "TLS termination certificate/key paths"},
 		{"logger", false, "Log sinks (future: editable)"},
 		{"carver", false, "File carver configuration"},
-		{"debug", false, "HTTP debug dump settings"},
+		{"debug", true, "HTTP debug dump settings"},
 	},
 }
 
@@ -117,6 +117,16 @@ func (m *ServiceConfigManager) VerifySection(service, section string) bool {
 	for _, spec := range SectionRegistry[service] {
 		if spec.Name == section {
 			return true
+		}
+	}
+	return false
+}
+
+// IsEditable checks that the section is registered and marked editable.
+func (m *ServiceConfigManager) IsEditable(service, section string) bool {
+	for _, spec := range SectionRegistry[service] {
+		if spec.Name == section {
+			return spec.Editable
 		}
 	}
 	return false
@@ -191,6 +201,39 @@ func (m *ServiceConfigManager) GetAll(envID uint) ([]ServiceConfig, error) {
 		return values, err
 	}
 	return values, nil
+}
+
+// ErrSectionNotEditable is returned when UpdateSection is called on a section
+// that is not marked editable in the registry.
+var ErrSectionNotEditable = fmt.Errorf("section is not editable")
+
+// UpdateSection replaces the JSON value of an editable section. It validates
+// that the new value is valid JSON, that the section exists and is marked
+// editable, and flips the source to SourceDB so subsequent boots won't
+// clobber the change. Returns the updated row.
+func (m *ServiceConfigManager) UpdateSection(service, name, value string, envID uint) (ServiceConfig, error) {
+	if !m.VerifyService(service) {
+		return ServiceConfig{}, fmt.Errorf("unknown service %q", service)
+	}
+	if !m.IsEditable(service, name) {
+		return ServiceConfig{}, ErrSectionNotEditable
+	}
+	// Validate that the new value is valid JSON.
+	if !json.Valid([]byte(value)) {
+		return ServiceConfig{}, fmt.Errorf("value is not valid JSON")
+	}
+	existing, err := m.GetSection(service, name, envID)
+	if err != nil {
+		return ServiceConfig{}, fmt.Errorf("get section %s/%s: %w", service, name, err)
+	}
+	if err := m.DB.Model(&existing).Updates(map[string]any{
+		"value":  value,
+		"source": SourceDB,
+	}).Error; err != nil {
+		return ServiceConfig{}, fmt.Errorf("update %s/%s: %w", service, name, err)
+	}
+	log.Debug().Msgf("Updated service config %s/%s (source=db)", service, name)
+	return existing, nil
 }
 
 // sectionValues extracts each registered section from ServiceParameters and
