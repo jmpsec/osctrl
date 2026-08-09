@@ -9,9 +9,8 @@ const YAMLDBType = "db"
 
 // Types of services
 const (
-	ServiceTLS   string = "tls"
-	ServiceAdmin string = "admin"
-	ServiceAPI   string = "api"
+	ServiceTLS string = "tls"
+	ServiceAPI string = "api"
 )
 
 const (
@@ -79,23 +78,6 @@ type TLSConfiguration struct {
 	Logger          YAMLConfigurationLogger    `mapstructure:"logger"`
 	Carver          YAMLConfigurationCarver    `mapstructure:"carver"`
 	Debug           YAMLConfigurationDebug     `mapstructure:"debug"`
-}
-
-// AdminConfiguration to hold osctrl-admin configuration values
-type AdminConfiguration struct {
-	Service YAMLConfigurationService `mapstructure:"service"`
-	DB      YAMLConfigurationDB      `mapstructure:"db"`
-	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
-	Osquery YAMLConfigurationOsquery `mapstructure:"osquery"`
-	Osctrld YAMLConfigurationOsctrld `mapstructure:"osctrld"`
-	SAML    YAMLConfigurationSAML    `mapstructure:"saml"`
-	OIDC    YAMLConfigurationOIDC    `mapstructure:"oidc"`
-	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
-	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
-	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
-	Carver  YAMLConfigurationCarver  `mapstructure:"carver"`
-	Admin   YAMLConfigurationAdmin   `mapstructure:"admin"`
-	Debug   YAMLConfigurationDebug   `mapstructure:"debug"`
 }
 
 // APIConfiguration to hold osctrl-api configuration values
@@ -243,16 +225,6 @@ type YAMLConfigurationCarver struct {
 	Local *LocalCarver `mapstructure:"local"`
 }
 
-// YAMLConfigurationAdmin to hold admin UI specific configuration values
-type YAMLConfigurationAdmin struct {
-	SessionKey      string `yaml:"sessionKey"`
-	StaticDir       string `yaml:"staticDir"`
-	StaticOffline   bool   `yaml:"staticOffline"`
-	TemplatesDir    string `yaml:"templatesDir"`
-	BrandingImage   string `yaml:"brandingImage"`
-	BackgroundImage string `yaml:"backgroundImage"`
-}
-
 // YAMLConfigurationDebug to hold the debug configuration values
 type YAMLConfigurationDebug struct {
 	EnableHTTP bool   `yaml:"enableHttp"`
@@ -285,9 +257,7 @@ type YAMLConfigurationJWT struct {
 // YAMLConfigurationSAML to keep all SAML details for auth
 type YAMLConfigurationSAML struct {
 	// Enabled gates the SAML federated-login surface on osctrl-api.
-	// Defaults false. The legacy osctrl-admin ignores this field
-	// (it uses --auth=saml instead) so adding it does not affect
-	// existing operator deployments.
+	// Defaults false.
 	Enabled bool `yaml:"enabled"        mapstructure:"enabled"`
 	// EntityID is the SP entity identifier — what the IdP knows us
 	// by. Conventionally the metadata URL.
@@ -330,9 +300,7 @@ type YAMLConfigurationSAML struct {
 // YAMLConfigurationOIDC to keep all OIDC details for auth
 type YAMLConfigurationOIDC struct {
 	// Enabled gates the federated-login surface on osctrl-api.
-	// Defaults false. legacy osctrl-admin ignores this field (it
-	// uses --auth=oidc instead) so adding it does not affect any
-	// existing operator deployment.
+	// Defaults false.
 	Enabled        bool     `yaml:"enabled"        mapstructure:"enabled"`
 	IssuerURL      string   `yaml:"issuerUrl"      mapstructure:"issuerUrl"`
 	ClientID       string   `yaml:"clientId"       mapstructure:"clientId"`

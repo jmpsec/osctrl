@@ -861,12 +861,6 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSettingsPath)+"/{service}/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiSettingsPath)+"/{service}/json",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceJSONHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	muxAPI.Handle(
-		"GET "+_apiPath(apiSettingsPath)+"/{service}/json/{env}",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingsServiceEnvJSONHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: settings PATCH (Track 9)
 	muxAPI.Handle(
 		"PATCH "+_apiPath(apiSettingsPath)+"/{service}/{name}",
