@@ -64,34 +64,35 @@ type SectionSpec struct {
 
 // SectionRegistry maps each service to the sections it owns. The order
 // of the slice defines the display order in the frontend. Sections marked
-// Editable=false (db, redis, and other connection / secret-bearing sections)
-// can never be written through the API.
+// Editable=false (db, redis, tls, saml, oidc, jwt, and other
+// connection / secret / auth-bearing sections) can never be written through
+// the API.
 var SectionRegistry = map[string][]SectionSpec{
 	config.ServiceTLS: {
-		{"service", false, "Core service listener, port, log level, auth mode"},
+		{"service", true, "Core service listener, port, log level, auth mode"},
 		{"db", false, "Backend connection — not DB-editable"},
-		{"batchWriter", false, "DB batch writer tuning"},
+		{"batchWriter", true, "DB batch writer tuning"},
 		{"redis", false, "Redis connection — not DB-editable"},
-		{"osquery", false, "osquery feature toggles"},
-		{"configEndpoints", false, "Config endpoint fan-out targets"},
-		{"osctrld", false, "osctrld integration"},
-		{"metrics", false, "Prometheus metrics endpoint"},
-		{"tls", false, "TLS termination certificate/key paths"},
-		{"logger", false, "Log sinks (future: editable)"},
-		{"carver", false, "File carver configuration"},
+		{"osquery", true, "osquery feature toggles"},
+		{"configEndpoints", false, "Config endpoint fan-out targets — contains secrets"},
+		{"osctrld", true, "osctrld integration"},
+		{"metrics", true, "Prometheus metrics endpoint"},
+		{"tls", false, "TLS termination certificate/key paths — not DB-editable"},
+		{"logger", false, "Log sinks — may contain credentials (future: editable)"},
+		{"carver", false, "File carver configuration — may contain credentials"},
 		{"debug", true, "HTTP debug dump settings"},
 	},
 	config.ServiceAPI: {
-		{"service", false, "Core service listener, port, log level, auth mode"},
+		{"service", true, "Core service listener, port, log level, auth mode"},
 		{"db", false, "Backend connection — not DB-editable"},
 		{"redis", false, "Redis connection — not DB-editable"},
-		{"osquery", false, "osquery tables and feature toggles"},
-		{"saml", false, "SAML federated login configuration"},
-		{"oidc", false, "OIDC federated login configuration"},
-		{"jwt", false, "JWT signing configuration"},
-		{"tls", false, "TLS termination certificate/key paths"},
-		{"logger", false, "Log sinks (future: editable)"},
-		{"carver", false, "File carver configuration"},
+		{"osquery", true, "osquery tables and feature toggles"},
+		{"saml", false, "SAML federated login configuration — not DB-editable"},
+		{"oidc", false, "OIDC federated login configuration — not DB-editable"},
+		{"jwt", false, "JWT signing configuration — not DB-editable"},
+		{"tls", false, "TLS termination certificate/key paths — not DB-editable"},
+		{"logger", false, "Log sinks — may contain credentials (future: editable)"},
+		{"carver", false, "File carver configuration — may contain credentials"},
 		{"debug", true, "HTTP debug dump settings"},
 	},
 }
@@ -170,6 +171,18 @@ func (m *ServiceConfigManager) Seed(service string, cfg *config.ServiceParameter
 		// supports.
 		if err := m.DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&entry).Error; err != nil {
 			return fmt.Errorf("seed %s/%s: %w", service, spec.Name, err)
+		}
+		// Sync registry metadata (Editable, Info) to existing rows. These
+		// are schema-level flags controlled by the code, not operator data,
+		// so they must always reflect the current registry — even for rows
+		// that already existed from a previous boot with different flags.
+		if err := m.DB.Model(&ServiceConfig{}).
+			Where("service = ? AND name = ? AND environment_id = ?", service, spec.Name, envID).
+			Updates(map[string]any{
+				"editable": spec.Editable,
+				"info":     spec.Info,
+			}).Error; err != nil {
+			return fmt.Errorf("sync metadata %s/%s: %w", service, spec.Name, err)
 		}
 	}
 	log.Debug().Msgf("Seeded service config for %s (%d sections)", service, len(SectionRegistry[service]))

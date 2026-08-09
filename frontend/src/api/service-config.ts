@@ -1,10 +1,11 @@
 /**
  * Service config API client.
  *
- * Read-only access to the service_config table, which mirrors the structured
- * YAML configuration sections (logger, carver, SAML, OIDC, metrics, TLS, …)
- * per service into the database. Each section is stored as a JSON-encoded
- * blob. Phase 1 is read-only; phase 2 will add a PUT for editable sections.
+ * Access to the service_config table, which mirrors the structured YAML
+ * configuration sections (logger, carver, SAML, OIDC, metrics, TLS, …) per
+ * service into the database. Each section is stored as a JSON-encoded blob.
+ * Read endpoints are available for all sections; editable sections can be
+ * updated via PUT.
  */
 import { apiFetch } from './client';
 
@@ -42,5 +43,27 @@ export function getServiceConfig(
 ): Promise<ServiceConfig> {
   return apiFetch<ServiceConfig>(
     `/api/v1/service-config/${encodeURIComponent(service)}/${encodeURIComponent(section)}`,
+  );
+}
+
+/** Body shape for PUT /api/v1/service-config/{service}/{section}. */
+export interface ServiceConfigUpdateRequest {
+  /** Raw JSON object representing the new section contents. */
+  value: unknown;
+}
+
+/** PUT /api/v1/service-config/{service}/{section} — update an editable section. */
+export function updateServiceConfig(
+  service: string,
+  section: string,
+  body: ServiceConfigUpdateRequest,
+): Promise<ServiceConfig> {
+  return apiFetch<ServiceConfig>(
+    `/api/v1/service-config/${encodeURIComponent(service)}/${encodeURIComponent(section)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
   );
 }
