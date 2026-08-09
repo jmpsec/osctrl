@@ -15,10 +15,12 @@ import type { ServiceConfig } from '$/api/service-config';
 
 const mockList = vi.fn<(service: string) => Promise<ServiceConfig[]>>();
 const mockUpdate = vi.fn();
+const mockApply = vi.fn();
 
 vi.mock('$/api/service-config', () => ({
   listServiceConfig: (service: string) => mockList(service),
   updateServiceConfig: (...args: unknown[]) => mockUpdate(...args),
+  applyServiceConfig: () => mockApply(),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -298,6 +300,41 @@ describe('ServiceConfigPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Section is not editable.')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show Apply & Restart button when no sections have source=db', async () => {
+    mockList.mockResolvedValue([makeSection({ Source: 'yaml' })]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('logger')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /Apply & Restart/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Apply & Restart button when a section has source=db', async () => {
+    mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true })]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Apply & Restart/i })).toBeInTheDocument();
+    });
+  });
+
+  it('calls applyServiceConfig when Apply & Restart is clicked', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true })]);
+    mockApply.mockResolvedValue({ message: 'Restart triggered.' });
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Apply & Restart/i })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: /Apply & Restart/i }));
+
+    await waitFor(() => {
+      expect(mockApply).toHaveBeenCalledTimes(1);
     });
   });
 });

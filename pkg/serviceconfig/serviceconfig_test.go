@@ -576,3 +576,80 @@ func TestResolve_MultipleDBEdits(t *testing.T) {
 	assert.Equal(t, "5.12.2", cfg.Osquery.Version)
 	assert.Equal(t, "./data/5.12.2.json", cfg.Osquery.TablesFile)
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Phase 4 — optional YAML (nil section pointers)
+// ──────────────────────────────────────────────────────────────────────────────
+
+// minimalTLSParams returns a ServiceParameters with only the required
+// sections (service, db, redis) — all optional sections are nil, simulating
+// a minimal YAML file that only specifies connection info.
+func minimalTLSParams() *config.ServiceParameters {
+	return &config.ServiceParameters{
+		Service: &config.YAMLConfigurationService{
+			Listener: "0.0.0.0",
+			Port:     9000,
+			Host:     "tls.example.com",
+			Auth:     config.AuthNone,
+		},
+		DB: &config.YAMLConfigurationDB{
+			Type: config.DBTypeSQLite,
+			Name: "osctrl",
+		},
+		Redis: &config.YAMLConfigurationRedis{
+			Host: "127.0.0.1",
+			Port: 6379,
+		},
+		// All optional sections are nil — simulating a minimal YAML.
+	}
+}
+
+// Seed must not panic when optional section pointers are nil. It should
+// only seed the sections that are present.
+func TestSeed_NilOptionalSections_DoesNotPanic(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := minimalTLSParams()
+
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	// Only service, db, redis should be present — the rest are nil.
+	rows, err := m.GetAllByService(config.ServiceTLS, 0)
+	require.NoError(t, err)
+	// 3 required sections + 0 optional = 3 rows.
+	assert.Len(t, rows, 3)
+	names := sectionNames(rows)
+	assert.True(t, names["service"])
+	assert.True(t, names["db"])
+	assert.True(t, names["redis"])
+	assert.False(t, names["debug"])
+	assert.False(t, names["osquery"])
+}
+
+// Resolve must not panic when optional section pointers are nil, even if a
+// DB row with source=db exists for a nil section. The nil section is simply
+// skipped — the operator can't have edited it through the API (it was never
+// seeded), so this only happens if someone manually inserted a DB row.
+func TestResolve_NilOptionalSection_DBValueIgnored(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+
+	// First boot with full config to seed all sections.
+	require.NoError(t, m.Seed(config.ServiceTLS, testTLSParams(), 0))
+
+	// Edit debug via the API.
+	_, err := m.UpdateSection(config.ServiceTLS, "debug", `{"enableHttp":true,"httpFile":"/tmp/x.log","showBody":false,"hostIdentifier":""}`, 0)
+	require.NoError(t, err)
+
+	// Second boot with minimal YAML — debug is nil in ServiceParameters.
+	cfg := minimalTLSParams()
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+	// Resolve must not panic even though debug has source=db in the DB
+	// but cfg.Debug is nil.
+	require.NotPanics(t, func() {
+		_ = m.Resolve(config.ServiceTLS, cfg, 0)
+	})
+
+	// cfg.Debug is still nil — Resolve skipped it because the pointer was nil.
+	assert.Nil(t, cfg.Debug)
+}

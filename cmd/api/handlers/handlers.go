@@ -81,6 +81,11 @@ type HandlersApi struct {
 	// report backend degradation. nil means "no monitor" and the
 	// health endpoint reports healthy as before.
 	DBHealth backend.DegradedReader
+	// RestartCh, when wired via WithRestartCh, is signalled by the
+	// ServiceConfigApplyHandler to trigger a graceful shutdown so the
+	// process manager restarts the service and picks up DB-edited
+	// config. nil means the apply endpoint returns 503.
+	RestartCh chan<- struct{}
 }
 
 type HandlersOption func(*HandlersApi)
@@ -278,6 +283,12 @@ func WithSAML(enabled bool) HandlersOption {
 func WithDBHealth(hl backend.DegradedReader) HandlersOption {
 	return func(h *HandlersApi) {
 		h.DBHealth = hl
+	}
+}
+
+func WithRestartCh(ch chan<- struct{}) HandlersOption {
+	return func(h *HandlersApi) {
+		h.RestartCh = ch
 	}
 }
 

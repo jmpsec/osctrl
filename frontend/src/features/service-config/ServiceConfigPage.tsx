@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   listServiceConfig,
   updateServiceConfig,
+  applyServiceConfig,
   type ServiceConfig,
 } from '$/api/service-config';
 import { AuthError, ApiError } from '$/api/client';
@@ -26,6 +27,8 @@ export function ServiceConfigPage() {
     ? (serviceParam as Service)
     : 'api';
 
+  const [applyErr, setApplyErr] = useState<string | null>(null);
+  const [applyFlash, setApplyFlash] = useState(false);
   const qc = useQueryClient();
   const {
     data,
@@ -51,6 +54,27 @@ export function ServiceConfigPage() {
   const hasError = isError;
   const pageError = error;
 
+  // An "Apply & Restart" is relevant when any section has source=db (meaning
+  // the operator has edited it through the API and the change is pending a
+  // restart to take effect).
+  const hasPendingChanges = sections.some((s) => s.Source === 'db');
+
+  const applyMutation = useMutation({
+    mutationFn: () => applyServiceConfig(),
+    onSuccess: () => {
+      setApplyErr(null);
+      setApplyFlash(true);
+      window.setTimeout(() => setApplyFlash(false), 3000);
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setApplyErr(e instanceof Error ? e.message : 'Apply failed');
+    },
+  });
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Toolbar row */}
@@ -58,6 +82,24 @@ export function ServiceConfigPage() {
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Service Config
         </h1>
+        {hasPendingChanges && !loading && !hasError && (
+          <button
+            type="button"
+            disabled={applyMutation.isPending}
+            onClick={() => applyMutation.mutate()}
+            className={cn(
+              'px-3 py-1 text-xs font-medium rounded transition-colors',
+              applyMutation.isPending
+                ? 'bg-[color:var(--bg-3)] text-[color:var(--text-3)]'
+                : 'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)] hover:bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.2)]',
+            )}
+          >
+            {applyMutation.isPending ? 'Restarting…' : applyFlash ? 'Restart triggered ✓' : 'Apply \u0026 Restart'}
+          </button>
+        )}
+        {applyErr && (
+          <span className="text-xs text-[color:var(--danger)]">{applyErr}</span>
+        )}
         {fetching && !loading && (
           <span
             aria-live="polite"

@@ -244,3 +244,52 @@ func (h *HandlersApi) ServiceConfigUpdateHandler(w http.ResponseWriter, r *http.
 	log.Debug().Msgf("Updated service config %s/%s", service, section)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, updated)
 }
+
+// ServiceConfigApplyHandler — POST /api/v1/service-config/apply
+//
+// Triggers a graceful shutdown of the API service so the process manager
+// (systemd, docker, k8s) restarts it. On restart, Resolve applies all
+// DB-edited config sections (source=db) over the YAML defaults, making the
+// operator's changes live.
+//
+// The handler returns 202 immediately; the shutdown happens asynchronously
+// after a short delay so the HTTP response completes. If RestartCh is nil
+// (not wired), returns 503.
+//
+// @Summary Apply config changes and restart
+// @Description Triggers a graceful service restart to apply DB-edited config changes.
+// @Tags service-config
+// @Produce json
+// @Success 202 {object} types.ApiErrorResponse "Restart triggered"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/service-config/apply [post]
+func (h *HandlersApi) ServiceConfigApplyHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	if h.RestartCh == nil {
+		apiErrorResponse(w, "restart not available", http.StatusServiceUnavailable, nil)
+		return
+	}
+	h.AuditLog.SettingsAction(ctx[ctxUser], "apply service-config (restart)", strings.Split(r.RemoteAddr, ":")[0])
+	log.Info().Msgf("Service config apply triggered by %s — initiating graceful restart", ctx[ctxUser])
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusAccepted, map[string]string{
+		"message": "Restart triggered. The service will restart shortly to apply config changes.",
+	})
+	// Signal the main goroutine to shut down. Use a goroutine so the
+	// HTTP response completes before the shutdown begins.
+	go func() {
+		select {
+		case h.RestartCh <- struct{}{}:
+		default:
+		}
+	}()
+}
