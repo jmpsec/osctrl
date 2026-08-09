@@ -435,3 +435,144 @@ func TestUpdateSection_SeedDoesNotClobber(t *testing.T) {
 	assert.Equal(t, newValue, sc.Value)
 	assert.Equal(t, SourceDB, sc.Source)
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Resolve — phase 3 DB-first consumption
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Resolve must be a no-op when no sections have source=db — the YAML
+// values in ServiceParameters must be unchanged.
+func TestResolve_NoDBEdits_KeepsYAMLValues(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+	originalPort := cfg.Service.Port
+	originalListener := cfg.Service.Listener
+
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+	require.NoError(t, m.Resolve(config.ServiceTLS, cfg, 0))
+
+	assert.Equal(t, originalPort, cfg.Service.Port)
+	assert.Equal(t, originalListener, cfg.Service.Listener)
+}
+
+// Resolve must override ServiceParameters fields when a section has
+// source=db.
+func TestResolve_DBEditedSection_OverridesYAML(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	// Edit the debug section via the API (flips source to db).
+	newDebug := `{"enableHttp":true,"httpFile":"/tmp/debug.log","showBody":true}`
+	_, err := m.UpdateSection(config.ServiceTLS, "debug", newDebug, 0)
+	require.NoError(t, err)
+
+	// Resolve must apply the DB value to cfg.Debug.
+	require.NoError(t, m.Resolve(config.ServiceTLS, cfg, 0))
+	assert.True(t, cfg.Debug.EnableHTTP)
+	assert.Equal(t, "/tmp/debug.log", cfg.Debug.HTTPFile)
+	assert.True(t, cfg.Debug.ShowBody)
+}
+
+// Resolve must override the service section (listener, port, host) when it
+// has been edited via the DB.
+func TestResolve_ServiceSection_OverridesYAML(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	// Edit the service section via the API.
+	newService := `{"listener":"127.0.0.1","port":9999,"host":"db.example.com","logLevel":"debug","logFormat":"json","auth":"none","auditLog":true,"postureEnabled":false,"postureQueryPrefix":"","trustedProxies":"","dbHealthCheck":false,"dbHealthInterval":0,"dbHealthThreshold":0,"geoipDBPath":""}`
+	_, err := m.UpdateSection(config.ServiceTLS, "service", newService, 0)
+	require.NoError(t, err)
+
+	require.NoError(t, m.Resolve(config.ServiceTLS, cfg, 0))
+	assert.Equal(t, "127.0.0.1", cfg.Service.Listener)
+	assert.Equal(t, 9999, cfg.Service.Port)
+	assert.Equal(t, "db.example.com", cfg.Service.Host)
+	assert.Equal(t, "debug", cfg.Service.LogLevel)
+	assert.True(t, cfg.Service.AuditLog)
+}
+
+// Resolve must not override YAML values for sections with source=yaml.
+func TestResolve_YAMLSourceSectionsAreSkipped(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+	originalDBHost := cfg.DB.Host
+
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+	// db section is source=yaml (not editable, never edited).
+	require.NoError(t, m.Resolve(config.ServiceTLS, cfg, 0))
+
+	// DB host must still be the YAML value.
+	assert.Equal(t, originalDBHost, cfg.DB.Host)
+}
+
+// Resolve must reject an unknown service.
+func TestResolve_UnknownService(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	err := m.Resolve("bogus", testTLSParams(), 0)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown service")
+}
+
+// Resolve must reject a nil config.
+func TestResolve_NilConfig(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	err := m.Resolve(config.ServiceTLS, nil, 0)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "nil ServiceParameters")
+}
+
+// Resolve + Seed + Update + Resolve round-trip: edit a section via the API,
+// re-seed (which doesn't clobber), resolve, and verify the DB value wins
+// over the YAML value.
+func TestResolve_FullRoundTrip(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+
+	// Boot 1: seed from YAML, no DB edits, resolve is a no-op.
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+	require.NoError(t, m.Resolve(config.ServiceTLS, cfg, 0))
+	assert.False(t, cfg.Debug.EnableHTTP) // YAML default
+
+	// Operator edits debug via the API.
+	_, err := m.UpdateSection(config.ServiceTLS, "debug", `{"enableHttp":true,"httpFile":"/tmp/x.log","showBody":false}`, 0)
+	require.NoError(t, err)
+
+	// Boot 2: re-seed (doesn't clobber DB edit), then resolve.
+	cfg2 := testTLSParams() // fresh YAML load
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg2, 0))
+	require.NoError(t, m.Resolve(config.ServiceTLS, cfg2, 0))
+
+	// The DB value must win over the YAML default.
+	assert.True(t, cfg2.Debug.EnableHTTP)
+	assert.Equal(t, "/tmp/x.log", cfg2.Debug.HTTPFile)
+	assert.False(t, cfg2.Debug.ShowBody)
+}
+
+// Resolve must handle multiple DB-edited sections simultaneously.
+func TestResolve_MultipleDBEdits(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	// Edit multiple sections.
+	_, err := m.UpdateSection(config.ServiceTLS, "debug", `{"enableHttp":true,"httpFile":"/tmp/a.log","showBody":false,"hostIdentifier":""}`, 0)
+	require.NoError(t, err)
+	_, err = m.UpdateSection(config.ServiceTLS, "osquery", `{"version":"5.12.2","tablesFile":"./data/5.12.2.json","logger":true,"config":true,"query":true,"carve":true,"accelerated":false,"fileExplorer":false,"readOnly":false}`, 0)
+	require.NoError(t, err)
+
+	require.NoError(t, m.Resolve(config.ServiceTLS, cfg, 0))
+	assert.True(t, cfg.Debug.EnableHTTP)
+	assert.Equal(t, "5.12.2", cfg.Osquery.Version)
+	assert.Equal(t, "./data/5.12.2.json", cfg.Osquery.TablesFile)
+}

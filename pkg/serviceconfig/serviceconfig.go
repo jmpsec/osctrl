@@ -216,6 +216,79 @@ func (m *ServiceConfigManager) GetAll(envID uint) ([]ServiceConfig, error) {
 	return values, nil
 }
 
+// Resolve applies DB-edited sections back into ServiceParameters so the
+// service uses the operator's DB values at runtime instead of the YAML
+// defaults. For each section with source=db, the JSON value is unmarshaled
+// into the matching ServiceParameters field, overriding the YAML value.
+// Sections with source=yaml are skipped — the YAML value is already in
+// ServiceParameters from the initial load.
+//
+// This is the core of phase 3: the YAML file bootstraps the config, the DB
+// overrides it for sections the operator has edited through the API.
+func (m *ServiceConfigManager) Resolve(service string, cfg *config.ServiceParameters, envID uint) error {
+	if !m.VerifyService(service) {
+		return fmt.Errorf("unknown service %q", service)
+	}
+	if cfg == nil {
+		return fmt.Errorf("nil ServiceParameters for %s", service)
+	}
+	sections, err := m.GetAllByService(service, envID)
+	if err != nil {
+		return fmt.Errorf("resolve %s: %w", service, err)
+	}
+	for _, sc := range sections {
+		// Only DB-edited rows override the YAML defaults.
+		if sc.Source != SourceDB {
+			continue
+		}
+		if err := applySection(cfg, sc.Name, sc.Value); err != nil {
+			return fmt.Errorf("resolve %s/%s: %w", service, sc.Name, err)
+		}
+		log.Debug().Msgf("Resolved service config %s/%s from DB (source=db)", service, sc.Name)
+	}
+	return nil
+}
+
+// applySection unmarshals a JSON section value into the matching field on
+// ServiceParameters. Unknown sections are silently skipped.
+func applySection(cfg *config.ServiceParameters, name, value string) error {
+	switch name {
+	case "service":
+		return json.Unmarshal([]byte(value), cfg.Service)
+	case "db":
+		return json.Unmarshal([]byte(value), cfg.DB)
+	case "redis":
+		return json.Unmarshal([]byte(value), cfg.Redis)
+	case "osquery":
+		return json.Unmarshal([]byte(value), cfg.Osquery)
+	case "tls":
+		return json.Unmarshal([]byte(value), cfg.TLS)
+	case "logger":
+		return json.Unmarshal([]byte(value), cfg.Logger)
+	case "carver":
+		return json.Unmarshal([]byte(value), cfg.Carver)
+	case "debug":
+		return json.Unmarshal([]byte(value), cfg.Debug)
+	case "batchWriter":
+		return json.Unmarshal([]byte(value), cfg.BatchWriter)
+	case "configEndpoints":
+		return json.Unmarshal([]byte(value), cfg.ConfigEndpoints)
+	case "osctrld":
+		return json.Unmarshal([]byte(value), cfg.Osctrld)
+	case "metrics":
+		return json.Unmarshal([]byte(value), cfg.Metrics)
+	case "saml":
+		return json.Unmarshal([]byte(value), cfg.SAML)
+	case "oidc":
+		return json.Unmarshal([]byte(value), cfg.OIDC)
+	case "jwt":
+		return json.Unmarshal([]byte(value), cfg.JWT)
+	default:
+		// Unknown section — skip silently.
+		return nil
+	}
+}
+
 // ErrSectionNotEditable is returned when UpdateSection is called on a section
 // that is not marked editable in the registry.
 var ErrSectionNotEditable = fmt.Errorf("section is not editable")

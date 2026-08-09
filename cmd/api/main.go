@@ -382,6 +382,10 @@ func osctrlAPIService() {
 	if err := serviceConfigMgr.Seed(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error seeding service config - %v", err)
 	}
+	log.Info().Msg("Resolving service config from DB")
+	if err := serviceConfigMgr.Resolve(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
+		log.Fatal().Msgf("Error resolving service config - %v", err)
+	}
 	// Initialize audit log manager
 	if flagParams.Service.AuditLog {
 		log.Info().Msg("Initialize audit log")

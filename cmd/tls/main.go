@@ -263,6 +263,10 @@ func osctrlService() {
 	if err := serviceConfigMgr.Seed(config.ServiceTLS, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error seeding service config - %v", err)
 	}
+	log.Info().Msg("Resolving service config from DB")
+	if err := serviceConfigMgr.Resolve(config.ServiceTLS, flagParams, settings.NoEnvironmentID); err != nil {
+		log.Fatal().Msgf("Error resolving service config - %v", err)
+	}
 	settingsCacheTTL := time.Duration(settingsmgr.RefreshSettings(config.ServiceTLS)) * time.Second
 	if settingsCacheTTL <= 0 {
 		settingsCacheTTL = time.Duration(defaultRefresh) * time.Second
