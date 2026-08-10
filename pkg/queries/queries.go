@@ -1,6 +1,7 @@
 package queries
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -142,7 +143,8 @@ type QueryReadQueries map[string]string
 
 // Queries to handle on-demand queries
 type Queries struct {
-	DB *gorm.DB
+	DB    *gorm.DB
+	Cache *QueryDispatchCache
 }
 
 // CreateQueries to initialize the queries struct
@@ -170,6 +172,17 @@ func CreateQueries(backend *gorm.DB) *Queries {
 }
 
 func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
+	// Fast path: check the Redis cache. If we recently determined this
+	// node has no pending queries, skip the DB entirely. This eliminates
+	// ~99% of DB lookups at scale (10K+ nodes checking in every 60s).
+	if q.Cache != nil {
+		cached, err := q.Cache.HasNoPendingQueries(context.Background(), node.ID)
+		if err != nil {
+			log.Debug().Err(err).Uint("node_id", node.ID).Msg("query dispatch cache: read error, falling through to DB")
+		} else if cached {
+			return QueryReadQueries{}, false, nil
+		}
+	}
 
 	var results []struct {
 		Name  string
@@ -187,6 +200,10 @@ func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, e
 		Scan(&results)
 
 	if len(results) == 0 {
+		// Cache the empty result so subsequent check-ins skip the DB.
+		if q.Cache != nil {
+			q.Cache.SetNoPendingQueries(context.Background(), node.ID)
+		}
 		return QueryReadQueries{}, false, nil
 	}
 
@@ -494,6 +511,11 @@ func (q *Queries) CreateNodeQueries(nodeIDs []uint, queryID uint) error {
 	}
 	if err := q.DB.CreateInBatches(&nodeQueries, 1000).Error; err != nil {
 		return err
+	}
+	// Invalidate the dispatch cache for all targeted nodes so the next
+	// check-in hits the DB and picks up the new query.
+	if q.Cache != nil {
+		q.Cache.InvalidateMany(context.Background(), nodeIDs)
 	}
 	return nil
 }

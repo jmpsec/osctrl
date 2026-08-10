@@ -252,6 +252,8 @@ func osctrlService() {
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
+	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, 0)
+	log.Info().Msg("Query dispatch cache wired to Redis")
 	log.Info().Msg("Initialize carves")
 	filecarves = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, carvers3)
 	log.Info().Msg("Loading service settings")
