@@ -351,6 +351,7 @@ func osctrlAPIService() {
 	nodesmgr = nodes.CreateNodes(db.Conn)
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
+	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, 0)
 	log.Info().Msg("Initialize console")
 	consolemgr = console.NewManager(db.Conn, queriesmgr)
 	log.Info().Msg("Initialize file explorer")
