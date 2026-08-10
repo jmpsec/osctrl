@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -643,9 +644,25 @@ function ConfigSectionCard({
 
 function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
   const help = FIELD_HELP[fieldKey];
+  const ref = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+
   if (!help) return null;
+
+  const show = () => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) {
+      setPos({ x: rect.left + rect.width / 2, y: rect.top });
+    }
+  };
+
   return (
-    <span className="group relative shrink-0">
+    <span
+      ref={ref}
+      className="shrink-0"
+      onMouseEnter={show}
+      onMouseLeave={() => setPos(null)}
+    >
       <svg
         className="w-3.5 h-3.5 text-[color:var(--text-3)] hover:text-[color:var(--signal)] cursor-help transition-colors"
         viewBox="0 0 24 24"
@@ -659,9 +676,20 @@ function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
         <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
         <line x1="12" y1="17" x2="12.01" y2="17" />
       </svg>
-      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-[11px] leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg w-[260px] opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
-        {help}
-      </span>
+      {pos && createPortal(
+        <span
+          className="fixed px-3 py-2 text-[11px] leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg w-[260px] pointer-events-none"
+          style={{
+            left: `${pos.x}px`,
+            top: `${pos.y}px`,
+            transform: 'translate(-50%, -100%) translateY(-8px)',
+            zIndex: 9999,
+          }}
+        >
+          {help}
+        </span>,
+        document.body,
+      )}
     </span>
   );
 }
