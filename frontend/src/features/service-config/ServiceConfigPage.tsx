@@ -38,6 +38,14 @@ function isSensitive(key: string): boolean {
 }
 
 const FIELD_HELP: Record<string, string> = {
+  // Service
+  Listener: 'Network interface to bind to (e.g. 0.0.0.0 for all interfaces, 127.0.0.1 for localhost only).',
+  Port: 'TCP port the service listens on.',
+  Host: 'Hostname or IP address (context-dependent: service host, database host, Redis host, etc.).',
+  LogLevel: 'Minimum log level: debug, info, warn, or error.',
+  LogFormat: 'Log output format: console (human-readable) or json (structured).',
+  Auth: 'Authentication backend: none, json, db, saml, jwt, oauth, or oidc.',
+  AuditLog: 'When enabled, records admin actions to an audit trail.',
   GeoIPDBPath: 'Path to a MaxMind GeoLite2-Country .mmdb file. When set, the API resolves node IPs to country codes. When empty, the feature is disabled.',
   PostureEnabled: 'Controls whether the security & compliance posture system is active. When false (default), the entire posture subsystem is disabled.',
   PostureQueryPrefix: 'Prefix that identifies scheduled queries whose result logs are ingested as node posture data. Only used when PostureEnabled is true.',
@@ -45,26 +53,64 @@ const FIELD_HELP: Record<string, string> = {
   DBHealthCheck: 'Enables background DB liveness monitor. Pings DB every DBHealthInterval seconds; after DBHealthThreshold failures, switches to stale-serve mode.',
   DBHealthInterval: 'Seconds between DB health pings. Only used when DBHealthCheck is true.',
   DBHealthThreshold: 'Consecutive DB ping failures before switching to stale-serve mode.',
-  Type: 'Database type: postgres, mysql, or sqlite.',
+  // DB
+  Type: 'Backend type (e.g. postgres, mysql, sqlite for databases; stdout, db, s3, etc. for loggers).',
+  Name: 'Database name to connect to.',
+  Username: 'Database username for authentication.',
+  Password: 'Database password or service secret.',
   SSLMode: 'PostgreSQL SSL mode (e.g. disable, require, verify-full).',
-  FilePath: 'File path for SQLite database.',
+  FilePath: 'File path (SQLite database or local log file).',
   ConnRetry: 'Number of connection retry attempts on startup.',
   MaxIdleConns: 'Maximum idle connections in the pool.',
   MaxOpenConns: 'Maximum open connections to the database.',
   ConnMaxLifetime: 'Maximum lifetime of a connection in seconds.',
+  // Redis
   ConnectionString: 'Full Redis connection string. When set, overrides Host/Port/Password.',
+  DB: 'Redis database index (0–15).',
+  // Osquery
+  Version: 'Expected osquery version string.',
+  TablesFile: 'Path to the osquery tables JSON definition file.',
+  Logger: 'Enable osquery result log collection.',
+  Config: 'Enable osquery configuration distribution.',
+  Query: 'Enable on-demand distributed query support.',
+  Carve: 'Enable file carve collection from nodes.',
+  Accelerated: 'Allow accelerated check-in intervals for nodes.',
+  FileExplorer: 'Enable the file explorer feature for nodes.',
+  ReadOnly: 'Run in read-only mode (no writes to osquery nodes).',
+  // Metrics
+  Enabled: 'Enable or disable this feature.',
+  // Debug
   EnableHTTP: 'When true, dumps HTTP requests to the debug file.',
   HTTPFile: 'File path where HTTP debug dumps are written.',
   ShowBody: 'Include request/response body in the debug dump.',
   TargetHostIdentifier: 'Restrict debug dump to a specific node UUID or host_identifier (case-insensitive). Empty dumps all requests.',
-  Enabled: 'Enable or disable this feature.',
+  // TLS
+  Termination: 'Enable TLS/SSL termination at the service.',
+  CertificateFile: 'Path to the TLS certificate file.',
+  KeyFile: 'Path to the TLS private key file.',
+  // JWT
+  JWTSecret: 'Secret key used to sign JWT tokens.',
+  HoursToExpire: 'JWT token lifetime in hours.',
+  // BatchWriter
+  WriterBatchSize: 'Number of records per batch write.',
+  WriterTimeout: 'Timeout for batch write operations.',
+  WriterBufferSize: 'Buffer size for the batch writer queue.',
+  // SAML
   EntityID: 'SP entity identifier — what the IdP knows this service by. Conventionally the metadata URL.',
   ACSURL: 'Assertion Consumer Service URL where the IdP POSTs the SAMLResponse. Must match IdP registration.',
+  CertPath: 'Path to the SAML SP certificate file.',
+  KeyPath: 'Path to the SAML SP private key file.',
+  MetaDataURL: 'IdP metadata URL for automatic SAML configuration.',
+  RootURL: 'Root URL of the application (used to build SAML endpoints).',
+  LoginURL: 'URL to redirect users for SAML login.',
+  LogoutURL: 'URL to redirect users after SAML logout.',
   UsernameAttribute: 'SAML attribute whose value becomes the osctrl username. Empty uses NameID verbatim.',
   SigningCertPath: 'PEM file path to SP signing certificate. Both cert and key must be set to enable request signing.',
   SigningKeyPath: 'PEM file path to SP signing RSA private key.',
   ForceAuthn: 'When true (default), forces re-authentication at the IdP on every login.',
+  SPInitiated: 'Enable SP-initiated SAML login flow.',
   JITProvision: 'Automatically create osctrl user accounts on first federated login.',
+  // OIDC
   IssuerURL: 'OIDC provider issuer URL (e.g. https://accounts.google.com).',
   ClientID: 'OAuth2 client ID registered with the OIDC provider.',
   ClientSecret: 'OAuth2 client secret.',
@@ -74,19 +120,55 @@ const FIELD_HELP: Record<string, string> = {
   GroupsClaim: 'JWT claim containing group memberships.',
   RequiredGroups: 'Groups a user must belong to for access.',
   UsePKCE: 'Use Proof Key for Code Exchange for added security.',
-  JWTSecret: 'Secret key used to sign JWT tokens.',
-  HoursToExpire: 'JWT token lifetime in hours.',
-  WriterBatchSize: 'Number of records per batch write.',
-  WriterTimeout: 'Timeout for batch write operations.',
-  WriterBufferSize: 'Buffer size for the batch writer queue.',
-  Termination: 'Enable TLS/SSL termination at the service.',
-  CertificateFile: 'Path to the TLS certificate file.',
-  KeyFile: 'Path to the TLS private key file.',
+  // Logger
+  Types: 'Logger backends to use (e.g. stdout, db, s3, graylog, splunk, logstash, kinesis, kafka, elastic).',
   LoggerDBSame: 'Use the same DB connection for logging (no separate logger DB).',
   AlwaysLog: 'Always log, even when no logger backend is configured.',
+  // ConfigEndpoints
   Environment: 'Target osctrl environment name.',
   Secret: 'Enrollment secret for this endpoint.',
   IntegrityCheck: 'Verify config integrity before pushing.',
+  // S3 (logger/carver)
+  Bucket: 'S3 bucket name for storage.',
+  Region: 'AWS region for the S3 bucket or Kinesis stream.',
+  AccessKey: 'AWS access key ID.',
+  SecretAccessKey: 'AWS secret access key.',
+  // Local carver
+  CarvesDir: 'Local directory to store carved files.',
+  // Kinesis
+  Stream: 'Kinesis stream name.',
+  Endpoint: 'Custom Kinesis endpoint URL (for localstack or VPC endpoints).',
+  AccessKeyID: 'AWS access key ID for Kinesis.',
+  SessionToken: 'AWS session token (for temporary credentials).',
+  // Kafka
+  BootstrapServer: 'Kafka bootstrap server address (host:port).',
+  SSLCALocation: 'Path to SSL CA certificate for Kafka TLS.',
+  ConnectionTimeout: 'Kafka connection timeout duration.',
+  Topic: 'Kafka topic to publish logs to.',
+  SASL: 'Kafka SASL authentication configuration.',
+  Mechanism: 'SASL mechanism (e.g. PLAIN, SCRAM-SHA-256).',
+  // Graylog
+  URL: 'Graylog or Splunk API endpoint URL.',
+  Queries: 'Graylog stream/index for query logs.',
+  Status: 'Graylog stream/index for status logs.',
+  Results: 'Graylog stream/index for result logs.',
+  // Elastic
+  IndexPrefix: 'Elasticsearch index name prefix.',
+  DateSeparator: 'Date separator in index names (e.g. "." for YYYY.MM.DD).',
+  IndexSeparator: 'Separator between prefix and date (e.g. "-" for prefix-YYYY.MM.DD).',
+  // Splunk
+  Token: 'Splunk HEC (HTTP Event Collector) token.',
+  Index: 'Splunk index to write events to.',
+  // Logstash
+  Protocol: 'Network protocol for Logstash connection (tcp or udp).',
+  Path: 'URL path for Logstash HTTP input.',
+  // Local logger
+  MaxSize: 'Maximum log file size in megabytes before rotation.',
+  MaxBackups: 'Maximum number of old log files to retain.',
+  MaxAge: 'Maximum days to retain old log files.',
+  Compress: 'Compress rotated log files with gzip.',
+  // Osctrld
+  // (uses Enabled, already defined above)
 };
 
 type FieldType = 'boolean' | 'number' | 'string' | 'string[]' | 'object' | 'null';
@@ -100,14 +182,25 @@ function inferType(value: unknown): FieldType {
   return 'string';
 }
 
-function parseConfigValue(raw: string): Record<string, unknown> {
+type ParsedConfig =
+  | { kind: 'object'; fields: Record<string, unknown> }
+  | { kind: 'array'; items: Record<string, unknown>[] };
+
+function parseConfigValue(raw: string): ParsedConfig {
   try {
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
+    if (Array.isArray(parsed)) {
+      const items = parsed.filter(
+        (item): item is Record<string, unknown> =>
+          item && typeof item === 'object' && !Array.isArray(item),
+      );
+      return { kind: 'array', items };
+    }
+    if (parsed && typeof parsed === 'object') {
+      return { kind: 'object', fields: parsed as Record<string, unknown> };
     }
   } catch { /* fall through */ }
-  return {};
+  return { kind: 'object', fields: {} };
 }
 
 export function ServiceConfigPage() {
@@ -328,14 +421,18 @@ function ConfigSectionCard({
   service: string;
   onSaved: () => void;
 }) {
-  const originalFields = useMemo(() => parseConfigValue(section.Value), [section.Value]);
+  const parsed = useMemo(() => parseConfigValue(section.Value), [section.Value]);
+  const isArray = parsed.kind === 'array';
+  const originalFields = isArray ? {} as Record<string, unknown> : parsed.fields;
+  const arrayItems = isArray ? parsed.items : [];
   const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...originalFields }));
   const [collapsed, setCollapsed] = useState(!section.Editable);
   const [savedFlash, setSavedFlash] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    setDraft({ ...parseConfigValue(section.Value) });
+    const p = parseConfigValue(section.Value);
+    setDraft(p.kind === 'object' ? { ...p.fields } : {});
   }, [section.Value]);
 
   const dirtyKeys = useMemo(() => {
@@ -477,8 +574,31 @@ function ConfigSectionCard({
       </header>
 
       {!collapsed && <div>
-        {/* Regular fields */}
-        {(hasManyBooleans ? nonBooleanFields : fieldEntries).map(([key]) => {
+        {/* Array-type sections (e.g. configEndpoints) */}
+        {isArray && (
+          arrayItems.length === 0 ? (
+            <div className="px-3.5 py-4 text-xs text-[color:var(--text-3)] italic">No items configured.</div>
+          ) : (
+            arrayItems.map((item, idx) => (
+              <div key={idx} className="border-b border-[color:var(--border)] last:border-b-0">
+                <div className="px-3.5 py-1.5 bg-[color:var(--bg-0)]">
+                  <span className="text-[10px] font-semibold text-[color:var(--text-3)] uppercase tracking-[0.06em] font-mono-tabular">
+                    #{idx + 1}
+                  </span>
+                </div>
+                {Object.entries(item).map(([key, value]) => {
+                  const type = inferType(value);
+                  return (
+                    <ReadOnlyFieldRow key={key} fieldKey={key} value={value} type={type} />
+                  );
+                })}
+              </div>
+            ))
+          )
+        )}
+
+        {/* Regular object fields */}
+        {!isArray && (hasManyBooleans ? nonBooleanFields : fieldEntries).map(([key]) => {
           const originalValue = originalFields[key];
           const currentValue = draft[key];
           const type = inferType(originalValue);
@@ -599,7 +719,7 @@ function ConfigSectionCard({
         })}
 
         {/* Compact boolean grid for sections with many boolean flags */}
-        {hasManyBooleans && booleanFields.length > 0 && (
+        {!isArray && hasManyBooleans && booleanFields.length > 0 && (
           <>
             <div className="h-px bg-[color:var(--border)]" />
             <div className="px-3.5 py-3">
@@ -645,20 +765,27 @@ function ConfigSectionCard({
 function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
   const help = FIELD_HELP[fieldKey];
   const ref = useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [pos, setPos] = useState<{ x: number; y: number; flip: boolean } | null>(null);
 
   if (!help) return null;
 
   const TOOLTIP_W = 260;
   const EDGE_PAD = 8;
+  const GAP = 6;
 
   const show = () => {
     const rect = ref.current?.getBoundingClientRect();
     if (rect) {
-      const centerX = rect.left + rect.width / 2;
-      const minLeft = EDGE_PAD + TOOLTIP_W / 2;
-      const maxLeft = window.innerWidth - EDGE_PAD - TOOLTIP_W / 2;
-      setPos({ x: Math.max(minLeft, Math.min(maxLeft, centerX)), y: rect.top });
+      let left = rect.right + 8;
+      const rightEdge = left + TOOLTIP_W;
+      if (rightEdge > window.innerWidth - EDGE_PAD) {
+        left = window.innerWidth - EDGE_PAD - TOOLTIP_W;
+      }
+      setPos({
+        x: left,
+        y: rect.top + rect.height / 2,
+        flip: false,
+      });
     }
   };
 
@@ -689,7 +816,7 @@ function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
             left: `${pos.x}px`,
             top: `${pos.y}px`,
             width: TOOLTIP_W,
-            transform: 'translate(-50%, -100%) translateY(-8px)',
+            transform: 'translateY(-50%)',
             zIndex: 9999,
           }}
         >
