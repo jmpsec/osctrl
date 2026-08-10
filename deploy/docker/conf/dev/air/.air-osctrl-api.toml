@@ -15,7 +15,12 @@ tmp_dir = "/tmp"
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
-  full_bin = "cd /opt/osctrl && ./bin/osctrl-api"
+  # Wrap in a restart loop so that when osctrl-api exits with code 1
+  # (the "apply & restart" signal from the service-config endpoint),
+  # the binary is re-run immediately. Air itself doesn't restart on
+  # child exit — only on file changes — so the loop handles the restart
+  # case. Exit code 0 (clean shutdown) breaks the loop so air can rebuild.
+  full_bin = "cd /opt/osctrl && while ./bin/osctrl-api; [ $? -eq 1 ]; do echo 'osctrl-api exited with code 1 — restarting'; sleep 1; done"
   include_dir = []
   include_ext = ["go"]
   kill_delay = "0s"

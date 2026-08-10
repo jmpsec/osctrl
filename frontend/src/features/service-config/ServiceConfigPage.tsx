@@ -31,6 +31,7 @@ export function ServiceConfigPage() {
   const [applyErr, setApplyErr] = useState<string | null>(null);
   const [applyFlash, setApplyFlash] = useState(false);
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const qc = useQueryClient();
   const {
     data,
@@ -66,7 +67,27 @@ export function ServiceConfigPage() {
     onSuccess: () => {
       setApplyErr(null);
       setApplyFlash(true);
-      window.setTimeout(() => setApplyFlash(false), 3000);
+      // Poll until the service comes back up, then refetch the config.
+      // The service restarts with exit code 1, so the API is briefly
+      // unavailable. We poll every 2 seconds until a request succeeds.
+      setRestarting(true);
+      const poll = setInterval(() => {
+        listServiceConfig(service)
+          .then(() => {
+            clearInterval(poll);
+            setRestarting(false);
+            setApplyFlash(false);
+            qc.invalidateQueries({ queryKey: ['service-config', service] });
+          })
+          .catch(() => {
+            // Service still restarting — keep polling.
+          });
+      }, 2000);
+      // Safety: stop polling after 60 seconds.
+      setTimeout(() => {
+        clearInterval(poll);
+        setRestarting(false);
+      }, 60_000);
     },
     onError: (e) => {
       if (e instanceof AuthError) {
@@ -84,7 +105,7 @@ export function ServiceConfigPage() {
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Service Config
         </h1>
-        {hasPendingChanges && !loading && !hasError && (
+        {hasPendingChanges && !loading && !hasError && !restarting && (
           <button
             type="button"
             disabled={applyMutation.isPending}
@@ -98,6 +119,14 @@ export function ServiceConfigPage() {
           >
             {applyMutation.isPending ? 'Restarting…' : applyFlash ? 'Restart triggered ✓' : 'Apply \u0026 Restart'}
           </button>
+        )}
+        {restarting && (
+          <span
+            aria-live="polite"
+            className="text-xs text-[color:var(--text-3)] font-mono-tabular"
+          >
+            Restarting — waiting for service…
+          </span>
         )}
         {applyErr && (
           <span className="text-xs text-[color:var(--danger)]">{applyErr}</span>

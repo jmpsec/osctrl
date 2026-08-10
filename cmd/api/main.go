@@ -957,13 +957,13 @@ func osctrlAPIService() {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-restartCh:
-		log.Info().Msg("Graceful shutdown triggered by service-config apply — restarting...")
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			log.Warn().Msgf("Graceful shutdown error: %v", err)
-		}
-		shutdownCancel()
-		os.Exit(0)
+		log.Info().Msg("Service config apply triggered — exiting for restart")
+		// Exit with code 1 so process managers (systemd, docker, k8s) and
+		// dev tools like air restart the process. A clean exit (0) is not
+		// restarted by air (the dev hot-reload tool), which treats exit 0
+		// as "done, no restart needed." Using exit 1 ensures restart in
+		// both dev (air) and production (systemd/k8s) environments.
+		os.Exit(1)
 	}
 }
 

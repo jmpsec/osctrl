@@ -284,12 +284,8 @@ func (h *HandlersApi) ServiceConfigApplyHandler(w http.ResponseWriter, r *http.R
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusAccepted, map[string]string{
 		"message": "Restart triggered. The service will restart shortly to apply config changes.",
 	})
-	// Signal the main goroutine to shut down. Use a goroutine so the
-	// HTTP response completes before the shutdown begins.
-	go func() {
-		select {
-		case h.RestartCh <- struct{}{}:
-		default:
-		}
-	}()
+	// Signal the main goroutine to shut down. The channel is buffered
+	// (cap 1) so this send completes immediately without blocking, and
+	// the handler returns so srv.Shutdown() can proceed.
+	h.RestartCh <- struct{}{}
 }
