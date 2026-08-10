@@ -38,22 +38,6 @@ vi.mock('$/api/client', () => ({
   },
 }));
 
-// Monaco Editor is lazy-loaded and not available in jsdom. Capture the
-// onChange callback so tests can simulate edits.
-let lastEditorOnChange: ((v: string | undefined) => void) | null = null;
-vi.mock('@monaco-editor/react', () => ({
-  Editor: ({ value, onChange }: { value: string; onChange?: (v: string | undefined) => void }) => {
-    lastEditorOnChange = onChange ?? null;
-    return (
-      <div
-        data-testid="monaco-editor"
-        data-value={value}
-        data-readonly={onChange === undefined}
-      />
-    );
-  },
-}));
-
 function makeSection(overrides: Partial<ServiceConfig> = {}): ServiceConfig {
   return {
     ID: 1,
@@ -110,7 +94,6 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('ServiceConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    lastEditorOnChange = null;
   });
 
   it('renders service config sections with their names and badges', async () => {
@@ -169,85 +152,93 @@ describe('ServiceConfigPage', () => {
     expect(screen.getByText('Retry')).toBeInTheDocument();
   });
 
-  it('pretty-prints JSON values in the editor', async () => {
+  it('renders structured form fields for editable sections', async () => {
     mockList.mockResolvedValue([
-      makeSection({ Value: '{"type":"stdout","alwaysLog":true}' }),
+      makeSection({
+        Editable: true,
+        Name: 'debug',
+        Value: '{"enableHttp":false,"httpFile":"/tmp/debug.log","showBody":true}',
+        Info: 'HTTP debug dump settings',
+      }),
     ]);
-    renderWithProviders(makeTestRouter());
-
-    await waitFor(() => {
-      const editor = screen.getByTestId('monaco-editor');
-      const value = editor.getAttribute('data-value') ?? '';
-      expect(value).toContain('\n');
-      expect(value).toContain('"type": "stdout"');
-    });
-  });
-
-  it('renders raw value when it is not valid JSON', async () => {
-    mockList.mockResolvedValue([
-      makeSection({ Value: 'not-json' }),
-    ]);
-    renderWithProviders(makeTestRouter());
-
-    await waitFor(() => {
-      const editor = screen.getByTestId('monaco-editor');
-      expect(editor.getAttribute('data-value')).toBe('not-json');
-    });
-  });
-
-  it('does not show Edit button for read-only sections', async () => {
-    mockList.mockResolvedValue([makeSection({ Editable: false })]);
-    renderWithProviders(makeTestRouter());
-
-    await waitFor(() => {
-      expect(screen.getByText('logger')).toBeInTheDocument();
-    });
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-  });
-
-  it('shows Edit button for editable sections', async () => {
-    mockList.mockResolvedValue([makeSection({ Editable: true, Name: 'debug' })]);
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
       expect(screen.getByText('debug')).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    // Boolean fields render as toggle switches
+    expect(screen.getAllByRole('switch').length).toBeGreaterThanOrEqual(1);
+    // String fields render as text inputs
+    expect(screen.getByDisplayValue('/tmp/debug.log')).toBeInTheDocument();
+    // Save button is present but disabled (no changes yet)
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
-  it('enters edit mode and shows Save/Cancel when Edit is clicked', async () => {
+  it('renders read-only values for non-editable sections', async () => {
     const user = userEvent.setup();
-    mockList.mockResolvedValue([makeSection({ Editable: true, Name: 'debug' })]);
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: false,
+        Name: 'db',
+        Value: '{"Host":"osctrl-postgres","Port":5432}',
+        Info: 'Backend connection',
+      }),
+    ]);
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+      expect(screen.getByText('db')).toBeInTheDocument();
     });
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    // Read-only sections are collapsed by default — expand by clicking header
+    await user.click(screen.getByText('db'));
+    // Read-only sections show values as text, not inputs
+    expect(screen.getByText('osctrl-postgres')).toBeInTheDocument();
+    expect(screen.getByText('5432')).toBeInTheDocument();
+    // No Save button for read-only sections
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    // Editor should now be writable (onChange is wired).
-    expect(lastEditorOnChange).not.toBeNull();
+  it('enables Save button when a field is modified', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true,
+        Name: 'debug',
+        Value: '{"enableHttp":false,"httpFile":"/tmp/debug.log"}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('/tmp/debug.log')).toBeInTheDocument();
+    });
+    const input = screen.getByDisplayValue('/tmp/debug.log');
+    await user.clear(input);
+    await user.type(input, '/var/log/debug.log');
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
   it('calls updateServiceConfig when Save is clicked after editing', async () => {
     const user = userEvent.setup();
-    mockList.mockResolvedValue([makeSection({ Editable: true, Name: 'debug' })]);
-    mockUpdate.mockResolvedValue(makeSection({ Value: '{"enableHttp":true}', Source: 'db' }));
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true,
+        Name: 'debug',
+        Value: '{"enableHttp":false,"httpFile":"/tmp/debug.log"}',
+      }),
+    ]);
+    mockUpdate.mockResolvedValue(
+      makeSection({ Value: '{"enableHttp":false,"httpFile":"/var/log/debug.log"}', Source: 'db' }),
+    );
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+      expect(screen.getByDisplayValue('/tmp/debug.log')).toBeInTheDocument();
     });
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-
-    // Simulate an edit in the Monaco editor.
-    expect(lastEditorOnChange).not.toBeNull();
-    await act(async () => {
-      lastEditorOnChange!('{\n  "enableHttp": true\n}');
-    });
-
+    const input = screen.getByDisplayValue('/tmp/debug.log');
+    await user.clear(input);
+    await user.type(input, '/var/log/debug.log');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
@@ -256,51 +247,140 @@ describe('ServiceConfigPage', () => {
     const args = mockUpdate.mock.calls[0] as [string, string, { value: unknown }];
     expect(args[0]).toBe('api');
     expect(args[1]).toBe('debug');
-    expect(args[2].value).toEqual({ enableHttp: true });
-  });
-
-  it('cancels editing and restores the original value', async () => {
-    const user = userEvent.setup();
-    mockList.mockResolvedValue([makeSection({ Editable: true, Name: 'debug' })]);
-    renderWithProviders(makeTestRouter());
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    });
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-
-    await act(async () => {
-      lastEditorOnChange!('{\n  "enableHttp": true\n}');
-    });
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    // Back to read-only, Edit button visible again.
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
-    // Editor shows the original pretty-printed value.
-    const editor = screen.getByTestId('monaco-editor');
-    expect(editor.getAttribute('data-value')).toContain('"type": "stdout"');
+    expect(args[2].value).toEqual({ enableHttp: false, httpFile: '/var/log/debug.log' });
   });
 
   it('shows an error when the PUT returns 409 (not editable)', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('$/api/client');
-    mockList.mockResolvedValue([makeSection({ Editable: true, Name: 'debug' })]);
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true,
+        Name: 'debug',
+        Value: '{"enableHttp":false,"httpFile":"/tmp/debug.log"}',
+      }),
+    ]);
     mockUpdate.mockRejectedValue(new ApiError('section is not editable', 409));
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+      expect(screen.getByDisplayValue('/tmp/debug.log')).toBeInTheDocument();
     });
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-    await act(async () => {
-      lastEditorOnChange!('{\n  "enableHttp": true\n}');
-    });
+    const input = screen.getByDisplayValue('/tmp/debug.log');
+    await user.clear(input);
+    await user.type(input, '/changed');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(screen.getByText('Section is not editable.')).toBeInTheDocument();
     });
+  });
+
+  it('renders boolean toggle switches that can be toggled', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true,
+        Name: 'debug',
+        Value: '{"enableHttp":false,"showBody":true}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('debug')).toBeInTheDocument();
+    });
+    const switches = screen.getAllByRole('switch');
+    expect(switches).toHaveLength(2);
+    // First switch (enableHttp) should be off
+    expect(switches[0]).toHaveAttribute('aria-checked', 'false');
+    // Toggle it on
+    await user.click(switches[0]);
+    expect(switches[0]).toHaveAttribute('aria-checked', 'true');
+    // Save should now be enabled
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
+  it('masks sensitive fields in read-only sections', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: false,
+        Name: 'db',
+        Value: '{"Host":"localhost","Password":"secret123"}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('db')).toBeInTheDocument();
+    });
+    // Expand the collapsed read-only section
+    await user.click(screen.getByText('db'));
+    // Password should be masked
+    expect(screen.getByText('●●●●●●')).toBeInTheDocument();
+    // The actual value should not be visible
+    expect(screen.queryByText('secret123')).not.toBeInTheDocument();
+  });
+
+  it('reveals masked sensitive fields when the eye button is clicked', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: false,
+        Name: 'db',
+        Value: '{"Host":"localhost","Password":"secret123"}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('db')).toBeInTheDocument();
+    });
+    await user.click(screen.getByText('db'));
+    expect(screen.getByText('●●●●●●')).toBeInTheDocument();
+    await user.click(screen.getByTitle('Reveal'));
+    expect(screen.getByText('secret123')).toBeInTheDocument();
+  });
+
+  it('shows "empty" when revealing an empty sensitive field', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: false,
+        Name: 'redis',
+        Value: '{"Host":"redis-server","Password":""}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('redis')).toBeInTheDocument();
+    });
+    await user.click(screen.getByText('redis'));
+    expect(screen.getByText('●●●●●●')).toBeInTheDocument();
+    await user.click(screen.getByTitle('Reveal'));
+    expect(screen.getByText('empty')).toBeInTheDocument();
+  });
+
+  it('renders string arrays as tag chips in read-only sections', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: false,
+        Name: 'oidc',
+        Value: '{"Scopes":["openid","profile","email"]}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('oidc')).toBeInTheDocument();
+    });
+    await user.click(screen.getByText('oidc'));
+    expect(screen.getByText('openid')).toBeInTheDocument();
+    expect(screen.getByText('profile')).toBeInTheDocument();
+    expect(screen.getByText('email')).toBeInTheDocument();
   });
 
   it('does not show Apply & Restart button when no sections have source=db', async () => {
@@ -333,7 +413,6 @@ describe('ServiceConfigPage', () => {
     });
     await user.click(screen.getByRole('button', { name: /Apply & Restart/i }));
 
-    // Confirmation dialog appears.
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
@@ -363,7 +442,6 @@ describe('ServiceConfigPage', () => {
     });
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    // Dialog closes, apply not called.
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
