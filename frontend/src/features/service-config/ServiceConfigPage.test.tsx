@@ -175,6 +175,7 @@ describe('ServiceConfigPage', () => {
   });
 
   it('renders read-only values for non-editable sections', async () => {
+    const user = userEvent.setup();
     mockList.mockResolvedValue([
       makeSection({
         Editable: false,
@@ -188,6 +189,8 @@ describe('ServiceConfigPage', () => {
     await waitFor(() => {
       expect(screen.getByText('db')).toBeInTheDocument();
     });
+    // Read-only sections are collapsed by default — expand by clicking header
+    await user.click(screen.getByText('db'));
     // Read-only sections show values as text, not inputs
     expect(screen.getByText('osctrl-postgres')).toBeInTheDocument();
     expect(screen.getByText('5432')).toBeInTheDocument();
@@ -299,6 +302,7 @@ describe('ServiceConfigPage', () => {
   });
 
   it('masks sensitive fields in read-only sections', async () => {
+    const user = userEvent.setup();
     mockList.mockResolvedValue([
       makeSection({
         Editable: false,
@@ -311,6 +315,8 @@ describe('ServiceConfigPage', () => {
     await waitFor(() => {
       expect(screen.getByText('db')).toBeInTheDocument();
     });
+    // Expand the collapsed read-only section
+    await user.click(screen.getByText('db'));
     // Password should be masked
     expect(screen.getByText('●●●●●●')).toBeInTheDocument();
     // The actual value should not be visible
@@ -329,8 +335,10 @@ describe('ServiceConfigPage', () => {
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByText('●●●●●●')).toBeInTheDocument();
+      expect(screen.getByText('db')).toBeInTheDocument();
     });
+    await user.click(screen.getByText('db'));
+    expect(screen.getByText('●●●●●●')).toBeInTheDocument();
     await user.click(screen.getByTitle('Reveal'));
     expect(screen.getByText('secret123')).toBeInTheDocument();
   });
@@ -347,13 +355,16 @@ describe('ServiceConfigPage', () => {
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => {
-      expect(screen.getByText('●●●●●●')).toBeInTheDocument();
+      expect(screen.getByText('redis')).toBeInTheDocument();
     });
+    await user.click(screen.getByText('redis'));
+    expect(screen.getByText('●●●●●●')).toBeInTheDocument();
     await user.click(screen.getByTitle('Reveal'));
     expect(screen.getByText('empty')).toBeInTheDocument();
   });
 
   it('renders string arrays as tag chips in read-only sections', async () => {
+    const user = userEvent.setup();
     mockList.mockResolvedValue([
       makeSection({
         Editable: false,
@@ -366,6 +377,7 @@ describe('ServiceConfigPage', () => {
     await waitFor(() => {
       expect(screen.getByText('oidc')).toBeInTheDocument();
     });
+    await user.click(screen.getByText('oidc'));
     expect(screen.getByText('openid')).toBeInTheDocument();
     expect(screen.getByText('profile')).toBeInTheDocument();
     expect(screen.getByText('email')).toBeInTheDocument();

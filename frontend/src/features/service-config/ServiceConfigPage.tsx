@@ -475,12 +475,7 @@ function ConfigSectionCard({
         </svg>
       </header>
 
-      <div
-        className={cn(
-          'transition-[max-height,opacity] duration-250 overflow-hidden',
-          collapsed ? 'max-h-0 opacity-0' : 'max-h-[4000px] opacity-100',
-        )}
-      >
+      {!collapsed && <div>
         {/* Regular fields */}
         {(hasManyBooleans ? nonBooleanFields : fieldEntries).map(([key]) => {
           const originalValue = originalFields[key];
@@ -641,7 +636,7 @@ function ConfigSectionCard({
             </p>
           </div>
         )}
-      </div>
+      </div>}
     </section>
   );
 }
