@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,12 +12,50 @@ import { AuthError, ApiError } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
-import { CodeEditor } from '$/components/forms/CodeEditor';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { formatRelative } from '$/lib/time';
 
 const SERVICES = ['api', 'tls'] as const;
 type Service = (typeof SERVICES)[number];
+
+const SENSITIVE_KEYS = new Set([
+  'Password',
+  'password',
+  'Secret',
+  'secret',
+  'JWTSecret',
+  'jwtSecret',
+  'ClientSecret',
+  'clientSecret',
+  'SecretAccessKey',
+  'secretAccessKey',
+  'secretKey',
+]);
+
+function isSensitive(key: string): boolean {
+  return SENSITIVE_KEYS.has(key);
+}
+
+type FieldType = 'boolean' | 'number' | 'string' | 'string[]' | 'object' | 'null';
+
+function inferType(value: unknown): FieldType {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'boolean') return 'boolean';
+  if (typeof value === 'number') return 'number';
+  if (Array.isArray(value) && value.every((v) => typeof v === 'string')) return 'string[]';
+  if (typeof value === 'object') return 'object';
+  return 'string';
+}
+
+function parseConfigValue(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch { /* fall through */ }
+  return {};
+}
 
 export function ServiceConfigPage() {
   usePageTitle('Service Config');
@@ -57,9 +95,6 @@ export function ServiceConfigPage() {
   const hasError = isError;
   const pageError = error;
 
-  // An "Apply & Restart" is relevant when any section has source=db (meaning
-  // the operator has edited it through the API and the change is pending a
-  // restart to take effect).
   const hasPendingChanges = sections.some((s) => s.Source === 'db');
 
   const applyMutation = useMutation({
@@ -67,9 +102,6 @@ export function ServiceConfigPage() {
     onSuccess: () => {
       setApplyErr(null);
       setApplyFlash(true);
-      // Poll until the service comes back up, then refetch the config.
-      // The service restarts with exit code 1, so the API is briefly
-      // unavailable. We poll every 2 seconds until a request succeeds.
       setRestarting(true);
       const poll = setInterval(() => {
         listServiceConfig(service)
@@ -79,11 +111,8 @@ export function ServiceConfigPage() {
             setApplyFlash(false);
             qc.invalidateQueries({ queryKey: ['service-config', service] });
           })
-          .catch(() => {
-            // Service still restarting — keep polling.
-          });
+          .catch(() => {});
       }, 2000);
-      // Safety: stop polling after 60 seconds.
       setTimeout(() => {
         clearInterval(poll);
         setRestarting(false);
@@ -100,7 +129,6 @@ export function ServiceConfigPage() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Toolbar row */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Service Config
@@ -117,7 +145,7 @@ export function ServiceConfigPage() {
                 : 'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)] hover:bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.2)]',
             )}
           >
-            {applyMutation.isPending ? 'Restarting…' : applyFlash ? 'Restart triggered ✓' : 'Apply \u0026 Restart'}
+            {applyMutation.isPending ? 'Restarting…' : applyFlash ? 'Restart triggered ✓' : 'Apply & Restart'}
           </button>
         )}
         {restarting && (
@@ -142,7 +170,6 @@ export function ServiceConfigPage() {
         )}
       </div>
 
-      {/* Service tabs — same underline TabButton pattern as SettingsPage */}
       <div
         role="tablist"
         aria-label="Service config service tabs"
@@ -239,14 +266,6 @@ export function ServiceConfigPage() {
   );
 }
 
-function prettyPrint(value: string): string {
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2);
-  } catch {
-    return value;
-  }
-}
-
 function ConfigSectionCard({
   section,
   service,
@@ -256,33 +275,36 @@ function ConfigSectionCard({
   service: string;
   onSaved: () => void;
 }) {
-  const storedPretty = prettyPrint(section.Value);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(storedPretty);
+  const originalFields = useMemo(() => parseConfigValue(section.Value), [section.Value]);
+  const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...originalFields }));
+  const [collapsed, setCollapsed] = useState(!section.Editable);
   const [savedFlash, setSavedFlash] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Reset draft when the section value changes externally (e.g. after a
-  // refetch invalidates the query and new data arrives), but only when not
-  // actively editing so we don't clobber unsaved changes.
   useEffect(() => {
-    if (!editing) {
-      setDraft(storedPretty);
-    }
-  }, [storedPretty, editing]);
+    setDraft({ ...parseConfigValue(section.Value) });
+  }, [section.Value]);
 
-  const dirty = editing && draft !== storedPretty;
+  const dirtyKeys = useMemo(() => {
+    const keys: string[] = [];
+    for (const key of Object.keys(originalFields)) {
+      if (JSON.stringify(originalFields[key]) !== JSON.stringify(draft[key])) {
+        keys.push(key);
+      }
+    }
+    return keys;
+  }, [originalFields, draft]);
+
+  const dirty = dirtyKeys.length > 0;
+
+  const updateField = useCallback((key: string, value: unknown) => {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   const mutation = useMutation({
-    mutationFn: () => {
-      // Parse the draft so we send a raw JSON object, not a pre-serialized
-      // string. The backend expects { "value": {...} }.
-      const parsed = JSON.parse(draft);
-      return updateServiceConfig(service, section.Name, { value: parsed });
-    },
+    mutationFn: () => updateServiceConfig(service, section.Name, { value: draft }),
     onSuccess: () => {
       setErr(null);
-      setEditing(false);
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 1200);
       onSaved();
@@ -297,31 +319,33 @@ function ConfigSectionCard({
         return;
       }
       if (e instanceof ApiError && e.status === 400) {
-        setErr('Invalid JSON value.');
+        setErr('Invalid value.');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Save failed');
     },
   });
 
-  function handleCancel() {
-    setEditing(false);
-    setDraft(storedPretty);
-    setErr(null);
-  }
+  const fieldEntries = Object.entries(originalFields);
 
-  function handleEdit() {
-    setEditing(true);
-    setDraft(storedPretty);
-    setErr(null);
-  }
+  const booleanFields = section.Editable
+    ? fieldEntries.filter(([, v]) => typeof v === 'boolean')
+    : [];
+  const nonBooleanFields = section.Editable
+    ? fieldEntries.filter(([, v]) => typeof v !== 'boolean')
+    : fieldEntries;
+
+  const hasManyBooleans = booleanFields.length >= 3;
 
   return (
     <section
       className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
       aria-labelledby={`config-${section.Name}-heading`}
     >
-      <header className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)]">
+      <header
+        className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)] cursor-pointer select-none hover:bg-[color-mix(in_srgb,var(--bg-0)_85%,var(--bg-3))]"
+        onClick={() => setCollapsed((c) => !c)}
+      >
         <h2
           id={`config-${section.Name}-heading`}
           className="font-display text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular"
@@ -349,78 +373,374 @@ function ConfigSectionCard({
         >
           {section.Editable ? 'editable' : 'read-only'}
         </span>
+        {dirty && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
+            {dirtyKeys.length} {dirtyKeys.length === 1 ? 'change' : 'changes'}
+          </span>
+        )}
         {section.Info && (
           <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">
             {section.Info}
           </p>
         )}
         {!section.Info && <div className="flex-1" />}
-        {dirty && (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
-            pending
-          </span>
-        )}
         <span
           className="text-[10px] tnum text-[color:var(--text-3)] whitespace-nowrap"
           title={section.UpdatedAt}
         >
           updated {formatRelative(section.UpdatedAt)}
         </span>
-        {section.Editable && !editing && (
+        {section.Editable && (
           <button
             type="button"
-            onClick={handleEdit}
-            className="text-[10px] px-2 py-0.5 rounded font-medium border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors"
+            disabled={!dirty || mutation.isPending}
+            onClick={(e) => {
+              e.stopPropagation();
+              mutation.mutate();
+            }}
+            className={cn(
+              'text-[10px] px-2 py-0.5 rounded font-medium',
+              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+            )}
           >
-            Edit
+            {mutation.isPending ? 'Saving…' : savedFlash ? 'Saved ✓' : 'Save'}
           </button>
         )}
-        {editing && (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={!dirty || mutation.isPending}
-              onClick={() => mutation.mutate()}
-              className={cn(
-                'text-[10px] px-2 py-0.5 rounded font-medium',
-                'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
-                'disabled:opacity-40 disabled:cursor-not-allowed',
-              )}
-            >
-              {mutation.isPending ? 'Saving…' : savedFlash ? 'Saved ✓' : 'Save'}
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={mutation.isPending}
-              className="text-[10px] px-2 py-0.5 rounded font-medium border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
+        <svg
+          className={cn(
+            'w-4 h-4 text-[color:var(--text-3)] transition-transform duration-200 shrink-0',
+            !collapsed && 'rotate-180',
+          )}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </header>
 
-      <div className="p-3">
-        <CodeEditor
-          value={editing ? draft : storedPretty}
-          onChange={editing ? (v) => setDraft(v ?? '') : undefined}
-          language="json"
-          readOnly={!editing}
-          height="200px"
-          aria-label={`Configuration section ${section.Name}`}
-        />
+      <div
+        className={cn(
+          'transition-[max-height,opacity] duration-250 overflow-hidden',
+          collapsed ? 'max-h-0 opacity-0' : 'max-h-[4000px] opacity-100',
+        )}
+      >
+        {/* Regular fields */}
+        {(hasManyBooleans ? nonBooleanFields : fieldEntries).map(([key]) => {
+          const originalValue = originalFields[key];
+          const currentValue = draft[key];
+          const type = inferType(originalValue);
+
+          if (type === 'null') {
+            return (
+              <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
+                <span className="text-xs text-[color:var(--text-3)] font-mono-tabular italic">null</span>
+              </FieldRow>
+            );
+          }
+
+          if (type === 'string[]') {
+            const arr = currentValue as string[];
+            if (!section.Editable) {
+              return (
+                <ReadOnlyFieldRow key={key} fieldKey={key} value={originalValue} type={type} />
+              );
+            }
+            return (
+              <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
+                <input
+                  type="text"
+                  value={arr.join(', ')}
+                  onChange={(e) => {
+                    const parts = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
+                    updateField(key, parts);
+                  }}
+                  placeholder="comma-separated values"
+                  className={cn(
+                    'w-full px-3 py-1.5 text-xs rounded-md border',
+                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                    'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+                    'placeholder:text-[color:var(--text-3)] placeholder:italic',
+                    dirtyKeys.includes(key)
+                      ? 'border-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.5)]'
+                      : 'border-[color:var(--border)]',
+                  )}
+                />
+              </FieldRow>
+            );
+          }
+
+          if (type === 'object') {
+            return (
+              <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
+                <span className="text-xs text-[color:var(--text-3)] font-mono-tabular italic">
+                  {JSON.stringify(currentValue)}
+                </span>
+              </FieldRow>
+            );
+          }
+
+          if (!section.Editable) {
+            return (
+              <ReadOnlyFieldRow
+                key={key}
+                fieldKey={key}
+                value={originalValue}
+                type={type}
+              />
+            );
+          }
+
+          if (type === 'boolean' && !hasManyBooleans) {
+            return (
+              <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
+                <ToggleSwitch
+                  checked={currentValue as boolean}
+                  onChange={(v) => updateField(key, v)}
+                />
+              </FieldRow>
+            );
+          }
+
+          if (type === 'number') {
+            return (
+              <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
+                <input
+                  type="number"
+                  value={currentValue as number}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (!Number.isNaN(v)) updateField(key, v);
+                  }}
+                  className={cn(
+                    'max-w-[120px] px-3 py-1.5 text-xs rounded-md border',
+                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                    'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+                    dirtyKeys.includes(key)
+                      ? 'border-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.5)]'
+                      : 'border-[color:var(--border)]',
+                  )}
+                />
+              </FieldRow>
+            );
+          }
+
+          return (
+            <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
+              <input
+                type="text"
+                value={currentValue as string}
+                onChange={(e) => updateField(key, e.target.value)}
+                placeholder={currentValue === '' ? 'not set' : undefined}
+                className={cn(
+                  'w-full px-3 py-1.5 text-xs rounded-md border',
+                  'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                  'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+                  'placeholder:text-[color:var(--text-3)] placeholder:italic',
+                  dirtyKeys.includes(key)
+                    ? 'border-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.5)]'
+                    : 'border-[color:var(--border)]',
+                )}
+              />
+            </FieldRow>
+          );
+        })}
+
+        {/* Compact boolean grid for sections with many boolean flags */}
+        {hasManyBooleans && booleanFields.length > 0 && (
+          <>
+            <div className="h-px bg-[color:var(--border)]" />
+            <div className="px-3.5 py-3">
+              <p className="text-[11px] font-semibold text-[color:var(--text-3)] uppercase tracking-[0.06em] mb-2.5 font-mono-tabular">
+                Feature Toggles
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {booleanFields.map(([key]) => (
+                  <div
+                    key={key}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] hover:border-[color:var(--border-strong)] transition-colors"
+                  >
+                    <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular flex-1">
+                      {key}
+                    </span>
+                    <ToggleSwitch
+                      checked={draft[key] as boolean}
+                      onChange={(v) => updateField(key, v)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {err && (
-          <p
-            role="alert"
-            className="mt-2 text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-1.5 rounded-md"
-          >
-            {err}
-          </p>
+          <div className="px-3 pb-3">
+            <p
+              role="alert"
+              className="text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-1.5 rounded-md"
+            >
+              {err}
+            </p>
+          </div>
         )}
       </div>
     </section>
+  );
+}
+
+function FieldRow({
+  fieldKey,
+  dirty,
+  children,
+}: {
+  fieldKey: string;
+  dirty: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center min-h-[44px] px-3.5 gap-3 border-b border-[color:var(--border)] last:border-b-0',
+        dirty && 'border-l-[3px] border-l-[color:var(--warning)] pl-[11px] bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.03)]',
+      )}
+    >
+      <div className="flex items-center gap-2 w-[200px] min-w-[200px] shrink-0">
+        <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular">{fieldKey}</span>
+      </div>
+      <div className="flex-1 flex items-center min-w-0">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ReadOnlyFieldRow({
+  fieldKey,
+  value,
+  type,
+}: {
+  fieldKey: string;
+  value: unknown;
+  type: FieldType;
+}) {
+  const [revealed, setRevealed] = useState(false);
+  const sensitive = isSensitive(fieldKey);
+
+  if (type === 'string[]') {
+    const arr = Array.isArray(value) ? (value as string[]) : [];
+    return (
+      <div className="flex items-center min-h-[44px] px-3.5 gap-3 border-b border-[color:var(--border)] last:border-b-0">
+        <div className="flex items-center gap-2 w-[200px] min-w-[200px] shrink-0">
+          <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular">{fieldKey}</span>
+        </div>
+        <div className="flex-1 flex items-center min-w-0 gap-1.5 flex-wrap py-1.5">
+          {arr.length === 0 ? (
+            <span className="text-xs text-[color:var(--text-3)] font-mono-tabular italic">empty</span>
+          ) : (
+            arr.map((item, i) => (
+              <span
+                key={i}
+                className="px-1.5 py-0.5 rounded text-[11px] font-mono-tabular bg-[color:var(--bg-2)] text-[color:var(--text-2)] border border-[color:var(--border)]"
+              >
+                {item}
+              </span>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const displayValue = type === 'boolean'
+    ? (value ? 'true' : 'false')
+    : String(value ?? '');
+
+  return (
+    <div className="flex items-center min-h-[44px] px-3.5 gap-3 border-b border-[color:var(--border)] last:border-b-0">
+      <div className="flex items-center gap-2 w-[200px] min-w-[200px] shrink-0">
+        <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular">{fieldKey}</span>
+      </div>
+      <div className="flex-1 flex items-center min-w-0">
+        {sensitive ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-[color:var(--text-2)] font-mono-tabular">
+              {revealed ? displayValue : '●●●●●●'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setRevealed((r) => !r)}
+              className="inline-flex items-center justify-center w-7 h-7 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)] transition-colors shrink-0"
+              title={revealed ? 'Hide' : 'Reveal'}
+            >
+              {revealed ? (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                  <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
+          </div>
+        ) : (
+          <span className="text-xs text-[color:var(--text-2)] font-mono-tabular py-1.5">
+            {displayValue || <span className="text-[color:var(--text-3)] italic">empty</span>}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ToggleSwitch({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative w-9 h-5 rounded-full border transition-colors shrink-0',
+          checked
+            ? 'bg-[color:var(--signal-deep)] border-[color:var(--signal)]'
+            : 'bg-[color:var(--bg-3)] border-[color:var(--border)]',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full transition-transform',
+            checked
+              ? 'translate-x-4 bg-[color:var(--signal)]'
+              : 'translate-x-0 bg-[color:var(--text-3)]',
+          )}
+        />
+      </button>
+      <span
+        className={cn(
+          'text-[11px]',
+          checked ? 'text-[color:var(--signal)]' : 'text-[color:var(--text-3)]',
+        )}
+      >
+        {checked ? 'enabled' : 'disabled'}
+      </span>
+    </div>
   );
 }
 
