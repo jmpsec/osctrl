@@ -36,6 +36,58 @@ function isSensitive(key: string): boolean {
   return SENSITIVE_KEYS.has(key);
 }
 
+const FIELD_HELP: Record<string, string> = {
+  GeoIPDBPath: 'Path to a MaxMind GeoLite2-Country .mmdb file. When set, the API resolves node IPs to country codes. When empty, the feature is disabled.',
+  PostureEnabled: 'Controls whether the security & compliance posture system is active. When false (default), the entire posture subsystem is disabled.',
+  PostureQueryPrefix: 'Prefix that identifies scheduled queries whose result logs are ingested as node posture data. Only used when PostureEnabled is true.',
+  TrustedProxies: 'Comma-separated CIDRs whose X-Real-IP / X-Forwarded-For headers are honored. Empty → forwarding headers ignored, RemoteAddr used.',
+  DBHealthCheck: 'Enables background DB liveness monitor. Pings DB every DBHealthInterval seconds; after DBHealthThreshold failures, switches to stale-serve mode.',
+  DBHealthInterval: 'Seconds between DB health pings. Only used when DBHealthCheck is true.',
+  DBHealthThreshold: 'Consecutive DB ping failures before switching to stale-serve mode.',
+  Type: 'Database type: postgres, mysql, or sqlite.',
+  SSLMode: 'PostgreSQL SSL mode (e.g. disable, require, verify-full).',
+  FilePath: 'File path for SQLite database.',
+  ConnRetry: 'Number of connection retry attempts on startup.',
+  MaxIdleConns: 'Maximum idle connections in the pool.',
+  MaxOpenConns: 'Maximum open connections to the database.',
+  ConnMaxLifetime: 'Maximum lifetime of a connection in seconds.',
+  ConnectionString: 'Full Redis connection string. When set, overrides Host/Port/Password.',
+  EnableHTTP: 'When true, dumps HTTP requests to the debug file.',
+  HTTPFile: 'File path where HTTP debug dumps are written.',
+  ShowBody: 'Include request/response body in the debug dump.',
+  TargetHostIdentifier: 'Restrict debug dump to a specific node UUID or host_identifier (case-insensitive). Empty dumps all requests.',
+  Enabled: 'Enable or disable this feature.',
+  EntityID: 'SP entity identifier — what the IdP knows this service by. Conventionally the metadata URL.',
+  ACSURL: 'Assertion Consumer Service URL where the IdP POSTs the SAMLResponse. Must match IdP registration.',
+  UsernameAttribute: 'SAML attribute whose value becomes the osctrl username. Empty uses NameID verbatim.',
+  SigningCertPath: 'PEM file path to SP signing certificate. Both cert and key must be set to enable request signing.',
+  SigningKeyPath: 'PEM file path to SP signing RSA private key.',
+  ForceAuthn: 'When true (default), forces re-authentication at the IdP on every login.',
+  JITProvision: 'Automatically create osctrl user accounts on first federated login.',
+  IssuerURL: 'OIDC provider issuer URL (e.g. https://accounts.google.com).',
+  ClientID: 'OAuth2 client ID registered with the OIDC provider.',
+  ClientSecret: 'OAuth2 client secret.',
+  RedirectURL: 'OAuth2 callback URL — must match provider configuration.',
+  Scopes: 'OIDC scopes to request (e.g. openid, profile, email).',
+  UsernameClaim: 'JWT claim to use as the osctrl username.',
+  GroupsClaim: 'JWT claim containing group memberships.',
+  RequiredGroups: 'Groups a user must belong to for access.',
+  UsePKCE: 'Use Proof Key for Code Exchange for added security.',
+  JWTSecret: 'Secret key used to sign JWT tokens.',
+  HoursToExpire: 'JWT token lifetime in hours.',
+  WriterBatchSize: 'Number of records per batch write.',
+  WriterTimeout: 'Timeout for batch write operations.',
+  WriterBufferSize: 'Buffer size for the batch writer queue.',
+  Termination: 'Enable TLS/SSL termination at the service.',
+  CertificateFile: 'Path to the TLS certificate file.',
+  KeyFile: 'Path to the TLS private key file.',
+  LoggerDBSame: 'Use the same DB connection for logging (no separate logger DB).',
+  AlwaysLog: 'Always log, even when no logger backend is configured.',
+  Environment: 'Target osctrl environment name.',
+  Secret: 'Enrollment secret for this endpoint.',
+  IntegrityCheck: 'Verify config integrity before pushing.',
+};
+
 type FieldType = 'boolean' | 'number' | 'string' | 'string[]' | 'object' | 'null';
 
 function inferType(value: unknown): FieldType {
@@ -564,8 +616,9 @@ function ConfigSectionCard({
                     key={key}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] hover:border-[color:var(--border-strong)] transition-colors"
                   >
-                    <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular flex-1">
+                    <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular flex-1 flex items-center gap-1.5">
                       {key}
+                      <FieldHelpIcon fieldKey={key} />
                     </span>
                     <ToggleSwitch
                       checked={draft[key] as boolean}
@@ -593,6 +646,31 @@ function ConfigSectionCard({
   );
 }
 
+function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
+  const help = FIELD_HELP[fieldKey];
+  if (!help) return null;
+  return (
+    <span className="group relative shrink-0">
+      <svg
+        className="w-3.5 h-3.5 text-[color:var(--text-3)] hover:text-[color:var(--signal)] cursor-help transition-colors"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-[11px] leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg w-[260px] opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50">
+        {help}
+      </span>
+    </span>
+  );
+}
+
 function FieldRow({
   fieldKey,
   dirty,
@@ -611,6 +689,7 @@ function FieldRow({
     >
       <div className="flex items-center gap-2 w-[200px] min-w-[200px] shrink-0">
         <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular">{fieldKey}</span>
+        <FieldHelpIcon fieldKey={fieldKey} />
       </div>
       <div className="flex-1 flex items-center min-w-0">
         {children}
@@ -637,6 +716,7 @@ function ReadOnlyFieldRow({
       <div className="flex items-center min-h-[44px] px-3.5 gap-3 border-b border-[color:var(--border)] last:border-b-0">
         <div className="flex items-center gap-2 w-[200px] min-w-[200px] shrink-0">
           <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular">{fieldKey}</span>
+          <FieldHelpIcon fieldKey={fieldKey} />
         </div>
         <div className="flex-1 flex items-center min-w-0 gap-1.5 flex-wrap py-1.5">
           {arr.length === 0 ? (
@@ -664,12 +744,15 @@ function ReadOnlyFieldRow({
     <div className="flex items-center min-h-[44px] px-3.5 gap-3 border-b border-[color:var(--border)] last:border-b-0">
       <div className="flex items-center gap-2 w-[200px] min-w-[200px] shrink-0">
         <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular">{fieldKey}</span>
+        <FieldHelpIcon fieldKey={fieldKey} />
       </div>
       <div className="flex-1 flex items-center min-w-0">
         {sensitive ? (
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-[color:var(--text-2)] font-mono-tabular">
-              {revealed ? displayValue : '●●●●●●'}
+              {revealed
+                ? (displayValue || <span className="text-[color:var(--text-3)] italic">empty</span>)
+                : '●●●●●●'}
             </span>
             <button
               type="button"

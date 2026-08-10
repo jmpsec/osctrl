@@ -335,6 +335,24 @@ describe('ServiceConfigPage', () => {
     expect(screen.getByText('secret123')).toBeInTheDocument();
   });
 
+  it('shows "empty" when revealing an empty sensitive field', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: false,
+        Name: 'redis',
+        Value: '{"Host":"redis-server","Password":""}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('●●●●●●')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTitle('Reveal'));
+    expect(screen.getByText('empty')).toBeInTheDocument();
+  });
+
   it('renders string arrays as tag chips in read-only sections', async () => {
     mockList.mockResolvedValue([
       makeSection({
