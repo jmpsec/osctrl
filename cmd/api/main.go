@@ -886,7 +886,15 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"PATCH "+_apiPath(apiSettingsPath)+"/{service}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	// API: service config (phase 1 read + phase 2 editable PUT)
+	// API: service config (phase 1 read + phase 2 editable PUT + apply)
+	// Rate-limit the restart endpoint to 3 per 10 minutes per IP — strict
+	// enough to prevent brute-forcing restarts, generous enough for an
+	// operator to retry after a failed restart. Rejections are audit-logged
+	// so SoC tooling sees attempted abuse.
+	restartLimiter := ratelimit.New(3, 10*time.Minute, 30*time.Minute)
+	restartRateLimit := restartLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
+		handlersApi.AuditLog.SettingsAction("", fmt.Sprintf("service-config apply rate limit exceeded from %s", key), utils.GetIP(r))
+	})
 	muxAPI.Handle(
 		"GET "+_apiPath(apiServiceConfigPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -901,7 +909,7 @@ func osctrlAPIService() {
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiServiceConfigPath)+"/apply",
-		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
 	// API: audit log
 	if flagParams.Service.AuditLog {
 		muxAPI.Handle(
