@@ -649,10 +649,16 @@ function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
 
   if (!help) return null;
 
+  const TOOLTIP_W = 260;
+  const EDGE_PAD = 8;
+
   const show = () => {
     const rect = ref.current?.getBoundingClientRect();
     if (rect) {
-      setPos({ x: rect.left + rect.width / 2, y: rect.top });
+      const centerX = rect.left + rect.width / 2;
+      const minLeft = EDGE_PAD + TOOLTIP_W / 2;
+      const maxLeft = window.innerWidth - EDGE_PAD - TOOLTIP_W / 2;
+      setPos({ x: Math.max(minLeft, Math.min(maxLeft, centerX)), y: rect.top });
     }
   };
 
@@ -678,10 +684,11 @@ function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
       </svg>
       {pos && createPortal(
         <span
-          className="fixed px-3 py-2 text-[11px] leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg w-[260px] pointer-events-none"
+          className="fixed px-3 py-2 text-[11px] leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg pointer-events-none"
           style={{
             left: `${pos.x}px`,
             top: `${pos.y}px`,
+            width: TOOLTIP_W,
             transform: 'translate(-50%, -100%) translateY(-8px)',
             zIndex: 9999,
           }}
