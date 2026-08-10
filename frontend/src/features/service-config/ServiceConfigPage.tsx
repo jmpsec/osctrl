@@ -391,11 +391,11 @@ function ConfigSectionCard({
 
   return (
     <section
-      className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
+      className="border border-[color:var(--border)] rounded-md bg-[color:var(--bg-1)]"
       aria-labelledby={`config-${section.Name}-heading`}
     >
       <header
-        className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)] cursor-pointer select-none hover:bg-[color-mix(in_srgb,var(--bg-0)_85%,var(--bg-3))]"
+        className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)] cursor-pointer select-none hover:bg-[color-mix(in_srgb,var(--bg-0)_85%,var(--bg-3))] rounded-t-[5px]"
         onClick={() => setCollapsed((c) => !c)}
       >
         <h2
