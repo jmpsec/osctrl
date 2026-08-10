@@ -64,35 +64,42 @@ const (
 	DBTypeSQLite   string = "sqlite"
 )
 
-// TLSConfiguration to hold osctrl-tls configuration values
+// TLSConfiguration to hold osctrl-tls configuration values. Required sections
+// (service, db, redis) are value types; optional sections are pointers so a
+// minimal YAML file can omit them and the service falls back to DB-stored or
+// zero-valued defaults.
 type TLSConfiguration struct {
-	Service         YAMLConfigurationService   `mapstructure:"service"`
-	DB              YAMLConfigurationDB        `mapstructure:"db"`
-	BatchWriter     YAMLConfigurationWriter    `mapstructure:"batchWriter"`
-	Redis           YAMLConfigurationRedis     `mapstructure:"redis"`
-	Osquery         YAMLConfigurationOsquery   `mapstructure:"osquery"`
-	ConfigEndpoints YAMLConfigurationEndpoints `mapstructure:"configEndpoints"`
-	Osctrld         YAMLConfigurationOsctrld   `mapstructure:"osctrld"`
-	Metrics         YAMLConfigurationMetrics   `mapstructure:"metrics"`
-	TLS             YAMLConfigurationTLS       `mapstructure:"tls"`
-	Logger          YAMLConfigurationLogger    `mapstructure:"logger"`
-	Carver          YAMLConfigurationCarver    `mapstructure:"carver"`
-	Debug           YAMLConfigurationDebug     `mapstructure:"debug"`
+	Service YAMLConfigurationService `mapstructure:"service"`
+	DB      YAMLConfigurationDB      `mapstructure:"db"`
+	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
+	// Optional sections — nil when absent from the YAML file. The service
+	// boot code and serviceconfig.Resolve handle nil gracefully.
+	BatchWriter     *YAMLConfigurationWriter    `mapstructure:"batchWriter"`
+	Osquery         *YAMLConfigurationOsquery   `mapstructure:"osquery"`
+	ConfigEndpoints *YAMLConfigurationEndpoints `mapstructure:"configEndpoints"`
+	Osctrld         *YAMLConfigurationOsctrld   `mapstructure:"osctrld"`
+	Metrics         *YAMLConfigurationMetrics   `mapstructure:"metrics"`
+	TLS             *YAMLConfigurationTLS       `mapstructure:"tls"`
+	Logger          *YAMLConfigurationLogger    `mapstructure:"logger"`
+	Carver          *YAMLConfigurationCarver    `mapstructure:"carver"`
+	Debug           *YAMLConfigurationDebug     `mapstructure:"debug"`
 }
 
-// APIConfiguration to hold osctrl-api configuration values
+// APIConfiguration to hold osctrl-api configuration values. Required sections
+// (service, db, redis) are value types; optional sections are pointers.
 type APIConfiguration struct {
 	Service YAMLConfigurationService `mapstructure:"service"`
 	DB      YAMLConfigurationDB      `mapstructure:"db"`
 	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
-	Osquery YAMLConfigurationOsquery `mapstructure:"osquery"`
-	SAML    YAMLConfigurationSAML    `mapstructure:"saml"`
-	OIDC    YAMLConfigurationOIDC    `mapstructure:"oidc"`
-	JWT     YAMLConfigurationJWT     `mapstructure:"jwt"`
-	TLS     YAMLConfigurationTLS     `mapstructure:"tls"`
-	Logger  YAMLConfigurationLogger  `mapstructure:"logger"`
-	Carver  YAMLConfigurationCarver  `mapstructure:"carver"`
-	Debug   YAMLConfigurationDebug   `mapstructure:"debug"`
+	// Optional sections — nil when absent from the YAML file.
+	Osquery *YAMLConfigurationOsquery `mapstructure:"osquery"`
+	SAML    *YAMLConfigurationSAML    `mapstructure:"saml"`
+	OIDC    *YAMLConfigurationOIDC    `mapstructure:"oidc"`
+	JWT     *YAMLConfigurationJWT     `mapstructure:"jwt"`
+	TLS     *YAMLConfigurationTLS     `mapstructure:"tls"`
+	Logger  *YAMLConfigurationLogger  `mapstructure:"logger"`
+	Carver  *YAMLConfigurationCarver  `mapstructure:"carver"`
+	Debug   *YAMLConfigurationDebug   `mapstructure:"debug"`
 }
 
 // YAMLConfigurationService to hold the service configuration values

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -431,6 +432,12 @@ func osctrlAPIService() {
 		cancel()
 	}
 
+	// Restart channel for the service-config apply endpoint. When the
+	// operator clicks "Apply & Restart", the handler signals this channel
+	// and the main goroutine shuts down gracefully so the process manager
+	// restarts the service with the DB-edited config.
+	restartCh := make(chan struct{}, 1)
+
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
 		handlers.WithLogReader(logReader),
@@ -459,6 +466,7 @@ func osctrlAPIService() {
 		handlers.WithOIDC(flagParams.OIDC != nil && flagParams.OIDC.Enabled),
 		handlers.WithSAML(flagParams.SAML != nil && flagParams.SAML.Enabled),
 		handlers.WithDBHealth(dbHealth), // nil when DB health monitor disabled
+		handlers.WithRestartCh(restartCh),
 	)
 
 	// ///////////////////////// API
@@ -878,7 +886,15 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"PATCH "+_apiPath(apiSettingsPath)+"/{service}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	// API: service config (phase 1 read + phase 2 editable PUT)
+	// API: service config (phase 1 read + phase 2 editable PUT + apply)
+	// Rate-limit the restart endpoint to 3 per 10 minutes per IP — strict
+	// enough to prevent brute-forcing restarts, generous enough for an
+	// operator to retry after a failed restart. Rejections are audit-logged
+	// so SoC tooling sees attempted abuse.
+	restartLimiter := ratelimit.New(3, 10*time.Minute, 30*time.Minute)
+	restartRateLimit := restartLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
+		handlersApi.AuditLog.SettingsAction("", fmt.Sprintf("service-config apply rate limit exceeded from %s", key), utils.GetIP(r))
+	})
 	muxAPI.Handle(
 		"GET "+_apiPath(apiServiceConfigPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -891,16 +907,26 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"PUT "+_apiPath(apiServiceConfigPath)+"/{service}/{section}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiServiceConfigPath)+"/apply",
+		restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
 	// API: audit log
 	if flagParams.Service.AuditLog {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiAuditLogsPath),
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AuditLogsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
-	// Launch listeners for API server
+	// Launch listeners for API server. The server runs in a goroutine so
+	// the main goroutine can wait on the restart channel and trigger a
+	// graceful shutdown when the operator applies config changes.
 	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)
-	if flagParams.TLS.Termination {
-		cfg := &tls.Config{
+	tlsTermination := flagParams.TLS != nil && flagParams.TLS.Termination
+	srv := &http.Server{
+		Addr:    serviceListener,
+		Handler: muxAPI,
+	}
+	if tlsTermination {
+		srv.TLSConfig = &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 			PreferServerCipherSuites: true,
@@ -911,23 +937,33 @@ func osctrlAPIService() {
 				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 			},
 		}
-		srv := &http.Server{
-			Addr:         serviceListener,
-			Handler:      muxAPI,
-			TLSConfig:    cfg,
-			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
-		}
-		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, buildVersion, serviceListener)
+		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
+	}
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Info().Msgf("%s v%s - HTTP%s listening %s", serviceName, buildVersion,
+			map[bool]string{true: "S", false: ""}[tlsTermination], serviceListener)
 		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
-		if err := srv.ListenAndServeTLS(flagParams.TLS.CertificateFile, flagParams.TLS.KeyFile); err != nil {
-			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+		if tlsTermination {
+			serverErr <- srv.ListenAndServeTLS(flagParams.TLS.CertificateFile, flagParams.TLS.KeyFile)
+		} else {
+			serverErr <- srv.ListenAndServe()
 		}
-	} else {
-		log.Info().Msgf("%s v%s - HTTP listening %s", serviceName, buildVersion, serviceListener)
-		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
-		if err := http.ListenAndServe(serviceListener, muxAPI); err != nil {
+	}()
+	// Wait for either a server error or a restart signal.
+	select {
+	case err := <-serverErr:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
+	case <-restartCh:
+		log.Info().Msg("Service config apply triggered — exiting for restart")
+		// Exit with code 1 so process managers (systemd, docker, k8s) and
+		// dev tools like air restart the process. A clean exit (0) is not
+		// restarted by air (the dev hot-reload tool), which treats exit 0
+		// as "done, no restart needed." Using exit 1 ensures restart in
+		// both dev (air) and production (systemd/k8s) environments.
+		os.Exit(1)
 	}
 }
 

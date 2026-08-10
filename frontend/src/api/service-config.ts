@@ -67,3 +67,10 @@ export function updateServiceConfig(
     },
   );
 }
+
+/** POST /api/v1/service-config/apply — trigger graceful restart to apply config changes. */
+export function applyServiceConfig(): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>('/api/v1/service-config/apply', {
+    method: 'POST',
+  });
+}

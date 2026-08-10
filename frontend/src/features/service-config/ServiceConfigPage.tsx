@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   listServiceConfig,
   updateServiceConfig,
+  applyServiceConfig,
   type ServiceConfig,
 } from '$/api/service-config';
 import { AuthError, ApiError } from '$/api/client';
@@ -12,6 +13,7 @@ import { cn } from '$/lib/cn';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { CodeEditor } from '$/components/forms/CodeEditor';
+import { ModalShell } from '$/components/feedback/ModalShell';
 import { formatRelative } from '$/lib/time';
 
 const SERVICES = ['api', 'tls'] as const;
@@ -26,6 +28,10 @@ export function ServiceConfigPage() {
     ? (serviceParam as Service)
     : 'api';
 
+  const [applyErr, setApplyErr] = useState<string | null>(null);
+  const [applyFlash, setApplyFlash] = useState(false);
+  const [showApplyConfirm, setShowApplyConfirm] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const qc = useQueryClient();
   const {
     data,
@@ -51,6 +57,47 @@ export function ServiceConfigPage() {
   const hasError = isError;
   const pageError = error;
 
+  // An "Apply & Restart" is relevant when any section has source=db (meaning
+  // the operator has edited it through the API and the change is pending a
+  // restart to take effect).
+  const hasPendingChanges = sections.some((s) => s.Source === 'db');
+
+  const applyMutation = useMutation({
+    mutationFn: () => applyServiceConfig(),
+    onSuccess: () => {
+      setApplyErr(null);
+      setApplyFlash(true);
+      // Poll until the service comes back up, then refetch the config.
+      // The service restarts with exit code 1, so the API is briefly
+      // unavailable. We poll every 2 seconds until a request succeeds.
+      setRestarting(true);
+      const poll = setInterval(() => {
+        listServiceConfig(service)
+          .then(() => {
+            clearInterval(poll);
+            setRestarting(false);
+            setApplyFlash(false);
+            qc.invalidateQueries({ queryKey: ['service-config', service] });
+          })
+          .catch(() => {
+            // Service still restarting — keep polling.
+          });
+      }, 2000);
+      // Safety: stop polling after 60 seconds.
+      setTimeout(() => {
+        clearInterval(poll);
+        setRestarting(false);
+      }, 60_000);
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setApplyErr(e instanceof Error ? e.message : 'Apply failed');
+    },
+  });
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Toolbar row */}
@@ -58,6 +105,32 @@ export function ServiceConfigPage() {
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Service Config
         </h1>
+        {hasPendingChanges && !loading && !hasError && !restarting && (
+          <button
+            type="button"
+            disabled={applyMutation.isPending}
+            onClick={() => setShowApplyConfirm(true)}
+            className={cn(
+              'px-3 py-1 text-xs font-medium rounded transition-colors',
+              applyMutation.isPending
+                ? 'bg-[color:var(--bg-3)] text-[color:var(--text-3)]'
+                : 'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)] hover:bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.2)]',
+            )}
+          >
+            {applyMutation.isPending ? 'Restarting…' : applyFlash ? 'Restart triggered ✓' : 'Apply \u0026 Restart'}
+          </button>
+        )}
+        {restarting && (
+          <span
+            aria-live="polite"
+            className="text-xs text-[color:var(--text-3)] font-mono-tabular"
+          >
+            Restarting — waiting for service…
+          </span>
+        )}
+        {applyErr && (
+          <span className="text-xs text-[color:var(--danger)]">{applyErr}</span>
+        )}
         {fetching && !loading && (
           <span
             aria-live="polite"
@@ -150,6 +223,18 @@ export function ServiceConfigPage() {
           </div>
         )}
       </div>
+
+      {showApplyConfirm && (
+        <ApplyConfirmDialog
+          pendingSections={sections.filter((s) => s.Source === 'db')}
+          isPending={applyMutation.isPending}
+          onConfirm={() => {
+            applyMutation.mutate();
+            setShowApplyConfirm(false);
+          }}
+          onCancel={() => setShowApplyConfirm(false)}
+        />
+      )}
     </div>
   );
 }
@@ -340,3 +425,76 @@ function ConfigSectionCard({
 }
 
 export default ServiceConfigPage;
+
+function ApplyConfirmDialog({
+  pendingSections,
+  isPending,
+  onConfirm,
+  onCancel,
+}: {
+  pendingSections: ServiceConfig[];
+  isPending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <ModalShell
+      title="Apply & Restart"
+      titleId="apply-confirm-title"
+      onClose={onCancel}
+      panelClassName="max-w-md"
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-[color:var(--text-1)]">
+          This will restart the osctrl-api service to apply the following
+          configuration changes. The service will be briefly unavailable.
+        </p>
+        <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-0)] p-3">
+          <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-3)] mb-2">
+            Pending changes ({pendingSections.length})
+          </p>
+          <ul className="space-y-1">
+            {pendingSections.map((s) => (
+              <li
+                key={s.ID}
+                className="flex items-center gap-2 text-xs text-[color:var(--text-2)]"
+              >
+                <span className="font-mono-tabular text-[color:var(--text-1)]">
+                  {s.Name}
+                </span>
+                {s.Info && (
+                  <span className="text-[color:var(--text-3)] truncate">
+                    — {s.Info}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isPending}
+            className="px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+              'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.16)] text-[color:var(--warning)]',
+              'hover:bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.24)]',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+            )}
+          >
+            {isPending ? 'Restarting…' : 'Restart now'}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}

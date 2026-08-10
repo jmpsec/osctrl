@@ -241,52 +241,87 @@ func (m *ServiceConfigManager) Resolve(service string, cfg *config.ServiceParame
 		if sc.Source != SourceDB {
 			continue
 		}
-		if err := applySection(cfg, sc.Name, sc.Value); err != nil {
+		applied, err := applySection(cfg, sc.Name, sc.Value)
+		if err != nil {
 			return fmt.Errorf("resolve %s/%s: %w", service, sc.Name, err)
 		}
-		log.Debug().Msgf("Resolved service config %s/%s from DB (source=db)", service, sc.Name)
+		if applied {
+			log.Debug().Msgf("Resolved service config %s/%s from DB (source=db)", service, sc.Name)
+		} else {
+			log.Debug().Msgf("Skipped service config %s/%s — section is nil in ServiceParameters", service, sc.Name)
+		}
 	}
 	return nil
 }
 
 // applySection unmarshals a JSON section value into the matching field on
-// ServiceParameters. Unknown sections are silently skipped.
-func applySection(cfg *config.ServiceParameters, name, value string) error {
+// ServiceParameters. If the target field is nil (section absent from the
+// YAML), the value is skipped and applied=false is returned. Unknown sections
+// are also skipped.
+func applySection(cfg *config.ServiceParameters, name, value string) (bool, error) {
 	switch name {
 	case "service":
-		return json.Unmarshal([]byte(value), cfg.Service)
+		if cfg.Service != nil {
+			return true, json.Unmarshal([]byte(value), cfg.Service)
+		}
 	case "db":
-		return json.Unmarshal([]byte(value), cfg.DB)
+		if cfg.DB != nil {
+			return true, json.Unmarshal([]byte(value), cfg.DB)
+		}
 	case "redis":
-		return json.Unmarshal([]byte(value), cfg.Redis)
+		if cfg.Redis != nil {
+			return true, json.Unmarshal([]byte(value), cfg.Redis)
+		}
 	case "osquery":
-		return json.Unmarshal([]byte(value), cfg.Osquery)
+		if cfg.Osquery != nil {
+			return true, json.Unmarshal([]byte(value), cfg.Osquery)
+		}
 	case "tls":
-		return json.Unmarshal([]byte(value), cfg.TLS)
+		if cfg.TLS != nil {
+			return true, json.Unmarshal([]byte(value), cfg.TLS)
+		}
 	case "logger":
-		return json.Unmarshal([]byte(value), cfg.Logger)
+		if cfg.Logger != nil {
+			return true, json.Unmarshal([]byte(value), cfg.Logger)
+		}
 	case "carver":
-		return json.Unmarshal([]byte(value), cfg.Carver)
+		if cfg.Carver != nil {
+			return true, json.Unmarshal([]byte(value), cfg.Carver)
+		}
 	case "debug":
-		return json.Unmarshal([]byte(value), cfg.Debug)
+		if cfg.Debug != nil {
+			return true, json.Unmarshal([]byte(value), cfg.Debug)
+		}
 	case "batchWriter":
-		return json.Unmarshal([]byte(value), cfg.BatchWriter)
+		if cfg.BatchWriter != nil {
+			return true, json.Unmarshal([]byte(value), cfg.BatchWriter)
+		}
 	case "configEndpoints":
-		return json.Unmarshal([]byte(value), cfg.ConfigEndpoints)
+		if cfg.ConfigEndpoints != nil {
+			return true, json.Unmarshal([]byte(value), cfg.ConfigEndpoints)
+		}
 	case "osctrld":
-		return json.Unmarshal([]byte(value), cfg.Osctrld)
+		if cfg.Osctrld != nil {
+			return true, json.Unmarshal([]byte(value), cfg.Osctrld)
+		}
 	case "metrics":
-		return json.Unmarshal([]byte(value), cfg.Metrics)
+		if cfg.Metrics != nil {
+			return true, json.Unmarshal([]byte(value), cfg.Metrics)
+		}
 	case "saml":
-		return json.Unmarshal([]byte(value), cfg.SAML)
+		if cfg.SAML != nil {
+			return true, json.Unmarshal([]byte(value), cfg.SAML)
+		}
 	case "oidc":
-		return json.Unmarshal([]byte(value), cfg.OIDC)
+		if cfg.OIDC != nil {
+			return true, json.Unmarshal([]byte(value), cfg.OIDC)
+		}
 	case "jwt":
-		return json.Unmarshal([]byte(value), cfg.JWT)
-	default:
-		// Unknown section — skip silently.
-		return nil
+		if cfg.JWT != nil {
+			return true, json.Unmarshal([]byte(value), cfg.JWT)
+		}
 	}
+	return false, nil
 }
 
 // ErrSectionNotEditable is returned when UpdateSection is called on a section
