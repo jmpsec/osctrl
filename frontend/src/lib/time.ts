@@ -28,8 +28,8 @@ export function formatRelative(iso: string): string {
   const diffMs = Date.now() - d.getTime();
 
   if (diffMs < 0) {
-    // Future timestamp — treat as just now
-    return 'just now';
+    // Future timestamp — use formatTimeUntil for a proper "in 3d" string.
+    return formatTimeUntil(iso);
   }
 
   if (diffMs < MINUTE) {
@@ -53,6 +53,46 @@ export function formatRelative(iso: string): string {
   }
 
   // Older than a week — show abbreviated date
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/**
+ * Returns a compact "time until" string for a future ISO-8601 timestamp.
+ * Mirrors formatRelative but for future dates.
+ *
+ * Examples:
+ *   in 3 seconds  → "in 3s"
+ *   in 4 minutes  → "in 4m"
+ *   in 2 hours    → "in 2h"
+ *   in 1 day      → "in 1d"
+ *   > 7 days      → "Mar 14"
+ *   invalid/past  → "—"
+ */
+export function formatTimeUntil(iso: string): string {
+  if (!iso) return '—';
+
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+
+  const diffMs = d.getTime() - Date.now();
+  if (diffMs <= 0) return '—';
+
+  if (diffMs < MINUTE) {
+    const s = Math.floor(diffMs / SECOND);
+    return `in ${s}s`;
+  }
+  if (diffMs < HOUR) {
+    const m = Math.floor(diffMs / MINUTE);
+    return `in ${m}m`;
+  }
+  if (diffMs < DAY) {
+    const h = Math.floor(diffMs / HOUR);
+    return `in ${h}h`;
+  }
+  if (diffMs < WEEK) {
+    const day = Math.floor(diffMs / DAY);
+    return `in ${day}d`;
+  }
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
