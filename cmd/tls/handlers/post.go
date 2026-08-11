@@ -1207,8 +1207,29 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
-	// Prepare download
+	// Prepare download — try the new EnvironmentPackage table first, then
+	// fall back to the legacy single-package fields for backward compat.
 	var fDesc, fName, fPath string
+	archVar := r.PathValue("arch")
+
+	// Try the new package table.
+	if h.Envs != nil {
+		pkg, err := h.Envs.GetPackage(env.ID, packageVar, archVar)
+		if err == nil && pkg.URL != "" {
+			if strings.HasPrefix(pkg.URL, "https://") {
+				http.Redirect(w, r, pkg.URL, http.StatusFound)
+				return
+			}
+			fDesc = packageDescription(packageVar)
+			fName = genPackageFilename(env.Name, packageVar, version.OsqueryVersion, version.OsctrlVersion)
+			fPath, err = environments.PackageFilePath(enrollPackagesPath, env.Name, pkg.URL)
+			if err == nil {
+				goto serveFile
+			}
+		}
+	}
+
+	// Fall back to legacy single-package fields.
 	switch packageVar {
 	case settings.PackageDeb:
 		if strings.HasPrefix(env.DebPackage, "https://") {
@@ -1248,6 +1269,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
+serveFile:
 	// Initiate download
 	fi, err := os.Stat(fPath)
 	if err != nil {
@@ -1432,5 +1454,20 @@ func (h *HandlersTLS) ingestPosture(results []types.LogResultData, nodeUUID, env
 		if err := h.Posture.IngestResult(nodeUUID, environment, queryName, columns); err != nil {
 			log.Warn().Err(err).Str("query", queryName).Msg("posture: failed to ingest result")
 		}
+	}
+}
+
+func packageDescription(pkgType string) string {
+	switch pkgType {
+	case settings.PackageDeb:
+		return "Enrolling DEB Package for Linux"
+	case settings.PackageRpm:
+		return "Enrolling RPM Package for Linux"
+	case settings.PackagePkg:
+		return "Enrolling PKG Package for Mac"
+	case settings.PackageMsi:
+		return "Enrolling MSI Package for Windows"
+	default:
+		return "Enrolling Package"
 	}
 }

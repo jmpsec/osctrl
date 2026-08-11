@@ -860,6 +860,21 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"PATCH "+_apiPath(apiEnvironmentsPath)+"/expiration/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentExpirationPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: environment packages (multi-architecture)
+	// Uses /packages/{env} shape (literal in segment 1) to avoid conflicts
+	// with /map/{target} — same pattern as /config/{env} and /intervals/{env}.
+	muxAPI.Handle(
+		"GET "+_apiPath(apiEnvironmentsPath)+"/packages/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvPackagesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiEnvironmentsPath)+"/packages/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvPackageAddHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiEnvironmentsPath)+"/packages/{env}/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvPackageRemoveHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PATCH "+_apiPath(apiEnvironmentsPath)+"/packages/{env}/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvPackageUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: tags by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiTagsPath),

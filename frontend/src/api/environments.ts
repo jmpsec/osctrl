@@ -204,3 +204,70 @@ export function patchEnvironmentExpiration(
     },
   );
 }
+
+// ── Environment packages (multi-architecture) ─────────────────────────────
+
+/** Wire shape matching pkg/environments.EnvironmentPackage. */
+export interface EnvironmentPackage {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  environment_id: number;
+  type: string;
+  architecture: string;
+  url: string;
+  is_default: boolean;
+}
+
+/** GET /api/v1/environments/packages/{env} — list all packages. */
+export function listEnvPackages(env: string): Promise<EnvironmentPackage[]> {
+  return apiFetch<EnvironmentPackage[]>(
+    `/api/v1/environments/packages/${encodeURIComponent(env)}`,
+  );
+}
+
+export interface AddPackageRequest {
+  type: string;
+  architecture: string;
+  url: string;
+  is_default: boolean;
+}
+
+/** POST /api/v1/environments/packages/{env} — add a package. */
+export function addEnvPackage(
+  env: string,
+  body: AddPackageRequest,
+): Promise<EnvironmentPackage> {
+  return apiFetch<EnvironmentPackage>(
+    `/api/v1/environments/packages/${encodeURIComponent(env)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+/** DELETE /api/v1/environments/packages/{env}/{id} — remove a package. */
+export function removeEnvPackage(env: string, id: number): Promise<void> {
+  return apiFetch<void>(
+    `/api/v1/environments/packages/${encodeURIComponent(env)}/${id}`,
+    { method: 'DELETE' },
+  );
+}
+
+/** PATCH /api/v1/environments/packages/{env}/{id} — update a package URL. */
+export function updateEnvPackage(
+  env: string,
+  id: number,
+  url: string,
+): Promise<EnvironmentPackage> {
+  return apiFetch<EnvironmentPackage>(
+    `/api/v1/environments/packages/${encodeURIComponent(env)}/${id}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    },
+  );
+}
