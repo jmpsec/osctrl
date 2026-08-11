@@ -66,7 +66,7 @@ function makeEnv(overrides: Partial<TLSEnvironment> = {}): TLSEnvironment {
     msi_package: '',
     pkg_package: '',
     debug_http: false,
-    icon: 'fas fa-wrench',
+    icon: 'wrench',
     options: '{}',
     schedule: '{}',
     packs: '{}',

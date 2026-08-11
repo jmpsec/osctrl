@@ -9,14 +9,15 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Server, Cloud, Shield, Lock, Globe, Network, Monitor, Laptop,
   HardDrive, Database, Terminal, Bug, Cog, Wrench, Cpu, Radar,
-  Router,  Flame, Bolt, Rocket, Satellite, Building,
+  Router, Flame, Bolt, Rocket, Satellite, Building,
   Warehouse, Factory, Store, School, Hospital, Fingerprint,
   Key, Eye, Search, ChartLine, ChartBar, Bell, Flag, Star,
-  Heart, Leaf, Anchor, Plane, Drone, type LucideIcon,
+  Heart, Leaf, Anchor, Plane, Drone, Tag, type LucideIcon,
 } from 'lucide-react';
 import { cn } from '$/lib/cn';
 
 const PRESET_ICONS: { name: string; Icon: LucideIcon }[] = [
+  { name: 'tag', Icon: Tag },
   { name: 'server', Icon: Server },
   { name: 'cloud', Icon: Cloud },
   { name: 'shield', Icon: Shield },
@@ -34,7 +35,6 @@ const PRESET_ICONS: { name: string; Icon: LucideIcon }[] = [
   { name: 'cpu', Icon: Cpu },
   { name: 'radar', Icon: Radar },
   { name: 'router', Icon: Router },
-  { name: 'network', Icon: Network }, // deduped below — remove
   { name: 'flame', Icon: Flame },
   { name: 'bolt', Icon: Bolt },
   { name: 'rocket', Icon: Rocket },
@@ -73,6 +73,9 @@ export function resolveEnvIcon(icon: string | undefined | null): LucideIcon | nu
   const name = icon.includes(' ') ? icon.split(' ').pop()! : icon;
   return ICON_MAP[name] ?? null;
 }
+
+/** Alias for resolveEnvIcon — tags use the same icon set. */
+export const resolveTagIcon = resolveEnvIcon;
 
 interface IconPickerProps {
   value: string;

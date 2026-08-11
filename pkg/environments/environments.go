@@ -32,7 +32,7 @@ const (
 	// DefaultCarverBlockPath as default block endpoint for the carver
 	DefaultCarverBlockPath string = "block"
 	// DefaultEnvironmentIcon as default icon to use for environments
-	DefaultEnvironmentIcon string = "fas fa-wrench"
+	DefaultEnvironmentIcon string = "wrench"
 	// DefaultEnvironmentType as default type to use for environments
 	DefaultEnvironmentType string = "osquery"
 	// DefaultSecretLength as default length for secrets
