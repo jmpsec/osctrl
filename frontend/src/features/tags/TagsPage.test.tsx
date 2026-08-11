@@ -49,7 +49,7 @@ function makeTag(overrides: Partial<AdminTag> = {}): AdminTag {
     name: 'production',
     description: 'Production environment',
     color: '#5b8def',
-    icon: 'fas fa-server',
+    icon: 'server',
     created_by: 'admin',
     custom_tag: 'tag',
     auto_tag: false,

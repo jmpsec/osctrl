@@ -18,7 +18,7 @@ type ModalMode =
   | { kind: 'delete'; tag: AdminTag };
 
 const DEFAULT_COLOR = '#5b8def';
-const DEFAULT_ICON = 'fas fa-tag';
+const DEFAULT_ICON = 'tag';
 const TAG_TYPE_REGULAR = 6; // mirrors pkg/tags.TagTypeTag
 
 export function TagsPage() {
@@ -550,7 +550,7 @@ function TagFormModal({
               )}
             />
             <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
-              Font Awesome class (e.g. <code>fas fa-server</code>).
+              Icon name (e.g. <code>server</code>, <code>tag</code>, <code>wrench</code>).
             </p>
           </div>
         </div>

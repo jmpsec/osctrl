@@ -13,7 +13,7 @@ import (
 
 const (
 	// DefaultTagIcon as default icon to use for tags
-	DefaultTagIcon string = "fas fa-tag"
+	DefaultTagIcon string = "tag"
 	// DefaultAutoTagUser as default user ID to be used for auto tagging
 	DefaultAutoTagUser uint = 0
 	// DefaultAutocreated as default username and description for tags
@@ -435,7 +435,10 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 		tag = newTag
 	}
 	if m.IsTagged(tag.Name, node) {
-		return fmt.Errorf("node already tagged")
+		// Idempotent: tagging an already-tagged node is not an error.
+		// This makes batch-tagging safe — the frontend can tag all selected
+		// nodes without checking which are already tagged.
+		return nil
 	}
 	tagged := TaggedNode{
 		Tag:        tag.Name,
