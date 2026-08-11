@@ -10,6 +10,7 @@ import { cn } from '$/lib/cn';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { IconPicker, resolveTagIcon } from '$/components/forms/IconPicker';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -278,7 +279,10 @@ export function TagsPage() {
                         color: tag.color || DEFAULT_COLOR,
                       }}
                     >
-                      <i className={tag.icon || DEFAULT_ICON} aria-hidden />
+                      {(() => {
+                        const IconComp = resolveTagIcon(tag.icon || DEFAULT_ICON);
+                        return IconComp ? <IconComp className="w-3 h-3" aria-hidden /> : null;
+                      })()}
                       <span className="font-mono-tabular">{tag.name}</span>
                     </span>
                   </td>
@@ -535,23 +539,13 @@ function TagFormModal({
           </div>
           <div className="flex-1">
             <label htmlFor="tag-icon" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
-              Icon class
+              Icon
             </label>
-            <input
+            <IconPicker
               id="tag-icon"
-              type="text"
               value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              placeholder={DEFAULT_ICON}
-              className={cn(
-                'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
-                'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
-              )}
+              onChange={setIcon}
             />
-            <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
-              Icon name (e.g. <code>server</code>, <code>tag</code>, <code>wrench</code>).
-            </p>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import type { AdminTag, NodeHealth, NodeHealthStatus } from '$/api/types';
 import { cn } from '$/lib/cn';
+import { resolveTagIcon } from '$/components/forms/IconPicker';
 
 const HEALTH_LABELS: Record<NodeHealthStatus, string> = {
   healthy: 'healthy',
@@ -57,20 +58,24 @@ export function TagChips({
   const overflow = list.length - visible.length;
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {visible.map((tag) => (
-        <span
-          key={`${tag.id}-${tag.name}`}
-          className="inline-flex max-w-[120px] items-center rounded-full border px-1.5 py-0.5 text-[10.5px] font-mono-tabular leading-tight"
-          style={{
-            borderColor: `${tag.color || '#64748b'}55`,
-            backgroundColor: `${tag.color || '#64748b'}18`,
-            color: tag.color || 'var(--text-2)',
-          }}
-          title={tag.description || tag.name}
-        >
-          <span className="truncate">{tag.name}</span>
-        </span>
-      ))}
+      {visible.map((tag) => {
+        const IconComp = resolveTagIcon(tag.icon);
+        return (
+          <span
+            key={`${tag.id}-${tag.name}`}
+            className="inline-flex max-w-[120px] items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10.5px] font-mono-tabular leading-tight"
+            style={{
+              borderColor: `${tag.color || '#64748b'}55`,
+              backgroundColor: `${tag.color || '#64748b'}18`,
+              color: tag.color || 'var(--text-2)',
+            }}
+            title={tag.description || tag.name}
+          >
+            {IconComp && <IconComp className="w-2.5 h-2.5 flex-shrink-0" aria-hidden />}
+            <span className="truncate">{tag.name}</span>
+          </span>
+        );
+      })}
       {overflow > 0 && (
         <span className="text-[10.5px] font-mono-tabular text-[color:var(--text-3)]">
           +{overflow}
