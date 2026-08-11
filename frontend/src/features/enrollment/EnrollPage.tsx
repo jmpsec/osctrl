@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
@@ -23,7 +23,7 @@ import { AuthError, ApiError } from '$/api/client';
 import { Button } from '$/components/atoms/Button';
 import { Skeleton } from '$/components/data/Skeleton';
 import { cn } from '$/lib/cn';
-import { formatRelative } from '$/lib/time';
+import { formatRelative, formatTimeUntil } from '$/lib/time';
 import { CertificateCard } from './CertificateCard';
 import { FlagsCard } from './FlagsCard';
 import { AssembledConfigCard } from './AssembledConfigCard';
@@ -331,6 +331,7 @@ export function EnrollPage() {
                   isPending={removeMut.isPending}
                 />
               </div>
+              <SecretField envName={env} envDisplayName={e?.name ?? env} />
               <CertificateCard env={env} />
             </div>
           )}
@@ -384,6 +385,133 @@ function PageTabButton({
         />
       )}
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SecretField — read-only secret display with copy + download buttons.
+// ---------------------------------------------------------------------------
+function SecretField({
+  envName,
+  envDisplayName,
+}: {
+  envName: string;
+  envDisplayName: string;
+}) {
+  const [secret, setSecret] = useState('');
+  const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['enroll-secret', envName],
+    queryFn: () => getEnrollData(envName, 'secret'),
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (data?.data) {
+      setSecret(data.data);
+    }
+  }, [data]);
+
+  async function handleCopy() {
+    if (!secret) return;
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setErr('Copy failed — your browser blocked clipboard access.');
+    }
+  }
+
+  function handleDownload() {
+    if (!secret) return;
+    const blob = new Blob([secret], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `osctrl-${envDisplayName}.secret`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <section
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+      aria-label="Enroll secret"
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)]">
+          Enroll secret
+        </h2>
+        <span
+          className="text-[10px] text-[color:var(--text-3)] cursor-help"
+          title="The enroll secret authenticates osquery agents to osctrl-tls. Keep it secure — anyone with this secret can enroll nodes."
+        >
+          ⓘ
+        </span>
+      </div>
+
+      {isLoading && <Skeleton className="h-9 w-full" />}
+
+      {isError && !isLoading && (
+        <div className="flex items-center gap-2">
+          <p className="text-[11px] text-[color:var(--danger)] flex-1">
+            {error instanceof Error ? error.message : 'Failed to load secret'}
+          </p>
+          <Button variant="ghost" size="sm" onClick={() => refetch()}>Retry</Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && (
+        <div className="flex items-center gap-2">
+          <input
+            type={revealed ? 'text' : 'password'}
+            value={secret}
+            readOnly
+            className={cn(
+              'flex-1 min-w-0 px-2.5 py-1.5 rounded-md text-[11px] font-mono-tabular',
+              'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+              'text-[color:var(--text-1)]',
+              'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
+            )}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setRevealed((v) => !v)}
+            title={revealed ? 'Hide secret' : 'Reveal secret'}
+          >
+            {revealed ? 'Hide' : 'Show'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            disabled={!secret}
+          >
+            {copied ? 'Copied ✓' : 'Copy'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownload}
+            disabled={!secret}
+            title={`Download as osctrl-${envDisplayName}.secret`}
+          >
+            Download
+          </Button>
+        </div>
+      )}
+
+      {err && (
+        <p className="mt-2 text-xs text-[color:var(--danger)]">{err}</p>
+      )}
+    </section>
   );
 }
 
@@ -696,8 +824,9 @@ function LifecycleCard({
     if (expireValue.toLowerCase().includes('never')) return 'never expires';
     const d = new Date(expireValue);
     if (isNaN(d.getTime())) return 'never expires';
-    // Future date → "expires in <relative>"; past date → "expired <relative> ago".
-    return `expires ${formatRelative(expireValue)}`;
+    const diffMs = d.getTime() - Date.now();
+    if (diffMs <= 0) return `expired ${formatRelative(expireValue)} ago`;
+    return `expires ${formatTimeUntil(expireValue)}`;
   })();
 
   return (
