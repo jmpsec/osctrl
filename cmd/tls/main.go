@@ -398,6 +398,8 @@ func osctrlService() {
 	muxTLS.HandleFunc("GET /{env}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler)
 	// TLS: Download enrolling package
 	muxTLS.HandleFunc("GET /{env}/{secretpath}/package/{package}", handlersTLS.EnrollPackageHandler)
+	// TLS: Download enrolling package by architecture
+	muxTLS.HandleFunc("GET /{env}/{secretpath}/package/{package}/{arch}", handlersTLS.EnrollPackageHandler)
 
 	// Enable osctrld endpoints
 	if flagParams.Osctrld.Enabled {

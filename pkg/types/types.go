@@ -133,6 +133,19 @@ type ApiActionsRequest struct {
 	DebPkgURL   string `json:"url_deb_pkg"`
 }
 
+// ApiAddPackageRequest to add an enrolling package to an environment.
+type ApiAddPackageRequest struct {
+	Type      string `json:"type"`
+	Arch      string `json:"architecture"`
+	URL       string `json:"url"`
+	IsDefault bool   `json:"is_default"`
+}
+
+// ApiUpdatePackageRequest to update an enrolling package URL.
+type ApiUpdatePackageRequest struct {
+	URL string `json:"url"`
+}
+
 // ApiEnvRequest to receive environment action requests
 type ApiEnvRequest struct {
 	Action   string `json:"action"`

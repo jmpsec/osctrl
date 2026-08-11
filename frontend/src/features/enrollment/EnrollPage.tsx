@@ -11,7 +11,14 @@ import {
   type RemoveAction,
   type PackageActionBody,
 } from '$/api/enrollment';
-import { getEnvironment } from '$/api/environments';
+import {
+  getEnvironment,
+  listEnvPackages,
+  addEnvPackage,
+  removeEnvPackage,
+  updateEnvPackage,
+  type EnvironmentPackage,
+} from '$/api/environments';
 import { AuthError, ApiError } from '$/api/client';
 import { Button } from '$/components/atoms/Button';
 import { Skeleton } from '$/components/data/Skeleton';
@@ -150,29 +157,9 @@ export function EnrollPage() {
     }
   }
 
-  // Package URL state — seeded once from the env row.
-  const [debUrl, setDebUrl] = useState('');
-  const [rpmUrl, setRpmUrl] = useState('');
-  const [pkgUrl, setPkgUrl] = useState('');
-  const [msiUrl, setMsiUrl] = useState('');
-  const [seeded, setSeeded] = useState(false);
-  if (!seeded && e) {
-    setDebUrl(e.deb_package || '');
-    setRpmUrl(e.rpm_package || '');
-    setPkgUrl(e.pkg_package || '');
-    setMsiUrl(e.msi_package || '');
-    setSeeded(true);
-  }
-
-  const pkgMut = useMutation({
-    mutationFn: (args: { action: EnrollAction; body: PackageActionBody }) =>
-      enrollAction(env, args.action, args.body),
-    onSuccess: () => {
-      setServerError(null);
-      void qc.invalidateQueries({ queryKey: ['env', env] });
-    },
-    onError: (err) => setServerError(err instanceof ApiError ? err.message : 'Save failed'),
-  });
+  // Package URL state is managed by the PackageListCard component
+  // which uses the multi-architecture EnvironmentPackage API.
+  const [seeded] = useState(false);
 
   const notAccepting = !!e && !e.accept_enrolls;
 
@@ -293,20 +280,9 @@ export function EnrollPage() {
                   open={pkgOpen}
                   onToggle={() => setPkgOpen((v) => !v)}
                   title="Pre-built package URLs"
-                  subtitle="optional · DEB · RPM · PKG · MSI"
+                  subtitle="optional · DEB · RPM · PKG · MSI · per-architecture"
                 >
-                  <PackageUrlCard
-                    debUrl={debUrl}
-                    setDebUrl={setDebUrl}
-                    rpmUrl={rpmUrl}
-                    setRpmUrl={setRpmUrl}
-                    pkgUrl={pkgUrl}
-                    setPkgUrl={setPkgUrl}
-                    msiUrl={msiUrl}
-                    setMsiUrl={setMsiUrl}
-                    isPending={pkgMut.isPending}
-                    onSave={(action, body) => pkgMut.mutate({ action, body })}
-                  />
+                  <PackageListCard envName={env} />
                 </Collapsible>
               </div>
             </div>
@@ -757,90 +733,240 @@ function LifecycleCard({
 }
 
 // ---------------------------------------------------------------------------
-// PackageUrlCard — heading + 4 compact rows (DEB / RPM / PKG / MSI).
-// Each row: [label][url input][Save] on a single line.
+// PackageListCard — multi-architecture package management.
+// Shows all packages from the EnvironmentPackage table, grouped by type,
+// with add/remove capability.
 // ---------------------------------------------------------------------------
-function PackageUrlCard({
-  debUrl,
-  setDebUrl,
-  rpmUrl,
-  setRpmUrl,
-  pkgUrl,
-  setPkgUrl,
-  msiUrl,
-  setMsiUrl,
-  isPending,
-  onSave,
-}: {
-  debUrl: string;
-  setDebUrl: (v: string) => void;
-  rpmUrl: string;
-  setRpmUrl: (v: string) => void;
-  pkgUrl: string;
-  setPkgUrl: (v: string) => void;
-  msiUrl: string;
-  setMsiUrl: (v: string) => void;
-  isPending: boolean;
-  onSave: (action: EnrollAction, body: PackageActionBody) => void;
-}) {
-  const rows: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    action: EnrollAction;
-    body: () => PackageActionBody;
-  }[] = [
-    { label: 'DEB',        value: debUrl, onChange: setDebUrl, action: 'set_deb', body: () => ({ deb_url: debUrl }) },
-    { label: 'RPM',        value: rpmUrl, onChange: setRpmUrl, action: 'set_rpm', body: () => ({ rpm_url: rpmUrl }) },
-    { label: 'PKG (macOS)', value: pkgUrl, onChange: setPkgUrl, action: 'set_pkg', body: () => ({ pkg_url: pkgUrl }) },
-    { label: 'MSI (Win)',  value: msiUrl, onChange: setMsiUrl, action: 'set_msi', body: () => ({ msi_url: msiUrl }) },
-  ];
+const PACKAGE_TYPES = [
+  { value: 'deb', label: 'DEB (Linux)' },
+  { value: 'rpm', label: 'RPM (Linux)' },
+  { value: 'pkg', label: 'PKG (macOS)' },
+  { value: 'msi', label: 'MSI (Windows)' },
+];
+
+const ARCH_OPTIONS = ['amd64', 'arm64', 'x86_64', 'aarch64', 'universal'];
+
+function PackageListCard({ envName }: { envName: string }) {
+  const qc = useQueryClient();
+  const { data: packages, isLoading } = useQuery({
+    queryKey: ['env-packages', envName],
+    queryFn: () => listEnvPackages(envName),
+    staleTime: 30_000,
+  });
+
+  const [newType, setNewType] = useState('deb');
+  const [newArch, setNewArch] = useState('amd64');
+  const [newUrl, setNewUrl] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+
+  const addMut = useMutation({
+    mutationFn: () => addEnvPackage(envName, {
+      type: newType,
+      architecture: newArch,
+      url: newUrl,
+      is_default: false,
+    }),
+    onSuccess: () => {
+      setErr(null);
+      setNewUrl('');
+      qc.invalidateQueries({ queryKey: ['env-packages', envName] });
+    },
+    onError: (e) => {
+      setErr(e instanceof Error ? e.message : 'Failed to add package');
+    },
+  });
+
+  const byType: Record<string, EnvironmentPackage[]> = {};
+  for (const p of packages ?? []) {
+    if (!byType[p.type]) byType[p.type] = [];
+    byType[p.type].push(p);
+  }
 
   return (
     <section
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
-      aria-label="Pre-built package URLs"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4 mt-3"
+      aria-label="Multi-architecture packages"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)]">
-          Package URLs <span className="text-[color:var(--text-3)] font-normal">· optional</span>
+          Multi-architecture packages{' '}
+          <span className="text-[color:var(--text-3)] font-normal">· per-arch URLs</span>
         </h2>
         <span
           className="text-[10px] text-[color:var(--text-3)] cursor-help"
-          title="If set, install scripts fetch this pre-built package instead of building one on the fly. Useful for air-gapped or signed installs."
+          title="Register multiple packages per type, each targeting a different architecture (amd64, arm64, etc.). The TLS service serves the correct package based on the requested architecture."
         >
           ⓘ
         </span>
       </div>
-      <div className="space-y-2">
-        {rows.map((r) => (
-          <div key={r.label} className="flex items-center gap-2">
-            <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.1em] w-[68px] flex-shrink-0">
-              {r.label}
-            </span>
-            <input
-              type="url"
-              value={r.value}
-              onChange={(ev) => r.onChange(ev.target.value)}
-              placeholder="https://…"
-              className={cn(
-                'flex-1 min-w-0 px-2.5 py-1 rounded-md text-[11px] font-mono-tabular',
-                'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
-                'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
-              )}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onSave(r.action, r.body())}
-              disabled={isPending}
-            >
-              Save
-            </Button>
-          </div>
-        ))}
+
+      {isLoading && <Skeleton className="h-16 w-full" />}
+      {!isLoading && (packages ?? []).length === 0 && (
+        <p className="text-[11px] text-[color:var(--text-3)] italic mb-3">
+          No multi-architecture packages configured.
+        </p>
+      )}
+      {!isLoading && Object.keys(byType).length > 0 && (
+        <div className="space-y-3 mb-4">
+          {PACKAGE_TYPES.map(({ value, label }) => {
+            const items = byType[value];
+            if (!items || items.length === 0) return null;
+            return (
+              <div key={value}>
+                <p className="text-[10px] font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.1em] mb-1">
+                  {label}
+                </p>
+                <div className="space-y-1">
+                  {items.map((p) => (
+                    <PackageRow
+                      key={p.id}
+                      pkg={p}
+                      envName={envName}
+                      onRemoved={() => qc.invalidateQueries({ queryKey: ['env-packages', envName] })}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <select
+          value={newType}
+          onChange={(e) => setNewType(e.target.value)}
+          className="text-[11px] px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+        >
+          {PACKAGE_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.value}</option>
+          ))}
+        </select>
+        <select
+          value={newArch}
+          onChange={(e) => setNewArch(e.target.value)}
+          className="text-[11px] px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+        >
+          {ARCH_OPTIONS.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+        <input
+          type="url"
+          value={newUrl}
+          onChange={(e) => setNewUrl(e.target.value)}
+          placeholder="https://… or local filename"
+          className={cn(
+            'flex-1 min-w-[200px] px-2.5 py-1 rounded-md text-[11px] font-mono-tabular',
+            'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+            'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
+            'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
+          )}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => addMut.mutate()}
+          disabled={addMut.isPending || !newUrl}
+        >
+          Add
+        </Button>
       </div>
+      {err && (
+        <p className="mt-2 text-xs text-[color:var(--danger)]">{err}</p>
+      )}
     </section>
+  );
+}
+
+function PackageRow({
+  pkg,
+  envName,
+  onRemoved,
+}: {
+  pkg: EnvironmentPackage;
+  envName: string;
+  onRemoved: () => void;
+}) {
+  const [editUrl, setEditUrl] = useState(pkg.url);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Sync when server data changes (e.g. after a refetch).
+  const [lastId, setLastId] = useState(pkg.id);
+  if (pkg.id !== lastId) {
+    setLastId(pkg.id);
+    setEditUrl(pkg.url);
+    setErr(null);
+  }
+
+  const dirty = editUrl !== pkg.url;
+
+  const updateMut = useMutation({
+    mutationFn: () => updateEnvPackage(envName, pkg.id, editUrl),
+    onSuccess: () => {
+      setErr(null);
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 1200);
+      onRemoved();
+    },
+    onError: (e) => {
+      setErr(e instanceof Error ? e.message : 'Save failed');
+    },
+  });
+
+  const removeMut = useMutation({
+    mutationFn: () => removeEnvPackage(envName, pkg.id),
+    onSuccess: onRemoved,
+  });
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-mono-tabular text-[color:var(--text-2)] w-16 flex-shrink-0">
+          {pkg.architecture || 'default'}
+        </span>
+        <input
+          type="url"
+          value={editUrl}
+          onChange={(e) => setEditUrl(e.target.value)}
+          className={cn(
+            'flex-1 min-w-0 px-2.5 py-1 rounded-md text-[11px] font-mono-tabular',
+            'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+            'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
+            'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
+          )}
+        />
+        {pkg.is_default && (
+          <span className="text-[9px] px-1 rounded bg-[color:var(--bg-2)] text-[color:var(--text-3)] flex-shrink-0">
+            default
+          </span>
+        )}
+        {dirty && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)] flex-shrink-0">
+            pending
+          </span>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => updateMut.mutate()}
+          disabled={!dirty || updateMut.isPending}
+        >
+          {updateMut.isPending ? 'Saving…' : savedFlash ? 'Saved ✓' : 'Save'}
+        </Button>
+        <button
+          type="button"
+          onClick={() => removeMut.mutate()}
+          disabled={removeMut.isPending}
+          className="text-[10px] text-[color:var(--danger)] hover:underline disabled:opacity-40 flex-shrink-0"
+        >
+          remove
+        </button>
+      </div>
+      {err && (
+        <p className="mt-1 ml-[72px] text-[10px] text-[color:var(--danger)]">{err}</p>
+      )}
+    </div>
   );
 }

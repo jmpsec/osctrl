@@ -126,6 +126,14 @@ func CreateEnvironment(backend *gorm.DB) *EnvManager {
 	if err := backend.AutoMigrate(&TLSEnvironment{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (tls_environments): %v", err)
 	}
+	// table environment_packages
+	if err := backend.AutoMigrate(&EnvironmentPackage{}); err != nil {
+		log.Fatal().Msgf("Failed to AutoMigrate table (environment_packages): %v", err)
+	}
+	// Migrate legacy single-package fields into the new table (idempotent).
+	if err := e.MigrateLegacyPackages(); err != nil {
+		log.Warn().Err(err).Msg("legacy package migration failed")
+	}
 	return e
 }
 
