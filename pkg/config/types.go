@@ -74,15 +74,16 @@ type TLSConfiguration struct {
 	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
 	// Optional sections — nil when absent from the YAML file. The service
 	// boot code and serviceconfig.Resolve handle nil gracefully.
-	BatchWriter     *YAMLConfigurationWriter    `mapstructure:"batchWriter"`
-	Osquery         *YAMLConfigurationOsquery   `mapstructure:"osquery"`
-	ConfigEndpoints *YAMLConfigurationEndpoints `mapstructure:"configEndpoints"`
-	Osctrld         *YAMLConfigurationOsctrld   `mapstructure:"osctrld"`
-	Metrics         *YAMLConfigurationMetrics   `mapstructure:"metrics"`
-	TLS             *YAMLConfigurationTLS       `mapstructure:"tls"`
-	Logger          *YAMLConfigurationLogger    `mapstructure:"logger"`
-	Carver          *YAMLConfigurationCarver    `mapstructure:"carver"`
-	Debug           *YAMLConfigurationDebug     `mapstructure:"debug"`
+	BatchWriter     *YAMLConfigurationWriter     `mapstructure:"batchWriter"`
+	Osquery         *YAMLConfigurationOsquery    `mapstructure:"osquery"`
+	ConfigEndpoints *YAMLConfigurationEndpoints  `mapstructure:"configEndpoints"`
+	Osctrld         *YAMLConfigurationOsctrld    `mapstructure:"osctrld"`
+	Metrics         *YAMLConfigurationMetrics    `mapstructure:"metrics"`
+	TLS             *YAMLConfigurationTLS        `mapstructure:"tls"`
+	Logger          *YAMLConfigurationLogger     `mapstructure:"logger"`
+	Carver          *YAMLConfigurationCarver     `mapstructure:"carver"`
+	Debug           *YAMLConfigurationDebug      `mapstructure:"debug"`
+	RateLimits      *YAMLConfigurationRateLimits `mapstructure:"rateLimits"`
 }
 
 // APIConfiguration to hold osctrl-api configuration values. Required sections
@@ -92,14 +93,15 @@ type APIConfiguration struct {
 	DB      YAMLConfigurationDB      `mapstructure:"db"`
 	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
 	// Optional sections — nil when absent from the YAML file.
-	Osquery *YAMLConfigurationOsquery `mapstructure:"osquery"`
-	SAML    *YAMLConfigurationSAML    `mapstructure:"saml"`
-	OIDC    *YAMLConfigurationOIDC    `mapstructure:"oidc"`
-	JWT     *YAMLConfigurationJWT     `mapstructure:"jwt"`
-	TLS     *YAMLConfigurationTLS     `mapstructure:"tls"`
-	Logger  *YAMLConfigurationLogger  `mapstructure:"logger"`
-	Carver  *YAMLConfigurationCarver  `mapstructure:"carver"`
-	Debug   *YAMLConfigurationDebug   `mapstructure:"debug"`
+	Osquery    *YAMLConfigurationOsquery    `mapstructure:"osquery"`
+	SAML       *YAMLConfigurationSAML       `mapstructure:"saml"`
+	OIDC       *YAMLConfigurationOIDC       `mapstructure:"oidc"`
+	JWT        *YAMLConfigurationJWT        `mapstructure:"jwt"`
+	TLS        *YAMLConfigurationTLS        `mapstructure:"tls"`
+	Logger     *YAMLConfigurationLogger     `mapstructure:"logger"`
+	Carver     *YAMLConfigurationCarver     `mapstructure:"carver"`
+	Debug      *YAMLConfigurationDebug      `mapstructure:"debug"`
+	RateLimits *YAMLConfigurationRateLimits `mapstructure:"rateLimits"`
 }
 
 // YAMLConfigurationService to hold the service configuration values
@@ -245,6 +247,23 @@ type YAMLConfigurationDebug struct {
 	// log, queryRead, queryWrite, carveInit) can match; pre-enroll /
 	// no-node endpoints are skipped while a filter is set.
 	TargetHostIdentifier string `yaml:"hostIdentifier"`
+}
+
+// YAMLConfigurationRateLimit holds one token-bucket rate limit.
+type YAMLConfigurationRateLimit struct {
+	Burst      int           `yaml:"burst" mapstructure:"burst"`
+	Period     time.Duration `yaml:"period" mapstructure:"period"`
+	EvictAfter time.Duration `yaml:"evictAfter" mapstructure:"evictAfter"`
+	RetryAfter int           `yaml:"retryAfter" mapstructure:"retryAfter"`
+	MaxBuckets int           `yaml:"maxBuckets" mapstructure:"maxBuckets"`
+}
+
+// YAMLConfigurationRateLimits holds service request-throttle settings.
+type YAMLConfigurationRateLimits struct {
+	Login              YAMLConfigurationRateLimit `yaml:"login" mapstructure:"login"`
+	PreAuth            YAMLConfigurationRateLimit `yaml:"preAuth" mapstructure:"preAuth"`
+	ServiceConfigApply YAMLConfigurationRateLimit `yaml:"serviceConfigApply" mapstructure:"serviceConfigApply"`
+	Enroll             YAMLConfigurationRateLimit `yaml:"enroll" mapstructure:"enroll"`
 }
 
 // YAMLConfigurationWriter to hold the DB batch writer configuration values

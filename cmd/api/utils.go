@@ -17,6 +17,7 @@ func loadedYAMLToServiceParams(yml config.APIConfiguration, loadedFile string) *
 		Service:           &yml.Service,
 		DB:                &yml.DB,
 		Redis:             &yml.Redis,
+		RateLimits:        config.DefaultRateLimitsPtr(),
 	}
 	// Optional sections — only set when the YAML provided them.
 	if yml.Osquery != nil {
@@ -42,6 +43,9 @@ func loadedYAMLToServiceParams(yml config.APIConfiguration, loadedFile string) *
 	}
 	if yml.Debug != nil {
 		params.Debug = yml.Debug
+	}
+	if yml.RateLimits != nil {
+		params.RateLimits = yml.RateLimits
 	}
 	return params
 }

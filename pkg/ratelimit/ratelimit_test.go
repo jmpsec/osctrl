@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/jmpsec/osctrl/pkg/config"
 )
 
 // TestAllowBurst verifies a Limiter allows up to `burst` calls in a single
@@ -63,6 +65,26 @@ func TestHTTPMiddleware429s(t *testing.T) {
 	}
 	if rejected != 1 {
 		t.Fatalf("onReject calls: got %d, want 1", rejected)
+	}
+}
+
+func TestNewFromConfigUsesRetryAfter(t *testing.T) {
+	l := NewFromConfig(config.YAMLConfigurationRateLimit{
+		Burst:      1,
+		Period:     time.Second,
+		EvictAfter: time.Minute,
+		RetryAfter: 17,
+	})
+	h := l.HTTPMiddleware(func(r *http.Request) string { return "fixed" }, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("POST", "/login", nil))
+	second := httptest.NewRecorder()
+	h.ServeHTTP(second, httptest.NewRequest("POST", "/login", nil))
+
+	if got := second.Header().Get("Retry-After"); got != "17" {
+		t.Fatalf("Retry-After = %q, want 17", got)
 	}
 }
 

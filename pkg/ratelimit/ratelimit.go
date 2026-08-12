@@ -8,9 +8,11 @@ package ratelimit
 
 import (
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"golang.org/x/time/rate"
 )
@@ -35,6 +37,7 @@ type Limiter struct {
 	maxBuckets    int
 	rate          rate.Limit
 	burst         int
+	retryAfter    int
 	evictAfter    time.Duration
 	lastEviction  time.Time
 	evictInterval time.Duration
@@ -58,12 +61,31 @@ func New(burst int, per, evictAfter time.Duration) *Limiter {
 
 // NewWithCap is New with an explicit ceiling on the per-key map size.
 func NewWithCap(burst int, per, evictAfter time.Duration, maxBuckets int) *Limiter {
+	return newWithRetryAfter(burst, per, evictAfter, maxBuckets, 60)
+}
+
+// NewFromConfig returns a Limiter from service configuration values.
+func NewFromConfig(cfg config.YAMLConfigurationRateLimit) *Limiter {
+	maxBuckets := cfg.MaxBuckets
+	if maxBuckets <= 0 {
+		maxBuckets = DefaultMaxBuckets
+	}
+	return newWithRetryAfter(cfg.Burst, cfg.Period, cfg.EvictAfter, maxBuckets, cfg.RetryAfter)
+}
+
+func newWithRetryAfter(burst int, per, evictAfter time.Duration, maxBuckets, retryAfter int) *Limiter {
 	interval := evictAfter / 2
 	if interval <= 0 {
 		interval = time.Second
 	}
 	if maxBuckets <= 0 {
 		maxBuckets = DefaultMaxBuckets
+	}
+	if burst <= 0 {
+		burst = 1
+	}
+	if per <= 0 {
+		per = time.Minute
 	}
 	r := rate.Every(per / time.Duration(burst))
 	return &Limiter{
@@ -72,6 +94,7 @@ func NewWithCap(burst int, per, evictAfter time.Duration, maxBuckets int) *Limit
 		maxBuckets:    maxBuckets,
 		rate:          r,
 		burst:         burst,
+		retryAfter:    retryAfter,
 		evictAfter:    evictAfter,
 		evictInterval: interval,
 	}
@@ -128,7 +151,7 @@ func (l *Limiter) HTTPMiddleware(keyFn func(*http.Request) string, onReject func
 				if onReject != nil {
 					onReject(r, key)
 				}
-				w.Header().Set("Retry-After", "60")
+				w.Header().Set("Retry-After", strconv.Itoa(l.retryAfter))
 				http.Error(w, "too many requests", http.StatusTooManyRequests)
 				return
 			}

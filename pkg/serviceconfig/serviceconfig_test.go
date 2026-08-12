@@ -3,6 +3,7 @@ package serviceconfig
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,6 +50,9 @@ func testTLSParams() *config.ServiceParameters {
 		Logger:  &config.YAMLConfigurationLogger{Type: config.LoggingDB, LoggerDBSame: true},
 		Carver:  &config.YAMLConfigurationCarver{Type: config.CarverLocal, Local: &config.LocalCarver{CarvesDir: "/carves"}},
 		Debug:   &config.YAMLConfigurationDebug{EnableHTTP: false},
+		RateLimits: &config.YAMLConfigurationRateLimits{
+			Enroll: config.YAMLConfigurationRateLimit{Burst: 20, Period: time.Minute, EvictAfter: 10 * time.Minute, RetryAfter: 60},
+		},
 		BatchWriter: &config.YAMLConfigurationWriter{
 			WriterBatchSize:  50,
 			WriterBufferSize: 2000,
@@ -83,6 +87,11 @@ func testAPIParams() *config.ServiceParameters {
 		},
 		Carver: &config.YAMLConfigurationCarver{Type: config.CarverDB},
 		Debug:  &config.YAMLConfigurationDebug{EnableHTTP: false},
+		RateLimits: &config.YAMLConfigurationRateLimits{
+			Login:              config.YAMLConfigurationRateLimit{Burst: 10, Period: time.Minute, EvictAfter: 10 * time.Minute, RetryAfter: 60},
+			PreAuth:            config.YAMLConfigurationRateLimit{Burst: 60, Period: time.Minute, EvictAfter: 10 * time.Minute, RetryAfter: 60},
+			ServiceConfigApply: config.YAMLConfigurationRateLimit{Burst: 3, Period: 10 * time.Minute, EvictAfter: 30 * time.Minute, RetryAfter: 60},
+		},
 	}
 }
 
@@ -196,6 +205,7 @@ func TestSeed_ServiceSpecificSections(t *testing.T) {
 	assert.Contains(t, apiNames, "saml")
 	assert.Contains(t, apiNames, "oidc")
 	assert.Contains(t, apiNames, "jwt")
+	assert.Contains(t, apiNames, "rateLimits")
 	assert.NotContains(t, apiNames, "batchWriter")
 	assert.NotContains(t, apiNames, "metrics")
 	assert.NotContains(t, apiNames, "osctrld")
@@ -204,6 +214,7 @@ func TestSeed_ServiceSpecificSections(t *testing.T) {
 	assert.Contains(t, tlsNames, "configEndpoints")
 	assert.Contains(t, tlsNames, "osctrld")
 	assert.Contains(t, tlsNames, "metrics")
+	assert.Contains(t, tlsNames, "rateLimits")
 	assert.NotContains(t, tlsNames, "saml")
 	assert.NotContains(t, tlsNames, "oidc")
 	assert.NotContains(t, tlsNames, "jwt")
@@ -411,6 +422,8 @@ func TestIsEditable(t *testing.T) {
 	assert.True(t, m.IsEditable(config.ServiceAPI, "debug"))
 	assert.False(t, m.IsEditable(config.ServiceTLS, "db"))
 	assert.False(t, m.IsEditable(config.ServiceTLS, "logger"))
+	assert.True(t, m.IsEditable(config.ServiceTLS, "rateLimits"))
+	assert.True(t, m.IsEditable(config.ServiceAPI, "rateLimits"))
 	assert.False(t, m.IsEditable(config.ServiceTLS, "nonexistent"))
 	assert.False(t, m.IsEditable("bogus", "debug"))
 }
@@ -575,6 +588,20 @@ func TestResolve_MultipleDBEdits(t *testing.T) {
 	assert.True(t, cfg.Debug.EnableHTTP)
 	assert.Equal(t, "5.12.2", cfg.Osquery.Version)
 	assert.Equal(t, "./data/5.12.2.json", cfg.Osquery.TablesFile)
+}
+
+func TestResolve_RateLimitsSection_OverridesYAML(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testAPIParams()
+	require.NoError(t, m.Seed(config.ServiceAPI, cfg, 0))
+
+	_, err := m.UpdateSection(config.ServiceAPI, "rateLimits", `{"login":{"burst":7,"period":60000000000,"evictAfter":600000000000,"retryAfter":23},"preAuth":{"burst":60,"period":60000000000,"evictAfter":600000000000,"retryAfter":60},"serviceConfigApply":{"burst":3,"period":600000000000,"evictAfter":1800000000000,"retryAfter":60},"enroll":{"burst":20,"period":60000000000,"evictAfter":600000000000,"retryAfter":60}}`, 0)
+	require.NoError(t, err)
+
+	require.NoError(t, m.Resolve(config.ServiceAPI, cfg, 0))
+	assert.Equal(t, 7, cfg.RateLimits.Login.Burst)
+	assert.Equal(t, 23, cfg.RateLimits.Login.RetryAfter)
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

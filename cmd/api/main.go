@@ -174,6 +174,11 @@ func loadYAMLConfiguration(file string) (config.APIConfiguration, error) {
 	if !validAuth[cfg.Service.Auth] {
 		return cfg, fmt.Errorf("invalid auth method: '%s'", cfg.Service.Auth)
 	}
+	if cfg.RateLimits != nil {
+		if err := config.ValidateRateLimits(*cfg.RateLimits, "login", "preAuth", "serviceConfigApply"); err != nil {
+			return cfg, err
+		}
+	}
 	// No errors!
 	return cfg, nil
 }
@@ -205,7 +210,8 @@ func init() {
 			S3:    &config.S3Carver{},
 			Local: &config.LocalCarver{},
 		},
-		Debug: &config.YAMLConfigurationDebug{},
+		Debug:      &config.YAMLConfigurationDebug{},
+		RateLimits: config.DefaultRateLimitsPtr(),
 	}
 	// Initialize CLI flags using the config package
 	flags = config.InitAPIFlags(flagParams)
@@ -388,6 +394,12 @@ func osctrlAPIService() {
 	if err := serviceConfigMgr.Resolve(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error resolving service config - %v", err)
 	}
+	if flagParams.RateLimits == nil {
+		flagParams.RateLimits = config.DefaultRateLimitsPtr()
+	}
+	if err := config.ValidateRateLimits(*flagParams.RateLimits, "login", "preAuth", "serviceConfigApply"); err != nil {
+		log.Fatal().Msgf("Invalid rate limit configuration - %v", err)
+	}
 	// Initialize audit log manager
 	if flagParams.Service.AuditLog {
 		log.Info().Msg("Initialize audit log")
@@ -486,12 +498,12 @@ func osctrlAPIService() {
 	muxAPI.HandleFunc("GET "+_apiPath(checksNoAuthPath), handlersApi.CheckHandlerNoAuth)
 
 	// ///////////////////////// UNAUTHENTICATED
-	// Login is the only password-acceptance surface on the API. Cap to
-	// 10 attempts per IP per minute (token-bucket; bursts of 10, refill
-	// at 1/6s) and 429 the rest. Rejections are audit-logged inside the
-	// LoginHandler / RateLimit middleware so SoC tooling sees the spray.
+	// Login is the only password-acceptance surface on the API. By default
+	// it is capped to 10 attempts per IP per minute and 429s the rest.
+	// Rejections are audit-logged inside the LoginHandler / RateLimit
+	// middleware so SoC tooling sees the spray.
 	//
-	loginLimiter := ratelimit.New(10, time.Minute, 10*time.Minute)
+	loginLimiter := ratelimit.NewFromConfig(flagParams.RateLimits.Login)
 	loginRateLimit := loginLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
 		handlersApi.AuditLog.FailedLogin("", utils.GetIP(r), "rate limit exceeded")
 	})
@@ -500,11 +512,11 @@ func osctrlAPIService() {
 	// Read-only pre-auth endpoints (env list for the login picker).
 	// The env list is the one piece of data the login page legitimately
 	// needs before the user has a session, so it stays pre-auth —
-	// rate-limited at 60/min/IP to block low-effort scanning probes.
+	// rate-limited at 60/min/IP by default to block low-effort scanning probes.
 	// React strict-mode / browser reloads easily exceed 10/min during
 	// normal use, so the preAuth budget is more permissive than the
 	// credential-spray budget on /login.
-	preAuthLimiter := ratelimit.New(60, time.Minute, 10*time.Minute)
+	preAuthLimiter := ratelimit.NewFromConfig(flagParams.RateLimits.PreAuth)
 	preAuthRateLimit := preAuthLimiter.HTTPMiddleware(ratelimit.KeyByIP, nil)
 	muxAPI.Handle("GET "+_apiPath(apiLoginPath)+"/environments", preAuthRateLimit(http.HandlerFunc(handlersApi.LoginEnvironmentsHandler)))
 	// Auth-methods discovery: the SPA polls this to decide whether to
@@ -903,11 +915,11 @@ func osctrlAPIService() {
 		"PATCH "+_apiPath(apiSettingsPath)+"/{service}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: service config (phase 1 read + phase 2 editable PUT + apply)
-	// Rate-limit the restart endpoint to 3 per 10 minutes per IP — strict
-	// enough to prevent brute-forcing restarts, generous enough for an
-	// operator to retry after a failed restart. Rejections are audit-logged
-	// so SoC tooling sees attempted abuse.
-	restartLimiter := ratelimit.New(3, 10*time.Minute, 30*time.Minute)
+	// Rate-limit the restart endpoint to 3 per 10 minutes per IP by default
+	// — strict enough to prevent brute-forcing restarts, generous enough
+	// for an operator to retry after a failed restart. Rejections are
+	// audit-logged so SoC tooling sees attempted abuse.
+	restartLimiter := ratelimit.NewFromConfig(flagParams.RateLimits.ServiceConfigApply)
 	restartRateLimit := restartLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
 		handlersApi.AuditLog.SettingsAction("", fmt.Sprintf("service-config apply rate limit exceeded from %s", key), utils.GetIP(r))
 	})

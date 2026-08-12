@@ -134,7 +134,8 @@ func init() {
 			S3:    &config.S3Carver{},
 			Local: &config.LocalCarver{},
 		},
-		Debug: &config.YAMLConfigurationDebug{},
+		Debug:      &config.YAMLConfigurationDebug{},
+		RateLimits: config.DefaultRateLimitsPtr(),
 	}
 	// Initialize CLI flags using the config package
 	flags = config.InitTLSFlags(flagParams)
@@ -269,6 +270,12 @@ func osctrlService() {
 	if err := serviceConfigMgr.Resolve(config.ServiceTLS, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error resolving service config - %v", err)
 	}
+	if flagParams.RateLimits == nil {
+		flagParams.RateLimits = config.DefaultRateLimitsPtr()
+	}
+	if err := config.ValidateRateLimits(*flagParams.RateLimits, "enroll"); err != nil {
+		log.Fatal().Msgf("Invalid rate limit configuration - %v", err)
+	}
 	settingsCacheTTL := time.Duration(settingsmgr.RefreshSettings(config.ServiceTLS)) * time.Second
 	if settingsCacheTTL <= 0 {
 		settingsCacheTTL = time.Duration(defaultRefresh) * time.Second
@@ -323,9 +330,9 @@ func osctrlService() {
 	if err != nil {
 		log.Fatal().Msgf("error initializing audit log manager: %v", err)
 	}
-	// Per-IP rate limit on /enroll. Bursts of 20 per minute, idle eviction
-	// after 10 minutes.
-	enrollLimiter := ratelimit.New(20, time.Minute, 10*time.Minute)
+	// Per-IP rate limit on /enroll. Defaults to bursts of 20 per minute,
+	// idle eviction after 10 minutes.
+	enrollLimiter := ratelimit.NewFromConfig(flagParams.RateLimits.Enroll)
 
 	// Initialize TLS handlers before router
 	log.Info().Msg("Initializing handlers")

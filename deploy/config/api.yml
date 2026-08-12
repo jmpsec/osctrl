@@ -78,6 +78,33 @@ redis:
   db: 0
   connRetry: 10
 
+# HTTP request rate limits. Values match the built-in defaults.
+rateLimits:
+  login:
+    burst: 10
+    period: 1m
+    evictAfter: 10m
+    retryAfter: 60
+    maxBuckets: 0
+  preAuth:
+    burst: 60
+    period: 1m
+    evictAfter: 10m
+    retryAfter: 60
+    maxBuckets: 0
+  serviceConfigApply:
+    burst: 3
+    period: 10m
+    evictAfter: 30m
+    retryAfter: 60
+    maxBuckets: 0
+  enroll:
+    burst: 20
+    period: 1m
+    evictAfter: 10m
+    retryAfter: 60
+    maxBuckets: 0
+
 # Osquery nodes configuration
 osquery:
   version: 5.23.1
