@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -693,6 +695,10 @@ func logStatus(ctx context.Context, client *HTTPClient, node *Node, urls map[str
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			// Wait for the node to be enrolled before sending requests.
+			if node.Key == "" {
+				continue
+			}
 			start := time.Now()
 			headers := map[string]string{"X-Real-IP": node.IP}
 			data := generateLogStatus(*node)
@@ -736,6 +742,9 @@ func logResult(ctx context.Context, client *HTTPClient, node *Node, urls map[str
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			if node.Key == "" {
+				continue
+			}
 			start := time.Now()
 			headers := map[string]string{"X-Real-IP": node.IP}
 			data := generateLogResult(*node)
@@ -779,6 +788,9 @@ func configRequest(ctx context.Context, client *HTTPClient, node *Node, urls map
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			if node.Key == "" {
+				continue
+			}
 			start := time.Now()
 			headers := map[string]string{"X-Real-IP": node.IP}
 			data := generateConfigRequest(node.Key)
@@ -827,6 +839,9 @@ func queryRead(ctx context.Context, client *HTTPClient, node *Node, urls map[str
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			if node.Key == "" {
+				continue
+			}
 			start := time.Now()
 			headers := map[string]string{"X-Real-IP": node.IP}
 			data := generateQueryReadRequest(node.Key)
@@ -939,6 +954,9 @@ func sendPostureData(ctx context.Context, client *HTTPClient, node *Node, urls m
 	level := internalworkload.PostureLevel(config.PostureLevel)
 
 	sendOnce := func() {
+		if node.Key == "" {
+			return
+		}
 		results := internalworkload.GeneratePostureResults(level, r)
 		for queryName, rows := range results {
 			data := generateQueryWriteRequest(*node, queryName, rows)
@@ -952,9 +970,23 @@ func sendPostureData(ctx context.Context, client *HTTPClient, node *Node, urls m
 		}
 	}
 
-	// Send immediately on startup.
-	sendOnce()
+	// Wait for the node to be enrolled, then send posture data immediately.
+	// Poll the key every second until enrollment completes.
+	enrollTicker := time.NewTicker(1 * time.Second)
+	defer enrollTicker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-enrollTicker.C:
+			if node.Key != "" {
+				sendOnce()
+				goto loop
+			}
+		}
+	}
 
+loop:
 	// Then every 24 hours.
 	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
@@ -1170,6 +1202,68 @@ func (gs *GlobalStats) GetNodeCounts() (int, int) {
 }
 
 // printSummary prints a summary of statistics
+// printSweepProgress prints a multi-line sweep progress message for non-dashboard modes.
+// Shows stage info, enrolled nodes, request rate, error rate, and latency.
+func printSweepProgress(stage, highestStable, targetNodes int, phase string, remaining time.Duration, totalNodes int) {
+	enrolled := countEnrolledNodes()
+	totalReqs, successReqs, failReqs, avgLatency, p95Latency := getSweepRequestStats()
+	errorRate := 0.0
+	if totalReqs > 0 {
+		errorRate = float64(failReqs) / float64(totalReqs) * 100
+	}
+	uptime := globalStats.GetUptime()
+	rate := 0.0
+	if uptime.Seconds() > 0 {
+		rate = float64(totalReqs) / uptime.Seconds()
+	}
+
+	fmt.Printf("\r\n  %s\n", strings.Repeat("-", 80))
+	fmt.Printf("  SWEEP STAGE %d  |  target nodes: %d  |  enrolled: %d  |  %s (%s left)\n",
+		stage+1, targetNodes, enrolled, phase, remaining.Round(time.Second))
+	fmt.Printf("  uptime: %s  |  requests: %d (%.1f/s)  |  ok: %d  |  fail: %d (%.1f%%)\n",
+		uptime.Round(time.Second), totalReqs, rate, successReqs, failReqs, errorRate)
+	if avgLatency > 0 {
+		fmt.Printf("  avg latency: %dms  |  p95: %dms\n",
+			avgLatency.Milliseconds(), p95Latency.Milliseconds())
+	}
+	if highestStable >= 0 {
+		fmt.Printf("  highest stable stage: %d\n", highestStable)
+	}
+}
+
+// countEnrolledNodes counts how many nodes across all active sweep stages
+// have a non-empty key. Uses a global counter that enrollNodes updates.
+var enrolledCount int64
+
+func countEnrolledNodes() int {
+	return int(atomic.LoadInt64(&enrolledCount))
+}
+
+// getSweepRequestStats aggregates request stats across all operation types.
+func getSweepRequestStats() (total, success, fail int64, avg, p95 time.Duration) {
+	ops := []OperationType{EnrollOp, StatusOp, ResultOp, ConfigOp, QueryReadOp, QueryWriteOp}
+	var totalLatency time.Duration
+	var totalCount int64
+	for _, op := range ops {
+		stats := globalStats.GetOperationStats(op)
+		_, _, opAvg, opP95, _, opCount, opSuccess, opFail := stats.GetStats()
+		total += opCount
+		success += opSuccess
+		fail += opFail
+		if opCount > 0 {
+			totalLatency += opAvg * time.Duration(opCount)
+			totalCount += opCount
+		}
+		if opP95 > p95 {
+			p95 = opP95
+		}
+	}
+	if totalCount > 0 {
+		avg = totalLatency / time.Duration(totalCount)
+	}
+	return
+}
+
 func printSummary() {
 	uptime := globalStats.GetUptime()
 
@@ -1664,12 +1758,30 @@ func (d *dashboardSession) Events() <-chan ui.Event {
 	return d.events
 }
 
-// enrollNodes enrolls all nodes that lack a key. Enrollment is done
-// concurrently with a bounded parallelism cap so 10,000 nodes don't
-// take 10,000 sequential HTTP round-trips to start. The cap of 100
-// keeps the TLS server's enroll handler from being overwhelmed at
-// startup while still finishing in seconds rather than minutes.
+// enrollNodes enrolls all nodes that lack a key. When EnrollDelay > 0,
+// enrollments are sequential with a delay between each one to avoid
+// rate limiting. When EnrollDelay is 0, enrollments run concurrently
+// with a bounded parallelism cap of 100 so 10,000 nodes don't take
+// 10,000 sequential HTTP round-trips to start.
 func enrollNodes(client *HTTPClient, nodes []Node, secret string, urls map[string]string, config FakeNewsConfig) {
+	if config.EnrollDelay > 0 {
+		// Sequential mode: one enrollment at a time, with a delay between
+		// each. This is the safe mode for rate-limited endpoints.
+		for i := range nodes {
+			if nodes[i].Key != "" {
+				continue
+			}
+			key := enrollNode(client, nodes[i], secret, urls["enroll"], config)
+			nodes[i].Key = key
+			if key != "" {
+				atomic.AddInt64(&enrolledCount, 1)
+			}
+			time.Sleep(time.Duration(config.EnrollDelay) * time.Millisecond)
+		}
+		return
+	}
+
+	// Concurrent mode: bounded parallelism for fast bulk enrollment.
 	const maxConcurrency = 100
 	sem := make(chan struct{}, maxConcurrency)
 	var wg sync.WaitGroup
@@ -1688,10 +1800,10 @@ func enrollNodes(client *HTTPClient, nodes []Node, secret string, urls map[strin
 			mu.Lock()
 			nodes[idx].Key = key
 			mu.Unlock()
+			if key != "" {
+				atomic.AddInt64(&enrolledCount, 1)
+			}
 		}(i)
-		if config.EnrollDelay > 0 {
-			time.Sleep(time.Duration(config.EnrollDelay) * time.Millisecond)
-		}
 	}
 	wg.Wait()
 }
@@ -1700,6 +1812,11 @@ func startTraffic(ctx context.Context, client *HTTPClient, nodes []Node, urls ma
 	var mutex sync.Mutex
 
 	for i := range nodes {
+		// Skip nodes that failed to enroll — no point sending traffic
+		// with an empty node_key, it just generates errors.
+		if nodes[i].Key == "" {
+			continue
+		}
 		// Per-node write semaphore: caps concurrent queryWrite
 		// goroutines so a query flood doesn't produce a thundering
 		// herd against /write. 2 allows a small amount of pipelining
@@ -1742,7 +1859,14 @@ func runSweep(parsedConfig internalconfig.Config, config FakeNewsConfig, client 
 		lastTargetNodes = targetNodes * len(targets)
 		stageConfig := config
 		stageConfig.Nodes = targetNodes
+		// In sweep mode, default to a small enroll delay if not explicitly
+		// set, to avoid bursting the server with simultaneous enrollments
+		// that cause errors unrelated to the load we are trying to measure.
+		if stageConfig.EnrollDelay == 0 {
+			stageConfig.EnrollDelay = 50
+		}
 		resetGlobalStats()
+		atomic.StoreInt64(&enrolledCount, 0)
 
 		stageCtx, cancel := context.WithCancel(context.Background())
 		totalNodes := 0
@@ -1776,6 +1900,9 @@ func runSweep(parsedConfig internalconfig.Config, config FakeNewsConfig, client 
 					TargetNodes:        targetNodes,
 					SettleRemaining:    time.Until(settleUntil),
 				})
+				if config.OutputMode != DashboardMode && config.OutputMode != QuietMode && config.OutputMode != JSONMode {
+					printSweepProgress(stage, highestStable, targetNodes, "settling", time.Until(settleUntil), totalNodes)
+				}
 			}
 		}
 
@@ -1798,6 +1925,9 @@ func runSweep(parsedConfig internalconfig.Config, config FakeNewsConfig, client 
 					TargetNodes:        targetNodes,
 					SampleRemaining:    time.Until(sampleUntil),
 				})
+				if config.OutputMode != DashboardMode && config.OutputMode != QuietMode && config.OutputMode != JSONMode {
+					printSweepProgress(stage, highestStable, targetNodes, "sampling", time.Until(sampleUntil), totalNodes)
+				}
 			}
 		}
 
@@ -1812,6 +1942,10 @@ func runSweep(parsedConfig internalconfig.Config, config FakeNewsConfig, client 
 		}
 
 		highestStable = stage
+		if config.OutputMode != DashboardMode && config.OutputMode != QuietMode {
+			fmt.Printf("\n  stage %d PASSED - %d nodes, highest stable: stage %d\n",
+				stage, targetNodes, highestStable)
+		}
 	}
 
 	runReport := internalreport.RunReport{
@@ -1838,6 +1972,10 @@ func runSweep(parsedConfig internalconfig.Config, config FakeNewsConfig, client 
 func run() error {
 	parsedConfig, err := internalconfig.Parse(os.Args[1:])
 	if err != nil {
+		if errors.Is(err, internalconfig.ErrHelpRequested) {
+			internalconfig.Usage(os.Stdout)
+			return nil
+		}
 		return err
 	}
 
@@ -1855,6 +1993,7 @@ func run() error {
 		SummaryInterval: parsedConfig.SummaryInterval,
 		StateFile:       parsedConfig.StateFile,
 		PostureLevel:    parsedConfig.PostureLevel,
+		EnrollDelay:     parsedConfig.EnrollDelay,
 	}
 
 	osqueryRunner = internalosquery.NewDefault(parsedConfig.OSQueryBinary)
