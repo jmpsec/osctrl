@@ -169,6 +169,12 @@ const FIELD_HELP: Record<string, string> = {
   Compress: 'Compress rotated log files with gzip.',
   // Osctrld
   // (uses Enabled, already defined above)
+  // Rate limits
+  burst: 'Maximum burst allowed before the limiter starts returning 429.',
+  period: 'Refill period for the token bucket, for example 30s, 1m, or 10m.',
+  evictAfter: 'How long idle caller buckets are kept before being forgotten.',
+  retryAfter: 'Retry-After header value, in seconds, returned with 429 responses.',
+  maxBuckets: 'Maximum caller buckets kept in memory. Use 0 for the service default.',
 };
 
 type FieldType = 'boolean' | 'number' | 'string' | 'string[]' | 'object' | 'null';
@@ -201,6 +207,76 @@ function parseConfigValue(raw: string): ParsedConfig {
     }
   } catch { /* fall through */ }
   return { kind: 'object', fields: {} };
+}
+
+type RateLimitDraft = {
+  burst: number;
+  period: number;
+  evictAfter: number;
+  retryAfter: number;
+  maxBuckets: number;
+};
+
+const RATE_LIMIT_ORDER = ['login', 'preAuth', 'serviceConfigApply', 'enroll'] as const;
+const API_RATE_LIMITS = ['login', 'preAuth', 'serviceConfigApply'] as const;
+const TLS_RATE_LIMITS = ['enroll'] as const;
+const DURATION_UNITS: Array<[string, number]> = [
+  ['h', 3_600_000_000_000],
+  ['m', 60_000_000_000],
+  ['s', 1_000_000_000],
+  ['ms', 1_000_000],
+  ['us', 1_000],
+  ['ns', 1],
+];
+
+function readNumber(obj: Record<string, unknown>, lower: string, upper: string): number {
+  const value = obj[lower] ?? obj[upper];
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function rateLimitNamesForService(service: string): readonly string[] {
+  return service === 'tls' ? TLS_RATE_LIMITS : API_RATE_LIMITS;
+}
+
+function normalizeRateLimits(value: Record<string, unknown>, service: string): Record<string, RateLimitDraft> {
+  const aliases: Record<string, string> = {
+    login: 'Login',
+    preAuth: 'PreAuth',
+    serviceConfigApply: 'ServiceConfigApply',
+    enroll: 'Enroll',
+  };
+  const out: Record<string, RateLimitDraft> = {};
+  for (const name of rateLimitNamesForService(service)) {
+    const raw = value[name] ?? value[aliases[name]];
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+    const obj = raw as Record<string, unknown>;
+    out[name] = {
+      burst: readNumber(obj, 'burst', 'Burst'),
+      period: readNumber(obj, 'period', 'Period'),
+      evictAfter: readNumber(obj, 'evictAfter', 'EvictAfter'),
+      retryAfter: readNumber(obj, 'retryAfter', 'RetryAfter'),
+      maxBuckets: readNumber(obj, 'maxBuckets', 'MaxBuckets'),
+    };
+  }
+  return out;
+}
+
+function formatDuration(ns: number): string {
+  if (!Number.isFinite(ns) || ns <= 0) return '0s';
+  for (const [unit, size] of DURATION_UNITS) {
+    if (ns % size === 0) return `${ns / size}${unit}`;
+  }
+  return `${ns}ns`;
+}
+
+function parseDuration(raw: string): number | null {
+  const match = raw.trim().match(/^(\d+)(ns|us|µs|ms|s|m|h)$/);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  const unit = match[2] === 'µs' ? 'us' : match[2];
+  const found = DURATION_UNITS.find(([u]) => u === unit);
+  if (!found) return null;
+  return amount * found[1];
 }
 
 export function ServiceConfigPage() {
@@ -424,26 +500,34 @@ function ConfigSectionCard({
   const parsed = useMemo(() => parseConfigValue(section.Value), [section.Value]);
   const isArray = parsed.kind === 'array';
   const originalFields = isArray ? {} as Record<string, unknown> : parsed.fields;
+  const editableOriginalFields = useMemo(
+    () => (section.Name === 'rateLimits' ? normalizeRateLimits(originalFields, service) : originalFields),
+    [originalFields, section.Name, service],
+  );
   const arrayItems = isArray ? parsed.items : [];
-  const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...originalFields }));
+  const [draft, setDraft] = useState<Record<string, unknown>>(() => ({ ...editableOriginalFields }));
   const [collapsed, setCollapsed] = useState(!section.Editable);
   const [savedFlash, setSavedFlash] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     const p = parseConfigValue(section.Value);
-    setDraft(p.kind === 'object' ? { ...p.fields } : {});
-  }, [section.Value]);
+    if (p.kind === 'object') {
+      setDraft(section.Name === 'rateLimits' ? normalizeRateLimits(p.fields, service) : { ...p.fields });
+    } else {
+      setDraft({});
+    }
+  }, [section.Name, section.Value, service]);
 
   const dirtyKeys = useMemo(() => {
     const keys: string[] = [];
-    for (const key of Object.keys(originalFields)) {
-      if (JSON.stringify(originalFields[key]) !== JSON.stringify(draft[key])) {
+    for (const key of Object.keys(editableOriginalFields)) {
+      if (JSON.stringify(editableOriginalFields[key]) !== JSON.stringify(draft[key])) {
         keys.push(key);
       }
     }
     return keys;
-  }, [originalFields, draft]);
+  }, [editableOriginalFields, draft]);
 
   const dirty = dirtyKeys.length > 0;
 
@@ -476,7 +560,7 @@ function ConfigSectionCard({
     },
   });
 
-  const fieldEntries = Object.entries(originalFields);
+  const fieldEntries = Object.entries(editableOriginalFields);
 
   const booleanFields = section.Editable
     ? fieldEntries.filter(([, v]) => typeof v === 'boolean')
@@ -597,8 +681,16 @@ function ConfigSectionCard({
           )
         )}
 
+        {!isArray && section.Name === 'rateLimits' && section.Editable && (
+          <RateLimitsEditor
+            value={normalizeRateLimits(draft, service)}
+            dirtyKeys={dirtyKeys}
+            onChange={(next) => setDraft(next)}
+          />
+        )}
+
         {/* Regular object fields */}
-        {!isArray && (hasManyBooleans ? nonBooleanFields : fieldEntries).map(([key]) => {
+        {!isArray && section.Name !== 'rateLimits' && (hasManyBooleans ? nonBooleanFields : fieldEntries).map(([key]) => {
           const originalValue = originalFields[key];
           const currentValue = draft[key];
           const type = inferType(originalValue);
@@ -825,6 +917,185 @@ function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
         document.body,
       )}
     </span>
+  );
+}
+
+function RateLimitsEditor({
+  value,
+  dirtyKeys,
+  onChange,
+}: {
+  value: Record<string, RateLimitDraft>;
+  dirtyKeys: string[];
+  onChange: (value: Record<string, RateLimitDraft>) => void;
+}) {
+  const updateLimit = (
+    limitName: string,
+    field: keyof RateLimitDraft,
+    nextValue: number,
+  ) => {
+    onChange({
+      ...value,
+      [limitName]: {
+        ...value[limitName],
+        [field]: nextValue,
+      },
+    });
+  };
+
+  const limitEntries = RATE_LIMIT_ORDER
+    .filter((name) => value[name])
+    .map((name) => [name, value[name]] as const);
+
+  if (limitEntries.length === 0) {
+    return (
+      <div className="px-3.5 py-4 text-xs text-[color:var(--text-3)] italic">
+        No rate limits configured.
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-[color:var(--border)]">
+      {limitEntries.map(([name, limit]) => {
+        const dirty = dirtyKeys.includes(name) || dirtyKeys.includes(name[0].toUpperCase() + name.slice(1));
+        return (
+          <div
+            key={name}
+            className={cn(
+              'px-3.5 py-3',
+              dirty && 'border-l-[3px] border-l-[color:var(--warning)] pl-[11px] bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.03)]',
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-xs font-semibold text-[color:var(--text-1)] font-mono-tabular">
+                {name}
+              </h3>
+              {dirty && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
+                  changed
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <RateLimitNumberInput
+                label={`${name} burst`}
+                fieldKey="burst"
+                value={limit.burst}
+                onChange={(next) => updateLimit(name, 'burst', next)}
+              />
+              <RateLimitDurationInput
+                label={`${name} period`}
+                fieldKey="period"
+                value={limit.period}
+                onChange={(next) => updateLimit(name, 'period', next)}
+              />
+              <RateLimitDurationInput
+                label={`${name} evictAfter`}
+                fieldKey="evictAfter"
+                value={limit.evictAfter}
+                onChange={(next) => updateLimit(name, 'evictAfter', next)}
+              />
+              <RateLimitNumberInput
+                label={`${name} retryAfter`}
+                fieldKey="retryAfter"
+                value={limit.retryAfter}
+                onChange={(next) => updateLimit(name, 'retryAfter', next)}
+              />
+              <RateLimitNumberInput
+                label={`${name} maxBuckets`}
+                fieldKey="maxBuckets"
+                value={limit.maxBuckets}
+                onChange={(next) => updateLimit(name, 'maxBuckets', next)}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RateLimitNumberInput({
+  label,
+  fieldKey,
+  value,
+  onChange,
+}: {
+  label: string;
+  fieldKey: keyof RateLimitDraft;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1 min-w-0">
+      <span className="text-[10px] font-semibold text-[color:var(--text-3)] uppercase tracking-[0.04em] flex items-center gap-1">
+        {fieldKey}
+        <FieldHelpIcon fieldKey={fieldKey} />
+      </span>
+      <input
+        aria-label={label}
+        type="number"
+        min={0}
+        value={value}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          if (Number.isFinite(next)) onChange(next);
+        }}
+        className={cn(
+          'w-full px-2 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
+          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+          'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+        )}
+      />
+    </label>
+  );
+}
+
+function RateLimitDurationInput({
+  label,
+  fieldKey,
+  value,
+  onChange,
+}: {
+  label: string;
+  fieldKey: keyof RateLimitDraft;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const [raw, setRaw] = useState(() => formatDuration(value));
+
+  useEffect(() => {
+    setRaw(formatDuration(value));
+  }, [value]);
+
+  const parsed = parseDuration(raw);
+  const invalid = parsed === null;
+
+  return (
+    <label className="flex flex-col gap-1 min-w-0">
+      <span className="text-[10px] font-semibold text-[color:var(--text-3)] uppercase tracking-[0.04em] flex items-center gap-1">
+        {fieldKey}
+        <FieldHelpIcon fieldKey={fieldKey} />
+      </span>
+      <input
+        aria-label={label}
+        type="text"
+        value={raw}
+        onChange={(e) => {
+          const nextRaw = e.target.value;
+          setRaw(nextRaw);
+          const next = parseDuration(nextRaw);
+          if (next !== null) onChange(next);
+        }}
+        className={cn(
+          'w-full px-2 py-1.5 text-xs rounded-md border',
+          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+          'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+          invalid ? 'border-[color:var(--danger)]' : 'border-[color:var(--border)]',
+        )}
+      />
+    </label>
   );
 }
 
