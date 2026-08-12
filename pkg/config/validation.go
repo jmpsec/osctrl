@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // Valid values for authentication in configuration
 var validAuth = map[string]bool{
@@ -29,6 +32,87 @@ var validCarver = map[string]bool{
 	CarverS3:    true,
 }
 
+const maxRateLimitBurst = 100000
+
+// DefaultRateLimits returns the existing hardcoded HTTP rate-limit defaults.
+func DefaultRateLimits() YAMLConfigurationRateLimits {
+	return YAMLConfigurationRateLimits{
+		Login: YAMLConfigurationRateLimit{
+			Burst:      10,
+			Period:     time.Minute,
+			EvictAfter: 10 * time.Minute,
+			RetryAfter: 60,
+		},
+		PreAuth: YAMLConfigurationRateLimit{
+			Burst:      60,
+			Period:     time.Minute,
+			EvictAfter: 10 * time.Minute,
+			RetryAfter: 60,
+		},
+		ServiceConfigApply: YAMLConfigurationRateLimit{
+			Burst:      3,
+			Period:     10 * time.Minute,
+			EvictAfter: 30 * time.Minute,
+			RetryAfter: 60,
+		},
+		Enroll: YAMLConfigurationRateLimit{
+			Burst:      20,
+			Period:     time.Minute,
+			EvictAfter: 10 * time.Minute,
+			RetryAfter: 60,
+		},
+	}
+}
+
+// DefaultRateLimitsPtr returns DefaultRateLimits as a pointer for optional
+// config sections.
+func DefaultRateLimitsPtr() *YAMLConfigurationRateLimits {
+	defaults := DefaultRateLimits()
+	return &defaults
+}
+
+// ValidateRateLimits validates named rate-limit entries.
+func ValidateRateLimits(cfg YAMLConfigurationRateLimits, names ...string) error {
+	limits := map[string]YAMLConfigurationRateLimit{
+		"login":              cfg.Login,
+		"preAuth":            cfg.PreAuth,
+		"serviceConfigApply": cfg.ServiceConfigApply,
+		"enroll":             cfg.Enroll,
+	}
+	for _, name := range names {
+		limit, ok := limits[name]
+		if !ok {
+			return fmt.Errorf("unknown rate limit %q", name)
+		}
+		if err := validateRateLimit(name, limit); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateRateLimit(name string, limit YAMLConfigurationRateLimit) error {
+	if limit.Burst <= 0 {
+		return fmt.Errorf("%s burst must be greater than 0", name)
+	}
+	if limit.Burst > maxRateLimitBurst {
+		return fmt.Errorf("%s burst must be <= %d", name, maxRateLimitBurst)
+	}
+	if limit.Period <= 0 {
+		return fmt.Errorf("%s period must be greater than 0", name)
+	}
+	if limit.EvictAfter < limit.Period {
+		return fmt.Errorf("%s evictAfter must be greater than or equal to period", name)
+	}
+	if limit.RetryAfter < 0 {
+		return fmt.Errorf("%s retryAfter must be >= 0", name)
+	}
+	if limit.MaxBuckets < 0 {
+		return fmt.Errorf("%s maxBuckets must be >= 0", name)
+	}
+	return nil
+}
+
 // Helper to validate the TLS configuration values
 func ValidateTLSConfigValues(cfg TLSConfiguration) error {
 	// Check if values are valid
@@ -49,6 +133,11 @@ func ValidateTLSConfigValues(cfg TLSConfiguration) error {
 	if cfg.Carver != nil {
 		if !validCarver[cfg.Carver.Type] {
 			return fmt.Errorf("invalid carver method: %s", cfg.Carver.Type)
+		}
+	}
+	if cfg.RateLimits != nil {
+		if err := ValidateRateLimits(*cfg.RateLimits, "enroll"); err != nil {
+			return err
 		}
 	}
 	// No errors!

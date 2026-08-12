@@ -81,6 +81,7 @@ var SectionRegistry = map[string][]SectionSpec{
 		{"logger", false, "Log sinks — may contain credentials (future: editable)"},
 		{"carver", false, "File carver configuration — may contain credentials"},
 		{"debug", true, "HTTP debug dump settings"},
+		{"rateLimits", true, "HTTP request rate limits"},
 	},
 	config.ServiceAPI: {
 		{"service", true, "Core service listener, port, log level, auth mode"},
@@ -94,6 +95,7 @@ var SectionRegistry = map[string][]SectionSpec{
 		{"logger", false, "Log sinks — may contain credentials (future: editable)"},
 		{"carver", false, "File carver configuration — may contain credentials"},
 		{"debug", true, "HTTP debug dump settings"},
+		{"rateLimits", true, "HTTP request rate limits"},
 	},
 }
 
@@ -292,6 +294,10 @@ func applySection(cfg *config.ServiceParameters, name, value string) (bool, erro
 		if cfg.Debug != nil {
 			return true, json.Unmarshal([]byte(value), cfg.Debug)
 		}
+	case "rateLimits":
+		if cfg.RateLimits != nil {
+			return true, json.Unmarshal([]byte(value), cfg.RateLimits)
+		}
 	case "batchWriter":
 		if cfg.BatchWriter != nil {
 			return true, json.Unmarshal([]byte(value), cfg.BatchWriter)
@@ -342,6 +348,19 @@ func (m *ServiceConfigManager) UpdateSection(service, name, value string, envID 
 	// Validate that the new value is valid JSON.
 	if !json.Valid([]byte(value)) {
 		return ServiceConfig{}, fmt.Errorf("value is not valid JSON")
+	}
+	if name == "rateLimits" {
+		var limits config.YAMLConfigurationRateLimits
+		if err := json.Unmarshal([]byte(value), &limits); err != nil {
+			return ServiceConfig{}, fmt.Errorf("unmarshal rateLimits: %w", err)
+		}
+		names := []string{"enroll"}
+		if service == config.ServiceAPI {
+			names = []string{"login", "preAuth", "serviceConfigApply"}
+		}
+		if err := config.ValidateRateLimits(limits, names...); err != nil {
+			return ServiceConfig{}, err
+		}
 	}
 	existing, err := m.GetSection(service, name, envID)
 	if err != nil {
@@ -407,6 +426,11 @@ func sectionValues(service string, cfg *config.ServiceParameters) (map[string]st
 	}
 	if cfg.Debug != nil {
 		if err := add("debug", cfg.Debug); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.RateLimits != nil {
+		if err := add("rateLimits", cfg.RateLimits); err != nil {
 			return nil, err
 		}
 	}

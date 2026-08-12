@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // osctrl-api reads its config either from flags/env vars or from a YAML
@@ -136,5 +137,50 @@ saml:
 	}
 	if !cfg.SAML.ForceAuthn {
 		t.Error("SAML.ForceAuthn = false, want true when the key is omitted")
+	}
+}
+
+func TestLoadedYAMLCarriesRateLimits(t *testing.T) {
+	const body = `
+service:
+  auth: jwt
+db:
+  type: postgres
+redis:
+  host: 127.0.0.1
+rateLimits:
+  login:
+    burst: 7
+    period: 1m
+    evictAfter: 10m
+    retryAfter: 23
+  preAuth:
+    burst: 60
+    period: 1m
+    evictAfter: 10m
+    retryAfter: 60
+  serviceConfigApply:
+    burst: 3
+    period: 10m
+    evictAfter: 30m
+    retryAfter: 60
+`
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+
+	if params.RateLimits == nil {
+		t.Fatal("RateLimits params are nil")
+	}
+	if got := params.RateLimits.Login.Burst; got != 7 {
+		t.Fatalf("login burst = %d, want 7", got)
+	}
+	if got := params.RateLimits.Login.Period; got != time.Minute {
+		t.Fatalf("login period = %s, want 1m", got)
+	}
+	if got := params.RateLimits.Login.RetryAfter; got != 23 {
+		t.Fatalf("login retryAfter = %d, want 23", got)
 	}
 }

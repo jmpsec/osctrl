@@ -71,6 +71,8 @@ type ServiceParameters struct {
 	Carver *YAMLConfigurationCarver
 	// Debug configuration values
 	Debug *YAMLConfigurationDebug
+	// Rate limit configuration values
+	RateLimits *YAMLConfigurationRateLimits
 }
 
 // initAuthFlag returns the per-service `--auth` flag with the given
@@ -112,6 +114,7 @@ func InitTLSFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initOsctrldFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params)...)
+	allFlags = append(allFlags, initRateLimitFlags(params, ServiceTLS)...)
 	allFlags = append(allFlags, initS3LoggingFlags(params)...)
 	allFlags = append(allFlags, initKafkaFlags(params)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceTLS)...)
@@ -155,6 +158,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initSAMLFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params)...)
+	allFlags = append(allFlags, initRateLimitFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, initDebugFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, &cli.BoolFlag{
 		Name:        "db-health-check",
@@ -596,6 +600,64 @@ func initCarverFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Local directory to store carved files",
 			Sources:     cli.EnvVars("CARVER_LOCAL_DIR"),
 			Destination: &params.Carver.Local.CarvesDir,
+		},
+	}
+}
+
+// initRateLimitFlags initializes request rate-limit flags. Only currently
+// rate-limited surfaces are exposed.
+func initRateLimitFlags(params *ServiceParameters, service string) []cli.Flag {
+	if params.RateLimits == nil {
+		params.RateLimits = DefaultRateLimitsPtr()
+	}
+	if service == ServiceTLS {
+		return rateLimitFlags("enroll", "RATE_LIMIT_ENROLL", &params.RateLimits.Enroll)
+	}
+	return append(
+		append(
+			rateLimitFlags("login", "RATE_LIMIT_LOGIN", &params.RateLimits.Login),
+			rateLimitFlags("pre-auth", "RATE_LIMIT_PRE_AUTH", &params.RateLimits.PreAuth)...,
+		),
+		rateLimitFlags("service-config-apply", "RATE_LIMIT_SERVICE_CONFIG_APPLY", &params.RateLimits.ServiceConfigApply)...,
+	)
+}
+
+func rateLimitFlags(name, envPrefix string, cfg *YAMLConfigurationRateLimit) []cli.Flag {
+	return []cli.Flag{
+		&cli.IntFlag{
+			Name:        "rate-limit-" + name + "-burst",
+			Value:       cfg.Burst,
+			Usage:       "Maximum burst for the " + name + " rate limiter",
+			Sources:     cli.EnvVars(envPrefix + "_BURST"),
+			Destination: &cfg.Burst,
+		},
+		&cli.DurationFlag{
+			Name:        "rate-limit-" + name + "-period",
+			Value:       cfg.Period,
+			Usage:       "Refill period for the " + name + " rate limiter",
+			Sources:     cli.EnvVars(envPrefix + "_PERIOD"),
+			Destination: &cfg.Period,
+		},
+		&cli.DurationFlag{
+			Name:        "rate-limit-" + name + "-evict-after",
+			Value:       cfg.EvictAfter,
+			Usage:       "Idle bucket eviction window for the " + name + " rate limiter",
+			Sources:     cli.EnvVars(envPrefix + "_EVICT_AFTER"),
+			Destination: &cfg.EvictAfter,
+		},
+		&cli.IntFlag{
+			Name:        "rate-limit-" + name + "-retry-after",
+			Value:       cfg.RetryAfter,
+			Usage:       "Retry-After seconds returned by the " + name + " rate limiter",
+			Sources:     cli.EnvVars(envPrefix + "_RETRY_AFTER"),
+			Destination: &cfg.RetryAfter,
+		},
+		&cli.IntFlag{
+			Name:        "rate-limit-" + name + "-max-buckets",
+			Value:       cfg.MaxBuckets,
+			Usage:       "Maximum per-key buckets for the " + name + " rate limiter; 0 uses the default",
+			Sources:     cli.EnvVars(envPrefix + "_MAX_BUCKETS"),
+			Destination: &cfg.MaxBuckets,
 		},
 	}
 }
