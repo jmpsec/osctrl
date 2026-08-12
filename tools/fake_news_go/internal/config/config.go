@@ -3,10 +3,84 @@ package config
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"strings"
 	"time"
 )
+
+// ErrHelpRequested is returned when -h or --help is passed.
+var ErrHelpRequested = errors.New("help requested")
+
+// Usage prints a formatted help message to the given writer.
+func Usage(w io.Writer) {
+	fmt.Fprintln(w, `fake_news_go — osctrl load & posture simulation harness
+
+USAGE
+  go run ./tools/fake_news_go [flags]
+
+CONNECTION
+  --tls-url <url>          Base URL for osctrl-tls (default: http://localhost:9000)
+  --url <url>              Alias for --tls-url
+  -u <url>                 Alias for --tls-url
+  --api-url <url>          Base URL for osctrl-api (for --discover-envs)
+  --api-username <user>    Username for osctrl-api login (for --discover-envs)
+  --api-password <pass>    Password for osctrl-api login (for --discover-envs)
+  --discover-envs          Discover env UUIDs + enroll secrets from osctrl-api, then auto-start
+  --env <uuid>             Environment UUID (required unless --discover-envs)
+  --secret <secret>        Enroll secret (required unless --discover-envs)
+  -s <secret>              Alias for --secret
+  --insecure               Skip TLS certificate verification
+
+SIMULATION
+  --nodes <n>              Number of nodes to simulate (default: 5)
+  -n <n>                   Alias for --nodes
+  --enroll-delay <ms>      Delay between each enrollment to avoid rate limiting
+                           0 = concurrent bulk enrollment (default: 0)
+                           >0 = sequential, one enrollment every <ms> milliseconds
+  --posture-level <lvl>    Simulate posture data (default: none)
+                           good     -> healthy: few packages, encrypted disk, safe ports -> green
+                           moderate -> some issues: more users, more ports, some SUID -> yellow
+                           poor     -> at-risk: unencrypted disk, risky ports, few patches -> red
+
+TRAFFIC INTERVALS (seconds)
+  --status <sec>           Interval for status requests (default: 60)
+  --result <sec>           Interval for result requests (default: 60)
+  --config <sec>           Interval for config requests (default: 45)
+  --query <sec>            Interval for query requests (default: 30)
+
+OUTPUT
+  --display-mode <mode>    Output mode: quiet, summary, verbose, dashboard, json (default: summary)
+  --summary-interval <sec> Interval for summary/json reports (default: 30)
+  --verbose                Enable verbose output
+  -v                       Alias for --verbose
+  --osquery-binary <bin>   Path to osqueryi binary (default: osqueryi)
+  --state <file>           Persisted node state file (default: fake_news_state.json)
+
+SWEEP MODE
+  --mode sweep             Enable sweep mode (staged ramp-up to find breaking point)
+  --sweep-start-nodes <n>  Starting node count (default: 25)
+  --sweep-step-nodes <n>   Increment between stages (default: 25)
+  --sweep-stages <n>       Maximum number of stages (default: 8)
+  --error-threshold <f>    Stop when error rate exceeds this ratio (default: 0.02)
+  --p95-threshold <dur>    Stop when p95 exceeds this duration (default: 1s)
+
+EXAMPLES
+  # Enroll 100 nodes slowly with good posture data (green)
+  go run ./tools/fake_news_go --tls-url http://localhost:9000 \
+    --env <uuid> --secret <secret> --nodes 100 --enroll-delay 200 \
+    --posture-level good --display-mode dashboard
+
+  # Discover environments and auto-start 50 nodes
+  go run ./tools/fake_news_go --tls-url http://localhost:9000 \
+    --api-url http://localhost:9002 --api-username admin --api-password admin \
+    --discover-envs --nodes 50 --display-mode dashboard
+
+  # Sweep mode -- find the breaking point
+  go run ./tools/fake_news_go --tls-url http://localhost:9000 \
+    --env <uuid> --secret <secret> --mode sweep --display-mode dashboard \
+    --sweep-start-nodes 25 --sweep-step-nodes 25 --sweep-stages 8`)
+}
 
 const (
 	defaultTLSBaseURL    = "http://localhost:9000"
@@ -98,6 +172,10 @@ func Parse(args []string) (Config, error) {
 	fs.SetOutput(io.Discard)
 	modeValue := string(ModeSteady)
 	outputModeValue := "summary"
+	var showHelp bool
+
+	fs.BoolVar(&showHelp, "help", false, "show usage")
+	fs.BoolVar(&showHelp, "h", false, "show usage")
 
 	fs.StringVar(&cfg.TLSBaseURL, "tls-url", defaultTLSBaseURL, "base url for osctrl-tls")
 	fs.StringVar(&cfg.TLSBaseURL, "url", defaultTLSBaseURL, "base url for osctrl-tls")
@@ -142,6 +220,10 @@ func Parse(args []string) (Config, error) {
 
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
+	}
+
+	if showHelp {
+		return Config{}, ErrHelpRequested
 	}
 
 	cfg.TLSBaseURL = strings.TrimSpace(cfg.TLSBaseURL)
