@@ -250,6 +250,66 @@ describe('ServiceConfigPage', () => {
     expect(args[2].value).toEqual({ enableHttp: false, httpFile: '/var/log/debug.log' });
   });
 
+  it('edits API rate limits and omits TLS-only values when saving', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true,
+        Name: 'rateLimits',
+        Value: JSON.stringify({
+          login: { burst: 10, period: 60_000_000_000, evictAfter: 600_000_000_000, retryAfter: 60, maxBuckets: 0 },
+          preAuth: { burst: 60, period: 60_000_000_000, evictAfter: 600_000_000_000, retryAfter: 60, maxBuckets: 0 },
+          serviceConfigApply: { burst: 3, period: 600_000_000_000, evictAfter: 1_800_000_000_000, retryAfter: 60, maxBuckets: 0 },
+          enroll: { burst: 20, period: 60_000_000_000, evictAfter: 600_000_000_000, retryAfter: 60, maxBuckets: 0 },
+        }),
+      }),
+    ]);
+    mockUpdate.mockResolvedValue(makeSection({ Name: 'rateLimits', Source: 'db' }));
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('rateLimits')).toBeInTheDocument();
+    });
+    const loginPeriod = screen.getByLabelText('login period');
+    expect(loginPeriod).toHaveValue('1m');
+    expect(screen.queryByLabelText('enroll period')).not.toBeInTheDocument();
+
+    await user.clear(loginPeriod);
+    await user.type(loginPeriod, '2m');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+    });
+    const args = mockUpdate.mock.calls[0] as [string, string, { value: Record<string, Record<string, number>> }];
+    expect(args[0]).toBe('api');
+    expect(args[1]).toBe('rateLimits');
+    expect(args[2].value.login.period).toBe(120_000_000_000);
+    expect(args[2].value.login.burst).toBe(10);
+    expect(args[2].value.enroll).toBeUndefined();
+  });
+
+  it('shows only the TLS enroll rate limit on the tls service page', async () => {
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true,
+        Name: 'rateLimits',
+        Service: 'tls',
+        Value: JSON.stringify({
+          login: { burst: 10, period: 60_000_000_000, evictAfter: 600_000_000_000, retryAfter: 60, maxBuckets: 0 },
+          enroll: { burst: 20, period: 60_000_000_000, evictAfter: 600_000_000_000, retryAfter: 60, maxBuckets: 0 },
+        }),
+      }),
+    ]);
+    renderWithProviders(makeTestRouter('/_app/config/tls'));
+
+    await waitFor(() => {
+      expect(screen.getByText('rateLimits')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('enroll period')).toHaveValue('1m');
+    expect(screen.queryByLabelText('login period')).not.toBeInTheDocument();
+  });
+
   it('shows an error when the PUT returns 409 (not editable)', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('$/api/client');
