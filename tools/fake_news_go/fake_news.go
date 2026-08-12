@@ -26,6 +26,7 @@ import (
 	internalrunner "github.com/jmpsec/osctrl/tools/fake_news_go/internal/runner"
 	internaltransport "github.com/jmpsec/osctrl/tools/fake_news_go/internal/transport"
 	internaltui "github.com/jmpsec/osctrl/tools/fake_news_go/internal/tui"
+	internalworkload "github.com/jmpsec/osctrl/tools/fake_news_go/internal/workload"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -266,6 +267,8 @@ type FakeNewsConfig struct {
 	OutputMode      OutputMode
 	SummaryInterval int
 	StateFile       string
+	PostureLevel    string
+	EnrollDelay     int
 }
 
 type runtimeTarget struct {
@@ -927,6 +930,44 @@ func queryWrite(client *HTTPClient, node *Node, queryName string, query interfac
 	}
 }
 
+// sendPostureData sends fake posture query results to the TLS write endpoint
+// once on startup, then every 24 hours. The posture level (good/moderate/poor)
+// controls the kind of data generated — e.g. "poor" produces more users, more
+// listening ports, unencrypted disks, and suspicious cron jobs.
+func sendPostureData(ctx context.Context, client *HTTPClient, node *Node, urls map[string]string, config FakeNewsConfig) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(node.Identifier[len(node.Identifier)-1])))
+	level := internalworkload.PostureLevel(config.PostureLevel)
+
+	sendOnce := func() {
+		results := internalworkload.GeneratePostureResults(level, r)
+		for queryName, rows := range results {
+			data := generateQueryWriteRequest(*node, queryName, rows)
+			headers := map[string]string{"X-Real-IP": node.IP}
+			code, _, err := client.Post(urls["write"], data, headers)
+			success := err == nil && code == 200
+			logOperationWithURL(QueryWriteOp, node.Name, urls["write"], 0, success, config)
+			if config.OutputMode == VerboseMode {
+				fmt.Printf("Posture data sent: %s (%d rows) for node %s\n", queryName, len(rows), node.Name)
+			}
+		}
+	}
+
+	// Send immediately on startup.
+	sendOnce()
+
+	// Then every 24 hours.
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			sendOnce()
+		}
+	}
+}
+
 // loadNodesFromFile loads nodes from a JSON file
 func loadNodesFromFile(filename string) ([]Node, error) {
 	data, err := os.ReadFile(filename)
@@ -1132,10 +1173,9 @@ func (gs *GlobalStats) GetNodeCounts() (int, int) {
 func printSummary() {
 	uptime := globalStats.GetUptime()
 
-	fmt.Printf("\n%s\n", strings.Repeat("=", 80))
-	fmt.Printf("FAKE NEWS GENERATOR - PERFORMANCE SUMMARY\n")
-	fmt.Printf("Uptime: %s\n", uptime.Round(time.Second))
-	fmt.Printf("%s\n", strings.Repeat("=", 80))
+	fmt.Printf("\n%s\n", strings.Repeat("=", 90))
+	fmt.Printf("  FAKE NEWS GENERATOR — PERFORMANCE SUMMARY  (uptime %s)\n", uptime.Round(time.Second))
+	fmt.Printf("%s\n\n", strings.Repeat("=", 90))
 
 	operations := []struct {
 		name string
@@ -1149,37 +1189,44 @@ func printSummary() {
 		{"Query Write", QueryWriteOp},
 	}
 
+	fmt.Printf("  %-14s %10s %10s %10s %10s %10s %10s %10s\n",
+		"Operation", "Count", "Success%", "Min(ms)", "Avg(ms)", "Max(ms)", "P95(ms)", "P99(ms)")
+	fmt.Printf("  %s\n", strings.Repeat("-", 86))
+
 	for _, op := range operations {
 		stats := globalStats.GetOperationStats(op.op)
 		min, max, avg, p95, p99, count, success, _ := stats.GetStats()
 
 		if count > 0 {
 			successRate := float64(success) / float64(count) * 100
-			fmt.Printf("%-12s | Count: %6d | Success: %5.1f%% | Min: %4dms | Avg: %4dms | Max: %4dms | P95: %4dms | P99: %4dms\n",
+			fmt.Printf("  %-14s %10d %9.1f%% %10d %10d %10d %10d %10d\n",
 				op.name, count, successRate, min.Milliseconds(), avg.Milliseconds(), max.Milliseconds(), p95.Milliseconds(), p99.Milliseconds())
+		} else {
+			fmt.Printf("  %-14s %10d %10s %10s %10s %10s %10s %10s\n",
+				op.name, 0, "-", "-", "-", "-", "-", "-")
 		}
 	}
 
-	// Print URL statistics
-	fmt.Printf("%s\n", strings.Repeat("=", 80))
-	fmt.Printf("URL STATISTICS - ABSOLUTE NUMBERS\n")
-	fmt.Printf("%s\n", strings.Repeat("=", 80))
+	fmt.Printf("\n  %s\n", strings.Repeat("=", 86))
+	fmt.Printf("  URL STATISTICS\n")
+	fmt.Printf("  %s\n\n", strings.Repeat("-", 86))
 
 	urlStats := globalStats.GetURLStats()
 	if len(urlStats) > 0 {
-		fmt.Printf("%-50s | %8s | %8s | %8s | %8s\n", "URL", "Total", "Success", "Failed", "Success%")
-		fmt.Printf("%s\n", strings.Repeat("-", 80))
-
+		fmt.Printf("  %-55s %8s %8s %8s %9s\n", "URL", "Total", "Success", "Failed", "Success%")
+		fmt.Printf("  %s\n", strings.Repeat("-", 86))
 		for url, stats := range urlStats {
 			_, _, _, _, _, count, success, fail := stats.GetStats()
 			if count > 0 {
 				successRate := float64(success) / float64(count) * 100
-				fmt.Printf("%-50s | %8d | %8d | %8d | %7.1f%%\n",
-					url, count, success, fail, successRate)
+				if len(url) > 55 {
+					url = "..." + url[len(url)-52:]
+				}
+				fmt.Printf("  %-55s %8d %8d %8d %8.1f%%\n", url, count, success, fail, successRate)
 			}
 		}
 	}
-	fmt.Printf("%s\n\n", strings.Repeat("=", 80))
+	fmt.Printf("\n%s\n\n", strings.Repeat("=", 90))
 }
 
 // printDashboard prints a real-time dashboard
@@ -1189,7 +1236,7 @@ func printDashboard() {
 
 	uptime := globalStats.GetUptime()
 
-	fmt.Printf("FAKE NEWS GENERATOR - REAL-TIME DASHBOARD\n")
+	fmt.Printf("FAKE NEWS GENERATOR — REAL-TIME DASHBOARD\n")
 	fmt.Printf("Uptime: %s | Last Update: %s\n", uptime.Round(time.Second), time.Now().Format("15:04:05"))
 	fmt.Printf("%s\n", strings.Repeat("-", 100))
 
@@ -1205,9 +1252,9 @@ func printDashboard() {
 		{"Query Write", QueryWriteOp},
 	}
 
-	fmt.Printf("%-12s | %8s | %8s | %8s | %8s | %8s | %8s | %8s\n",
+	fmt.Printf("  %-14s %10s %10s %10s %10s %10s %10s %10s\n",
 		"Operation", "Count", "Success%", "Min(ms)", "Avg(ms)", "Max(ms)", "P95(ms)", "P99(ms)")
-	fmt.Printf("%s\n", strings.Repeat("-", 100))
+	fmt.Printf("  %s\n", strings.Repeat("-", 96))
 
 	for _, op := range operations {
 		stats := globalStats.GetOperationStats(op.op)
@@ -1215,20 +1262,20 @@ func printDashboard() {
 
 		if count > 0 {
 			successRate := float64(success) / float64(count) * 100
-			fmt.Printf("%-12s | %8d | %7.1f%% | %8d | %8d | %8d | %8d | %8d\n",
+			fmt.Printf("  %-14s %10d %9.1f%% %10d %10d %10d %10d %10d\n",
 				op.name, count, successRate, min.Milliseconds(), avg.Milliseconds(), max.Milliseconds(), p95.Milliseconds(), p99.Milliseconds())
 		} else {
-			fmt.Printf("%-12s | %8d | %7s | %8s | %8s | %8s | %8s | %8s\n",
+			fmt.Printf("  %-14s %10d %10s %10s %10s %10s %10s %10s\n",
 				op.name, 0, "-", "-", "-", "-", "-", "-")
 		}
 	}
-	fmt.Printf("%s\n", strings.Repeat("-", 100))
+	fmt.Printf("  %s\n\n", strings.Repeat("-", 96))
 
-	// Print URL statistics section
-	fmt.Printf("\nURL STATISTICS - ABSOLUTE NUMBERS\n")
-	fmt.Printf("%s\n", strings.Repeat("-", 100))
-	fmt.Printf("%-50s | %8s | %8s | %8s | %8s\n", "URL", "Total", "Success", "Failed", "Success%")
-	fmt.Printf("%s\n", strings.Repeat("-", 100))
+	// URL statistics
+	fmt.Printf("URL STATISTICS\n")
+	fmt.Printf("  %s\n", strings.Repeat("-", 96))
+	fmt.Printf("  %-55s %8s %8s %8s %9s\n", "URL", "Total", "Success", "Failed", "Success%")
+	fmt.Printf("  %s\n", strings.Repeat("-", 96))
 
 	urlStats := globalStats.GetURLStats()
 	if len(urlStats) > 0 {
@@ -1236,14 +1283,16 @@ func printDashboard() {
 			_, _, _, _, _, count, success, fail := stats.GetStats()
 			if count > 0 {
 				successRate := float64(success) / float64(count) * 100
-				fmt.Printf("%-50s | %8d | %8d | %8d | %7.1f%%\n",
-					url, count, success, fail, successRate)
+				if len(url) > 55 {
+					url = "..." + url[len(url)-52:]
+				}
+				fmt.Printf("  %-55s %8d %8d %8d %8.1f%%\n", url, count, success, fail, successRate)
 			}
 		}
 	} else {
-		fmt.Printf("%-50s | %8s | %8s | %8s | %8s\n", "No data yet", "-", "-", "-", "-")
+		fmt.Printf("  %-55s %8s %8s %8s %9s\n", "No data yet", "-", "-", "-", "-")
 	}
-	fmt.Printf("%s\n", strings.Repeat("-", 100))
+	fmt.Printf("  %s\n", strings.Repeat("-", 96))
 }
 
 // printJSONStats prints statistics in JSON format
@@ -1640,6 +1689,9 @@ func enrollNodes(client *HTTPClient, nodes []Node, secret string, urls map[strin
 			nodes[idx].Key = key
 			mu.Unlock()
 		}(i)
+		if config.EnrollDelay > 0 {
+			time.Sleep(time.Duration(config.EnrollDelay) * time.Millisecond)
+		}
 	}
 	wg.Wait()
 }
@@ -1662,6 +1714,9 @@ func startTraffic(ctx context.Context, client *HTTPClient, nodes []Node, urls ma
 			time.Duration(config.ConfigInterval)*time.Second, &mutex, config)
 		go queryRead(ctx, client, &nodes[i], urls, config.Secret,
 			time.Duration(config.QueryInterval)*time.Second, &mutex, config, writeSem)
+		if config.PostureLevel != "" {
+			go sendPostureData(ctx, client, &nodes[i], urls, config)
+		}
 	}
 }
 
@@ -1799,6 +1854,7 @@ func run() error {
 		Insecure:        parsedConfig.Insecure,
 		SummaryInterval: parsedConfig.SummaryInterval,
 		StateFile:       parsedConfig.StateFile,
+		PostureLevel:    parsedConfig.PostureLevel,
 	}
 
 	osqueryRunner = internalosquery.NewDefault(parsedConfig.OSQueryBinary)
