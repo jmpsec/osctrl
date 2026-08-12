@@ -23,14 +23,40 @@ It keeps the terminal workflow of the original `fake_news.py`, but adds a struct
 - `--env`: environment UUID
 - `--secret`: enroll secret for `osctrl-tls`
 - `--mode`: `steady` or `sweep`
-- `--display-mode`: `quiet`, `summary`, `verbose`, `dashboard`, or `json`
+- `--nodes` or `-n`: number of simulated nodes per environment (default 5)
+- `--status`: interval in seconds for status requests (default 60)
+- `--result`: interval in seconds for result requests (default 60)
+- `--config`: interval in seconds for config requests (default 45)
+- `--query`: interval in seconds for query requests (default 30)
+- `--enroll-delay`: delay in milliseconds between each node enrollment to avoid rate limiting (default 0)
+- `--posture-level`: simulate security posture data: `none`, `good`, `moderate`, or `poor` (default `none`)
+- `--display-mode` or `--output-mode`: `quiet`, `summary`, `verbose`, `dashboard`, or `json`
+- `--verbose` or `-v`: enable verbose output
+- `--insecure`: skip TLS certificate verification
+- `--summary-interval`: interval in seconds for summary reports (default 30)
 - `--error-threshold`: stop sweep when error rate exceeds this ratio
 - `--p95-threshold`: stop sweep when p95 exceeds this duration
 - `--sweep-start-nodes`, `--sweep-step-nodes`, `--sweep-stages`
 - `--settle`, `--sample`
-- `--state`: persisted node state file
+- `--osquery-binary`: path to `osqueryi` binary (default `osqueryi`)
+- `--state`: persisted node state file (default `fake_news_state.json`)
 
 The harness now simulates distributed query results internally and does not require a local `osqueryi` binary for query-write traffic.
+
+### `--posture-level`
+
+Sends fake security posture data to the TLS `/write` endpoint on startup and every 24 hours. The level controls what kind of data is generated:
+
+| Level | Description |
+|-------|-------------|
+| `none` | No posture data sent (default) |
+| `good` | Healthy node: few packages, few users, encrypted disk, only safe ports, all standard SUID binaries, many patches — scores green/low risk |
+| `moderate` | Some issues: more packages, more users, possibly unencrypted disk, more listening ports, some non-standard SUID binaries — scores yellow/medium risk |
+| `poor` | At-risk node: many packages, many users, unencrypted disk, risky ports (telnet, FTP, RDP), many non-standard SUID binaries, few patches — scores red/high risk |
+
+### `--enroll-delay`
+
+Adds a delay (in milliseconds) between each node enrollment. This avoids triggering rate limits on the TLS enroll endpoint when enrolling large numbers of nodes. For example, `--enroll-delay 200` spaces enrollments 200ms apart, so 100 nodes enroll over ~20 seconds instead of all at once.
 
 Default runtime files:
 
@@ -83,6 +109,31 @@ go run ./tools/fake_news_go \
   --env YOUR_ENV_UUID \
   --secret YOUR_SECRET \
   --nodes 50 \
+  --display-mode dashboard
+```
+
+Enroll 100 nodes slowly (200ms apart) with good posture data:
+
+```bash
+go run ./tools/fake_news_go \
+  --tls-url http://localhost:9000 \
+  --env YOUR_ENV_UUID \
+  --secret YOUR_SECRET \
+  --nodes 100 \
+  --enroll-delay 200 \
+  --posture-level good \
+  --display-mode dashboard
+```
+
+Enroll 50 nodes with poor posture (unencrypted disk, risky ports, many users):
+
+```bash
+go run ./tools/fake_news_go \
+  --tls-url http://localhost:9000 \
+  --env YOUR_ENV_UUID \
+  --secret YOUR_SECRET \
+  --nodes 50 \
+  --posture-level poor \
   --display-mode dashboard
 ```
 

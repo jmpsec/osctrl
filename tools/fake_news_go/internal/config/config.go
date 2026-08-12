@@ -49,6 +49,8 @@ type Config struct {
 	Insecure        bool
 	OutputMode      string
 	SummaryInterval int
+	PostureLevel    string
+	EnrollDelay     int
 }
 
 func (c Config) Validate() error {
@@ -135,6 +137,8 @@ func Parse(args []string) (Config, error) {
 	fs.StringVar(&outputModeValue, "mode-output", "summary", "output mode: quiet, summary, verbose, dashboard, json")
 	fs.StringVar(&outputModeValue, "display-mode", "summary", "output mode: quiet, summary, verbose, dashboard, json")
 	fs.IntVar(&cfg.SummaryInterval, "summary-interval", 30, "interval in seconds for summary reports")
+	fs.StringVar(&cfg.PostureLevel, "posture-level", "", "simulate posture data: none, good, moderate, poor")
+	fs.IntVar(&cfg.EnrollDelay, "enroll-delay", 0, "delay in milliseconds between each node enrollment to avoid rate limiting")
 
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
