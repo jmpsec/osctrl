@@ -26,6 +26,7 @@ With **osctrl** you can:
 - 📊 Collect all the status and result logs
 - ⚡ Run on-demand queries
 - 🖥️ Open a read-only, shell-like node console backed by osquery
+- 🗃️ Browse node files through accelerated, permission-checked osquery requests
 - 🗂️ Carve files and directories
 - 🧭 Track node posture, GeoIP country metadata, and node activity in the modern UI
 - ⚙️ Scale from **hundreds to hundreds of thousands of nodes**
@@ -41,10 +42,11 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 
 - **Modern operator UI**: React SPA powered by `osctrl-api`, with views for nodes, environments, queries, saved queries, carves, users, settings, node activity, and optional posture data.
 - **Node console**: Read-only console for a specific node using hidden accelerated distributed queries. It supports shell-like commands such as `pwd`, `cd`, `ls`, `stat`, `ps`, `sql`, `osquery`, `.tables`, and `get` for permission-checked file carves.
+- **File explorer**: Accelerated per-node directory listing and stat requests backed by osquery distributed queries.
 - **Accelerated distributed queries**: Optional osquery accelerated query reads, defaulting to a 5 second interval when enabled. Console acceleration is scoped to the target node and fresh active console sessions.
 - **osquery schema awareness**: Ships osquery table metadata through 5.23.1 and exposes authenticated table metadata to the UI/API for query authoring and console `.tables`.
 - **Security-sensitive API defaults**: JWT authentication by default for `osctrl-api`, trusted proxy controls, audit logging, and authenticated access to query/carve sample libraries.
-- **Posture and enrichment hooks**: Optional posture ingestion from scheduled query prefixes, optional MaxMind GeoIP country enrichment, and node activity tracking.
+- **Posture and enrichment hooks**: Optional posture ingestion from scheduled query prefixes, optional MaxMind GeoIP country enrichment, Redis-backed activity tracking, and API-managed service configuration sections.
 
 ## 👉 Documentation
 
@@ -55,39 +57,41 @@ You can find the documentation of the project in [https://osctrl.net](https://os
 ```text
 osctrl/
 ├── cmd/                         # Service and CLI entrypoints
-│   ├── api/                     # osctrl-api (REST API service)
+│   ├── api/                     # osctrl-api (REST API service + generated docs)
 │   ├── cli/                     # osctrl-cli (operator CLI)
 │   └── tls/                     # osctrl-tls (osquery remote API endpoint)
 ├── frontend/                    # React SPA frontend for the operator UI
 ├── pkg/                         # Shared application packages
-│   ├── activity/                 # Node activity tracking
+│   ├── activity/                # Redis-backed node/environment activity tracking
 │   ├── auditlog/                # Audit log manager
-│   ├── auth/                    # Shared auth helpers
+│   ├── auth/                    # Shared OIDC/SAML auth state and provider helpers
 │   ├── backend/                 # DB manager/bootstrap + health canary
-│   ├── cache/                   # Redis/cache managers
+│   ├── cache/                   # Redis, typed JSON, and in-memory cache helpers
 │   ├── carves/                  # File carve logic/storage integrations
 │   ├── config/                  # Config structs/flags/validation
 │   ├── console/                 # Node console sessions/commands/parser
 │   ├── dbutil/                  # Database query helpers
-│   ├── environments/            # Environment management + cache
+│   ├── environments/            # Environment management, packages, and cache
 │   ├── fileexplorer/            # Accelerated per-node file explorer
 │   ├── filequery/               # File query helpers
 │   ├── geoip/                   # MaxMind GeoIP enrichment
 │   ├── handlers/                # Shared HTTP handlers
-│   ├── logging/                 # Log pipeline + logger backends
+│   ├── logging/                 # Log pipeline, readers, and logger backends
 │   ├── nodes/                   # Node state/registration/cache
 │   ├── osquery/                 # osquery schema/table metadata helpers
-│   ├── posture/                 # Optional posture ingestion and storage
-│   ├── queries/                 # Query management/scheduling/results
-│   ├── ratelimit/               # Rate limiting helpers
-│   ├── settings/                # Runtime settings + cache
+│   ├── posture/                 # Optional posture ingestion, storage, and scoring
+│   ├── queries/                 # Query management/scheduling/results/cache
+│   ├── ratelimit/               # HTTP rate limiting helpers
+│   ├── servicecommands/         # Service restart command handoff
+│   ├── serviceconfig/           # Persisted service configuration sections
+│   ├── settings/                # Runtime settings + Redis-backed cache
 │   ├── tags/                    # Tag management
+│   ├── types/                   # Shared type definitions
 │   ├── users/                   # User and permissions management
 │   ├── utils/                   # Utility helpers
-│   ├── types/                   # Shared type definitions
 │   └── version/                 # Version metadata
 ├── deploy/                      # Deployment configs/scripts (docker/nginx/osquery/systemd, CI/CD, redis, config, helpers, etc.)
-├── tools/                       # Dev/release helpers (Bruno API collections, fake_news_go load simulator, json2yaml-config converter)
+├── tools/                       # Dev/release helpers (OpenAPI, Bruno, packages, load/debug tools)
 ├── bin/                         # Built binaries (from make)
 ├── docker-compose-dev.yml       # Local multi-service development stack
 ├── Makefile                     # Build/test/dev targets
@@ -132,7 +136,6 @@ flowchart LR
 
     TLS --> Shared
     API --> Shared
-    Frontend --> Shared
     CLI --> Shared
 
     Shared --> DB

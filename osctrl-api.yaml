@@ -1900,6 +1900,178 @@ paths:
       summary: Get enrollment values
       tags:
         - environments
+  "/api/v1/environments/{env}/packages":
+    get:
+      description: Returns all enrolling packages for an environment.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/environments.EnvironmentPackage"
+                type: array
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List enrolling packages
+      tags:
+        - environments
+    post:
+      description: Adds a new enrolling package to an environment.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.ApiAddPackageRequest"
+        description: Request body
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/environments.EnvironmentPackage"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Add enrolling package
+      tags:
+        - environments
+  "/api/v1/environments/{env}/packages/{id}":
+    delete:
+      description: Removes an enrolling package from an environment.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Package ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Remove enrolling package
+      tags:
+        - environments
   "/api/v1/environments/{env}/remove/{action}":
     post:
       description: Extends, expires, rotates, or updates removal values for an environment.
@@ -2494,6 +2666,71 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Map environments
+      tags:
+        - environments
+  "/api/v1/environments/packages/{env}/{id}":
+    patch:
+      description: Updates the URL of an existing enrolling package.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Package ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.ApiUpdatePackageRequest"
+        description: Request body
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/environments.EnvironmentPackage"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Update enrolling package URL
       tags:
         - environments
   /api/v1/login:
@@ -4702,6 +4939,262 @@ paths:
       summary: Update saved query
       tags:
         - saved-queries
+  /api/v1/service-config:
+    get:
+      description: Returns all service configuration sections across all services.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/serviceconfig.ServiceConfig"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List all service config sections
+      tags:
+        - service-config
+  "/api/v1/service-config/{service}":
+    get:
+      description: Returns all configuration sections for the given service.
+      parameters:
+        - description: Service name
+          in: path
+          name: service
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/serviceconfig.ServiceConfig"
+                type: array
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List service config sections for a service
+      tags:
+        - service-config
+  "/api/v1/service-config/{service}/{section}":
+    get:
+      description: Returns a single configuration section by service and section name.
+      parameters:
+        - description: Service name
+          in: path
+          name: service
+          required: true
+          schema:
+            type: string
+        - description: Section name
+          in: path
+          name: section
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/serviceconfig.ServiceConfig"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get one service config section
+      tags:
+        - service-config
+    put:
+      description: Replaces an editable service config section's JSON value.
+      parameters:
+        - description: Service name
+          in: path
+          name: service
+          required: true
+          schema:
+            type: string
+        - description: Section name
+          in: path
+          name: section
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.ServiceConfigUpdateRequest"
+        description: Request body
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/serviceconfig.ServiceConfig"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Update service config section
+      tags:
+        - service-config
+  /api/v1/service-config/apply:
+    post:
+      description: Triggers a graceful service restart to apply DB-edited config changes.
+      responses:
+        "202":
+          description: Restart triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Apply config changes and restart
+      tags:
+        - service-config
   /api/v1/settings:
     get:
       description: Returns settings for all services.
@@ -4998,156 +5491,6 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Update setting
-      tags:
-        - settings
-  "/api/v1/settings/{service}/json":
-    get:
-      description: Returns JSON settings for a service.
-      parameters:
-        - description: Service name
-          in: path
-          name: service
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: "#/components/schemas/settings.SettingValue"
-                type: array
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "404":
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "409":
-          description: Conflict
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "429":
-          description: Too many requests
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "503":
-          description: Service unavailable
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-      security:
-        - ApiKeyAuth: []
-      summary: List service JSON settings
-      tags:
-        - settings
-  "/api/v1/settings/{service}/json/{env}":
-    get:
-      description: Returns JSON settings for a service and environment.
-      parameters:
-        - description: Service name
-          in: path
-          name: service
-          required: true
-          schema:
-            type: string
-        - description: Environment name or UUID
-          in: path
-          name: env
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: "#/components/schemas/settings.SettingValue"
-                type: array
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "404":
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "409":
-          description: Conflict
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "429":
-          description: Too many requests
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "503":
-          description: Service unavailable
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-      security:
-        - ApiKeyAuth: []
-      summary: List service environment JSON settings
       tags:
         - settings
   /api/v1/stats:
@@ -7118,6 +7461,25 @@ components:
         - CarvePlatformLinux
         - CarvePlatformDarwin
         - CarvePlatformWindows
+    environments.EnvironmentPackage:
+      properties:
+        architecture:
+          type: string
+        created_at:
+          type: string
+        environment_id:
+          type: integer
+        id:
+          type: integer
+        is_default:
+          type: boolean
+        type:
+          type: string
+        updated_at:
+          type: string
+        url:
+          type: string
+      type: object
     environments.NameUUID:
       properties:
         id:
@@ -7656,6 +8018,35 @@ components:
         - PlatformLinux
         - PlatformDarwin
         - PlatformWindows
+    serviceconfig.ServiceConfig:
+      properties:
+        createdAt:
+          type: string
+        deletedAt:
+          $ref: "#/components/schemas/gorm.DeletedAt"
+        editable:
+          type: boolean
+        environmentID:
+          type: integer
+        id:
+          type: integer
+        info:
+          type: string
+        name:
+          type: string
+        service:
+          type: string
+        source:
+          description: '"yaml" or "db"'
+          type: string
+        type:
+          description: always "json" for now
+          type: string
+        updatedAt:
+          type: string
+        value:
+          type: string
+      type: object
     settings.SettingValue:
       properties:
         boolean:
@@ -7673,8 +8064,6 @@ components:
         integer:
           format: int64
           type: integer
-        json:
-          type: boolean
         name:
           type: string
         service:
@@ -7758,6 +8147,17 @@ components:
         url_msi_pkg:
           type: string
         url_rpm_pkg:
+          type: string
+      type: object
+    types.ApiAddPackageRequest:
+      properties:
+        architecture:
+          type: string
+        is_default:
+          type: boolean
+        type:
+          type: string
+        url:
           type: string
       type: object
     types.ApiDataResponse:
@@ -7881,6 +8281,11 @@ components:
           type: string
         tagtype:
           type: integer
+      type: object
+    types.ApiUpdatePackageRequest:
+      properties:
+        url:
+          type: string
       type: object
     types.ApiUserRequest:
       properties:
@@ -8430,6 +8835,13 @@ components:
           type: string
         updated_at:
           type: string
+      type: object
+    types.ServiceConfigUpdateRequest:
+      properties:
+        value:
+          items:
+            type: integer
+          type: array
       type: object
     types.SetPermissionsAllRequest:
       properties:
