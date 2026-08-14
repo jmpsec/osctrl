@@ -4,10 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -15,6 +19,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
+
+const serviceCommandTTL = 2 * time.Minute
 
 // ServiceConfigHandler - GET Handler for all service config sections
 // @Summary List all service config sections
@@ -275,17 +281,98 @@ func (h *HandlersApi) ServiceConfigApplyHandler(w http.ResponseWriter, r *http.R
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	if h.RestartCh == nil {
-		apiErrorResponse(w, "restart not available", http.StatusServiceUnavailable, nil)
+	var body types.ServiceConfigApplyRequest
+	if r.Body != nil {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+			apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
+			return
+		}
+	}
+	service := body.Service
+	if service == "" {
+		service = config.ServiceAPI
+	}
+	switch service {
+	case config.ServiceAPI:
+		if h.RestartCh == nil {
+			apiErrorResponse(w, "restart not available", http.StatusServiceUnavailable, nil)
+			return
+		}
+		h.AuditLog.SettingsAction(ctx[ctxUser], "apply service-config api restart", strings.Split(r.RemoteAddr, ":")[0])
+		log.Info().Msgf("Service config apply triggered by %s — initiating API restart", ctx[ctxUser])
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusAccepted, types.ServiceConfigApplyResponse{
+			Service: config.ServiceAPI,
+			Message: "Restart triggered. osctrl-api will restart shortly to apply config changes.",
+		})
+		h.RestartCh <- struct{}{}
+	case config.ServiceTLS:
+		if h.ServiceCommands == nil {
+			apiErrorResponse(w, "service commands not available", http.StatusServiceUnavailable, nil)
+			return
+		}
+		cmd, err := h.ServiceCommands.RequestRestart(config.ServiceTLS, ctx[ctxUser], strings.Split(r.RemoteAddr, ":")[0], serviceCommandTTL)
+		if err != nil {
+			apiErrorResponse(w, "error requesting tls restart", http.StatusInternalServerError, err)
+			return
+		}
+		h.AuditLog.SettingsAction(ctx[ctxUser], fmt.Sprintf("apply service-config tls restart command %s", cmd.CommandID), strings.Split(r.RemoteAddr, ":")[0])
+		log.Info().Str("command", cmd.CommandID).Msgf("TLS restart requested by %s", ctx[ctxUser])
+		resp := serviceCommandResponse(cmd)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusAccepted, types.ServiceConfigApplyResponse{
+			Service: config.ServiceTLS,
+			Message: "Restart requested. osctrl-tls will restart after consuming the service command.",
+			Command: &resp,
+		})
+	default:
+		apiErrorResponse(w, "invalid service", http.StatusBadRequest, nil)
+	}
+}
+
+// ServiceCommandHandler — GET /api/v1/service-config/commands/{command_id}
+func (h *HandlersApi) ServiceCommandHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	h.AuditLog.SettingsAction(ctx[ctxUser], "apply service-config (restart)", strings.Split(r.RemoteAddr, ":")[0])
-	log.Info().Msgf("Service config apply triggered by %s — initiating graceful restart", ctx[ctxUser])
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusAccepted, map[string]string{
-		"message": "Restart triggered. The service will restart shortly to apply config changes.",
-	})
-	// Signal the main goroutine to shut down. The channel is buffered
-	// (cap 1) so this send completes immediately without blocking, and
-	// the handler returns so srv.Shutdown() can proceed.
-	h.RestartCh <- struct{}{}
+	if h.ServiceCommands == nil {
+		apiErrorResponse(w, "service commands not available", http.StatusServiceUnavailable, nil)
+		return
+	}
+	commandID := r.PathValue("command_id")
+	if commandID == "" {
+		apiErrorResponse(w, "missing command id", http.StatusBadRequest, nil)
+		return
+	}
+	cmd, err := h.ServiceCommands.Get(commandID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiErrorResponse(w, "command not found", http.StatusNotFound, err)
+			return
+		}
+		apiErrorResponse(w, "error getting command", http.StatusInternalServerError, err)
+		return
+	}
+	resp := serviceCommandResponse(cmd)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
+}
+
+func serviceCommandResponse(cmd servicecommands.ServiceCommand) types.ServiceCommandResponse {
+	return types.ServiceCommandResponse{
+		CommandID:     cmd.CommandID,
+		TargetService: cmd.TargetService,
+		Action:        cmd.Action,
+		Status:        cmd.Status(time.Now()),
+		RequestedBy:   cmd.RequestedBy,
+		RequestedFrom: cmd.RequestedFrom,
+		CreatedAt:     cmd.CreatedAt,
+		ExpiresAt:     cmd.ExpiresAt,
+		ConsumedAt:    cmd.ConsumedAt,
+		ConsumedBy:    cmd.ConsumedBy,
+		RecoveredAt:   cmd.RecoveredAt,
+		RecoveredBy:   cmd.RecoveredBy,
+	}
 }

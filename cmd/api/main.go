@@ -29,6 +29,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
+	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
@@ -387,6 +388,7 @@ func osctrlAPIService() {
 	}
 	log.Info().Msg("Seeding service config from YAML")
 	serviceConfigMgr := serviceconfig.NewServiceConfigManager(db.Conn)
+	serviceCommandMgr := servicecommands.NewManager(db.Conn)
 	if err := serviceConfigMgr.Seed(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error seeding service config - %v", err)
 	}
@@ -465,6 +467,7 @@ func osctrlAPIService() {
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithServiceConfig(serviceConfigMgr),
+		handlers.WithServiceCommands(serviceCommandMgr),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
 		handlers.WithGeoIP(geoIPResolver),
 		handlers.WithPosture(posturemgr),
@@ -926,6 +929,9 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiServiceConfigPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"GET "+_apiPath(apiServiceConfigPath)+"/commands/{command_id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceCommandHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiServiceConfigPath)+"/{service}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigServiceHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

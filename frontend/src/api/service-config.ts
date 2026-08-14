@@ -68,9 +68,39 @@ export function updateServiceConfig(
   );
 }
 
+export interface ServiceCommand {
+  command_id: string;
+  target_service: string;
+  action: string;
+  status: 'pending' | 'consumed' | 'recovered' | 'expired';
+  requested_by?: string;
+  requested_from?: string;
+  created_at?: string;
+  expires_at?: string;
+  consumed_at?: string;
+  consumed_by?: string;
+  recovered_at?: string;
+  recovered_by?: string;
+}
+
+export interface ServiceConfigApplyResponse {
+  message: string;
+  service?: string;
+  command?: ServiceCommand;
+}
+
 /** POST /api/v1/service-config/apply — trigger graceful restart to apply config changes. */
-export function applyServiceConfig(): Promise<{ message: string }> {
-  return apiFetch<{ message: string }>('/api/v1/service-config/apply', {
+export function applyServiceConfig(service = 'api'): Promise<ServiceConfigApplyResponse> {
+  return apiFetch<ServiceConfigApplyResponse>('/api/v1/service-config/apply', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ service }),
   });
+}
+
+/** GET /api/v1/service-config/commands/{command_id} — command restart status. */
+export function getServiceCommand(commandID: string): Promise<ServiceCommand> {
+  return apiFetch<ServiceCommand>(
+    `/api/v1/service-config/commands/${encodeURIComponent(commandID)}`,
+  );
 }

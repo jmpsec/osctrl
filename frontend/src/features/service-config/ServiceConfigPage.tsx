@@ -7,6 +7,7 @@ import {
   listServiceConfig,
   updateServiceConfig,
   applyServiceConfig,
+  getServiceCommand,
   type ServiceConfig,
 } from '$/api/service-config';
 import { AuthError, ApiError } from '$/api/client';
@@ -292,6 +293,7 @@ export function ServiceConfigPage() {
   const [applyFlash, setApplyFlash] = useState(false);
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [restartStatus, setRestartStatus] = useState<string | null>(null);
   const qc = useQueryClient();
   const {
     data,
@@ -320,17 +322,49 @@ export function ServiceConfigPage() {
   const hasPendingChanges = sections.some((s) => s.Source === 'db');
 
   const applyMutation = useMutation({
-    mutationFn: () => applyServiceConfig(),
-    onSuccess: () => {
+    mutationFn: () => applyServiceConfig(service),
+    onSuccess: (resp) => {
       setApplyErr(null);
       setApplyFlash(true);
       setRestarting(true);
+      setRestartStatus(resp.command?.status ?? null);
+      if (service === 'tls' && resp.command?.command_id) {
+        const commandID = resp.command.command_id;
+        let timeout: ReturnType<typeof setTimeout>;
+        const poll = setInterval(() => {
+          getServiceCommand(commandID)
+            .then((cmd) => {
+              setRestartStatus(cmd.status);
+              if (cmd.status === 'recovered') {
+                clearInterval(poll);
+                clearTimeout(timeout);
+                setRestarting(false);
+                setApplyFlash(false);
+                qc.invalidateQueries({ queryKey: ['service-config', service] });
+              }
+              if (cmd.status === 'expired') {
+                clearInterval(poll);
+                clearTimeout(timeout);
+                setRestarting(false);
+                setApplyErr('TLS restart command expired before osctrl-tls consumed it.');
+              }
+            })
+            .catch(() => {});
+        }, 2000);
+        timeout = setTimeout(() => {
+          clearInterval(poll);
+          setRestarting(false);
+          setApplyErr('TLS restart recovery was not confirmed within 60 seconds.');
+        }, 60_000);
+        return;
+      }
       const poll = setInterval(() => {
         listServiceConfig(service)
           .then(() => {
             clearInterval(poll);
             setRestarting(false);
             setApplyFlash(false);
+            setRestartStatus(null);
             qc.invalidateQueries({ queryKey: ['service-config', service] });
           })
           .catch(() => {});
@@ -345,6 +379,7 @@ export function ServiceConfigPage() {
         window.location.href = '/login';
         return;
       }
+      setRestartStatus(null);
       setApplyErr(e instanceof Error ? e.message : 'Apply failed');
     },
   });
@@ -375,7 +410,9 @@ export function ServiceConfigPage() {
             aria-live="polite"
             className="text-xs text-[color:var(--text-3)] font-mono-tabular"
           >
-            Restarting — waiting for service…
+            {service === 'tls' && restartStatus
+              ? `osctrl-tls restart ${restartStatus}…`
+              : `Restarting — waiting for osctrl-${service}…`}
           </span>
         )}
         {applyErr && (
@@ -475,6 +512,7 @@ export function ServiceConfigPage() {
 
       {showApplyConfirm && (
         <ApplyConfirmDialog
+          service={service}
           pendingSections={sections.filter((s) => s.Source === 'db')}
           isPending={applyMutation.isPending}
           onConfirm={() => {
@@ -1258,11 +1296,13 @@ function ToggleSwitch({
 export default ServiceConfigPage;
 
 function ApplyConfirmDialog({
+  service,
   pendingSections,
   isPending,
   onConfirm,
   onCancel,
 }: {
+  service: string;
   pendingSections: ServiceConfig[];
   isPending: boolean;
   onConfirm: () => void;
@@ -1277,7 +1317,7 @@ function ApplyConfirmDialog({
     >
       <div className="space-y-4">
         <p className="text-sm text-[color:var(--text-1)]">
-          This will restart the osctrl-api service to apply the following
+          This will restart the osctrl-{service} service to apply the following
           configuration changes. The service will be briefly unavailable.
         </p>
         <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-0)] p-3">
