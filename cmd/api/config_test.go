@@ -184,3 +184,24 @@ rateLimits:
 		t.Fatalf("login retryAfter = %d, want 23", got)
 	}
 }
+
+func TestSampleAPIConfigLoads(t *testing.T) {
+	cfg, err := loadYAMLConfiguration(filepath.Join("..", "..", "deploy", "config", "api.yml"))
+	if err != nil {
+		t.Fatalf("load sample api.yml: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+
+	if params.Osquery == nil {
+		t.Fatal("sample api.yml did not load osquery")
+	}
+	if params.Logger == nil {
+		t.Fatal("sample api.yml did not load logger")
+	}
+	if params.Debug == nil {
+		t.Fatal("sample api.yml did not load debug")
+	}
+	if params.Carver == nil {
+		t.Fatal("sample api.yml did not load carver")
+	}
+}

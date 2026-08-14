@@ -1,15 +1,22 @@
-# YAML configuration for osctrl-tls
+# YAML configuration for osctrl-tls.
+# This service implements the osquery remote API: enroll, config, logs,
+# distributed queries, and file carving.
 
+# Main HTTP service behavior and shared service-level features.
 service:
+  # Address to bind. Use 0.0.0.0 inside containers or behind a proxy.
   listener: 127.0.0.1
+  # TCP port for osctrl-tls.
   port: 9000
   # Valid values: "debug", "info", "warn", "error"
   logLevel: info
   # Valid values: "json", "console"
   logFormat: json
+  # Public hostname used when building enrollment URLs and metadata.
   host: osctrl.net
-  # Valid values: "none", "json", "db", "saml", "oidc", "oauth"
+  # Valid value: "none". osquery authentication uses enroll secrets and node_key.
   auth: none
+  # Write security-relevant TLS activity, such as enroll failures, to audit_logs.
   auditLog: true
   # Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers
   # utils.GetIP will trust. osctrl-tls is typically internet-facing for
@@ -18,6 +25,10 @@ service:
   # prevents header-spoofed enroll-rate-limit bypass and audit-log
   # poisoning.
   trustedProxies: ""
+  # Path to a MaxMind GeoLite2-Country .mmdb file. Currently consumed by
+  # osctrl-api node responses; kept here so the shared service section is
+  # complete across sample configs. Empty disables GeoIP.
+  geoipDBPath: ""
   # Prefix for scheduled query names whose results are ingested as
   # node posture data (security & compliance). Queries in the osquery
   # schedule named e.g. "osctrl:posture:packages" will have their
@@ -48,56 +59,86 @@ service:
   # Consecutive failures before caches enter stale-serve mode.
   dbHealthThreshold: 3
 
-# Database configuration
+# Database configuration. This is the primary source of truth for fleet state.
 db:
+  # Valid values: "postgres", "mysql", "sqlite".
   type: postgres
+  # Database host. Ignored by sqlite.
   host: 127.0.0.1
+  # Database port. Defaults match PostgreSQL.
   port: 5432
+  # Database/schema name.
   name: osctrl
+  # Database username.
   username: postgres
+  # Database password. Prefer env vars/secrets in production.
   password: postgres
+  # PostgreSQL SSL mode, for example disable, require, verify-full.
   sslmode: disable
+  # Maximum idle DB connections retained by the pool.
   maxIdleConns: 20
+  # Maximum open DB connections.
   maxOpenConns: 100
+  # Maximum connection lifetime in minutes.
   connMaxLifetime: 30
+  # Seconds to keep retrying DB connection at startup; 0 fails fast.
   connRetry: 10
+  # SQLite database file path when type is sqlite.
   filePath: ./osctrl.db
 
-# Batch writer configuration
-batchwriter:
+# Batch writer configuration for coalescing node last-seen updates.
+batchWriter:
+  # Maximum queued updates before a DB flush.
   writerBatchSize: 50
+  # Maximum time to wait before flushing queued updates.
   writerTimeout: 1m0s
+  # Buffered channel size for pending updates.
   writerBufferSize: 2000
 
-# Redis cache configuration
+# Redis cache configuration. Used for env/settings caches, query cache, and activity.
 redis:
+  # Redis host when connectionString is empty.
   host: 127.0.0.1
+  # Redis port when connectionString is empty.
   port: 6379
+  # Redis password when connectionString is empty.
   password: ""
+  # Full Redis URL. Overrides host/port/password/db when set.
   connectionString: ""
+  # Redis logical DB number.
   db: 0
+  # Seconds to keep retrying Redis connection at startup; 0 fails fast.
   connRetry: 10
 
 # HTTP request rate limits. Values match the built-in defaults.
 rateLimits:
+  # Unused by osctrl-tls; present so rateLimits has the full shared shape.
   login:
+    # Tokens available immediately.
     burst: 10
+    # Refill window.
     period: 1m
+    # Idle client buckets are evicted after this duration.
     evictAfter: 10m
+    # Retry-After response header in seconds.
     retryAfter: 60
+    # Maximum tracked client buckets; 0 uses the internal default.
     maxBuckets: 0
+  # Unused by osctrl-tls; API pre-auth discovery limiter.
   preAuth:
     burst: 60
     period: 1m
     evictAfter: 10m
     retryAfter: 60
     maxBuckets: 0
+  # Unused by osctrl-tls; API service-config apply limiter.
   serviceConfigApply:
     burst: 3
     period: 10m
     evictAfter: 30m
     retryAfter: 60
     maxBuckets: 0
+  # osquery enroll attempts per client IP.
   enroll:
     burst: 20
     period: 1m
@@ -105,39 +146,74 @@ rateLimits:
     retryAfter: 60
     maxBuckets: 0
 
-# Osquery nodes configuration
+# osquery remote API feature switches.
 osquery:
+  # osquery schema version used for table metadata.
   version: 5.23.1
+  # JSON schema file with osquery table metadata.
   tablesFile: ./data/5.23.1.json
+  # Enables POST /{env}/log.
   logger: true
+  # Enables POST /{env}/config.
   config: true
+  # Enables distributed query read/write endpoints.
   query: true
+  # Enables file carve init/block endpoints.
   carve: true
+  # Allows accelerated query polling responses.
   accelerated: false
+  # Enables file explorer query behavior when accelerated/query are also enabled.
   fileExplorer: false
+  # Prevents config changes through operator surfaces when true.
+  readOnly: false
 
-# Osctrl daemon configuration
+# Optional config endpoint fan-out. Entries contain shared secrets, so leave
+# empty unless osctrl-tls should POST generated configs to another endpoint.
+configEndpoints: []
+# Example:
+# configEndpoints:
+#   # Environment UUID whose generated config should be forwarded.
+#   - environment: "00000000-0000-0000-0000-000000000000"
+#     # Shared secret required on the receiving endpoint path.
+#     secret: "replace-me"
+#     # When true, validate endpoint integrity before forwarding.
+#     integrityCheck: true
+
+# osctrld endpoint configuration.
 osctrld:
+  # Enables osctrld flags/cert/verify/script endpoints.
   enabled: false
 
 # Metrics configuration (Prometheus)
 metrics:
+  # Enables a separate Prometheus metrics listener.
   enabled: false
+  # Metrics listener address.
   listener: 127.0.0.1
+  # Metrics listener port.
   port: 9090
 
-# TLS termination configuration
+# TLS termination configuration for serving HTTPS directly from osctrl-tls.
 tls:
+  # When false, terminate TLS at nginx/load balancer instead.
   termination: false
+  # PEM certificate file when termination is true.
   certificateFile: ./config/tls.crt
+  # PEM private key file when termination is true.
   keyFile: ./config/tls.key
 
 # Logger configuration to handle received logs from osquery nodes
 logger:
   # Valid values: "none", "stdout", "file", "db", "graylog", "splunk", "logstash", "kinesis", "s3", "kafka", "elastic"
   type: db
+  # Optional multi-destination logging/export. Empty uses `type`.
+  types: []
+  # Reuse the main db section for DB logging when true.
   loggerDBSame: false
+  # Also persist status/on-demand query logs in DB even with external exporters.
   alwaysLog: false
+  # Separate DB destination for log records when loggerDBSame is false.
+  # Fields match the top-level db section.
   db:
     type: ""
     host: ""
@@ -151,72 +227,131 @@ logger:
     connMaxLifetime: 0
     connRetry: 0
     filePath: ""
+  # S3 logger destination.
   s3:
+    # Bucket name for log objects.
     bucket: ""
+    # AWS region for the bucket.
     region: ""
+    # Optional static access key. Prefer instance/task roles in production.
     accessKey: ""
+    # Optional static secret key. Prefer instance/task roles in production.
     secretAccessKey: ""
+  # Graylog logger destination.
   graylog:
+    # Graylog endpoint URL.
     url: ""
+    # Source host value attached to Graylog messages.
     host: ""
+    # Stream/name for distributed query logs.
     queries: ""
+    # Stream/name for status logs.
     status: ""
+    # Stream/name for result logs.
     results: ""
+  # Elasticsearch logger destination.
   elastic:
+    # Elasticsearch host.
     host: ""
+    # Elasticsearch port.
     port: ""
+    # Prefix for generated index names.
     indexPrefix: ""
+    # Separator used inside date suffixes.
     dateSeparator: ""
+    # Separator between prefix and date suffix.
     indexSeparator: ""
+  # Splunk HEC logger destination.
   splunk:
+    # Splunk HEC URL.
     url: ""
+    # Splunk HEC token. Prefer env vars/secrets in production.
     token: ""
+    # Source host value attached to events.
     host: ""
+    # Splunk index name.
     index: ""
+  # Logstash logger destination.
   logstash:
+    # Logstash host.
     host: ""
+    # Logstash port.
     port: ""
+    # Transport protocol, for example tcp or udp.
     protocol: ""
+    # Optional HTTP/TCP path depending on protocol.
     path: ""
+  # AWS Kinesis logger destination.
   kinesis:
+    # Kinesis stream name.
     stream: ""
+    # AWS region for the stream.
     region: ""
+    # Optional custom endpoint.
     endpoint: ""
+    # Optional static access key. Prefer instance/task roles in production.
     accessKey: ""
+    # Optional static secret key. Prefer instance/task roles in production.
     secretKey: ""
+    # Optional AWS session token.
     sessionToken: ""
+  # Kafka logger destination.
   kafka:
+    # Comma-separated Kafka bootstrap servers.
     bootstrapServers: ""
+    # CA certificate path for TLS verification.
     sslCALocation: ""
+    # Connection timeout.
     connectionTimeout: 5s
+    # SASL authentication settings.
     sasl:
+      # SASL mechanism, such as plain or scram-sha-512.
       mechanism: ""
+      # SASL username.
       username: ""
+      # SASL password. Prefer env vars/secrets in production.
       password: ""
+    # Kafka topic for log events.
     topic: ""
+  # Local rotating file logger destination.
   local:
+    # Log file path for local/file logging.
     filePath: ""
+    # Rotate after this size in MB.
     maxSize: 0
+    # Number of rotated files to keep.
     maxBackups: 0
+    # Days to keep rotated files.
     maxAge: 0
+    # Compress rotated files with gzip.
     compress: false
 
 # Carver configuration to handle file carves from osquery nodes
 carver:
   # Valid values: "none", "local", "db", "s3"
   type: db
+  # S3 destination for carved files when type is s3.
   s3:
+    # Bucket name for carved files.
     bucket: ""
+    # AWS region for the bucket.
     region: ""
+    # Optional static access key. Prefer instance/task roles in production.
     accessKey: ""
+    # Optional static secret key. Prefer instance/task roles in production.
     secretAccessKey: ""
+  # Local filesystem destination when type is local.
   local:
+    # Directory where carved files are written.
     carvesDir: ./carved_files/
 
-# Debug configuration
+# Debug configuration for dumping incoming HTTP requests. Use only temporarily.
 debug:
+  # Enables request dumping.
   enableHttp: false
+  # Destination file for dumped requests.
   httpFile: ./debug-http-tls.log
+  # Include request bodies. May contain secrets or node data.
   showBody: false
   # When non-empty, only dump requests from the osquery node whose UUID
   # (or enroll host_identifier) matches this value (case-insensitive).

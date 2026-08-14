@@ -1,17 +1,24 @@
-# YAML configuration for osctrl-api
+# YAML configuration for osctrl-api.
+# This service is the authenticated REST API used by the React frontend,
+# osctrl-cli, and automation.
 
+# Main HTTP service behavior and shared service-level features.
 service:
+  # Address to bind. Use 0.0.0.0 inside containers or behind a proxy.
   listener: 127.0.0.1
+  # TCP port for osctrl-api.
   port: 9000
   # Valid values: "debug", "info", "warn", "error"
   logLevel: info
   # Valid values: "json", "console"
   logFormat: json
+  # Public hostname used when building URLs and operator-facing metadata.
   host: osctrl.net
   # Valid values: "jwt", "none". `none` requires OSCTRL_INSECURE_NO_AUTH=1
   # in the environment and is intended for local-dev only — it impersonates
   # super-admin on every request. Production deployments MUST use `jwt`.
   auth: jwt
+  # Write security-relevant API actions to audit_logs.
   auditLog: true
   # Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers
   # utils.GetIP will trust. Leave empty (default) when osctrl-api is
@@ -36,6 +43,9 @@ service:
   # hides posture controls. When true, the API serves posture data
   # from the shared database (collected by osctrl-tls).
   postureEnabled: false
+  # Only used by osctrl-tls for ingestion; kept here so the service
+  # configuration shape is complete and can round-trip through the API.
+  postureQueryPrefix: "osctrl:posture:"
   # DB health monitor. When enabled, osctrl-api pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache switches to stale-serve mode:
@@ -54,50 +64,77 @@ service:
   # Consecutive failures before EnvCache enters stale-serve mode.
   dbHealthThreshold: 3
 
-# Database configuration
+# Database configuration. This is the primary source of truth for API state.
 db:
+  # Valid values: "postgres", "mysql", "sqlite".
   type: postgres
+  # Database host. Ignored by sqlite.
   host: 127.0.0.1
+  # Database port. Defaults match PostgreSQL.
   port: 5432
+  # Database/schema name.
   name: osctrl
+  # Database username.
   username: postgres
+  # Database password. Prefer env vars/secrets in production.
   password: postgres
+  # PostgreSQL SSL mode, for example disable, require, verify-full.
   sslmode: disable
+  # Maximum idle DB connections retained by the pool.
   maxIdleConns: 20
+  # Maximum open DB connections.
   maxOpenConns: 100
+  # Maximum connection lifetime in minutes.
   connMaxLifetime: 30
+  # Seconds to keep retrying DB connection at startup; 0 fails fast.
   connRetry: 10
+  # SQLite database file path when type is sqlite.
   filePath: ./osctrl.db
 
-# Redis cache configuration
+# Redis cache configuration. Used for env cache, activity tiles, and query cache.
 redis:
+  # Redis host when connectionString is empty.
   host: 127.0.0.1
+  # Redis port when connectionString is empty.
   port: 6379
+  # Redis password when connectionString is empty.
   password: ""
+  # Full Redis URL. Overrides host/port/password/db when set.
   connectionString: ""
+  # Redis logical DB number.
   db: 0
+  # Seconds to keep retrying Redis connection at startup; 0 fails fast.
   connRetry: 10
 
 # HTTP request rate limits. Values match the built-in defaults.
 rateLimits:
+  # Password and SSO login initiation attempts per client IP.
   login:
+    # Tokens available immediately.
     burst: 10
+    # Refill window.
     period: 1m
+    # Idle client buckets are evicted after this duration.
     evictAfter: 10m
+    # Retry-After response header in seconds.
     retryAfter: 60
+    # Maximum tracked client buckets; 0 uses the internal default.
     maxBuckets: 0
+  # Read-only pre-auth routes, such as login environment/method discovery.
   preAuth:
     burst: 60
     period: 1m
     evictAfter: 10m
     retryAfter: 60
     maxBuckets: 0
+  # POST /api/v1/service-config/apply restart requests.
   serviceConfigApply:
     burst: 3
     period: 10m
     evictAfter: 30m
     retryAfter: 60
     maxBuckets: 0
+  # Unused by osctrl-api; present so rateLimits has the full shared shape.
   enroll:
     burst: 20
     period: 1m
@@ -105,16 +142,26 @@ rateLimits:
     retryAfter: 60
     maxBuckets: 0
 
-# Osquery nodes configuration
+# osquery feature switches used by API handlers and the frontend feature API.
 osquery:
+  # osquery schema version shown to query-building UI.
   version: 5.23.1
+  # JSON schema file with osquery table metadata.
   tablesFile: ./data/5.23.1.json
+  # Whether osquery log endpoints/features are enabled.
   logger: true
+  # Whether remote config management is enabled.
   config: true
+  # Whether distributed query APIs are enabled.
   query: true
+  # Whether file carve APIs are enabled.
   carve: true
+  # Whether accelerated query polling features are enabled.
   accelerated: false
+  # Enables accelerated file explorer routes when query and accelerated are also true.
   fileExplorer: false
+  # Prevents API-driven osquery configuration changes when true.
+  readOnly: false
 
 # SAML 2.0 federated login. Disabled by default; when `enabled` is true
 # the API fetches the IdP metadata at startup and REFUSES TO START if
@@ -129,16 +176,21 @@ osquery:
 # fields consumed only by osctrl-admin; osctrl-api ignores them.
 # See docs/auth-providers.md for per-IdP walkthroughs.
 saml:
+  # Enables SAML routes when true.
   enabled: false
   # SP entity ID — what the IdP knows us by, conventionally the metadata URL
   entityId: ""
   # Where the IdP POSTs the SAMLResponse; must end with /api/v1/auth/saml/acs
   acsUrl: ""
+  # Legacy SAML certificate path; ignored by osctrl-api.
   certPath: ""
+  # Legacy SAML private key path; ignored by osctrl-api.
   keyPath: ""
   # IdP metadata XML — fetched once at startup for signing certs + SSO endpoint
   metadataUrl: ""
+  # Legacy service root URL; ignored by osctrl-api.
   rootUrl: ""
+  # Legacy IdP login URL; ignored by osctrl-api.
   loginUrl: ""
   # IdP session-termination URL (e.g. https://<tenant>.auth0.com/v2/logout).
   # Returned to the SPA on logout so the IdP session dies too; without it
@@ -157,16 +209,20 @@ saml:
   # Force re-authentication at the IdP on every login. Defaults true — it is
   # the substitute for SAML SLO, which is not implemented yet.
   forceAuthn: true
+  # Legacy flag from the old admin service; ignored by osctrl-api.
   spInitiated: false
 
 # OIDC federated login. Same posture as SAML above: disabled by default,
 # fail-fast on discovery errors at startup, advertised to the SPA through
 # /api/v1/auth/methods. Both protocols can be enabled at the same time.
 oidc:
+  # Enables OIDC routes when true.
   enabled: false
   # Realm root — /.well-known/openid-configuration is appended automatically
   issuerUrl: ""
+  # OIDC client ID registered with the IdP.
   clientId: ""
+  # OIDC client secret. Prefer env vars/secrets in production.
   clientSecret: ""
   # Must match the IdP client config and end with /api/v1/auth/oidc/callback
   redirectUrl: ""
@@ -185,23 +241,34 @@ oidc:
   # PKCE (S256) for the authorization code flow
   usePKCE: false
 
-# JWT authentication configuration
+# JWT authentication configuration. Used for API bearer tokens and SPA cookies.
 jwt:
+  # Signing secret. Required when auth is jwt.
   jwtSecret: ""
+  # JWT lifetime in hours.
   hoursToExpire: 3
 
-# TLS termination  configuration
+# TLS termination configuration for serving HTTPS directly from osctrl-api.
 tls:
+  # When false, terminate TLS at nginx/load balancer instead.
   termination: false
+  # PEM certificate file when termination is true.
   certificateFile: ./config/tls.crt
+  # PEM private key file when termination is true.
   keyFile: ./config/tls.key
 
 # Logger configuration to handle received logs from osquery nodes
 logger:
   # Valid values: "none", "stdout", "file", "db", "graylog", "splunk", "logstash", "kinesis", "s3", "kafka", "elastic"
   type: db
+  # Optional multi-destination logging/export. Empty uses `type`.
+  types: []
+  # Reuse the main db section for DB logging when true.
   loggerDBSame: false
+  # Also persist status/on-demand query logs in DB even with external exporters.
   alwaysLog: false
+  # Separate DB destination for log records when loggerDBSame is false.
+  # Fields match the top-level db section.
   db:
     type: ""
     host: ""
@@ -215,70 +282,133 @@ logger:
     connMaxLifetime: 0
     connRetry: 0
     filePath: ""
+  # S3 logger destination.
   s3:
+    # Bucket name for log objects.
     bucket: ""
+    # AWS region for the bucket.
     region: ""
+    # Optional static access key. Prefer instance/task roles in production.
     accessKey: ""
+    # Optional static secret key. Prefer instance/task roles in production.
     secretAccessKey: ""
+  # Graylog logger destination.
   graylog:
+    # Graylog endpoint URL.
     url: ""
+    # Source host value attached to Graylog messages.
     host: ""
+    # Stream/name for distributed query logs.
     queries: ""
+    # Stream/name for status logs.
     status: ""
+    # Stream/name for result logs.
     results: ""
+  # Elasticsearch logger destination.
   elastic:
+    # Elasticsearch host.
     host: ""
+    # Elasticsearch port.
     port: ""
+    # Prefix for generated index names.
     indexPrefix: ""
+    # Separator used inside date suffixes.
     dateSeparator: ""
+    # Separator between prefix and date suffix.
     indexSeparator: ""
+  # Splunk HEC logger destination.
   splunk:
+    # Splunk HEC URL.
     url: ""
+    # Splunk HEC token. Prefer env vars/secrets in production.
     token: ""
+    # Source host value attached to events.
     host: ""
+    # Splunk index name.
     index: ""
+  # Logstash logger destination.
   logstash:
+    # Logstash host.
     host: ""
+    # Logstash port.
     port: ""
+    # Transport protocol, for example tcp or udp.
     protocol: ""
+    # Optional HTTP/TCP path depending on protocol.
     path: ""
+  # AWS Kinesis logger destination.
   kinesis:
+    # Kinesis stream name.
     stream: ""
+    # AWS region for the stream.
     region: ""
+    # Optional custom endpoint.
     endpoint: ""
+    # Optional static access key. Prefer instance/task roles in production.
     accessKey: ""
+    # Optional static secret key. Prefer instance/task roles in production.
     secretKey: ""
+    # Optional AWS session token.
     sessionToken: ""
+  # Kafka logger destination.
   kafka:
+    # Comma-separated Kafka bootstrap servers.
     bootstrapServers: ""
+    # CA certificate path for TLS verification.
     sslCALocation: ""
+    # Connection timeout.
     connectionTimeout: 5s
+    # SASL authentication settings.
     sasl:
+      # SASL mechanism, such as plain or scram-sha-512.
       mechanism: ""
+      # SASL username.
       username: ""
+      # SASL password. Prefer env vars/secrets in production.
       password: ""
+    # Kafka topic for log events.
     topic: ""
+  # Local rotating file logger destination.
   local:
+    # Log file path for local/file logging.
     filePath: ""
+    # Rotate after this size in MB.
     maxSize: 0
+    # Number of rotated files to keep.
     maxBackups: 0
+    # Days to keep rotated files.
     maxAge: 0
+    # Compress rotated files with gzip.
     compress: false
 
 # Carver configuration to handle file carves from osquery nodes
 carver:
   # Valid values: "none", "local", "db", "s3"
   type: db
+  # S3 destination for carved files when type is s3.
   s3:
+    # Bucket name for carved files.
     bucket: ""
+    # AWS region for the bucket.
     region: ""
+    # Optional static access key. Prefer instance/task roles in production.
     accessKey: ""
+    # Optional static secret key. Prefer instance/task roles in production.
     secretAccessKey: ""
+  # Local filesystem destination when type is local.
   local:
+    # Directory where carved files are written.
     carvesDir: ./carved_files/
 
-# Debug configuration
+# Debug configuration for dumping incoming HTTP requests. Use only temporarily.
 debug:
+  # Enables request dumping.
   enableHttp: false
+  # Destination file for dumped requests.
   httpFile: ./debug-http-api.log
+  # Include request bodies. May contain secrets or node data.
   showBody: false
+  # When non-empty, only dump requests from the osquery node whose UUID
+  # (or enroll host_identifier) matches this value (case-insensitive).
+  # Empty dumps every request when enableHttp is true.
+  hostIdentifier: ""

@@ -50,3 +50,21 @@ rateLimits:
 		t.Fatalf("enroll retryAfter = %d, want 45", got)
 	}
 }
+
+func TestSampleTLSConfigLoads(t *testing.T) {
+	cfg, err := loadYAMLConfiguration(filepath.Join("..", "..", "deploy", "config", "tls.yml"))
+	if err != nil {
+		t.Fatalf("load sample tls.yml: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "tls.yml")
+
+	if params.BatchWriter == nil {
+		t.Fatal("sample tls.yml did not load batchWriter")
+	}
+	if params.ConfigEndpoints == nil {
+		t.Fatal("sample tls.yml did not load configEndpoints")
+	}
+	if params.Osquery == nil {
+		t.Fatal("sample tls.yml did not load osquery")
+	}
+}
