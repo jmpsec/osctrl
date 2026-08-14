@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
+	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
@@ -55,7 +57,8 @@ const (
 	// Default accelerate interval in seconds
 	defaultAccelerate int = 5
 	// Default expiration of oneliners for enroll/expire
-	defaultOnelinerExpiration bool = true
+	defaultOnelinerExpiration  bool = true
+	serviceCommandPollInterval      = 5 * time.Second
 )
 
 // Build-time metadata (overridden via -ldflags "-X main.buildVersion=... -X main.buildCommit=... -X main.buildDate=...")
@@ -263,6 +266,7 @@ func osctrlService() {
 	}
 	log.Info().Msg("Seeding service config from YAML")
 	serviceConfigMgr := serviceconfig.NewServiceConfigManager(db.Conn)
+	serviceCommandMgr := servicecommands.NewManager(db.Conn)
 	if err := serviceConfigMgr.Seed(config.ServiceTLS, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error seeding service config - %v", err)
 	}
@@ -330,6 +334,13 @@ func osctrlService() {
 	if err != nil {
 		log.Fatal().Msgf("error initializing audit log manager: %v", err)
 	}
+	if n, err := serviceCommandMgr.MarkRecovered(config.ServiceTLS, serviceName, time.Now()); err != nil {
+		log.Err(err).Msg("error marking TLS service commands recovered")
+	} else if n > 0 {
+		auditLog.SettingsAction("", fmt.Sprintf("tls service recovered after %d restart command(s)", n), "local")
+		log.Info().Int64("commands", n).Msg("Marked TLS service command(s) recovered")
+	}
+	restartCh := make(chan struct{}, 1)
 	// Per-IP rate limit on /enroll. Defaults to bursts of 20 per minute,
 	// idle eviction after 10 minutes.
 	enrollLimiter := ratelimit.NewFromConfig(flagParams.RateLimits.Enroll)
@@ -429,9 +440,13 @@ func osctrlService() {
 
 	// ////////////////////////////// Everything is ready at this point!
 	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)
+	srv := &http.Server{
+		Addr:    serviceListener,
+		Handler: muxTLS,
+	}
 	if flagParams.TLS.Termination {
 		log.Info().Msg("TLS Termination is enabled")
-		cfg := &tls.Config{
+		srv.TLSConfig = &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 			PreferServerCipherSuites: true,
@@ -442,22 +457,53 @@ func osctrlService() {
 				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 			},
 		}
-		srv := &http.Server{
-			Addr:         serviceListener,
-			Handler:      muxTLS,
-			TLSConfig:    cfg,
-			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
-		}
-		log.Info().Msgf("%s v%s - HTTPS listening %s", serviceName, buildVersion, serviceListener)
+		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
+	}
+	watchCtx, stopCommandWatcher := context.WithCancel(context.Background())
+	go watchServiceCommands(watchCtx, serviceCommandMgr, auditLog, restartCh)
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Info().Msgf("%s v%s - HTTP%s listening %s", serviceName, buildVersion, map[bool]string{true: "S", false: ""}[flagParams.TLS.Termination], serviceListener)
 		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
-		if err := srv.ListenAndServeTLS(flagParams.TLS.CertificateFile, flagParams.TLS.KeyFile); err != nil {
-			log.Fatal().Msgf("ListenAndServeTLS: %v", err)
+		if flagParams.TLS.Termination {
+			serverErr <- srv.ListenAndServeTLS(flagParams.TLS.CertificateFile, flagParams.TLS.KeyFile)
+		} else {
+			serverErr <- srv.ListenAndServe()
 		}
-	} else {
-		log.Info().Msgf("%s v%s - HTTP listening %s", serviceName, buildVersion, serviceListener)
-		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
-		if err := http.ListenAndServe(serviceListener, muxTLS); err != nil {
+	}()
+	select {
+	case err := <-serverErr:
+		stopCommandWatcher()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
+		}
+	case <-restartCh:
+		stopCommandWatcher()
+		log.Info().Msg("TLS service command consumed — exiting for restart")
+		os.Exit(1)
+	}
+}
+
+func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, auditLog *auditlog.AuditLogManager, restartCh chan<- struct{}) {
+	ticker := time.NewTicker(serviceCommandPollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cmd, ok, err := mgr.ConsumeNext(config.ServiceTLS, serviceName, time.Now())
+			if err != nil {
+				log.Err(err).Msg("error checking TLS service commands")
+				continue
+			}
+			if !ok {
+				continue
+			}
+			auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls restart command %s consumed", cmd.CommandID), "local")
+			log.Info().Str("command", cmd.CommandID).Msg("Consumed TLS restart command")
+			restartCh <- struct{}{}
+			return
 		}
 	}
 }

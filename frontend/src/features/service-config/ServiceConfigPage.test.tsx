@@ -11,16 +11,18 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { ServiceConfigPage } from './ServiceConfigPage';
-import type { ServiceConfig } from '$/api/service-config';
+import type { ServiceCommand, ServiceConfig } from '$/api/service-config';
 
 const mockList = vi.fn<(service: string) => Promise<ServiceConfig[]>>();
 const mockUpdate = vi.fn();
 const mockApply = vi.fn();
+const mockGetCommand = vi.fn<(commandID: string) => Promise<ServiceCommand>>();
 
 vi.mock('$/api/service-config', () => ({
   listServiceConfig: (service: string) => mockList(service),
   updateServiceConfig: (...args: unknown[]) => mockUpdate(...args),
-  applyServiceConfig: () => mockApply(),
+  applyServiceConfig: (service: string) => mockApply(service),
+  getServiceCommand: (commandID: string) => mockGetCommand(commandID),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -483,6 +485,28 @@ describe('ServiceConfigPage', () => {
 
     await waitFor(() => {
       expect(mockApply).toHaveBeenCalledTimes(1);
+    });
+    expect(mockApply).toHaveBeenCalledWith('api');
+  });
+
+  it('passes tls to applyServiceConfig from the tls tab', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true, Service: 'tls' })]);
+    mockApply.mockResolvedValue({
+      message: 'Restart requested.',
+      service: 'tls',
+      command: { command_id: 'cmd-1', target_service: 'tls', action: 'restart', status: 'pending' },
+    });
+    renderWithProviders(makeTestRouter('/_app/config/tls'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Apply & Restart/i })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: /Apply & Restart/i }));
+    await user.click(screen.getByRole('button', { name: 'Restart now' }));
+
+    await waitFor(() => {
+      expect(mockApply).toHaveBeenCalledWith('tls');
     });
   });
 

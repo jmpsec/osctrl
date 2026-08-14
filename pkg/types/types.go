@@ -524,6 +524,33 @@ type ServiceConfigUpdateRequest struct {
 	Value json.RawMessage `json:"value"`
 }
 
+// ServiceConfigApplyRequest is the optional body for POST
+// /api/v1/service-config/apply. Empty service defaults to osctrl-api.
+type ServiceConfigApplyRequest struct {
+	Service string `json:"service,omitempty"`
+}
+
+type ServiceCommandResponse struct {
+	CommandID     string     `json:"command_id"`
+	TargetService string     `json:"target_service"`
+	Action        string     `json:"action"`
+	Status        string     `json:"status"`
+	RequestedBy   string     `json:"requested_by"`
+	RequestedFrom string     `json:"requested_from"`
+	CreatedAt     time.Time  `json:"created_at"`
+	ExpiresAt     time.Time  `json:"expires_at"`
+	ConsumedAt    *time.Time `json:"consumed_at,omitempty"`
+	ConsumedBy    string     `json:"consumed_by,omitempty"`
+	RecoveredAt   *time.Time `json:"recovered_at,omitempty"`
+	RecoveredBy   string     `json:"recovered_by,omitempty"`
+}
+
+type ServiceConfigApplyResponse struct {
+	Message string                  `json:"message"`
+	Service string                  `json:"service"`
+	Command *ServiceCommandResponse `json:"command,omitempty"`
+}
+
 // TLSEnvironmentView is the low-privilege projection of an environment.
 // UserLevel operators (env scope) need basic env metadata so the SPA can
 // render its env switcher / dashboard / table chrome — but they MUST NOT
