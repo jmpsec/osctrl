@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useContext, useLayoutEffect, createContext } from 'react';
 import { createPortal } from 'react-dom';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
@@ -38,53 +38,118 @@ function isSensitive(key: string): boolean {
   return SENSITIVE_KEYS.has(key);
 }
 
+// Keys come in three shapes, resolved most-specific first by resolveScoped():
+//   `${service}:${section}.${field}` -> `${section}.${field}` -> `${field}`
+// The scoped keys carry the text from the annotated sample YAML (deploy/config/{api,tls}.yml);
+// the bare keys are the hand-written generic fallbacks for fields the YAML does not annotate.
 const FIELD_HELP: Record<string, string> = {
+  // --- YAML-annotated: service section
+  'api:service.Auth': 'Valid values: "jwt", "none". `none` requires OSCTRL_INSECURE_NO_AUTH=1 in the environment and is intended for local-dev only — it impersonates super-admin on every request. Production deployments MUST use `jwt`.',
+  'tls:service.Auth': 'Valid value: "none". osquery authentication uses enroll secrets and node_key; osctrl-tls refuses to start with any other value (validAuth in pkg/config/validation.go).',
+  'api:service.AuditLog': 'Write security-relevant API actions to audit_logs.',
+  'tls:service.AuditLog': 'Write security-relevant TLS activity, such as enroll failures, to audit_logs.',
+  'api:service.TrustedProxies': "Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers utils.GetIP will trust. Leave empty (default) when osctrl-api is directly internet-facing — forwarding headers are then ignored and RemoteAddr is used verbatim, preventing header-spoofed rate-limit bypass and audit-log poisoning. Set to your edge proxy's CIDR(s) when osctrl-api sits behind a trusted reverse proxy (e.g. `10.0.0.0/8` or `192.0.2.1/32,2001:db8::/64`).",
+  'tls:service.TrustedProxies': 'Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers utils.GetIP will trust. osctrl-tls is typically internet-facing for osquery node enrollment; keep empty unless you operate it behind a trusted reverse proxy that forwards client IPs. Empty (default) prevents header-spoofed enroll-rate-limit bypass and audit-log poisoning.',
+  'api:service.GeoIPDBPath': 'Path to a MaxMind GeoLite2-Country .mmdb file. When set, node IP addresses are resolved to ISO 3166-1 alpha-2 country codes and included in the node API response (shown as flag emojis in the SPA nodes table and node detail page). Empty (default) disables GeoIP entirely — no lookups, no country codes, no overhead. Download the free database from https://dev.maxmind.com/geoip/geolite2-free-geolocation-data — update weekly for best accuracy. Example: /data/GeoLite2-Country.mmdb',
+  'tls:service.GeoIPDBPath': 'Path to a MaxMind GeoLite2-Country .mmdb file. Currently consumed by osctrl-api node responses; kept here so the shared service section is complete across sample configs. Empty disables GeoIP.',
+  'api:service.PostureEnabled': 'Enable the security & compliance posture system. When false (default), posture API endpoints are not registered and the SPA hides posture controls. When true, the API serves posture data from the shared database (collected by osctrl-tls).',
+  'tls:service.PostureEnabled': 'Enable the security & compliance posture system. When false (default), no posture data is collected, no posture API endpoints are available, and the posture tab is hidden in the SPA. When true, result logs from posture-prefixed scheduled queries are ingested and stored per node.',
+  'api:service.PostureQueryPrefix': 'Only used by osctrl-tls for ingestion; kept here so the service configuration shape is complete and can round-trip through the API.',
+  'tls:service.PostureQueryPrefix': 'Prefix for scheduled query names whose results are ingested as node posture data (security & compliance). Queries in the osquery schedule named e.g. "osctrl:posture:packages" will have their results stored as the "packages" posture category. Only used when postureEnabled is true.',
+  'api:service.DBHealthCheck': 'DB health monitor. When enabled, osctrl-api pings the database every dbHealthInterval seconds. After dbHealthThreshold consecutive failures, EnvCache switches to stale-serve mode: cached entries are served on DB miss instead of returning 500, and TTLs are extended to ~60m so cached envs stay warm for the duration of the outage. This keeps the API responding to read-only env lookups during a DB outage. Write paths still require the DB and will fail. The stale-serve window is bounded at 60m so rotated enroll secrets are not accepted indefinitely. Disabled by default; enable in production where DB blips are expected and API availability for read paths is prioritized.',
+  'tls:service.DBHealthCheck': 'DB health monitor. When enabled, osctrl-tls pings the database every dbHealthInterval seconds. After dbHealthThreshold consecutive failures, EnvCache and SettingsCache switch to stale-serve mode: cached entries are served on DB miss instead of returning 500, and TTLs are extended to ~60m so cached envs/settings stay warm for the duration of the outage. This keeps osquery nodes that already have a cached env row receiving config/log/query responses during a DB outage. The stale-serve window is bounded at 60m so rotated enroll secrets are not accepted indefinitely. Disabled by default; enable in production where DB blips are expected and osquery fleet stability is prioritized.',
+  'api:service.DBHealthThreshold': 'Consecutive failures before EnvCache enters stale-serve mode.',
+  'tls:service.DBHealthThreshold': 'Consecutive failures before caches enter stale-serve mode.',
+  // --- YAML-annotated: osquery section
+  'api:osquery.Version': 'osquery schema version shown to query-building UI.',
+  'tls:osquery.Version': 'osquery schema version used for table metadata.',
+  'osquery.TablesFile': 'JSON schema file with osquery table metadata.',
+  'api:osquery.Logger': 'Whether osquery log endpoints/features are enabled.',
+  'tls:osquery.Logger': 'Enables POST /{env}/log.',
+  'api:osquery.Config': 'Whether remote config management is enabled.',
+  'tls:osquery.Config': 'Enables POST /{env}/config.',
+  'api:osquery.Query': 'Whether distributed query APIs are enabled.',
+  'tls:osquery.Query': 'Enables distributed query read/write endpoints.',
+  'api:osquery.Carve': 'Whether file carve APIs are enabled.',
+  'tls:osquery.Carve': 'Enables file carve init/block endpoints.',
+  'api:osquery.Accelerated': 'Whether accelerated query polling features are enabled.',
+  'tls:osquery.Accelerated': 'Allows accelerated query polling responses.',
+  'api:osquery.FileExplorer': 'Enables accelerated file explorer routes when query and accelerated are also true.',
+  'tls:osquery.FileExplorer': 'Enables file explorer query behavior when accelerated/query are also enabled.',
+  'api:osquery.ReadOnly': 'Prevents API-driven osquery configuration changes when true.',
+  'tls:osquery.ReadOnly': 'Prevents config changes through operator surfaces when true.',
+  // --- YAML-annotated: logger / carver / debug
+  'logger.Type': 'Valid values: "none", "stdout", "file", "db", "graylog", "splunk", "logstash", "kinesis", "s3", "kafka", "elastic"',
+  'logger.Types': 'Optional multi-destination logging/export. Empty uses `type`.',
+  'logger.AlwaysLog': 'Also persist status/on-demand query logs in DB even with external exporters.',
+  'logger.DB': 'Separate DB destination for log records when loggerDBSame is false. Fields match the top-level db section.',
+  'carver.Type': 'Valid values: "local", "db", "s3". ("none" is documented in the sample YAML but rejected at startup.)',
+  'debug.ShowBody': 'Include request bodies. May contain secrets or node data.',
+  'debug.TargetHostIdentifier': "When non-empty, only dump requests from the osquery node whose UUID (or enroll host_identifier) matches this value (case-insensitive). Empty dumps every request when enableHttp is true. Useful to isolate one host's traffic on a busy server.",
+  // --- YAML-annotated: metrics / osctrld
+  'metrics.Enabled': 'Enables a separate Prometheus metrics listener.',
+  'osctrld.Enabled': 'Enables osctrld flags/cert/verify/script endpoints.',
+  // --- YAML-annotated: rate limiters
+  'api:rateLimits.login': 'Password and SSO login initiation attempts per client IP.',
+  'api:rateLimits.preAuth': 'Read-only pre-auth routes, such as login environment/method discovery.',
+  'api:rateLimits.serviceConfigApply': 'POST /api/v1/service-config/apply restart requests.',
+  'tls:rateLimits.enroll': 'osquery enroll attempts per client IP.',
+  // --- YAML-annotated: SAML
+  'saml.Enabled': 'Enables SAML routes when true.',
+  'saml.EntityID': 'SP entity ID — what the IdP knows us by, conventionally the metadata URL.',
+  'saml.CertPath': 'Legacy SAML certificate path; consumed only by osctrl-admin, ignored by osctrl-api.',
+  'saml.KeyPath': 'Legacy SAML private key path; consumed only by osctrl-admin, ignored by osctrl-api.',
+  'saml.RootURL': 'Legacy service root URL; consumed only by osctrl-admin, ignored by osctrl-api.',
+  'saml.LoginURL': 'Legacy IdP login URL; consumed only by osctrl-admin, ignored by osctrl-api.',
+  'saml.SPInitiated': 'Legacy flag from the old admin service; ignored by osctrl-api.',
+  'saml.ACSURL': 'Where the IdP POSTs the SAMLResponse; must end with /api/v1/auth/saml/acs',
+  'saml.MetaDataURL': 'IdP metadata XML — fetched once at startup for signing certs + SSO endpoint.',
+  'saml.LogoutURL': 'IdP session-termination URL (e.g. https://<tenant>.auth0.com/v2/logout). Returned to the SPA on logout so the IdP session dies too; without it the next SSO click silently re-authenticates.',
+  'saml.JITProvision': 'Auto-create osctrl users on first login, as non-admin.',
+  'saml.UsernameAttribute': 'Attribute (Name or FriendlyName) whose value becomes the osctrl username. Empty = use the NameID verbatim. Usernames must match ^[a-zA-Z0-9_-]{1,64}$, so email-format NameIDs are rejected — point this at a short handle instead.',
+  'saml.SigningCertPath': 'PEM cert + RSA key for signing outbound AuthnRequests. Both must be set to enable signing; some IdPs require it and all should support it.',
+  'saml.SigningKeyPath': 'PEM cert + RSA key for signing outbound AuthnRequests. Both must be set to enable signing; some IdPs require it and all should support it.',
+  'saml.ForceAuthn': 'Force re-authentication at the IdP on every login. Defaults true — it is the substitute for SAML SLO, which is not implemented yet.',
+  // --- YAML-annotated: OIDC
+  'oidc.Enabled': 'Enables OIDC routes when true.',
+  'oidc.IssuerURL': 'Realm root — /.well-known/openid-configuration is appended automatically.',
+  'oidc.RedirectURL': 'Must match the IdP client config and end with /api/v1/auth/oidc/callback',
+  'oidc.Scopes': 'Empty defaults to [openid, profile, email].',
+  'oidc.UsernameClaim': "Empty defaults to preferred_username. Same charset rule as SAML applies, so `email` and Auth0's `sub` will be rejected — use `nickname` there.",
+  'oidc.GroupsClaim': 'Empty defaults to `groups`.',
+  'oidc.RequiredGroups': 'Login is denied unless the user belongs to at least one of these. Empty disables the group gate.',
+  'oidc.JITProvision': 'Auto-create osctrl users on first login, as non-admin.',
+  'oidc.UsePKCE': 'PKCE (S256) for the authorization code flow.',
+  // --- Section-scoped disambiguation for names that mean different things per section
+  'service.Host': 'Public hostname of this service, used to build URLs handed to nodes and clients.',
+  'db.Host': 'Database server hostname or IP address.',
+  'redis.Host': 'Redis server hostname or IP address.',
+  'db.Port': 'TCP port of the database server.',
+  'redis.Port': 'TCP port of the Redis server.',
+  'db.Type': 'Database engine: postgres, mysql or sqlite. Unknown values silently fall back to postgres.',
+  'db.ConnRetry': 'Seconds to keep retrying the DB connection at startup; 0 fails fast.',
+  'redis.ConnRetry': 'Seconds to keep retrying the Redis connection at startup; 0 fails fast.',
   // Service
   Listener: 'Network interface to bind to (e.g. 0.0.0.0 for all interfaces, 127.0.0.1 for localhost only).',
   Port: 'TCP port the service listens on.',
-  Host: 'Hostname or IP address (context-dependent: service host, database host, Redis host, etc.).',
   LogLevel: 'Minimum log level: debug, info, warn, or error.',
   LogFormat: 'Log output format: console (human-readable) or json (structured).',
-  Auth: 'Authentication backend: none, json, db, saml, jwt, oauth, or oidc.',
-  AuditLog: 'When enabled, records admin actions to an audit trail.',
-  GeoIPDBPath: 'Path to a MaxMind GeoLite2-Country .mmdb file. When set, the API resolves node IPs to country codes. When empty, the feature is disabled.',
-  PostureEnabled: 'Controls whether the security & compliance posture system is active. When false (default), the entire posture subsystem is disabled.',
-  PostureQueryPrefix: 'Prefix that identifies scheduled queries whose result logs are ingested as node posture data. Only used when PostureEnabled is true.',
-  TrustedProxies: 'Comma-separated CIDRs whose X-Real-IP / X-Forwarded-For headers are honored. Empty → forwarding headers ignored, RemoteAddr used.',
-  DBHealthCheck: 'Enables background DB liveness monitor. Pings DB every DBHealthInterval seconds; after DBHealthThreshold failures, switches to stale-serve mode.',
   DBHealthInterval: 'Seconds between DB health pings. Only used when DBHealthCheck is true.',
-  DBHealthThreshold: 'Consecutive DB ping failures before switching to stale-serve mode.',
   // DB
-  Type: 'Backend type (e.g. postgres, mysql, sqlite for databases; stdout, db, s3, etc. for loggers).',
   Name: 'Database name to connect to.',
   Username: 'Database username for authentication.',
   Password: 'Database password or service secret.',
   SSLMode: 'PostgreSQL SSL mode (e.g. disable, require, verify-full).',
   FilePath: 'File path (SQLite database or local log file).',
-  ConnRetry: 'Number of connection retry attempts on startup.',
   MaxIdleConns: 'Maximum idle connections in the pool.',
   MaxOpenConns: 'Maximum open connections to the database.',
   ConnMaxLifetime: 'Maximum lifetime of a connection in seconds.',
   // Redis
   ConnectionString: 'Full Redis connection string. When set, overrides Host/Port/Password.',
   DB: 'Redis database index (0–15).',
-  // Osquery
-  Version: 'Expected osquery version string.',
-  TablesFile: 'Path to the osquery tables JSON definition file.',
-  Logger: 'Enable osquery result log collection.',
-  Config: 'Enable osquery configuration distribution.',
-  Query: 'Enable on-demand distributed query support.',
-  Carve: 'Enable file carve collection from nodes.',
-  Accelerated: 'Allow accelerated check-in intervals for nodes.',
-  FileExplorer: 'Enable the file explorer feature for nodes.',
-  ReadOnly: 'Run in read-only mode (no writes to osquery nodes).',
-  // Metrics
-  Enabled: 'Enable or disable this feature.',
   // Debug
   EnableHTTP: 'When true, dumps HTTP requests to the debug file.',
   HTTPFile: 'File path where HTTP debug dumps are written.',
-  ShowBody: 'Include request/response body in the debug dump.',
-  TargetHostIdentifier: 'Restrict debug dump to a specific node UUID or host_identifier (case-insensitive). Empty dumps all requests.',
   // TLS
   Termination: 'Enable TLS/SSL termination at the service.',
   CertificateFile: 'Path to the TLS certificate file.',
@@ -96,35 +161,11 @@ const FIELD_HELP: Record<string, string> = {
   WriterBatchSize: 'Number of records per batch write.',
   WriterTimeout: 'Timeout for batch write operations.',
   WriterBufferSize: 'Buffer size for the batch writer queue.',
-  // SAML
-  EntityID: 'SP entity identifier — what the IdP knows this service by. Conventionally the metadata URL.',
-  ACSURL: 'Assertion Consumer Service URL where the IdP POSTs the SAMLResponse. Must match IdP registration.',
-  CertPath: 'Path to the SAML SP certificate file.',
-  KeyPath: 'Path to the SAML SP private key file.',
-  MetaDataURL: 'IdP metadata URL for automatic SAML configuration.',
-  RootURL: 'Root URL of the application (used to build SAML endpoints).',
-  LoginURL: 'URL to redirect users for SAML login.',
-  LogoutURL: 'URL to redirect users after SAML logout.',
-  UsernameAttribute: 'SAML attribute whose value becomes the osctrl username. Empty uses NameID verbatim.',
-  SigningCertPath: 'PEM file path to SP signing certificate. Both cert and key must be set to enable request signing.',
-  SigningKeyPath: 'PEM file path to SP signing RSA private key.',
-  ForceAuthn: 'When true (default), forces re-authentication at the IdP on every login.',
-  SPInitiated: 'Enable SP-initiated SAML login flow.',
-  JITProvision: 'Automatically create osctrl user accounts on first federated login.',
   // OIDC
-  IssuerURL: 'OIDC provider issuer URL (e.g. https://accounts.google.com).',
   ClientID: 'OAuth2 client ID registered with the OIDC provider.',
   ClientSecret: 'OAuth2 client secret.',
-  RedirectURL: 'OAuth2 callback URL — must match provider configuration.',
-  Scopes: 'OIDC scopes to request (e.g. openid, profile, email).',
-  UsernameClaim: 'JWT claim to use as the osctrl username.',
-  GroupsClaim: 'JWT claim containing group memberships.',
-  RequiredGroups: 'Groups a user must belong to for access.',
-  UsePKCE: 'Use Proof Key for Code Exchange for added security.',
   // Logger
-  Types: 'Logger backends to use (e.g. stdout, db, s3, graylog, splunk, logstash, kinesis, kafka, elastic).',
   LoggerDBSame: 'Use the same DB connection for logging (no separate logger DB).',
-  AlwaysLog: 'Always log, even when no logger backend is configured.',
   // ConfigEndpoints
   Environment: 'Target osctrl environment name.',
   Secret: 'Enrollment secret for this endpoint.',
@@ -177,6 +218,108 @@ const FIELD_HELP: Record<string, string> = {
   retryAfter: 'Retry-After header value, in seconds, returned with 429 responses.',
   maxBuckets: 'Maximum caller buckets kept in memory. Use 0 for the service default.',
 };
+
+// Same key shapes as FIELD_HELP. Values are the exact lowercase strings the Go side compares against.
+// Only editable sections reach the select branch, so read-only sections (db, logger, carver) get no entries.
+const FIELD_ENUMS: Record<string, readonly string[]> = {
+  'service.LogLevel': ['debug', 'info', 'warn', 'error'],
+  'service.LogFormat': ['json', 'console'],
+  'api:service.Auth': ['jwt', 'none'],
+  // osctrl-tls refuses to boot on anything but "none" (validAuth in pkg/config/validation.go).
+  'tls:service.Auth': ['none'],
+};
+
+function resolveScoped<T>(
+  map: Record<string, T>,
+  service: string,
+  section: string,
+  field: string,
+): T | undefined {
+  return map[`${service}:${section}.${field}`] ?? map[`${section}.${field}`] ?? map[field];
+}
+
+// What each section is for, transcribed from the section header comments in
+// deploy/config/{api,tls}.yml. Keyed `${service}:${section}` where the two
+// sample files describe the section differently, bare `${section}` where they agree.
+const SECTION_HELP: Record<string, string> = {
+  service: 'Main HTTP service behavior and shared service-level features.',
+  'api:db': 'Database configuration. This is the primary source of truth for API state.',
+  'tls:db': 'Database configuration. This is the primary source of truth for fleet state.',
+  batchWriter: 'Batch writer configuration for coalescing node last-seen updates.',
+  'api:redis': 'Redis cache configuration. Used for env cache, activity tiles, and query cache.',
+  'tls:redis': 'Redis cache configuration. Used for env/settings caches, query cache, and activity.',
+  rateLimits: 'HTTP request rate limits. Values match the built-in defaults.',
+  'api:osquery': 'osquery feature switches used by API handlers and the frontend feature API.',
+  'tls:osquery': 'osquery remote API feature switches.',
+  configEndpoints:
+    'Optional config endpoint fan-out. Entries contain shared secrets, so leave empty unless osctrl-tls should POST generated configs to another endpoint.',
+  osctrld: 'osctrld endpoint configuration.',
+  metrics: 'Metrics configuration (Prometheus).',
+  'api:tls': 'TLS termination configuration for serving HTTPS directly from osctrl-api.',
+  'tls:tls': 'TLS termination configuration for serving HTTPS directly from osctrl-tls.',
+  saml: 'SAML 2.0 federated login. Disabled by default; when enabled the API fetches the IdP metadata at startup and REFUSES TO START if that fails, rather than serving a login page with a broken SSO button. The SPA discovers this via GET /api/v1/auth/methods and renders a "Continue with SAML" button automatically — no frontend rebuild needed. Register osctrl with the IdP by pointing it at the SP metadata URL: https://<host>/api/v1/auth/saml/metadata. Note: certPath, keyPath, rootUrl, loginUrl and spInitiated are legacy fields consumed only by osctrl-admin; osctrl-api ignores them. See docs/auth-providers.md for per-IdP walkthroughs.',
+  oidc: 'OIDC federated login. Same posture as SAML: disabled by default, fail-fast on discovery errors at startup, advertised to the SPA through /api/v1/auth/methods. Both protocols can be enabled at the same time.',
+  jwt: 'JWT authentication configuration. Used for API bearer tokens and SPA cookies.',
+  logger: 'Logger configuration to handle received logs from osquery nodes.',
+  carver: 'Carver configuration to handle file carves from osquery nodes.',
+  debug: 'Debug configuration for dumping incoming HTTP requests. Use only temporarily.',
+};
+
+// One glyph per section so cards are told apart at a glance while scrolling.
+// Path data only — rendered by <SectionIcon> in the house 24x24 stroke style.
+const SECTION_ICONS: Record<string, string> = {
+  service: 'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01',
+  db: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+  batchWriter: 'M3 6h18M3 12h18M3 18h10',
+  redis: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5M3 17l9 4 9-4',
+  rateLimits: 'M12 21a9 9 0 1 0-9-9M12 7v5l3 2M3 12H1M12 3V1',
+  // The osquery brand mark: four blades pinwheeling around an empty diamond.
+  // Geometry taken from the osquery icon font that shipped with the removed
+  // osctrl-admin (cmd/admin/static/fonts/osquery.svg), redrawn on a clean
+  // lattice — the original is a 40KB bitmap trace.
+  osquery: 'M12 7 7 7 2 12 7 12ZM7 12 7 17 12 22 12 17ZM12 17 17 17 22 12 17 12ZM17 12 17 7 12 2 12 7Z',
+  configEndpoints: 'M4 7h6M14 7h6M8 3v8M4 17h16M8 13v8',
+  // The osctrl brand mark: control tower + broadcast waves, with the deck windows
+  // cut back in (the silhouette in public/img/osctrl-mark.svg drops them). Path data
+  // is that file, with its translate/scale baked into the 24x24 box via svgo.
+  osctrld:
+    'M10.836.42C8.796.654 6.96 1.446 5.358 2.778c-.306.258-.558.498-.558.54s.162.234.354.426l.354.354.324-.3c1.29-1.2 2.934-1.974 4.836-2.274.774-.12 2.31-.084 3.006.066 1.68.372 3.042 1.038 4.29 2.1l.468.408.372-.372.366-.372-.36-.336C17.43 1.74 15.552.822 13.65.504 12.984.396 11.472.348 10.836.42M10.71 3.27a7.1 7.1 0 0 0-2.574 1.008c-.576.378-1.296.978-1.296 1.08 0 .042.162.234.354.426l.36.354.354-.324a6.2 6.2 0 0 1 2.394-1.35c.648-.192 1.908-.264 2.646-.144 1.152.186 2.262.738 3.18 1.584l.258.24.372-.378.372-.372-.33-.306a7.33 7.33 0 0 0-3.654-1.818c-.606-.108-1.854-.108-2.436 0M11.04 6.036c-.576.126-1.308.516-1.764.936-.216.198-.396.39-.396.432 0 .036.162.228.36.426l.36.354.18-.216c.258-.312.846-.684 1.302-.828.528-.162 1.278-.162 1.764 0 .468.162.786.36 1.182.744l.318.306.372-.384.366-.378-.426-.408c-.942-.9-2.304-1.272-3.618-.984m-.438 3.132c-.072.078-.102.258-.114.702l-.018.6-.942.03c-.762.024-.96.048-1.038.126-.054.054-.45.636-.876 1.29-.522.804-.774 1.248-.774 1.362 0 .09.066.3.15.462s.15.306.15.324c0 .012-.204.036-.456.048-.39.018-.474.042-.57.162-.06.078-.114.186-.114.246 0 .15 2.016 4.032 2.142 4.122.054.042.24.078.414.078h.312l.024.744c.024.87.084.996.48.996H9.6v1.524c0 .954.024 1.59.066 1.71.114.324.474.414.702.168.126-.132.132-.192.144-1.752l.018-1.62h2.94l.018 1.62c.012 1.56.018 1.62.144 1.752.228.246.588.156.702-.168.042-.12.066-.756.066-1.71V20.46h.228c.396 0 .456-.126.48-.996l.024-.744h.312c.174 0 .36-.036.414-.078.126-.09 2.142-3.972 2.142-4.122 0-.06-.054-.168-.114-.246-.096-.12-.18-.144-.57-.162-.252-.012-.456-.036-.456-.048 0-.018.066-.162.15-.324s.15-.372.15-.462c0-.114-.252-.558-.774-1.362-.426-.654-.822-1.236-.876-1.29-.072-.078-.27-.102-.948-.126l-.852-.03-.018-.312c-.018-.348-.15-.498-.432-.498-.27 0-.384.138-.42.486l-.03.324h-1.44l-.018-.6c-.018-.69-.084-.81-.432-.81-.138 0-.258.042-.318.108m4.98 3.114c.318.492.588.93.6.984.018.054-.054.264-.156.468l-.186.366H8.16l-.186-.366c-.102-.204-.174-.414-.156-.468.012-.054.282-.492.6-.984L9 11.4h6.006zM14.22 19.17v.45H9.78v-.9h4.44zM7.21 14.99H8.89L10.33 17.87H8.65ZM9.85 14.99H14.24L12.8 17.87H11.29ZM15.2 14.99H16.89L15.44 17.87H13.76Z',
+  metrics: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
+  tls: 'M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z',
+  saml: 'M12 3l8 4v5c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V7l8-4zM9 12l2 2 4-4',
+  oidc: 'M12 3l8 4v5c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V7l8-4zM12 10a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM12 13.2V16',
+  jwt: 'M15 7a4 4 0 1 1-3.9 5H7v3H4v-3l3-3h4.1A4 4 0 0 1 15 7z',
+  logger: 'M4 4h11l5 5v11H4zM15 4v5h5M8 13h8M8 17h5',
+  carver: 'M14 3l7 7-4 4-7-7zM10 7l-7 7v7h7l7-7',
+  debug: 'M8 6a4 4 0 0 1 8 0v2H8zM6 12h12v3a6 6 0 0 1-12 0zM3 11h3M18 11h3M4 18l2-1M20 18l-2-1',
+};
+
+// Brand marks are solid logos, not line glyphs, so they fill instead of stroke.
+// evenodd makes the osctrl deck windows read as holes rather than filled slabs.
+const FILLED_ICONS = new Set(['osquery', 'osctrld']);
+
+function SectionIcon({ name }: { name: string }) {
+  const d = SECTION_ICONS[name];
+  if (!d) return null;
+  const filled = FILLED_ICONS.has(name);
+  return (
+    <svg
+      aria-hidden="true"
+      className="w-4 h-4 shrink-0 text-[color:var(--text-3)]"
+      viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      fillRule={filled ? 'evenodd' : undefined}
+      stroke={filled ? 'none' : 'currentColor'}
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+const FieldScope = createContext({ service: '', section: '' });
 
 type FieldType = 'boolean' | 'number' | 'string' | 'string[]' | 'object' | 'null';
 
@@ -609,21 +752,27 @@ function ConfigSectionCard({
 
   const hasManyBooleans = booleanFields.length >= 3;
 
+  const scope = useMemo(() => ({ service, section: section.Name }), [service, section.Name]);
+  const sectionHelp = SECTION_HELP[`${service}:${section.Name}`] ?? SECTION_HELP[section.Name];
+
   return (
-    <section
+    <FieldScope.Provider value={scope}><section
       className="border border-[color:var(--border)] rounded-md bg-[color:var(--bg-1)]"
       aria-labelledby={`config-${section.Name}-heading`}
     >
       <header
-        className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)] cursor-pointer select-none hover:bg-[color-mix(in_srgb,var(--bg-0)_85%,var(--bg-3))] rounded-t-[5px]"
+        className="sticky top-0 z-10 flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)] cursor-pointer select-none hover:bg-[color-mix(in_srgb,var(--bg-0)_85%,var(--bg-3))] rounded-t-[5px]"
         onClick={() => setCollapsed((c) => !c)}
       >
-        <h2
-          id={`config-${section.Name}-heading`}
-          className="font-display text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular"
-        >
-          {section.Name}
-        </h2>
+        <div className="flex items-center gap-2 shrink-0">
+          <SectionIcon name={section.Name} />
+          <h2
+            id={`config-${section.Name}-heading`}
+            className="font-display text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular"
+          >
+            {section.Name}
+          </h2>
+        </div>
         <span
           className={cn(
             'px-1.5 py-0.5 rounded text-[10px] font-mono-tabular',
@@ -650,12 +799,15 @@ function ConfigSectionCard({
             {dirtyKeys.length} {dirtyKeys.length === 1 ? 'change' : 'changes'}
           </span>
         )}
-        {section.Info && (
+        {/* Collapsed cards keep the one-line summary; expanded ones show the
+            fuller section description in the body instead, so it is not said twice. */}
+        {section.Info && collapsed ? (
           <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">
             {section.Info}
           </p>
+        ) : (
+          <div className="flex-1" />
         )}
-        {!section.Info && <div className="flex-1" />}
         <span
           className="text-[10px] tnum text-[color:var(--text-3)] whitespace-nowrap"
           title={section.UpdatedAt}
@@ -696,6 +848,11 @@ function ConfigSectionCard({
       </header>
 
       {!collapsed && <div>
+        {sectionHelp && (
+          <p className="px-3.5 py-2.5 text-[11px] leading-relaxed text-[color:var(--text-2)] bg-[color:var(--bg-2)] border-b border-[color:var(--border)]">
+            {sectionHelp}
+          </p>
+        )}
         {/* Array-type sections (e.g. configEndpoints) */}
         {isArray && (
           arrayItems.length === 0 ? (
@@ -827,6 +984,42 @@ function ConfigSectionCard({
             );
           }
 
+          const enumValues = resolveScoped(FIELD_ENUMS, service, section.Name, key);
+          if (enumValues) {
+            const current = String(currentValue ?? '');
+            // Derived from the persisted value, not the draft: an undocumented value has to stay
+            // selectable after the user picks a documented one, since the card has no reset.
+            const persisted = String(originalValue ?? '');
+            const options = enumValues.includes(persisted) ? enumValues : [...enumValues, persisted];
+            return (
+              <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
+                <select
+                  aria-label={key}
+                  value={current}
+                  onChange={(e) => updateField(key, e.target.value)}
+                  className={cn(
+                    'px-3 py-1.5 text-xs rounded-md border',
+                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                    'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+                    dirtyKeys.includes(key)
+                      ? 'border-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.5)]'
+                      : 'border-[color:var(--border)]',
+                  )}
+                >
+                  {options.map((v) => (
+                    <option key={v} value={v}>
+                      {enumValues.includes(v)
+                        ? v
+                        : v === ''
+                          ? '(not set)'
+                          : `${v} (persisted, not a documented value)`}
+                    </option>
+                  ))}
+                </select>
+              </FieldRow>
+            );
+          }
+
           return (
             <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
               <input
@@ -888,20 +1081,31 @@ function ConfigSectionCard({
           </div>
         )}
       </div>}
-    </section>
+    </section></FieldScope.Provider>
   );
 }
 
+const TOOLTIP_W = 320;
+const EDGE_PAD = 8;
+
 function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
-  const help = FIELD_HELP[fieldKey];
+  const scope = useContext(FieldScope);
+  const help = resolveScoped(FIELD_HELP, scope.service, scope.section, fieldKey);
   const ref = useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState<{ x: number; y: number; flip: boolean } | null>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [top, setTop] = useState(0);
+
+  // Long YAML annotations make tall tooltips; clamp against the measured height before paint.
+  useLayoutEffect(() => {
+    const el = tipRef.current;
+    if (!pos || !el) return;
+    const h = el.getBoundingClientRect().height;
+    const maxTop = Math.max(EDGE_PAD, window.innerHeight - EDGE_PAD - h);
+    setTop(Math.min(Math.max(pos.y - h / 2, EDGE_PAD), maxTop));
+  }, [pos]);
 
   if (!help) return null;
-
-  const TOOLTIP_W = 260;
-  const EDGE_PAD = 8;
-  const GAP = 6;
 
   const show = () => {
     const rect = ref.current?.getBoundingClientRect();
@@ -911,11 +1115,9 @@ function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
       if (rightEdge > window.innerWidth - EDGE_PAD) {
         left = window.innerWidth - EDGE_PAD - TOOLTIP_W;
       }
-      setPos({
-        x: left,
-        y: rect.top + rect.height / 2,
-        flip: false,
-      });
+      const y = rect.top + rect.height / 2;
+      setTop(y);
+      setPos({ x: left, y });
     }
   };
 
@@ -941,12 +1143,13 @@ function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
       </svg>
       {pos && createPortal(
         <span
-          className="fixed px-3 py-2 text-[11px] leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg pointer-events-none"
+          ref={tipRef}
+          className="fixed block px-3 py-2 text-[11px] leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg pointer-events-none overflow-hidden"
           style={{
             left: `${pos.x}px`,
-            top: `${pos.y}px`,
+            top: `${top}px`,
             width: TOOLTIP_W,
-            transform: 'translateY(-50%)',
+            maxHeight: `calc(100vh - ${EDGE_PAD * 2}px)`,
             zIndex: 9999,
           }}
         >
@@ -1006,8 +1209,9 @@ function RateLimitsEditor({
             )}
           >
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-xs font-semibold text-[color:var(--text-1)] font-mono-tabular">
+              <h3 className="text-xs font-semibold text-[color:var(--text-1)] font-mono-tabular flex items-center gap-1.5">
                 {name}
+                <FieldHelpIcon fieldKey={name} />
               </h3>
               {dirty && (
                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
