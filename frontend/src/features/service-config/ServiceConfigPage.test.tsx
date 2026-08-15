@@ -100,12 +100,35 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('ServiceConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Pre-acknowledge the impact warning so it does not overlay the rest of
+    // the suite; the warning has its own test below.
+    window.sessionStorage.setItem('osctrl.service-config.warning-ack', '1');
     mockStatus.mockResolvedValue({
       service: 'api',
       pending_changes: true,
       file_path: '/etc/osctrl/api.yml',
       file_writable: true,
     });
+  });
+
+  it('warns about service impact on first visit and not again after acknowledging', async () => {
+    window.sessionStorage.removeItem('osctrl.service-config.warning-ack');
+    mockList.mockResolvedValue([]);
+    const user = userEvent.setup();
+    const { unmount } = renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText(/availability and stability/i)).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: 'I understand' }));
+    expect(screen.queryByRole('button', { name: 'I understand' })).not.toBeInTheDocument();
+
+    unmount();
+    renderWithProviders(makeTestRouter());
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'osctrl-api' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: 'I understand' })).not.toBeInTheDocument();
   });
 
   it('renders service config sections with their names and badges', async () => {
