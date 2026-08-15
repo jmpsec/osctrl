@@ -22,6 +22,11 @@ import { formatRelative } from '$/lib/time';
 const SERVICES = ['api', 'tls'] as const;
 type Service = (typeof SERVICES)[number];
 
+// Acknowledged per browser session, not permanently: every fresh visit should
+// see the warning again, but switching between the api/tls tabs should not
+// re-ask.
+const WARNING_ACK_KEY = 'osctrl.service-config.warning-ack';
+
 const SENSITIVE_KEYS = new Set([
   'Password',
   'password',
@@ -434,6 +439,13 @@ export function ServiceConfigPage() {
     ? (serviceParam as Service)
     : 'api';
 
+  const [showWarning, setShowWarning] = useState(() => {
+    try {
+      return window.sessionStorage.getItem(WARNING_ACK_KEY) !== '1';
+    } catch {
+      return true; // sessionStorage blocked — warn anyway
+    }
+  });
   const [applyErr, setApplyErr] = useState<string | null>(null);
   const [applyFlash, setApplyFlash] = useState(false);
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
@@ -767,6 +779,17 @@ export function ServiceConfigPage() {
           </div>
         )}
       </div>
+
+      {showWarning && (
+        <ImpactWarningDialog
+          onAcknowledge={() => {
+            try {
+              window.sessionStorage.setItem(WARNING_ACK_KEY, '1');
+            } catch { /* blocked — warn again next mount */ }
+            setShowWarning(false);
+          }}
+        />
+      )}
 
       {showApplyConfirm && (
         <ApplyConfirmDialog
@@ -1613,6 +1636,43 @@ function ToggleSwitch({
 }
 
 export default ServiceConfigPage;
+
+function ImpactWarningDialog({ onAcknowledge }: { onAcknowledge: () => void }) {
+  return (
+    <ModalShell
+      title="⚠ Changes here affect running services"
+      titleId="service-config-warning-title"
+      onClose={onAcknowledge}
+      panelClassName="max-w-md"
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-[color:var(--text-1)]">
+          This section edits the live configuration of osctrl-api and
+          osctrl-tls. Incorrect values, or applying them, may degrade or break
+          the availability and stability of these services — including osquery
+          node enrollment, logging and this console itself.
+        </p>
+        <p className="text-xs text-[color:var(--text-2)]">
+          Changes are staged in the database until you apply them, and applying
+          them restarts the service. Review each value before saving.
+        </p>
+        <div className="flex items-center justify-end pt-2">
+          <button
+            type="button"
+            onClick={onAcknowledge}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+              'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.16)] text-[color:var(--warning)]',
+              'hover:bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.24)]',
+            )}
+          >
+            I understand
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
 
 function ApplyConfirmDialog({
   service,
