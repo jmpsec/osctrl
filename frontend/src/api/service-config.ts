@@ -98,6 +98,43 @@ export function applyServiceConfig(service = 'api'): Promise<ServiceConfigApplyR
   });
 }
 
+export interface ServiceConfigStatus {
+  service: string;
+  /** Sections edited in the DB that the YAML file on disk does not have. */
+  pending_changes: boolean;
+  file_path: string;
+  /** Whether the service's own process can write its config file. */
+  file_writable: boolean;
+  /** Why the file cannot be written, when file_writable is false. */
+  file_reason?: string;
+  checked_at?: string;
+}
+
+/** GET /api/v1/service-config/status/{service} — unsaved changes + file writability. */
+export function getServiceConfigStatus(service: string): Promise<ServiceConfigStatus> {
+  return apiFetch<ServiceConfigStatus>(
+    `/api/v1/service-config/status/${encodeURIComponent(service)}`,
+  );
+}
+
+export interface ServiceConfigPersistResponse {
+  message: string;
+  service?: string;
+  /** Present for osctrl-tls, which performs the write in its own process. */
+  command?: ServiceCommand;
+}
+
+/** POST /api/v1/service-config/persist — write DB changes back to the YAML file. */
+export function persistServiceConfig(
+  service = 'api',
+): Promise<ServiceConfigPersistResponse> {
+  return apiFetch<ServiceConfigPersistResponse>('/api/v1/service-config/persist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ service }),
+  });
+}
+
 /** GET /api/v1/service-config/commands/{command_id} — command restart status. */
 export function getServiceCommand(commandID: string): Promise<ServiceCommand> {
   return apiFetch<ServiceCommand>(

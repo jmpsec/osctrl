@@ -5195,6 +5195,115 @@ paths:
       summary: Apply config changes and restart
       tags:
         - service-config
+  /api/v1/service-config/persist:
+    post:
+      description: Persists DB-edited config sections back to the service's YAML file.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.ServiceConfigPersistRequest"
+        description: Request body
+      responses:
+        "200":
+          description: Written
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ServiceConfigPersistResponse"
+        "202":
+          description: Write queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ServiceConfigPersistResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Config file not writable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Write config changes to disk
+      tags:
+        - service-config
+  "/api/v1/service-config/status/{service}":
+    get:
+      description: Reports unsaved DB changes and config file writability for a service.
+      parameters:
+        - description: Service name
+          in: path
+          name: service
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ServiceConfigStatusResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Service config file status
+      tags:
+        - service-config
   /api/v1/settings:
     get:
       description: Returns settings for all services.
@@ -8834,6 +8943,62 @@ components:
         query:
           type: string
         updated_at:
+          type: string
+      type: object
+    types.ServiceCommandResponse:
+      properties:
+        action:
+          type: string
+        command_id:
+          type: string
+        consumed_at:
+          type: string
+        consumed_by:
+          type: string
+        created_at:
+          type: string
+        expires_at:
+          type: string
+        recovered_at:
+          type: string
+        recovered_by:
+          type: string
+        requested_by:
+          type: string
+        requested_from:
+          type: string
+        status:
+          type: string
+        target_service:
+          type: string
+      type: object
+    types.ServiceConfigPersistRequest:
+      properties:
+        service:
+          type: string
+      type: object
+    types.ServiceConfigPersistResponse:
+      properties:
+        command:
+          $ref: "#/components/schemas/types.ServiceCommandResponse"
+        message:
+          type: string
+        service:
+          type: string
+      type: object
+    types.ServiceConfigStatusResponse:
+      properties:
+        checked_at:
+          type: string
+        file_path:
+          type: string
+        file_reason:
+          type: string
+        file_writable:
+          type: boolean
+        pending_changes:
+          type: boolean
+        service:
           type: string
       type: object
     types.ServiceConfigUpdateRequest:

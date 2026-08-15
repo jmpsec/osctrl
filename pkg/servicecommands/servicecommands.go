@@ -16,6 +16,10 @@ import (
 
 const (
 	ActionRestart = "restart"
+	// ActionPersistConfig asks a service to write its DB-edited config
+	// sections back to its own YAML file. Unlike a restart it does not
+	// change what the running process is using — only what is on disk.
+	ActionPersistConfig = "persist-config"
 
 	StatusPending   = "pending"
 	StatusConsumed  = "consumed"
@@ -25,7 +29,16 @@ const (
 
 var (
 	ErrInvalidTarget = errors.New("invalid service command target")
+	ErrInvalidAction = errors.New("invalid service command action")
 )
+
+// validActions is the allowlist of commands a service will act on. Anything
+// not listed here is rejected at request time, so a row in the table can
+// never name an action the consumer does not recognise.
+var validActions = map[string]struct{}{
+	ActionRestart:       {},
+	ActionPersistConfig: {},
+}
 
 // ServiceCommand is a one-shot control request for another osctrl service.
 type ServiceCommand struct {
@@ -70,8 +83,17 @@ func NewManager(db *gorm.DB) *Manager {
 }
 
 func (m *Manager) RequestRestart(targetService, requestedBy, requestedFrom string, ttl time.Duration) (ServiceCommand, error) {
+	return m.Request(targetService, ActionRestart, requestedBy, requestedFrom, ttl)
+}
+
+// Request enqueues a one-shot command for a service to consume on its next
+// poll.
+func (m *Manager) Request(targetService, action, requestedBy, requestedFrom string, ttl time.Duration) (ServiceCommand, error) {
 	if targetService != config.ServiceTLS {
 		return ServiceCommand{}, ErrInvalidTarget
+	}
+	if _, ok := validActions[action]; !ok {
+		return ServiceCommand{}, ErrInvalidAction
 	}
 	if ttl <= 0 {
 		return ServiceCommand{}, fmt.Errorf("ttl must be positive")
@@ -83,7 +105,7 @@ func (m *Manager) RequestRestart(targetService, requestedBy, requestedFrom strin
 	cmd := ServiceCommand{
 		CommandID:     commandID,
 		TargetService: targetService,
-		Action:        ActionRestart,
+		Action:        action,
 		RequestedBy:   requestedBy,
 		RequestedFrom: requestedFrom,
 		ExpiresAt:     time.Now().Add(ttl),
@@ -102,6 +124,9 @@ func (m *Manager) Get(commandID string) (ServiceCommand, error) {
 	return cmd, nil
 }
 
+// ConsumeNext claims the oldest pending command for the service, whatever its
+// action. The caller dispatches on cmd.Action — actions are allowlisted at
+// request time, so anything returned here is one the consumer knows.
 func (m *Manager) ConsumeNext(targetService, consumedBy string, now time.Time) (ServiceCommand, bool, error) {
 	if targetService != config.ServiceTLS {
 		return ServiceCommand{}, false, ErrInvalidTarget
@@ -110,7 +135,7 @@ func (m *Manager) ConsumeNext(targetService, consumedBy string, now time.Time) (
 	err := m.DB.Transaction(func(tx *gorm.DB) error {
 		var cmd ServiceCommand
 		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("target_service = ? AND action = ? AND consumed_at IS NULL AND expires_at > ?", targetService, ActionRestart, now).
+			Where("target_service = ? AND consumed_at IS NULL AND expires_at > ?", targetService, now).
 			Order("created_at ASC").
 			Limit(1).
 			Find(&cmd).Error

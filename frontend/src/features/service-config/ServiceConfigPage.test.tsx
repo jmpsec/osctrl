@@ -11,18 +11,22 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { ServiceConfigPage } from './ServiceConfigPage';
-import type { ServiceCommand, ServiceConfig } from '$/api/service-config';
+import type { ServiceCommand, ServiceConfig, ServiceConfigStatus } from '$/api/service-config';
 
 const mockList = vi.fn<(service: string) => Promise<ServiceConfig[]>>();
 const mockUpdate = vi.fn();
 const mockApply = vi.fn();
 const mockGetCommand = vi.fn<(commandID: string) => Promise<ServiceCommand>>();
+const mockStatus = vi.fn<(service: string) => Promise<ServiceConfigStatus>>();
+const mockPersist = vi.fn();
 
 vi.mock('$/api/service-config', () => ({
   listServiceConfig: (service: string) => mockList(service),
   updateServiceConfig: (...args: unknown[]) => mockUpdate(...args),
   applyServiceConfig: (service: string) => mockApply(service),
   getServiceCommand: (commandID: string) => mockGetCommand(commandID),
+  getServiceConfigStatus: (service: string) => mockStatus(service),
+  persistServiceConfig: (service: string) => mockPersist(service),
 }));
 
 vi.mock('$/api/client', () => ({
@@ -96,6 +100,12 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('ServiceConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockStatus.mockResolvedValue({
+      service: 'api',
+      pending_changes: true,
+      file_path: '/etc/osctrl/api.yml',
+      file_writable: true,
+    });
   });
 
   it('renders service config sections with their names and badges', async () => {
@@ -461,6 +471,103 @@ describe('ServiceConfigPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Apply & Restart/i })).toBeInTheDocument();
+    });
+  });
+
+  it('does not show Write to Disk button when nothing is pending', async () => {
+    mockList.mockResolvedValue([makeSection({ Source: 'yaml' })]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('logger')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /Write to Disk/i })).not.toBeInTheDocument();
+  });
+
+  it('calls persistServiceConfig when Write to Disk is clicked', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true })]);
+    mockPersist.mockResolvedValue({ message: 'Configuration written to disk.' });
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Write to Disk/i })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: /Write to Disk/i }));
+
+    await waitFor(() => {
+      expect(mockPersist).toHaveBeenCalledWith('api');
+    });
+    // Writing must not restart anything — that stays a separate action.
+    expect(mockApply).not.toHaveBeenCalled();
+  });
+
+  it('keeps offering Apply & Restart after writing to disk', async () => {
+    const user = userEvent.setup();
+    // After the write the backend flips every section back to source=yaml,
+    // so the page must not conclude there is nothing left to restart for.
+    mockList
+      .mockResolvedValueOnce([makeSection({ Source: 'db', Name: 'debug', Editable: true })])
+      .mockResolvedValue([makeSection({ Source: 'yaml', Name: 'debug', Editable: true })]);
+    mockPersist.mockResolvedValue({ message: 'Configuration written to disk.' });
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Write to Disk/i })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: /Write to Disk/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /Write to Disk/i })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Apply & Restart/i })).toBeInTheDocument();
+  });
+
+  it('disables Write to Disk with the reason when the file is not writable', async () => {
+    mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true })]);
+    mockStatus.mockResolvedValue({
+      service: 'api',
+      pending_changes: true,
+      file_path: '/etc/osctrl/api.yml',
+      file_writable: false,
+      file_reason: 'open /etc/osctrl/api.yml: permission denied',
+    });
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Cannot Write to Disk/i })).toBeDisabled();
+    });
+    expect(screen.getByRole('button', { name: /Cannot Write to Disk/i })).toHaveAttribute(
+      'title',
+      expect.stringContaining('permission denied'),
+    );
+    // A disabled button is not focusable, so the tooltip alone would never
+    // reach a keyboard user — the reason has to be on screen.
+    expect(
+      screen.getByText('(open /etc/osctrl/api.yml: permission denied)'),
+    ).toBeInTheDocument();
+  });
+
+  it('stays quiet rather than flashing red while the status is loading', async () => {
+    mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true })]);
+    mockStatus.mockRejectedValue(new Error('boom'));
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Write to Disk/i })).toBeDisabled();
+    });
+    expect(
+      screen.queryByRole('button', { name: /Cannot Write to Disk/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps Write to Disk disabled when the status is unavailable', async () => {
+    mockList.mockResolvedValue([makeSection({ Source: 'db', Name: 'debug', Editable: true })]);
+    mockStatus.mockRejectedValue(new Error('boom'));
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Write to Disk/i })).toBeDisabled();
     });
   });
 

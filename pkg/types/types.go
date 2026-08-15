@@ -551,6 +551,35 @@ type ServiceConfigApplyResponse struct {
 	Command *ServiceCommandResponse `json:"command,omitempty"`
 }
 
+// ServiceConfigStatusResponse is the body of GET
+// /api/v1/service-config/{service}/status. It tells the SPA whether the
+// service has DB edits that the YAML file on disk does not have
+// (PendingChanges), and whether that service's process could write them out
+// if asked (FileWritable, with FileReason explaining a refusal).
+type ServiceConfigStatusResponse struct {
+	Service        string    `json:"service"`
+	PendingChanges bool      `json:"pending_changes"`
+	FilePath       string    `json:"file_path"`
+	FileWritable   bool      `json:"file_writable"`
+	FileReason     string    `json:"file_reason,omitempty"`
+	CheckedAt      time.Time `json:"checked_at"`
+}
+
+// ServiceConfigPersistRequest is the optional body for POST
+// /api/v1/service-config/persist. Empty service defaults to osctrl-api.
+type ServiceConfigPersistRequest struct {
+	Service string `json:"service,omitempty"`
+}
+
+// ServiceConfigPersistResponse is returned by the persist endpoint. For
+// osctrl-tls the write is performed asynchronously by the TLS process, so
+// Command carries the queued command to poll.
+type ServiceConfigPersistResponse struct {
+	Message string                  `json:"message"`
+	Service string                  `json:"service"`
+	Command *ServiceCommandResponse `json:"command,omitempty"`
+}
+
 // TLSEnvironmentView is the low-privilege projection of an environment.
 // UserLevel operators (env scope) need basic env metadata so the SPA can
 // render its env switcher / dashboard / table chrome — but they MUST NOT
