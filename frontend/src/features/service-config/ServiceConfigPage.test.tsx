@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -530,5 +530,168 @@ describe('ServiceConfigPage', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
     expect(mockApply).not.toHaveBeenCalled();
+  });
+
+  function makeServiceSection(value: object, service = 'api'): ServiceConfig {
+    return makeSection({
+      Editable: true,
+      Name: 'service',
+      Service: service,
+      Value: JSON.stringify(value),
+    });
+  }
+
+  function optionsOf(select: HTMLElement): string[] {
+    return within(select).getAllByRole('option').map((o) => o.textContent);
+  }
+
+  it('renders LogLevel as a select with the documented values and saves the chosen one', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeServiceSection({ LogLevel: 'info', LogFormat: 'json' })]);
+    mockUpdate.mockResolvedValue(makeSection({ Name: 'service', Source: 'db' }));
+    renderWithProviders(makeTestRouter());
+
+    const select = await screen.findByLabelText('LogLevel');
+    expect(select.tagName).toBe('SELECT');
+    expect(optionsOf(select)).toEqual(['debug', 'info', 'warn', 'error']);
+    expect(select).toHaveValue('info');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+
+    await user.selectOptions(select, 'warn');
+
+    expect(select).toHaveValue('warn');
+    expect(screen.getByText('1 change')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+    });
+    const args = mockUpdate.mock.calls[0] as [string, string, { value: unknown }];
+    expect(args[1]).toBe('service');
+    expect(args[2].value).toEqual({ LogLevel: 'warn', LogFormat: 'json' });
+  });
+
+  it('offers the api-documented Auth values on the api tab', async () => {
+    mockList.mockResolvedValue([makeServiceSection({ Auth: 'jwt' })]);
+    renderWithProviders(makeTestRouter());
+
+    const select = await screen.findByLabelText('Auth');
+    expect(optionsOf(select)).toEqual(['jwt', 'none']);
+    expect(select).toHaveValue('jwt');
+  });
+
+  it('offers only the tls-documented Auth value on the tls tab', async () => {
+    mockList.mockResolvedValue([makeServiceSection({ Auth: 'none' }, 'tls')]);
+    renderWithProviders(makeTestRouter('/_app/config/tls'));
+
+    const select = await screen.findByLabelText('Auth');
+    expect(optionsOf(select)).toEqual(['none']);
+    expect(select).toHaveValue('none');
+  });
+
+  it('preserves a persisted Auth value that is not in the documented set', async () => {
+    mockList.mockResolvedValue([makeServiceSection({ Auth: 'oauth' })]);
+    renderWithProviders(makeTestRouter());
+
+    const user = userEvent.setup();
+    const select = await screen.findByLabelText('Auth');
+    // The value survives rendering instead of being coerced to the first documented option...
+    expect(select).toHaveValue('oauth');
+    expect(optionsOf(select)).toEqual([
+      'jwt',
+      'none',
+      'oauth (persisted, not a documented value)',
+    ]);
+    // ...and the draft is untouched, so nothing is queued for saving.
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(mockUpdate).not.toHaveBeenCalled();
+
+    // ...and it stays restorable after picking a documented value.
+    await user.selectOptions(select, 'jwt');
+    expect(optionsOf(select)).toContain('oauth (persisted, not a documented value)');
+    await user.selectOptions(select, 'oauth');
+    expect(select).toHaveValue('oauth');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+
+  it('shows the tls wording for a field whose help differs per service', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeServiceSection({ TrustedProxies: '' }, 'tls')]);
+    renderWithProviders(makeTestRouter('/_app/config/tls'));
+
+    const label = await screen.findByText('TrustedProxies');
+    await user.hover(label.nextElementSibling as HTMLElement);
+
+    expect(
+      screen.getByText(/osctrl-tls is typically internet-facing for osquery node enrollment/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/when osctrl-api is directly internet-facing/)).not.toBeInTheDocument();
+  });
+
+  it('shows the api wording for the same field on the api tab', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeServiceSection({ TrustedProxies: '' })]);
+    renderWithProviders(makeTestRouter());
+
+    const label = await screen.findByText('TrustedProxies');
+    await user.hover(label.nextElementSibling as HTMLElement);
+
+    expect(
+      screen.getByText(/when osctrl-api is directly internet-facing/),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('ServiceConfigPage section descriptions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function makeDBSection(service: string): ServiceConfig {
+    return makeSection({
+      Name: 'db',
+      Service: service,
+      Editable: false,
+      Info: 'Backend connection — not DB-editable',
+      Value: JSON.stringify({ Host: '127.0.0.1' }),
+    });
+  }
+
+  it('describes the db section with the tls wording on the tls tab', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeDBSection('tls')]);
+    renderWithProviders(makeTestRouter('/_app/config/tls'));
+
+    await user.click(await screen.findByText('db'));
+
+    expect(screen.getByText(/primary source of truth for fleet state/)).toBeInTheDocument();
+    expect(screen.queryByText(/primary source of truth for API state/)).not.toBeInTheDocument();
+  });
+
+  it('describes the db section with the api wording on the api tab', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeDBSection('api')]);
+    renderWithProviders(makeTestRouter());
+
+    await user.click(await screen.findByText('db'));
+
+    expect(screen.getByText(/primary source of truth for API state/)).toBeInTheDocument();
+  });
+
+  it('swaps the header one-liner for the full description when expanded', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([makeDBSection('api')]);
+    renderWithProviders(makeTestRouter());
+
+    // Collapsed: the short backend Info is the only summary shown.
+    expect(await screen.findByText('Backend connection — not DB-editable')).toBeInTheDocument();
+    expect(screen.queryByText(/primary source of truth/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('db'));
+
+    expect(screen.getByText(/primary source of truth/)).toBeInTheDocument();
+    expect(screen.queryByText('Backend connection — not DB-editable')).not.toBeInTheDocument();
   });
 });
