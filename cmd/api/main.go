@@ -396,6 +396,11 @@ func osctrlAPIService() {
 	if err := serviceConfigMgr.Resolve(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error resolving service config - %v", err)
 	}
+	// Report whether this process can write its own config file. Only this
+	// process can know — osctrl-tls runs elsewhere and reports its own.
+	if err := serviceConfigMgr.ReportFile(config.ServiceAPI, flagParams.ConfigFilePath()); err != nil {
+		log.Err(err).Msg("Error reporting service config file status")
+	}
 	if flagParams.RateLimits == nil {
 		flagParams.RateLimits = config.DefaultRateLimitsPtr()
 	}
@@ -453,6 +458,17 @@ func osctrlAPIService() {
 	// restarts the service with the DB-edited config.
 	restartCh := make(chan struct{}, 1)
 
+	// Persisting this service's config file happens in this process — the
+	// YAML loader lives here, and no other service can reach the file.
+	persistConfig := func() error {
+		path := flagParams.ConfigFilePath()
+		loaded, err := loadYAMLConfiguration(path)
+		if err != nil {
+			return fmt.Errorf("reload %s: %w", path, err)
+		}
+		return serviceConfigMgr.PersistToFile(config.ServiceAPI, path, loadedYAMLToServiceParams(loaded, path), settings.NoEnvironmentID)
+	}
+
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
 		handlers.WithLogReader(logReader),
@@ -468,6 +484,7 @@ func osctrlAPIService() {
 		handlers.WithSettings(settingsmgr),
 		handlers.WithServiceConfig(serviceConfigMgr),
 		handlers.WithServiceCommands(serviceCommandMgr),
+		handlers.WithConfigPersist(persistConfig),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
 		handlers.WithGeoIP(geoIPResolver),
 		handlers.WithPosture(posturemgr),
@@ -935,6 +952,12 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiServiceConfigPath)+"/{service}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigServiceHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// Literal-prefixed like /commands/{command_id}: "{service}/status" would
+	// conflict with it — neither pattern is more specific than the other, and
+	// ServeMux panics at registration.
+	muxAPI.Handle(
+		"GET "+_apiPath(apiServiceConfigPath)+"/status/{service}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiServiceConfigPath)+"/{service}/{section}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigSectionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -944,6 +967,11 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"POST "+_apiPath(apiServiceConfigPath)+"/apply",
 		restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
+	// Persist writes a file rather than restarting anything, but it is the
+	// same class of privileged, disk-touching operation — same limiter.
+	muxAPI.Handle(
+		"POST "+_apiPath(apiServiceConfigPath)+"/persist",
+		restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigPersistHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
 	// API: audit log
 	if flagParams.Service.AuditLog {
 		muxAPI.Handle(

@@ -9,6 +9,17 @@ import (
 	"go.yaml.in/yaml/v2"
 )
 
+// ConfigFilePath returns the YAML file this service was configured from, or
+// an empty string when it was configured by flags and environment variables
+// instead. ServiceConfigFile always holds the flag default, so it is not on
+// its own evidence that a file is in use.
+func (p *ServiceParameters) ConfigFilePath() string {
+	if !p.ConfigFlag {
+		return ""
+	}
+	return p.ServiceConfigFile
+}
+
 // Helper to generate an example TLS configuration file
 func GenerateTLSConfigFile(path string, cfg *ServiceParameters, overwrite bool) error {
 	cfgTLS := TLSConfiguration{
@@ -24,6 +35,7 @@ func GenerateTLSConfigFile(path string, cfg *ServiceParameters, overwrite bool) 
 		Logger:          cfg.Logger,
 		Carver:          cfg.Carver,
 		Debug:           cfg.Debug,
+		RateLimits:      cfg.RateLimits,
 	}
 	return GenerateGenericConfigFile(path, cfgTLS, overwrite)
 }
@@ -40,8 +52,9 @@ func GenerateAPIConfigFile(path string, cfg *ServiceParameters, overwrite bool) 
 		JWT:     cfg.JWT,
 		TLS:     cfg.TLS,
 		Logger:  cfg.Logger,
-		Carver:  cfg.Carver,
-		Debug:   cfg.Debug,
+		Carver:     cfg.Carver,
+		Debug:      cfg.Debug,
+		RateLimits: cfg.RateLimits,
 	}
 	return GenerateGenericConfigFile(path, cfgAPI, overwrite)
 }

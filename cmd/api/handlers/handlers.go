@@ -88,6 +88,11 @@ type HandlersApi struct {
 	// process manager restarts the service and picks up DB-edited
 	// config. nil means the apply endpoint returns 503.
 	RestartCh chan<- struct{}
+	// ConfigPersist, when wired via WithConfigPersist, writes this
+	// service's DB-edited config sections back to its own YAML file. It
+	// lives in main because the YAML loader does. nil means the persist
+	// endpoint returns 503 for osctrl-api.
+	ConfigPersist func() error
 }
 
 type HandlersOption func(*HandlersApi)
@@ -297,6 +302,12 @@ func WithDBHealth(hl backend.DegradedReader) HandlersOption {
 func WithRestartCh(ch chan<- struct{}) HandlersOption {
 	return func(h *HandlersApi) {
 		h.RestartCh = ch
+	}
+}
+
+func WithConfigPersist(fn func() error) HandlersOption {
+	return func(h *HandlersApi) {
+		h.ConfigPersist = fn
 	}
 }
 

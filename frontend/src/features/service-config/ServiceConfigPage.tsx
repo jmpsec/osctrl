@@ -8,6 +8,8 @@ import {
   updateServiceConfig,
   applyServiceConfig,
   getServiceCommand,
+  getServiceConfigStatus,
+  persistServiceConfig,
   type ServiceConfig,
 } from '$/api/service-config';
 import { AuthError, ApiError } from '$/api/client';
@@ -437,6 +439,16 @@ export function ServiceConfigPage() {
   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [restartStatus, setRestartStatus] = useState<string | null>(null);
+  const [persisting, setPersisting] = useState(false);
+  const [persistFlash, setPersistFlash] = useState(false);
+  // Writing to disk flips every section back to source=yaml, which would
+  // otherwise hide Apply & Restart — leaving the changes on disk but never
+  // picked up by the running service. Keep offering the restart once we have
+  // written in this session.
+  // ponytail: session-local, so a page reload forgets it. Recording the
+  // service's boot time and comparing it against section UpdatedAt would
+  // survive reloads, if operators hit this.
+  const [persistedThisSession, setPersistedThisSession] = useState(false);
   const qc = useQueryClient();
   const {
     data,
@@ -448,6 +460,14 @@ export function ServiceConfigPage() {
   } = useQuery({
     queryKey: ['service-config', service],
     queryFn: () => listServiceConfig(service),
+    staleTime: 30_000,
+  });
+
+  // Whether the service's own process can write its config file. Only that
+  // process can know — osctrl-tls runs elsewhere and reports it at boot.
+  const { data: fileStatus } = useQuery({
+    queryKey: ['service-config-status', service],
+    queryFn: () => getServiceConfigStatus(service),
     staleTime: 30_000,
   });
 
@@ -463,6 +483,61 @@ export function ServiceConfigPage() {
   const pageError = error;
 
   const hasPendingChanges = sections.some((s) => s.Source === 'db');
+  // Only shout when the service actually reported it cannot write. While the
+  // status is still loading or failed to load, fileStatus is undefined — the
+  // button stays disabled but stays quiet rather than flashing red.
+  const cannotWrite = fileStatus?.file_writable === false;
+
+  // Writing the file does not touch the running service, so there is no
+  // restart to wait on. osctrl-api writes inline and returns done; osctrl-tls
+  // returns a queued command it consumes on its next poll, so watch the
+  // status endpoint until the pending changes clear.
+  const persistMutation = useMutation({
+    mutationFn: () => persistServiceConfig(service),
+    onSuccess: (resp) => {
+      setApplyErr(null);
+      const done = () => {
+        setPersisting(false);
+        setPersistFlash(true);
+        setPersistedThisSession(true);
+        setTimeout(() => setPersistFlash(false), 3000);
+        qc.invalidateQueries({ queryKey: ['service-config', service] });
+        qc.invalidateQueries({ queryKey: ['service-config-status', service] });
+      };
+      if (!resp.command) {
+        done();
+        return;
+      }
+      setPersisting(true);
+      let timeout: ReturnType<typeof setTimeout>;
+      const poll = setInterval(() => {
+        getServiceConfigStatus(service)
+          .then((status) => {
+            if (!status.pending_changes) {
+              clearInterval(poll);
+              clearTimeout(timeout);
+              done();
+            }
+          })
+          .catch(() => {});
+      }, 2000);
+      timeout = setTimeout(() => {
+        clearInterval(poll);
+        setPersisting(false);
+        setApplyErr(`osctrl-${service} did not write its configuration file within 60 seconds.`);
+      }, 60_000);
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setPersisting(false);
+      setApplyErr(e instanceof Error ? e.message : 'Write to disk failed');
+    },
+  });
+
+  const writeBusy = persisting || persistMutation.isPending;
 
   const applyMutation = useMutation({
     mutationFn: () => applyServiceConfig(service),
@@ -470,6 +545,8 @@ export function ServiceConfigPage() {
       setApplyErr(null);
       setApplyFlash(true);
       setRestarting(true);
+      // The restart makes the config live, so nothing is left to apply.
+      setPersistedThisSession(false);
       setRestartStatus(resp.command?.status ?? null);
       if (service === 'tls' && resp.command?.command_id) {
         const commandID = resp.command.command_id;
@@ -533,7 +610,7 @@ export function ServiceConfigPage() {
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
           Service Config
         </h1>
-        {hasPendingChanges && !loading && !hasError && !restarting && (
+        {(hasPendingChanges || persistedThisSession) && !loading && !hasError && !restarting && (
           <button
             type="button"
             disabled={applyMutation.isPending}
@@ -547,6 +624,44 @@ export function ServiceConfigPage() {
           >
             {applyMutation.isPending ? 'Restarting…' : applyFlash ? 'Restart triggered ✓' : 'Apply & Restart'}
           </button>
+        )}
+        {hasPendingChanges && !loading && !hasError && !restarting && (
+          <>
+            <button
+              type="button"
+              disabled={!fileStatus?.file_writable || writeBusy}
+              title={
+                fileStatus?.file_writable
+                  ? `Write these changes to ${fileStatus.file_path} so they survive a redeploy`
+                  : `Cannot write the configuration file${fileStatus?.file_reason ? `: ${fileStatus.file_reason}` : ''}`
+              }
+              onClick={() => persistMutation.mutate()}
+              className={cn(
+                'px-3 py-1 text-xs font-medium rounded transition-colors',
+                cannotWrite
+                  ? 'bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.12)] text-[color:var(--danger)] cursor-not-allowed'
+                  : !fileStatus?.file_writable || writeBusy
+                    ? 'bg-[color:var(--bg-3)] text-[color:var(--text-3)] cursor-not-allowed'
+                    : 'bg-[color:var(--bg-3)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-4)]',
+              )}
+            >
+              {cannotWrite
+                ? 'Cannot Write to Disk ✕'
+                : writeBusy
+                  ? 'Writing…'
+                  : persistFlash
+                    ? 'Written to disk ✓'
+                    : 'Write to Disk'}
+            </button>
+            {cannotWrite && (
+              <span
+                aria-live="polite"
+                className="text-xs text-[color:var(--danger)]"
+              >
+                ({fileStatus?.file_reason || 'configuration file is not writable'})
+              </span>
+            )}
+          </>
         )}
         {restarting && (
           <span
@@ -1528,6 +1643,12 @@ function ApplyConfirmDialog({
           <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-3)] mb-2">
             Pending changes ({pendingSections.length})
           </p>
+          {pendingSections.length === 0 && (
+            <p className="text-xs text-[color:var(--text-3)]">
+              Already written to disk — restarting loads them from the
+              configuration file.
+            </p>
+          )}
           <ul className="space-y-1">
             {pendingSections.map((s) => (
               <li

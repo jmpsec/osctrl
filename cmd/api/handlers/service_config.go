@@ -328,6 +328,191 @@ func (h *HandlersApi) ServiceConfigApplyHandler(w http.ResponseWriter, r *http.R
 	}
 }
 
+// ServiceConfigStatusHandler — GET /api/v1/service-config/status/{service}
+//
+// Reports whether the service has config sections edited in the database that
+// the YAML file on disk does not have, and whether the service's own process
+// can write that file. The SPA uses this to decide whether to offer the
+// "Write to disk" action and whether it has to be disabled.
+//
+// The writability answer comes from the row the service itself reported at
+// boot: osctrl-tls runs in its own process (usually its own container), so
+// this process cannot check the TLS config file directly.
+//
+// @Summary Service config file status
+// @Description Reports unsaved DB changes and config file writability for a service.
+// @Tags service-config
+// @Produce json
+// @Param service path string true "Service name"
+// @Success 200 {object} types.ServiceConfigStatusResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v1/service-config/status/{service} [get]
+func (h *HandlersApi) ServiceConfigStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	if h.ServiceConfig == nil {
+		apiErrorResponse(w, "service config not initialized", http.StatusInternalServerError, nil)
+		return
+	}
+	service := r.PathValue("service")
+	if !h.ServiceConfig.VerifyService(service) {
+		apiErrorResponse(w, "invalid service", http.StatusBadRequest, nil)
+		return
+	}
+	pending, err := h.ServiceConfig.HasPendingChanges(service, serviceconfig.NoEnvironmentID)
+	if err != nil {
+		apiErrorResponse(w, "error checking pending changes", http.StatusInternalServerError, err)
+		return
+	}
+	resp := types.ServiceConfigStatusResponse{
+		Service:        service,
+		PendingChanges: pending,
+	}
+	status, err := h.ServiceConfig.GetFileStatus(service)
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		// The service has not booted since this feature shipped, so it has
+		// never reported its file. Treat as not writable rather than
+		// guessing — the operator sees why and can restart it.
+		resp.FileReason = "service has not reported its configuration file yet"
+	case err != nil:
+		apiErrorResponse(w, "error getting config file status", http.StatusInternalServerError, err)
+		return
+	default:
+		resp.FilePath = status.Path
+		resp.FileWritable = status.Writable
+		resp.FileReason = status.Reason
+		resp.CheckedAt = status.CheckedAt
+	}
+	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
+}
+
+// ServiceConfigPersistHandler — POST /api/v1/service-config/persist
+//
+// Writes the DB-edited config sections back to the service's YAML file so the
+// changes survive a redeploy that starts from the file. It does not restart
+// anything: applying the changes to the running process remains the separate
+// apply endpoint.
+//
+// osctrl-api writes its own file inline. osctrl-tls cannot be written from
+// here — it is a different process with a different config volume — so the
+// write is queued as a service command that the TLS process consumes on its
+// next poll, exactly like a restart request.
+//
+// @Summary Write config changes to disk
+// @Description Persists DB-edited config sections back to the service's YAML file.
+// @Tags service-config
+// @Accept json
+// @Produce json
+// @Param request body types.ServiceConfigPersistRequest false "Request body"
+// @Success 200 {object} types.ServiceConfigPersistResponse "Written"
+// @Success 202 {object} types.ServiceConfigPersistResponse "Write queued"
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 409 {object} types.ApiErrorResponse "Config file not writable"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/service-config/persist [post]
+func (h *HandlersApi) ServiceConfigPersistHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
+	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	if h.ServiceConfig == nil {
+		apiErrorResponse(w, "service config not initialized", http.StatusInternalServerError, nil)
+		return
+	}
+	var body types.ServiceConfigPersistRequest
+	if r.Body != nil {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+			apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
+			return
+		}
+	}
+	service := body.Service
+	if service == "" {
+		service = config.ServiceAPI
+	}
+	if !h.ServiceConfig.VerifyService(service) {
+		apiErrorResponse(w, "invalid service", http.StatusBadRequest, nil)
+		return
+	}
+	ipAddress := strings.Split(r.RemoteAddr, ":")[0]
+	// Fail on the writability the target service reported at boot before
+	// attempting anything, so the operator gets the real reason — a missing
+	// file, bad permissions, or a service configured from environment
+	// variables with no file at all — instead of a load error later.
+	fileStatus, err := h.ServiceConfig.GetFileStatus(service)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiErrorResponse(w, fmt.Sprintf("osctrl-%s has not reported its configuration file yet", service), http.StatusConflict, err)
+			return
+		}
+		apiErrorResponse(w, "error getting config file status", http.StatusInternalServerError, err)
+		return
+	}
+	if !fileStatus.Writable {
+		apiErrorResponse(w, fmt.Sprintf("%s: %s", serviceconfig.ErrConfigFileNotWritable, fileStatus.Reason), http.StatusConflict, nil)
+		return
+	}
+	switch service {
+	case config.ServiceAPI:
+		if h.ConfigPersist == nil {
+			apiErrorResponse(w, "persist not available", http.StatusServiceUnavailable, nil)
+			return
+		}
+		if err := h.ConfigPersist(); err != nil {
+			if errors.Is(err, serviceconfig.ErrConfigFileNotWritable) {
+				apiErrorResponse(w, err.Error(), http.StatusConflict, err)
+				return
+			}
+			apiErrorResponse(w, "error writing config file", http.StatusInternalServerError, err)
+			return
+		}
+		h.AuditLog.SettingsAction(ctx[ctxUser], "persist service-config api to file", ipAddress)
+		log.Info().Msgf("Service config persisted to file by %s", ctx[ctxUser])
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ServiceConfigPersistResponse{
+			Service: config.ServiceAPI,
+			Message: "Configuration written to disk.",
+		})
+	case config.ServiceTLS:
+		if h.ServiceCommands == nil {
+			apiErrorResponse(w, "service commands not available", http.StatusServiceUnavailable, nil)
+			return
+		}
+		cmd, err := h.ServiceCommands.Request(config.ServiceTLS, servicecommands.ActionPersistConfig, ctx[ctxUser], ipAddress, serviceCommandTTL)
+		if err != nil {
+			apiErrorResponse(w, "error requesting tls config persist", http.StatusInternalServerError, err)
+			return
+		}
+		h.AuditLog.SettingsAction(ctx[ctxUser], fmt.Sprintf("persist service-config tls command %s", cmd.CommandID), ipAddress)
+		log.Info().Str("command", cmd.CommandID).Msgf("TLS config persist requested by %s", ctx[ctxUser])
+		resp := serviceCommandResponse(cmd)
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusAccepted, types.ServiceConfigPersistResponse{
+			Service: config.ServiceTLS,
+			Message: "Write requested. osctrl-tls will write its configuration file after consuming the service command.",
+			Command: &resp,
+		})
+	}
+}
+
 // ServiceCommandHandler — GET /api/v1/service-config/commands/{command_id}
 func (h *HandlersApi) ServiceCommandHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig.EnableHTTP {

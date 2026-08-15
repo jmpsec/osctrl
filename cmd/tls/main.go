@@ -274,6 +274,11 @@ func osctrlService() {
 	if err := serviceConfigMgr.Resolve(config.ServiceTLS, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error resolving service config - %v", err)
 	}
+	// Report whether this process can write its own config file. Only this
+	// process can know — osctrl-api runs elsewhere and cannot stat it.
+	if err := serviceConfigMgr.ReportFile(config.ServiceTLS, flagParams.ConfigFilePath()); err != nil {
+		log.Err(err).Msg("Error reporting service config file status")
+	}
 	if flagParams.RateLimits == nil {
 		flagParams.RateLimits = config.DefaultRateLimitsPtr()
 	}
@@ -460,7 +465,7 @@ func osctrlService() {
 		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
 	}
 	watchCtx, stopCommandWatcher := context.WithCancel(context.Background())
-	go watchServiceCommands(watchCtx, serviceCommandMgr, auditLog, restartCh)
+	go watchServiceCommands(watchCtx, serviceCommandMgr, serviceConfigMgr, auditLog, restartCh)
 	serverErr := make(chan error, 1)
 	go func() {
 		log.Info().Msgf("%s v%s - HTTP%s listening %s", serviceName, buildVersion, map[bool]string{true: "S", false: ""}[flagParams.TLS.Termination], serviceListener)
@@ -484,7 +489,7 @@ func osctrlService() {
 	}
 }
 
-func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, auditLog *auditlog.AuditLogManager, restartCh chan<- struct{}) {
+func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfgMgr *serviceconfig.ServiceConfigManager, auditLog *auditlog.AuditLogManager, restartCh chan<- struct{}) {
 	ticker := time.NewTicker(serviceCommandPollInterval)
 	defer ticker.Stop()
 	for {
@@ -500,12 +505,40 @@ func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, aud
 			if !ok {
 				continue
 			}
-			auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls restart command %s consumed", cmd.CommandID), "local")
-			log.Info().Str("command", cmd.CommandID).Msg("Consumed TLS restart command")
-			restartCh <- struct{}{}
-			return
+			switch cmd.Action {
+			case servicecommands.ActionRestart:
+				auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls restart command %s consumed", cmd.CommandID), "local")
+				log.Info().Str("command", cmd.CommandID).Msg("Consumed TLS restart command")
+				restartCh <- struct{}{}
+				return
+			case servicecommands.ActionPersistConfig:
+				// Writing the file does not affect the running process,
+				// so keep polling instead of exiting.
+				if err := persistConfigToFile(cfgMgr); err != nil {
+					log.Err(err).Str("command", cmd.CommandID).Msg("error persisting TLS config to file")
+					auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls persist-config command %s failed: %v", cmd.CommandID, err), "local")
+					continue
+				}
+				auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls persist-config command %s consumed", cmd.CommandID), "local")
+				log.Info().Str("command", cmd.CommandID).Msg("Persisted TLS config to file")
+			default:
+				log.Warn().Str("command", cmd.CommandID).Msgf("Ignoring unknown TLS service command action %q", cmd.Action)
+			}
 		}
 	}
+}
+
+// persistConfigToFile reloads the YAML file from disk, overlays the DB-edited
+// sections and writes the result back. Reloading rather than reusing the live
+// flagParams keeps the running service's configuration untouched — the
+// operator's edits still only take effect on restart.
+func persistConfigToFile(cfgMgr *serviceconfig.ServiceConfigManager) error {
+	path := flagParams.ConfigFilePath()
+	loaded, err := loadYAMLConfiguration(path)
+	if err != nil {
+		return fmt.Errorf("reload %s: %w", path, err)
+	}
+	return cfgMgr.PersistToFile(config.ServiceTLS, path, loadedYAMLToServiceParams(loaded, path), settings.NoEnvironmentID)
 }
 
 // Action to run when no flags are provided to run checks and prepare data

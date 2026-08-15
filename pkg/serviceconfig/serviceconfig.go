@@ -106,6 +106,9 @@ func NewServiceConfigManager(backend *gorm.DB) *ServiceConfigManager {
 	if err := backend.AutoMigrate(&ServiceConfig{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (service_config): %v", err)
 	}
+	if err := backend.AutoMigrate(&ConfigFileStatus{}); err != nil {
+		log.Fatal().Msgf("Failed to AutoMigrate table (config_file_statuses): %v", err)
+	}
 	return m
 }
 
