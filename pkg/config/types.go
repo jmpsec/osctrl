@@ -124,8 +124,18 @@ type YAMLConfigurationService struct {
 	// whose result logs are ingested as node posture data. Only used
 	// when PostureEnabled is true.
 	PostureQueryPrefix string `yaml:"postureQueryPrefix"`
-	Auth               string `yaml:"auth"`
-	AuditLog           bool   `yaml:"auditLog"`
+	// ServiceConfigEnabled controls whether the service-config API and the
+	// matching SPA section exist. It does not change how configuration is
+	// loaded: every boot seeds the YAML sections into the database and
+	// then resolves the stored values back over them, so the services
+	// always read from the database rows. When false (default) none of the
+	// /api/v1/service-config routes are registered and the SPA hides the
+	// section — the rows can still be changed directly in the database, or
+	// in the YAML file, and are picked up on the next restart. Consumed by
+	// osctrl-api; osctrl-tls ignores it.
+	ServiceConfigEnabled bool   `yaml:"serviceConfigEnabled"`
+	Auth                 string `yaml:"auth"`
+	AuditLog             bool   `yaml:"auditLog"`
 	// TrustedProxies is a comma-separated list of CIDRs whose
 	// X-Real-IP / X-Forwarded-For headers utils.GetIP will honor.
 	// Default empty → forwarding headers are ignored and the

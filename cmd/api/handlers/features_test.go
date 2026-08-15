@@ -31,6 +31,32 @@ func TestFeaturesHandlerReportsPostureDisabledByDefault(t *testing.T) {
 	}
 }
 
+func TestFeaturesHandlerReportsServiceConfigEnabled(t *testing.T) {
+	h := &HandlersApi{}
+	r := httptest.NewRequest(http.MethodGet, "/api/v1/features", nil)
+	w := httptest.NewRecorder()
+	h.FeaturesHandler(w, r)
+
+	var off FeaturesResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &off); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if off.ServiceConfig {
+		t.Fatalf("service config feature: got true want false")
+	}
+
+	WithServiceConfigEnabled(true)(h)
+	w = httptest.NewRecorder()
+	h.FeaturesHandler(w, r)
+	var on FeaturesResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &on); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !on.ServiceConfig {
+		t.Fatalf("service config feature: got false want true")
+	}
+}
+
 func TestFeaturesHandlerReportsPostureEnabled(t *testing.T) {
 	h := &HandlersApi{}
 	WithPostureEnabled(true)(h)

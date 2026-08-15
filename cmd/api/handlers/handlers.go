@@ -35,31 +35,35 @@ type HandlersApi struct {
 	// writes to the DB, this is the legacy GORM-backed reader. nil falls
 	// back to h.DB via NewDBLogReader at call time so existing tests
 	// that only wire WithDB keep working.
-	LogReader       logging.LogReader
-	Users           *users.UserManager
-	Tags            *tags.TagManager
-	Envs            *environments.EnvManager
-	EnvCache        *environments.EnvCache
-	Nodes           *nodes.NodeManager
-	Queries         *queries.Queries
-	Console         *console.Manager
-	FileExplorer    *fileexplorer.Manager
-	Carves          *carves.Carves
-	Settings        *settings.Settings
-	ServiceConfig   *serviceconfig.ServiceConfigManager
-	ServiceCommands *servicecommands.Manager
-	Activity        activityReader
-	GeoIP           *geoip.GeoIPResolver
-	Posture         *posture.PostureManager
-	PostureEnabled  bool
-	ServiceVersion  string
-	ServiceName     string
-	AuditLog        *auditlog.AuditLogManager
-	ApiConfig       *config.APIConfiguration
-	DebugHTTP       *zerolog.Logger
-	DebugHTTPConfig *config.YAMLConfigurationDebug
-	OsqueryTables   []types.OsqueryTable
-	OsqueryValues   config.YAMLConfigurationOsquery
+	LogReader     logging.LogReader
+	Users         *users.UserManager
+	Tags          *tags.TagManager
+	Envs          *environments.EnvManager
+	EnvCache      *environments.EnvCache
+	Nodes         *nodes.NodeManager
+	Queries       *queries.Queries
+	Console       *console.Manager
+	FileExplorer  *fileexplorer.Manager
+	Carves        *carves.Carves
+	Settings      *settings.Settings
+	ServiceConfig *serviceconfig.ServiceConfigManager
+	// ServiceConfigEnabled mirrors service.serviceConfigEnabled. When false
+	// the service-config routes are never registered and the SPA hides the
+	// section; the rows are still seeded and resolved at every boot.
+	ServiceConfigEnabled bool
+	ServiceCommands      *servicecommands.Manager
+	Activity             activityReader
+	GeoIP                *geoip.GeoIPResolver
+	Posture              *posture.PostureManager
+	PostureEnabled       bool
+	ServiceVersion       string
+	ServiceName          string
+	AuditLog             *auditlog.AuditLogManager
+	ApiConfig            *config.APIConfiguration
+	DebugHTTP            *zerolog.Logger
+	DebugHTTPConfig      *config.YAMLConfigurationDebug
+	OsqueryTables        []types.OsqueryTable
+	OsqueryValues        config.YAMLConfigurationOsquery
 	// JWTSecret is the HMAC key used by pkg/auth state-cookie
 	// helpers. Populated via WithJWTSecret at handler init. Same
 	// bytes the Users manager signs user JWTs with; the auth
@@ -205,6 +209,12 @@ func WithPosture(pm *posture.PostureManager) HandlersOption {
 func WithPostureEnabled(enabled bool) HandlersOption {
 	return func(h *HandlersApi) {
 		h.PostureEnabled = enabled
+	}
+}
+
+func WithServiceConfigEnabled(enabled bool) HandlersOption {
+	return func(h *HandlersApi) {
+		h.ServiceConfigEnabled = enabled
 	}
 }
 

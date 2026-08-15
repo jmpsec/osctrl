@@ -5,6 +5,7 @@ import { Logo } from '$/components/atoms/Logo';
 import { EnvSwitcher } from './EnvSwitcher';
 import { listEnvironments } from '$/api/environments';
 import { getMe } from '$/api/users';
+import { getFeatures } from '$/api/features';
 import type { EnvAccess } from '$/api/types';
 
 interface NavItemProps {
@@ -110,6 +111,14 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
     retry: 1,
   });
   const isSuperAdmin = me?.admin === true;
+  // Service Config is opt-in server-side (service.serviceConfigEnabled).
+  // When it is off the endpoints do not exist, so hide the entry rather
+  // than link to a page that can only fail.
+  const { data: features } = useQuery({
+    queryKey: ['features'],
+    queryFn: () => getFeatures(),
+    staleTime: 5 * 60_000,
+  });
   // currentEnv is the SPA's name-of-env; permissions are keyed by
   // env UUID. We need to translate name → UUID via the envs list.
   // Fall back to "no access" when the lookup hasn't resolved yet.
@@ -422,7 +431,7 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
             >
               Settings
             </NavItem>
-            <NavItem
+            {features?.service_config && <NavItem
               collapsed={collapsed}
               active={isServiceConfigActive}
               to="/_app/config/api"
@@ -434,7 +443,7 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
               }
             >
               Service Config
-            </NavItem>
+            </NavItem>}
           </nav>
         </>
       ) : (

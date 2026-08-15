@@ -2,6 +2,7 @@ import { apiFetch } from './client';
 
 export interface Features {
   posture: boolean;
+  service_config: boolean;
   accelerated: boolean;
   file_explorer: boolean;
 }
