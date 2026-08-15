@@ -18,6 +18,15 @@ service:
   # in the environment and is intended for local-dev only — it impersonates
   # super-admin on every request. Production deployments MUST use `jwt`.
   auth: jwt
+  # Serve /api/v1/service-config and show the Service Config section in
+  # the SPA, where sections can be read, edited, written back to this file
+  # and applied with a restart. This switch does not change how config is
+  # loaded: every boot seeds the sections of this file into the
+  # service_config table and then resolves those rows back over them, so
+  # the service always runs on the stored values. When false (default)
+  # none of the routes are registered and the SPA hides the section —
+  # change the rows directly in the database, or this file, and restart.
+  serviceConfigEnabled: false
   # Write security-relevant API actions to audit_logs.
   auditLog: true
   # Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers

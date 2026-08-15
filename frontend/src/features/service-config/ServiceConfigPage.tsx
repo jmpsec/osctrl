@@ -12,6 +12,7 @@ import {
   persistServiceConfig,
   type ServiceConfig,
 } from '$/api/service-config';
+import { getFeatures } from '$/api/features';
 import { AuthError, ApiError } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { Skeleton } from '$/components/data/Skeleton';
@@ -59,6 +60,8 @@ const FIELD_HELP: Record<string, string> = {
   'tls:service.TrustedProxies': 'Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers utils.GetIP will trust. osctrl-tls is typically internet-facing for osquery node enrollment; keep empty unless you operate it behind a trusted reverse proxy that forwards client IPs. Empty (default) prevents header-spoofed enroll-rate-limit bypass and audit-log poisoning.',
   'api:service.GeoIPDBPath': 'Path to a MaxMind GeoLite2-Country .mmdb file. When set, node IP addresses are resolved to ISO 3166-1 alpha-2 country codes and included in the node API response (shown as flag emojis in the SPA nodes table and node detail page). Empty (default) disables GeoIP entirely — no lookups, no country codes, no overhead. Download the free database from https://dev.maxmind.com/geoip/geolite2-free-geolocation-data — update weekly for best accuracy. Example: /data/GeoLite2-Country.mmdb',
   'tls:service.GeoIPDBPath': 'Path to a MaxMind GeoLite2-Country .mmdb file. Currently consumed by osctrl-api node responses; kept here so the shared service section is complete across sample configs. Empty disables GeoIP.',
+  'api:service.ServiceConfigEnabled': 'Master switch for this page and the /api/v1/service-config endpoints. It does not change how configuration loads: every boot seeds the YAML sections into the service_config table and resolves those rows back, so the services always run on the stored values. Turning it off and restarting removes the endpoints and hides this section — values can then only be changed in the database rows or the YAML file, and are picked up on the next restart.',
+  'tls:service.ServiceConfigEnabled': 'Only osctrl-api serves the service-config endpoints, so this value is inert for osctrl-tls — it is kept so the service section round-trips unchanged. osctrl-tls seeds its YAML sections into the service_config table and resolves those rows at startup either way.',
   'api:service.PostureEnabled': 'Enable the security & compliance posture system. When false (default), posture API endpoints are not registered and the SPA hides posture controls. When true, the API serves posture data from the shared database (collected by osctrl-tls).',
   'tls:service.PostureEnabled': 'Enable the security & compliance posture system. When false (default), no posture data is collected, no posture API endpoints are available, and the posture tab is hidden in the SPA. When true, result logs from posture-prefixed scheduled queries are ingested and stored per node.',
   'api:service.PostureQueryPrefix': 'Only used by osctrl-tls for ingestion; kept here so the service configuration shape is complete and can round-trip through the API.',
@@ -462,6 +465,15 @@ export function ServiceConfigPage() {
   // survive reloads, if operators hit this.
   const [persistedThisSession, setPersistedThisSession] = useState(false);
   const qc = useQueryClient();
+  // Server-side switch (service.serviceConfigEnabled). When it is off the
+  // service-config endpoints are not registered at all, so do not even ask
+  // for the sections — explain where the values live instead.
+  const { data: features } = useQuery({
+    queryKey: ['features'],
+    queryFn: () => getFeatures(),
+    staleTime: 5 * 60_000,
+  });
+  const configDisabled = features?.service_config === false;
   const {
     data,
     isLoading,
@@ -473,6 +485,7 @@ export function ServiceConfigPage() {
     queryKey: ['service-config', service],
     queryFn: () => listServiceConfig(service),
     staleTime: 30_000,
+    enabled: !!features?.service_config,
   });
 
   // Whether the service's own process can write its config file. Only that
@@ -481,6 +494,7 @@ export function ServiceConfigPage() {
     queryKey: ['service-config-status', service],
     queryFn: () => getServiceConfigStatus(service),
     staleTime: 30_000,
+    enabled: !!features?.service_config,
   });
 
   if (isError && error instanceof AuthError) {
@@ -726,7 +740,19 @@ export function ServiceConfigPage() {
       </div>
 
       <div className="flex-1 overflow-auto min-h-0 p-4">
-        {loading && (
+        {configDisabled && (
+          <EmptyState
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M7 11V8a5 5 0 0 1 9.5-2M5 11h14v10H5z" />
+              </svg>
+            }
+            title="Service configuration is not available."
+            description="osctrl-api runs with service.serviceConfigEnabled = false, so the /api/v1/service-config endpoints are not registered. Each service still seeds its YAML sections into the service_config table and resolves those rows at startup, so values can be changed directly in the database and are picked up on the next restart. Set serviceConfigEnabled: true (or --service-config-enabled / SERVICE_CONFIG_ENABLED=true) and restart osctrl-api to manage them here."
+          />
+        )}
+
+        {!configDisabled && loading && (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-20 w-full" />
@@ -734,7 +760,7 @@ export function ServiceConfigPage() {
           </div>
         )}
 
-        {hasError && !loading && (
+        {!configDisabled && hasError && !loading && (
           <EmptyState
             icon={
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -755,7 +781,7 @@ export function ServiceConfigPage() {
           />
         )}
 
-        {!loading && !hasError && sections.length === 0 && (
+        {!configDisabled && !loading && !hasError && sections.length === 0 && (
           <EmptyState
             icon={
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -766,7 +792,7 @@ export function ServiceConfigPage() {
           />
         )}
 
-        {!loading && !hasError && sections.length > 0 && (
+        {!configDisabled && !loading && !hasError && sections.length > 0 && (
           <div className="space-y-3">
             {sections.map((s) => (
               <ConfigSectionCard
@@ -780,7 +806,7 @@ export function ServiceConfigPage() {
         )}
       </div>
 
-      {showWarning && (
+      {showWarning && !configDisabled && (
         <ImpactWarningDialog
           onAcknowledge={() => {
             try {

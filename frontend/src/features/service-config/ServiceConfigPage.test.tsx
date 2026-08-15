@@ -29,6 +29,12 @@ vi.mock('$/api/service-config', () => ({
   persistServiceConfig: (service: string) => mockPersist(service),
 }));
 
+const mockGetFeatures = vi.fn();
+
+vi.mock('$/api/features', () => ({
+  getFeatures: () => mockGetFeatures(),
+}));
+
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
   AuthError: class AuthError extends Error {
@@ -103,6 +109,12 @@ describe('ServiceConfigPage', () => {
     // Pre-acknowledge the impact warning so it does not overlay the rest of
     // the suite; the warning has its own test below.
     window.sessionStorage.setItem('osctrl.service-config.warning-ack', '1');
+    mockGetFeatures.mockResolvedValue({
+      posture: false,
+      service_config: true,
+      accelerated: false,
+      file_explorer: false,
+    });
     mockStatus.mockResolvedValue({
       service: 'api',
       pending_changes: true,
@@ -129,6 +141,24 @@ describe('ServiceConfigPage', () => {
       expect(screen.getByRole('tab', { name: 'osctrl-api' })).toBeInTheDocument();
     });
     expect(screen.queryByRole('button', { name: 'I understand' })).not.toBeInTheDocument();
+  });
+
+  it('asks the API for nothing when the service-config endpoints are disabled', async () => {
+    mockGetFeatures.mockResolvedValue({
+      posture: false,
+      service_config: false,
+      accelerated: false,
+      file_explorer: false,
+    });
+    mockList.mockResolvedValue([makeSection()]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('Service configuration is not available.')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/serviceConfigEnabled/)).toBeInTheDocument();
+    expect(mockList).not.toHaveBeenCalled();
+    expect(mockStatus).not.toHaveBeenCalled();
   });
 
   it('renders service config sections with their names and badges', async () => {
@@ -164,7 +194,8 @@ describe('ServiceConfigPage', () => {
       expect(screen.getByRole('tab', { name: 'osctrl-tls' })).toBeInTheDocument();
     });
     expect(screen.getByRole('tab', { name: 'osctrl-api' })).toBeInTheDocument();
-    expect(mockList).toHaveBeenCalledWith('tls');
+    // Sections are only requested once /features confirms the switch is on.
+    await waitFor(() => expect(mockList).toHaveBeenCalledWith('tls'));
   });
 
   it('shows empty state when no sections are returned', async () => {

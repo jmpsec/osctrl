@@ -276,6 +276,13 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("SERVICE_POSTURE_ENABLED"),
 			Destination: &params.Service.PostureEnabled,
 		},
+		&cli.BoolFlag{
+			Name:        "service-config-enabled",
+			Value:       false,
+			Usage:       "Serve the service-config API and show the matching section in the SPA. Disabled by default: the YAML sections are still seeded into the database at every boot and resolved back at startup, but none of the /api/v1/service-config routes are registered — change the rows or the YAML file directly instead.",
+			Sources:     cli.EnvVars("SERVICE_CONFIG_ENABLED"),
+			Destination: &params.Service.ServiceConfigEnabled,
+		},
 		&cli.StringFlag{
 			Name:        "posture-query-prefix",
 			Value:       "osctrl:posture:",

@@ -16,6 +16,12 @@ service:
   host: osctrl.net
   # Valid value: "none". osquery authentication uses enroll secrets and node_key.
   auth: none
+  # Only used by osctrl-api, which serves the service-config endpoints;
+  # kept here so the service configuration shape is complete and can
+  # round-trip through the API. osctrl-tls always seeds the sections of
+  # this file into the service_config table and resolves those rows back
+  # at startup, so it runs on the stored values either way.
+  serviceConfigEnabled: false
   # Write security-relevant TLS activity, such as enroll failures, to audit_logs.
   auditLog: true
   # Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers

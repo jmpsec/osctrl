@@ -33,6 +33,32 @@ func TestServicePostureEnabledFlagDefaultsOff(t *testing.T) {
 	}
 }
 
+func TestServiceConfigEnabledFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Service: &YAMLConfigurationService{}}
+	flags := initServiceFlags(params)
+
+	if params.Service.ServiceConfigEnabled {
+		t.Fatalf("service config enabled default: got true want false")
+	}
+
+	var found *cli.BoolFlag
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.BoolFlag); ok && f.Name == "service-config-enabled" {
+			found = f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("missing service-config-enabled service flag")
+	}
+	if found.Value {
+		t.Fatalf("service-config-enabled flag default: got true want false")
+	}
+	if found.Destination != &params.Service.ServiceConfigEnabled {
+		t.Fatalf("service-config-enabled flag destination does not wire Service.ServiceConfigEnabled")
+	}
+}
+
 func TestOsqueryAcceleratedFlagDefaultsOff(t *testing.T) {
 	params := &ServiceParameters{Osquery: &YAMLConfigurationOsquery{}}
 	flags := initOsqueryFlags(params)
