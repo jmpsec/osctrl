@@ -172,7 +172,30 @@ interface LegacyApiError {
   code?: string;
 }
 
-export async function login(body: LoginRequest): Promise<LoginResponse> {
+/**
+ * Result of the password step. A deployment with MFA answers with a challenge
+ * instead of a session: the password alone never authenticates anyone, so the
+ * caller has to run the second factor before it has a session.
+ */
+export type LoginResult =
+  | { kind: 'session'; data: LoginResponse }
+  | {
+      kind: 'mfa';
+      challenge: string;
+      /** "totp", "webauthn", "recovery" — what this user can answer with. */
+      methods: string[];
+      /** True when the user has no factor yet and must enroll to continue. */
+      enrollment: boolean;
+    };
+
+interface MFAChallengePayload {
+  mfa_required?: boolean;
+  mfa_enrollment_required?: boolean;
+  challenge?: string;
+  methods?: string[];
+}
+
+export async function login(body: LoginRequest): Promise<LoginResult> {
   const res = await fetch('/api/v1/login', {
     method: 'POST',
     credentials: 'include',
@@ -186,11 +209,19 @@ export async function login(body: LoginRequest): Promise<LoginResponse> {
     const err = (await res.json().catch(() => ({ error: 'login failed' }))) as LegacyApiError;
     throw new Error(err.error || 'Login failed. Please try again.');
   }
-  const data = (await res.json()) as LoginResponse;
+  const data = (await res.json()) as LoginResponse & MFAChallengePayload;
+  if ((data.mfa_required || data.mfa_enrollment_required) && data.challenge) {
+    return {
+      kind: 'mfa',
+      challenge: data.challenge,
+      methods: data.methods ?? [],
+      enrollment: !!data.mfa_enrollment_required,
+    };
+  }
   // token is for CLI callers; the SPA authenticates via the HttpOnly cookie.
   // We only need the CSRF token for subsequent mutating requests.
   setCsrfToken(data.csrf_token);
-  return data;
+  return { kind: 'session', data };
 }
 
 /** Shape returned by GET /api/v1/login/environments — pre-auth, name+uuid only. */

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/mfa"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -76,6 +77,36 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Second factor. The first factor succeeding does not create a session:
+	// it creates a challenge the user has to answer with TOTP, a WebAuthn
+	// credential or a recovery code. Service accounts are exempt — they
+	// authenticate with a long-lived token, not interactively.
+	if h.MFA != nil && !user.Service {
+		if h.MFA.Enabled(l.Username) {
+			h.mfaChallengeResponse(w, r, l.Username, mfa.PurposeLogin, l.ExpHours)
+			return
+		}
+		if h.MFARequired {
+			// Deployment requires MFA and this user has none. Rather
+			// than locking them out, hand back an enrollment challenge:
+			// still no session until a factor exists and is proven.
+			h.mfaChallengeResponse(w, r, l.Username, mfa.PurposeEnroll, l.ExpHours)
+			return
+		}
+	}
+	if err := h.issueSession(w, r, l.Username, l.ExpHours, nil); err != nil {
+		apiErrorResponse(w, err.Error(), http.StatusInternalServerError, err)
+	}
+}
+
+// issueSession mints the JWT, sets the session and CSRF cookies, records the
+// login and writes the login response. It is the single place a session is
+// created, so the MFA handlers cannot accidentally diverge from the
+// password-only path.
+//
+// `extra` is merged into the JSON response for flows that return something
+// alongside the token (the recovery codes handed out at enrollment).
+func (h *HandlersApi) issueSession(w http.ResponseWriter, r *http.Request, username string, expHours int, extra map[string]any) error {
 	// Always mint a fresh JWT on successful login and overwrite the stored
 	// APIToken. The auth middleware in cmd/api/auth.go compares every
 	// presented JWT against the stored APIToken (constant-time), so once
@@ -86,14 +117,16 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// stolen token. The previous "reuse if >60s of life left" optimisation
 	// silently undid that revocation: re-login from a new device returned
 	// the SAME JWT, leaving the stolen copy valid.
-	token, tokenExp, err := h.Users.CreateToken(l.Username, h.ServiceName, l.ExpHours)
+	user, err := h.Users.Get(username)
 	if err != nil {
-		apiErrorResponse(w, "error creating token", http.StatusInternalServerError, err)
-		return
+		return fmt.Errorf("error reading user: %w", err)
 	}
-	if err = h.Users.UpdateToken(l.Username, token, tokenExp); err != nil {
-		apiErrorResponse(w, "error updating token", http.StatusInternalServerError, err)
-		return
+	token, tokenExp, err := h.Users.CreateToken(username, h.ServiceName, expHours)
+	if err != nil {
+		return fmt.Errorf("error creating token: %w", err)
+	}
+	if err = h.Users.UpdateToken(username, token, tokenExp); err != nil {
+		return fmt.Errorf("error updating token: %w", err)
 	}
 	user.APIToken = token
 	// Generate a CSRF token: 16 random bytes encoded as 32 hex chars.
@@ -101,8 +134,7 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// via the X-CSRF-Token header on mutating requests.
 	csrfBytes := make([]byte, 16)
 	if _, err = rand.Read(csrfBytes); err != nil {
-		apiErrorResponse(w, "error generating csrf token", http.StatusInternalServerError, err)
-		return
+		return fmt.Errorf("error generating csrf token: %w", err)
 	}
 	csrfToken := hex.EncodeToString(csrfBytes)
 	// Persist the CSRF token alongside the user so the auth middleware can
@@ -111,15 +143,13 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// IP comes from utils.GetIP so it matches the format every other site
 	// writes to last_ip_address (clean IP, X-Real-IP / X-Forwarded-For aware).
 	clientIP := utils.GetIP(r)
-	if err := h.Users.UpdateMetadata(clientIP, r.UserAgent(), l.Username, csrfToken); err != nil {
-		apiErrorResponse(w, "error persisting csrf token", http.StatusInternalServerError, err)
-		return
+	if err := h.Users.UpdateMetadata(clientIP, r.UserAgent(), username, csrfToken); err != nil {
+		return fmt.Errorf("error persisting csrf token: %w", err)
 	}
 	// Compute cookie Max-Age from token expiry.
 	maxAge := int(time.Until(tokenExp).Seconds())
 	if maxAge <= 0 {
-		apiErrorResponse(w, "token already expired", http.StatusInternalServerError, fmt.Errorf("token expiry in past or zero: %v", tokenExp))
-		return
+		return fmt.Errorf("token expiry in past or zero: %v", tokenExp)
 	}
 	// Set the httpOnly session cookie. The SPA reads the JWT via the cookie;
 	// it never needs to access this cookie from JS.
@@ -145,11 +175,16 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
-	h.AuditLog.NewLogin(l.Username, clientIP)
+	h.AuditLog.NewLogin(username, clientIP)
 	// Serialize and serve JSON. Token stays in the body for backward compat
 	// with CLI consumers that do not use cookies.
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiLoginResponse{
-		Token:     user.APIToken,
-		CSRFToken: csrfToken,
-	})
+	resp := map[string]any{
+		"token":      user.APIToken,
+		"csrf_token": csrfToken,
+	}
+	for k, v := range extra {
+		resp[k] = v
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
+	return nil
 }

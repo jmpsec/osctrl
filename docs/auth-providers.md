@@ -10,6 +10,7 @@ for each tested provider.
 - [Configuration modes](#configuration-modes)
 - [Environment variables reference](#environment-variables-reference)
 - [Username rules](#username-rules)
+- [Multi-factor authentication](#multi-factor-authentication)
 - [OIDC](#oidc)
   - [Generic OIDC setup](#generic-oidc-setup)
   - [Keycloak](#keycloak-oidc)
@@ -105,6 +106,105 @@ configure:
 `preferred_username` if your IdP populates it) and
 `SAML_USERNAME_ATTRIBUTE` to an attribute that carries a short
 alphanumeric identifier.
+
+---
+
+## Multi-factor authentication
+
+Password (`db`) logins can require a second factor. This applies only to
+local password accounts — federated logins are the identity provider's
+responsibility, and service accounts authenticate with a long-lived token
+rather than interactively, so both are exempt.
+
+Three factor types are supported:
+
+| Factor | What it covers |
+| --- | --- |
+| Authenticator app (TOTP) | Google Authenticator, Authy, 1Password, Aegis — RFC 6238, 6 digits, 30s |
+| Passkeys and security keys (WebAuthn) | YubiKey and other roaming keys, Touch ID / Windows Hello, password-manager passkeys |
+| Recovery codes | Ten single-use codes, issued when the first factor is enrolled |
+
+### How a login works
+
+The password step no longer creates a session on its own. When the user has
+a factor, `POST /api/v1/login` answers with a challenge instead of a token:
+
+```json
+{"mfa_required": true, "challenge": "…", "methods": ["totp", "webauthn", "recovery"]}
+```
+
+The client then answers it with one of:
+
+- `POST /api/v1/login/mfa` — `{"challenge": "…", "method": "totp"|"recovery", "code": "…"}`
+- `POST /api/v1/login/mfa/webauthn/begin` then `…/finish` — the WebAuthn assertion ceremony
+
+Only that second request returns the JWT and sets the session cookies.
+Challenges are single-use and expire after five minutes, and TOTP time
+steps are burned on use, so a code cannot be replayed inside its window.
+Both steps sit behind the same per-IP login rate limit.
+
+### Enrollment
+
+Users enroll from their profile page: **Two-factor authentication** →
+*Set up* for an authenticator app, or *Register* for a passkey or security
+key. Removing a factor, or regenerating recovery codes, requires
+re-entering the account password so a hijacked session cannot strip
+protection off an account.
+
+Recovery codes are shown once, at enrollment. Regenerating them
+invalidates the previous set.
+
+### Requiring it
+
+| Setting | Flag | Environment variable |
+| --- | --- | --- |
+| `service.mfaRequired` | `--mfa-required` | `SERVICE_MFA_REQUIRED` |
+| `service.mfaIssuer` | `--mfa-issuer` | `SERVICE_MFA_ISSUER` |
+| `service.mfaRPID` | `--mfa-rpid` | `SERVICE_MFA_RPID` |
+| `service.mfaOrigins` | `--mfa-origins` | `SERVICE_MFA_ORIGINS` |
+
+With `mfaRequired` on, a user who has no factor is not locked out: the
+login returns an enrollment challenge, they scan a QR code and confirm a
+code, and the session is issued together with their recovery codes. The
+last remaining factor on an account cannot be removed while this is on.
+
+### WebAuthn configuration
+
+Passkeys and security keys need a Relying Party ID and the exact origins
+the SPA is served from. `mfaRPID` defaults to `service.host` and
+`mfaOrigins` to `https://<rp id>`, which is right for a deployment served
+at its own hostname over TLS. Set them explicitly when the SPA is served
+on a non-default port or under a different hostname:
+
+```yaml
+service:
+  host: osctrl.example.com
+  mfaRequired: true
+  mfaRPID: osctrl.example.com
+  mfaOrigins: "https://osctrl.example.com,https://osctrl.example.com:8443"
+```
+
+If neither can be resolved, WebAuthn stays off — TOTP and recovery codes
+keep working and the SPA hides passkey registration. Browsers also refuse
+WebAuthn on plain HTTP other than `localhost`, so a non-TLS deployment is
+TOTP-only in practice.
+
+Changing `mfaRPID` invalidates every registered credential: the keys are
+bound to the domain they were created for. Users have to register again.
+
+### Locked-out users
+
+There is no self-service reset. An administrator with database access
+clears the affected user's rows:
+
+```sql
+DELETE FROM user_mfa_totp WHERE username = 'someone';
+DELETE FROM user_mfa_credentials WHERE username = 'someone';
+DELETE FROM user_mfa_recovery_codes WHERE username = 'someone';
+```
+
+The next login then goes through enrollment again (or straight through,
+if `mfaRequired` is off).
 
 ---
 

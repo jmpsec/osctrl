@@ -27,6 +27,24 @@ service:
   # none of the routes are registered and the SPA hides the section —
   # change the rows directly in the database, or this file, and restart.
   serviceConfigEnabled: false
+  # Multi-factor authentication for password logins. When true, users
+  # without a second factor enroll an authenticator app at their next
+  # login instead of being locked out; service accounts (token-based) and
+  # federated logins are unaffected. Users can always enroll voluntarily
+  # from their profile page, whether or not this is set.
+  mfaRequired: false
+  # Label authenticator apps show next to the account. Empty uses
+  # "osctrl (<host>)".
+  mfaIssuer: ""
+  # WebAuthn Relying Party ID for passkeys and hardware security keys:
+  # the registrable domain, no scheme or port. Empty uses `host`.
+  # Changing it invalidates every credential already registered.
+  mfaRPID: ""
+  # Comma-separated list of origins the SPA is served from, with scheme
+  # and any non-default port ("https://osctrl.example.com:8443"). Empty
+  # uses https://<mfaRPID>. A browser refuses the ceremony when its
+  # origin is not listed, so this must match what users actually visit.
+  mfaOrigins: ""
   # Write security-relevant API actions to audit_logs.
   auditLog: true
   # Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers

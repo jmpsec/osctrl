@@ -1,6 +1,10 @@
 package main
 
-import "github.com/jmpsec/osctrl/pkg/config"
+import (
+	"strings"
+
+	"github.com/jmpsec/osctrl/pkg/config"
+)
 
 // Helper to compose paths for API
 func _apiPath(target string) string {
@@ -48,4 +52,29 @@ func loadedYAMLToServiceParams(yml config.APIConfiguration, loadedFile string) *
 		params.RateLimits = yml.RateLimits
 	}
 	return params
+}
+
+// splitAndTrim turns a comma-separated flag value into a slice, dropping
+// empty entries and surrounding whitespace.
+func splitAndTrim(value string) []string {
+	out := []string{}
+	for _, part := range strings.Split(value, ",") {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// mfaIssuerName is the label authenticator apps and the WebAuthn prompt show
+// for this deployment. Falls back to the service host, then to a constant, so
+// users never see an empty or confusing prompt.
+func mfaIssuerName(params *config.ServiceParameters) string {
+	if params.Service.MFAIssuer != "" {
+		return params.Service.MFAIssuer
+	}
+	if params.Service.Host != "" {
+		return "osctrl (" + params.Service.Host + ")"
+	}
+	return "osctrl"
 }

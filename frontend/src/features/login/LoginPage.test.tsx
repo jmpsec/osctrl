@@ -9,8 +9,9 @@ import {
   RouterProvider,
   Outlet,
 } from '@tanstack/react-router';
+import userEvent from '@testing-library/user-event';
 import { LoginPage } from './LoginPage';
-import type { AuthMethod } from '$/api/client';
+import type { AuthMethod, LoginResult } from '$/api/client';
 
 // Tests pin the SSO button's behavior — the rest of the page (env
 // dropdown, password form) is exercised manually and via e2e. We
@@ -30,13 +31,26 @@ import type { AuthMethod } from '$/api/client';
 //     browsers don't follow cross-origin redirects on XHR.
 
 const mockListMethods = vi.fn<() => Promise<AuthMethod[]>>();
+const mockLogin = vi.fn<() => Promise<LoginResult>>();
+const mockSubmitMFACode = vi.fn();
+const mockBeginEnrollment = vi.fn();
+const mockFinishEnrollment = vi.fn();
+const mockLoginWithSecurityKey = vi.fn();
 
 vi.mock('$/api/client', async () => {
   return {
-    login: vi.fn(),
+    login: () => mockLogin(),
     listAuthMethods: () => mockListMethods(),
   };
 });
+
+vi.mock('$/api/mfa', () => ({
+  submitMFACode: (...args: unknown[]) => mockSubmitMFACode(...args),
+  beginMFAEnrollment: (...args: unknown[]) => mockBeginEnrollment(...args),
+  finishMFAEnrollment: (...args: unknown[]) => mockFinishEnrollment(...args),
+  loginWithSecurityKey: (...args: unknown[]) => mockLoginWithSecurityKey(...args),
+  isWebAuthnAvailable: () => true,
+}));
 
 function makeTestRouter() {
   const rootRoute = createRootRoute({ component: Outlet });
@@ -146,5 +160,119 @@ describe('LoginPage SSO surface', () => {
     // form must still work.
     expect(screen.queryByRole('link', { name: /continue with oidc/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /continue with saml/i })).not.toBeInTheDocument();
+  });
+});
+
+
+describe('LoginPage second factor', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListMethods.mockResolvedValue([{ type: 'password', loginUrl: '/api/v1/login' }]);
+  });
+
+  async function signIn() {
+    const user = userEvent.setup();
+    renderWithProviders();
+    await user.type(await screen.findByLabelText(/username/i), 'admin');
+    await user.type(screen.getByLabelText(/^password$/i), 'hunter2');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    return user;
+  }
+
+  it('asks for a code instead of signing in when the server returns a challenge', async () => {
+    mockLogin.mockResolvedValue({
+      kind: 'mfa',
+      challenge: 'challenge-id',
+      methods: ['totp', 'webauthn', 'recovery'],
+      enrollment: false,
+    });
+    mockSubmitMFACode.mockResolvedValue({ token: 't', csrf_token: 'c' });
+
+    const user = await signIn();
+
+    const codeInput = await screen.findByLabelText(/authentication code/i);
+    expect(screen.queryByTestId('app')).not.toBeInTheDocument();
+    // A registered security key is offered alongside the code.
+    expect(screen.getByRole('button', { name: /security key or passkey/i })).toBeInTheDocument();
+
+    await user.type(codeInput, '123456');
+    await user.click(screen.getByRole('button', { name: /^verify$/i }));
+
+    await waitFor(() => {
+      expect(mockSubmitMFACode).toHaveBeenCalledWith('challenge-id', 'totp', '123456');
+    });
+    await screen.findByTestId('app');
+  });
+
+  it('switches to a recovery code when the user picks that option', async () => {
+    mockLogin.mockResolvedValue({
+      kind: 'mfa',
+      challenge: 'challenge-id',
+      methods: ['totp', 'recovery'],
+      enrollment: false,
+    });
+    mockSubmitMFACode.mockResolvedValue({ token: 't', csrf_token: 'c' });
+
+    const user = await signIn();
+    await user.click(await screen.findByRole('button', { name: /use a recovery code/i }));
+    await user.type(screen.getByLabelText(/recovery code/i), 'ABCDE-FGHIJ');
+    await user.click(screen.getByRole('button', { name: /^verify$/i }));
+
+    await waitFor(() => {
+      expect(mockSubmitMFACode).toHaveBeenCalledWith('challenge-id', 'recovery', 'ABCDE-FGHIJ');
+    });
+  });
+
+  it('walks a required enrollment through the QR step and shows the recovery codes', async () => {
+    mockLogin.mockResolvedValue({
+      kind: 'mfa',
+      challenge: 'enroll-id',
+      methods: ['totp'],
+      enrollment: true,
+    });
+    mockBeginEnrollment.mockResolvedValue({
+      secret: 'JBSWY3DPEHPK3PXP',
+      uri: 'otpauth://totp/osctrl:admin?secret=JBSWY3DPEHPK3PXP',
+      qr: 'data:image/png;base64,AAA',
+    });
+    mockFinishEnrollment.mockResolvedValue({
+      token: 't',
+      csrf_token: 'c',
+      recovery_codes: ['CODE1-CODE1', 'CODE2-CODE2'],
+    });
+
+    const user = await signIn();
+
+    expect(await screen.findByText(/set up two-factor authentication/i)).toBeInTheDocument();
+    expect(screen.getByAltText(/enrollment qr code/i)).toBeInTheDocument();
+    expect(screen.getByText('JBSWY3DPEHPK3PXP')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/authentication code/i), '654321');
+    await user.click(screen.getByRole('button', { name: /confirm and sign in/i }));
+
+    // The session waits behind an acknowledgement of the recovery codes.
+    expect(await screen.findByText(/save your recovery codes/i)).toBeInTheDocument();
+    expect(screen.getByText('CODE1-CODE1')).toBeInTheDocument();
+    expect(screen.queryByTestId('app')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /i have saved them/i }));
+    await screen.findByTestId('app');
+  });
+
+  it('surfaces a rejected code and keeps the user on the challenge step', async () => {
+    mockLogin.mockResolvedValue({
+      kind: 'mfa',
+      challenge: 'challenge-id',
+      methods: ['totp'],
+      enrollment: false,
+    });
+    mockSubmitMFACode.mockRejectedValue(new Error('invalid multi-factor authentication'));
+
+    const user = await signIn();
+    await user.type(await screen.findByLabelText(/authentication code/i), '000000');
+    await user.click(screen.getByRole('button', { name: /^verify$/i }));
+
+    expect(await screen.findByText(/invalid multi-factor authentication/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('app')).not.toBeInTheDocument();
   });
 });
