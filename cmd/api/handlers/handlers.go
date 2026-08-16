@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/mfa"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -56,14 +57,21 @@ type HandlersApi struct {
 	GeoIP                *geoip.GeoIPResolver
 	Posture              *posture.PostureManager
 	PostureEnabled       bool
-	ServiceVersion       string
-	ServiceName          string
-	AuditLog             *auditlog.AuditLogManager
-	ApiConfig            *config.APIConfiguration
-	DebugHTTP            *zerolog.Logger
-	DebugHTTPConfig      *config.YAMLConfigurationDebug
-	OsqueryTables        []types.OsqueryTable
-	OsqueryValues        config.YAMLConfigurationOsquery
+	// MFA owns the second-factor tables. Nil disables every MFA route.
+	MFA *mfa.Manager
+	// WebAuthn is nil when no RP ID or origin could be resolved, which
+	// leaves TOTP and recovery codes working and hides passkey support.
+	WebAuthn        *mfa.WebAuthn
+	MFARequired     bool
+	MFAIssuer       string
+	ServiceVersion  string
+	ServiceName     string
+	AuditLog        *auditlog.AuditLogManager
+	ApiConfig       *config.APIConfiguration
+	DebugHTTP       *zerolog.Logger
+	DebugHTTPConfig *config.YAMLConfigurationDebug
+	OsqueryTables   []types.OsqueryTable
+	OsqueryValues   config.YAMLConfigurationOsquery
 	// JWTSecret is the HMAC key used by pkg/auth state-cookie
 	// helpers. Populated via WithJWTSecret at handler init. Same
 	// bytes the Users manager signs user JWTs with; the auth
@@ -215,6 +223,17 @@ func WithPostureEnabled(enabled bool) HandlersOption {
 func WithServiceConfigEnabled(enabled bool) HandlersOption {
 	return func(h *HandlersApi) {
 		h.ServiceConfigEnabled = enabled
+	}
+}
+
+// WithMFA wires the second-factor manager, the (optional) WebAuthn relying
+// party and the deployment-wide requirement switch.
+func WithMFA(manager *mfa.Manager, webAuthn *mfa.WebAuthn, required bool, issuer string) HandlersOption {
+	return func(h *HandlersApi) {
+		h.MFA = manager
+		h.WebAuthn = webAuthn
+		h.MFARequired = required
+		h.MFAIssuer = issuer
 	}
 }
 

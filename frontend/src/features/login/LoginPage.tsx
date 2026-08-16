@@ -10,6 +10,14 @@ import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { login, listAuthMethods } from '$/api/client';
+import {
+  submitMFACode,
+  beginMFAEnrollment,
+  finishMFAEnrollment,
+  loginWithSecurityKey,
+  isWebAuthnAvailable,
+  type MFATOTPSetup,
+} from '$/api/mfa';
 import { toggleTheme, getInitialTheme } from '$/lib/theme';
 import type { Theme } from '$/lib/design-tokens';
 import './login-cyber-grid.css';
@@ -21,9 +29,23 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+/** The second step of a login, once the password has been accepted. */
+interface MFAState {
+  challenge: string;
+  methods: string[];
+  enrollment: boolean;
+  setup?: MFATOTPSetup;
+}
+
 export function LoginPage() {
   usePageTitle('Login');
   const [serverError, setServerError] = useState<string | null>(null);
+  const [mfa, setMfa] = useState<MFAState | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
+  const [mfaBusy, setMfaBusy] = useState(false);
+  // Shown once, after a forced enrollment: the only time these exist.
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
   const router = useRouter();
 
@@ -52,14 +74,72 @@ export function LoginPage() {
   async function onSubmit(values: LoginFormValues) {
     setServerError(null);
     try {
-      await login({
+      const result = await login({
         username: values.username,
         password: values.password,
       });
+      if (result.kind === 'mfa') {
+        const state: MFAState = {
+          challenge: result.challenge,
+          methods: result.methods,
+          enrollment: result.enrollment,
+        };
+        // A user who must enroll gets the secret straight away, so the
+        // step renders as "scan this, then confirm" in one screen.
+        if (result.enrollment) {
+          state.setup = await beginMFAEnrollment(result.challenge);
+        }
+        setMfa(state);
+        return;
+      }
       void router.navigate({ to: '/_app' });
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Login failed');
     }
+  }
+
+  async function onSubmitMFA(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mfa) return;
+    setServerError(null);
+    setMfaBusy(true);
+    try {
+      if (mfa.enrollment) {
+        const session = await finishMFAEnrollment(mfa.challenge, mfaCode);
+        // Hold the user here until they have written the codes down;
+        // they are unrecoverable afterwards.
+        setRecoveryCodes(session.recovery_codes ?? []);
+        return;
+      }
+      await submitMFACode(mfa.challenge, useRecoveryCode ? 'recovery' : 'totp', mfaCode);
+      void router.navigate({ to: '/_app' });
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Verification failed');
+      setMfaCode('');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function onSecurityKey() {
+    if (!mfa) return;
+    setServerError(null);
+    setMfaBusy(true);
+    try {
+      await loginWithSecurityKey(mfa.challenge);
+      void router.navigate({ to: '/_app' });
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Security key verification failed');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  function restart() {
+    setMfa(null);
+    setMfaCode('');
+    setUseRecoveryCode(false);
+    setServerError(null);
   }
 
   return (
@@ -163,125 +243,245 @@ export function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-          {/* Username */}
-          <div>
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              type="text"
-              autoComplete="username"
-              autoFocus
-              {...register('username')}
-              error={errors.username?.message}
-            />
-            {errors.username && (
-              <p className="mt-1 text-xs text-[color:var(--danger)] flex items-center gap-1">
-                <svg aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                {errors.username.message}
+        {recoveryCodes ? (
+          /* Forced enrollment just completed. The codes exist nowhere else,
+             so the session waits behind an explicit acknowledgement. */
+          <div className="space-y-4">
+            <div>
+              <h1 className="text-sm font-semibold text-[color:var(--text-1)]">Save your recovery codes</h1>
+              <p className="mt-1 text-xs text-[color:var(--text-3)]">
+                Each code signs you in once if you lose your authenticator. They are shown only now.
               </p>
-            )}
+            </div>
+            <ul className="grid grid-cols-2 gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
+              {recoveryCodes.map((code) => (
+                <li key={code} className="font-mono-tabular text-xs text-[color:var(--text-1)]">
+                  {code}
+                </li>
+              ))}
+            </ul>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              onClick={() => void router.navigate({ to: '/_app' })}
+            >
+              I have saved them — continue
+            </Button>
           </div>
-
-          {/* Password */}
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              {...register('password')}
-              error={errors.password?.message}
-            />
-            {errors.password && (
-              <p className="mt-1 text-xs text-[color:var(--danger)] flex items-center gap-1">
-                <svg aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                {errors.password.message}
+        ) : mfa ? (
+          <form onSubmit={onSubmitMFA} noValidate className="space-y-4">
+            <div>
+              <h1 className="text-sm font-semibold text-[color:var(--text-1)]">
+                {mfa.enrollment ? 'Set up two-factor authentication' : 'Two-factor authentication'}
+              </h1>
+              <p className="mt-1 text-xs text-[color:var(--text-3)]">
+                {mfa.enrollment
+                  ? 'This deployment requires a second factor. Scan the code with an authenticator app, then enter the code it shows.'
+                  : useRecoveryCode
+                    ? 'Enter one of the recovery codes you saved when you enrolled.'
+                    : 'Enter the code from your authenticator app.'}
               </p>
+            </div>
+
+            {mfa.enrollment && mfa.setup && (
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
+                {mfa.setup.qr && (
+                  <img src={mfa.setup.qr} alt="Authenticator enrollment QR code" width={176} height={176} />
+                )}
+                <p className="text-[0.65rem] text-[color:var(--text-3)] text-center">
+                  Can&apos;t scan? Enter this key manually:
+                </p>
+                <code className="font-mono-tabular text-[0.7rem] text-[color:var(--text-1)] break-all text-center">
+                  {mfa.setup.secret}
+                </code>
+              </div>
             )}
-          </div>
 
-          {/* Server error */}
-          {serverError && (
-            <div className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 px-3 py-2.5 text-sm text-[color:var(--danger)] flex items-start gap-2">
-              <svg aria-hidden="true" className="w-4 h-4 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="15" y1="9" x2="9" y2="15" />
-                <line x1="9" y1="9" x2="15" y2="15" />
-              </svg>
-              {serverError}
+            <div>
+              <Label htmlFor="mfa-code">{useRecoveryCode ? 'Recovery code' : 'Authentication code'}</Label>
+              <Input
+                id="mfa-code"
+                name="mfa-code"
+                type="text"
+                inputMode={useRecoveryCode ? 'text' : 'numeric'}
+                autoComplete="one-time-code"
+                autoFocus
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+              />
             </div>
-          )}
 
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            disabled={isSubmitting}
-            className="w-full mt-2"
-          >
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
-          </Button>
+            {serverError && (
+              <div className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 px-3 py-2.5 text-sm text-[color:var(--danger)]">
+                {serverError}
+              </div>
+            )}
 
-          {hasSSO && (
-            <div className="relative my-4 flex items-center">
-              <div className="flex-grow border-t border-[color:var(--border)]" />
-              <span className="mx-3 text-[0.65rem] uppercase tracking-[0.15em] font-mono-tabular text-[color:var(--text-3)]">
-                or
-              </span>
-              <div className="flex-grow border-t border-[color:var(--border)]" />
+            <Button type="submit" variant="primary" size="lg" disabled={mfaBusy} className="w-full">
+              {mfaBusy ? 'Verifying…' : mfa.enrollment ? 'Confirm and sign in' : 'Verify'}
+            </Button>
+
+            {!mfa.enrollment && mfa.methods.includes('webauthn') && isWebAuthnAvailable() && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                disabled={mfaBusy}
+                className="w-full"
+                onClick={() => void onSecurityKey()}
+              >
+                Use a security key or passkey
+              </Button>
+            )}
+
+            <div className="flex items-center justify-between text-xs">
+              {!mfa.enrollment && mfa.methods.includes('recovery') ? (
+                <button
+                  type="button"
+                  className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)] underline"
+                  onClick={() => {
+                    setUseRecoveryCode((v) => !v);
+                    setMfaCode('');
+                    setServerError(null);
+                  }}
+                >
+                  {useRecoveryCode ? 'Use authenticator code' : 'Use a recovery code'}
+                </button>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)] underline"
+                onClick={restart}
+              >
+                Back to sign in
+              </button>
             </div>
-          )}
-          {oidcMethod && (
-            <a
-              href={oidcMethod.loginUrl}
-              className={cn(
-                'inline-flex w-full items-center justify-center gap-2',
-                'px-4 py-2.5 rounded-md text-sm font-medium',
-                'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                'text-[color:var(--text-1)]',
-                'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
-                'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
-                'transition-colors duration-150',
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+            {/* Username */}
+            <div>
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                autoComplete="username"
+                autoFocus
+                {...register('username')}
+                error={errors.username?.message}
+              />
+              {errors.username && (
+                <p className="mt-1 text-xs text-[color:var(--danger)] flex items-center gap-1">
+                  <svg aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  {errors.username.message}
+                </p>
               )}
-            >
-              <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              Continue with OIDC
-            </a>
-          )}
-          {samlMethod && (
-            <a
-              href={samlMethod.loginUrl}
-              className={cn(
-                'inline-flex w-full items-center justify-center gap-2',
-                'px-4 py-2.5 rounded-md text-sm font-medium',
-                'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                'text-[color:var(--text-1)]',
-                'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
-                'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
-                'transition-colors duration-150',
-                oidcMethod && 'mt-2',
+            </div>
+
+            {/* Password */}
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                {...register('password')}
+                error={errors.password?.message}
+              />
+              {errors.password && (
+                <p className="mt-1 text-xs text-[color:var(--danger)] flex items-center gap-1">
+                  <svg aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  {errors.password.message}
+                </p>
               )}
+            </div>
+
+            {/* Server error */}
+            {serverError && (
+              <div className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 px-3 py-2.5 text-sm text-[color:var(--danger)] flex items-start gap-2">
+                <svg aria-hidden="true" className="w-4 h-4 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+                {serverError}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              disabled={isSubmitting}
+              className="w-full mt-2"
             >
-              <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-              Continue with SAML
-            </a>
-          )}
-        </form>
+              {isSubmitting ? 'Signing in…' : 'Sign in'}
+            </Button>
+
+            {hasSSO && (
+              <div className="relative my-4 flex items-center">
+                <div className="flex-grow border-t border-[color:var(--border)]" />
+                <span className="mx-3 text-[0.65rem] uppercase tracking-[0.15em] font-mono-tabular text-[color:var(--text-3)]">
+                  or
+                </span>
+                <div className="flex-grow border-t border-[color:var(--border)]" />
+              </div>
+            )}
+            {oidcMethod && (
+              <a
+                href={oidcMethod.loginUrl}
+                className={cn(
+                  'inline-flex w-full items-center justify-center gap-2',
+                  'px-4 py-2.5 rounded-md text-sm font-medium',
+                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                  'text-[color:var(--text-1)]',
+                  'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
+                  'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
+                  'transition-colors duration-150',
+                )}
+              >
+                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                Continue with OIDC
+              </a>
+            )}
+            {samlMethod && (
+              <a
+                href={samlMethod.loginUrl}
+                className={cn(
+                  'inline-flex w-full items-center justify-center gap-2',
+                  'px-4 py-2.5 rounded-md text-sm font-medium',
+                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                  'text-[color:var(--text-1)]',
+                  'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
+                  'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
+                  'transition-colors duration-150',
+                  oidcMethod && 'mt-2',
+                )}
+              >
+                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                Continue with SAML
+              </a>
+            )}
+          </form>
+        )}
         </div>
       </div>
     </div>

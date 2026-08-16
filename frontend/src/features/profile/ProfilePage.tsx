@@ -21,6 +21,7 @@ import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { Skeleton } from '$/components/data/Skeleton';
 import type { EnvAccess } from '$/api/types';
+import { MFAPanel } from './MFAPanel';
 
 export function ProfilePage() {
   usePageTitle('Profile');
@@ -408,6 +409,11 @@ export function ProfilePage() {
             </form>
           </Panel>
         )}
+
+        {/* ─ Two-factor authentication ─ */}
+        <Panel title="Two-factor authentication">
+          <MFAPanel />
+        </Panel>
 
         {/* ─ API token ─ */}
         {isLoading || !me ? (

@@ -133,9 +133,28 @@ type YAMLConfigurationService struct {
 	// section — the rows can still be changed directly in the database, or
 	// in the YAML file, and are picked up on the next restart. Consumed by
 	// osctrl-api; osctrl-tls ignores it.
-	ServiceConfigEnabled bool   `yaml:"serviceConfigEnabled"`
-	Auth                 string `yaml:"auth"`
-	AuditLog             bool   `yaml:"auditLog"`
+	ServiceConfigEnabled bool `yaml:"serviceConfigEnabled"`
+	// MFARequired makes a second authentication factor mandatory for
+	// password logins. Users who have none are sent through enrollment at
+	// their next login instead of being locked out. Service accounts are
+	// exempt (they authenticate with a token, not interactively), and
+	// federated logins are unaffected — the identity provider owns the
+	// factor policy there.
+	MFARequired bool `yaml:"mfaRequired"`
+	// MFAIssuer is the label authenticator apps show next to the account.
+	// Defaults to "osctrl" when empty.
+	MFAIssuer string `yaml:"mfaIssuer"`
+	// MFARPID is the WebAuthn Relying Party ID: the registrable domain
+	// credentials are bound to, without scheme or port. Empty defaults to
+	// Host. Changing it invalidates every registered credential.
+	MFARPID string `yaml:"mfaRPID"`
+	// MFAOrigins is the comma-separated list of origins the SPA is served
+	// from, including scheme and any non-default port
+	// ("https://osctrl.example.com"). Empty defaults to https://<Host>.
+	// A browser refuses the ceremony if its origin is not in this list.
+	MFAOrigins string `yaml:"mfaOrigins"`
+	Auth       string `yaml:"auth"`
+	AuditLog   bool   `yaml:"auditLog"`
 	// TrustedProxies is a comma-separated list of CIDRs whose
 	// X-Real-IP / X-Forwarded-For headers utils.GetIP will honor.
 	// Default empty → forwarding headers are ignored and the

@@ -22,6 +22,13 @@ service:
   # this file into the service_config table and resolves those rows back
   # at startup, so it runs on the stored values either way.
   serviceConfigEnabled: false
+  # Multi-factor authentication is enforced by osctrl-api, which owns the
+  # interactive login; these values are inert for osctrl-tls and kept so
+  # the service section round-trips unchanged through the API.
+  mfaRequired: false
+  mfaIssuer: ""
+  mfaRPID: ""
+  mfaOrigins: ""
   # Write security-relevant TLS activity, such as enroll failures, to audit_logs.
   auditLog: true
   # Comma-separated CIDR list whose X-Real-IP / X-Forwarded-For headers

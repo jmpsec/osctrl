@@ -308,6 +308,14 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 				apiErrorResponse(w, "error removing user", http.StatusInternalServerError, err)
 				return
 			}
+			// Second factors must not outlive the account: a recreated
+			// username would otherwise inherit the old TOTP secret and
+			// security keys.
+			if h.MFA != nil {
+				if err := h.MFA.DeleteUser(user.Username); err != nil {
+					log.Err(err).Msgf("error removing MFA factors for %s", user.Username)
+				}
+			}
 		}
 		returnData = "user removed successfully"
 	}

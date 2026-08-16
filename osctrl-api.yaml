@@ -2929,6 +2929,184 @@ paths:
       summary: List login environments
       tags:
         - auth
+  /api/v1/login/mfa:
+    post:
+      description: Answers an MFA challenge with a TOTP or recovery code and returns a
+        JWT token.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.MFALoginRequest"
+        description: Request body
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiLoginResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Complete a login with a second factor
+      tags:
+        - auth
+  /api/v1/login/mfa/enroll/begin:
+    post:
+      description: Returns a TOTP secret for a user who must enroll before logging in.
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.MFAEnrollRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.MFAEnrollBeginResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Begin enrollment during login
+      tags:
+        - auth
+  /api/v1/login/mfa/enroll/finish:
+    post:
+      description: Confirms a TOTP enrollment and returns a JWT token plus recovery codes.
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.MFAEnrollRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiLoginResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Finish enrollment during login
+      tags:
+        - auth
+  /api/v1/login/mfa/webauthn/begin:
+    post:
+      description: Returns WebAuthn assertion options for an MFA challenge.
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.MFAWebAuthnRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Begin a WebAuthn login ceremony
+      tags:
+        - auth
+  /api/v1/login/mfa/webauthn/finish:
+    post:
+      description: Validates a WebAuthn assertion and returns a JWT token.
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.MFAWebAuthnRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiLoginResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Finish a WebAuthn login ceremony
+      tags:
+        - auth
   /api/v1/logout:
     post:
       description: Clears API session cookies and revokes the active token when present.
@@ -3082,6 +3260,308 @@ paths:
       summary: Get node logs
       tags:
         - logs
+  /api/v1/mfa:
+    get:
+      description: Returns the second factors enrolled on the calling account.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.MFAStatusResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Multi-factor status
+      tags:
+        - mfa
+  /api/v1/mfa/recovery:
+    post:
+      description: Invalidates the existing recovery codes and returns a new set.
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.MFAPasswordRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.MFARecoveryCodesResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Regenerate recovery codes
+      tags:
+        - mfa
+  /api/v1/mfa/totp:
+    delete:
+      description: Disables the authenticator-app factor after confirming the account
+        password.
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.MFAPasswordRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiGenericResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Remove TOTP
+      tags:
+        - mfa
+    post:
+      description: Generates a TOTP secret and provisioning URI for the calling account.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.MFATOTPBeginResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Begin TOTP enrollment
+      tags:
+        - mfa
+  /api/v1/mfa/totp/verify:
+    post:
+      description: Verifies a code from the authenticator app and returns recovery codes.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.MFACodeRequest"
+        description: Request body
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.MFARecoveryCodesResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Confirm TOTP enrollment
+      tags:
+        - mfa
+  /api/v1/mfa/webauthn:
+    post:
+      description: Returns WebAuthn creation options for the calling account.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Begin WebAuthn registration
+      tags:
+        - mfa
+  "/api/v1/mfa/webauthn/{id}":
+    delete:
+      description: Deletes one registered passkey or security key after confirming the
+        account password.
+      parameters:
+        - description: Credential ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.MFAPasswordRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiGenericResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Remove a WebAuthn credential
+      tags:
+        - mfa
+  /api/v1/mfa/webauthn/verify:
+    post:
+      description: Validates a WebAuthn attestation and stores the credential.
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.MFAWebAuthnRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiGenericResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Finish WebAuthn registration
+      tags:
+        - mfa
   "/api/v1/nodes/{env}":
     get:
       description: Returns paginated, filtered, and sorted nodes for an environment.
@@ -7430,6 +7910,13 @@ servers:
   - url: /
 components:
   requestBodies:
+    handlers.MFAWebAuthnRequest:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/handlers.MFAWebAuthnRequest"
+      description: Request body
+      required: true
     types.ApiActionsRequest:
       content:
         application/json:
@@ -7449,6 +7936,20 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/types.ApiLoginRequest"
+      description: Request body
+      required: true
+    handlers.MFAEnrollRequest:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/handlers.MFAEnrollRequest"
+      description: Request body
+      required: true
+    handlers.MFAPasswordRequest:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/handlers.MFAPasswordRequest"
       description: Request body
       required: true
   securitySchemes:
@@ -7768,6 +8269,100 @@ components:
         idp_id_token_hint:
           type: string
         idp_logout_url:
+          type: string
+      type: object
+    handlers.MFACodeRequest:
+      properties:
+        code:
+          type: string
+      type: object
+    handlers.MFACredential:
+      properties:
+        created_at:
+          type: string
+        id:
+          type: string
+        last_used_at:
+          type: string
+        name:
+          type: string
+      type: object
+    handlers.MFAEnrollBeginResponse:
+      properties:
+        qr:
+          description: QR is the provisioning URI as a PNG data URI, ready for an <img>.
+          type: string
+        secret:
+          type: string
+        uri:
+          type: string
+      type: object
+    handlers.MFAEnrollRequest:
+      properties:
+        challenge:
+          type: string
+        code:
+          type: string
+      type: object
+    handlers.MFALoginRequest:
+      properties:
+        challenge:
+          type: string
+        code:
+          type: string
+        method:
+          description: Method is "totp" or "recovery".
+          type: string
+      type: object
+    handlers.MFAPasswordRequest:
+      properties:
+        password:
+          type: string
+      type: object
+    handlers.MFARecoveryCodesResponse:
+      properties:
+        recovery_codes:
+          items:
+            type: string
+          type: array
+      type: object
+    handlers.MFAStatusResponse:
+      properties:
+        credentials:
+          items:
+            $ref: "#/components/schemas/handlers.MFACredential"
+          type: array
+        recovery_codes_left:
+          type: integer
+        required:
+          description: |-
+            Required mirrors the deployment-wide switch so the profile page can
+            explain why a factor cannot be removed.
+          type: boolean
+        totp_enabled:
+          type: boolean
+        webauthn_available:
+          type: boolean
+      type: object
+    handlers.MFATOTPBeginResponse:
+      properties:
+        qr:
+          description: QR is the provisioning URI as a PNG data URI, ready for an <img>.
+          type: string
+        secret:
+          type: string
+        uri:
+          type: string
+      type: object
+    handlers.MFAWebAuthnRequest:
+      properties:
+        challenge:
+          type: string
+        credential:
+          items:
+            type: integer
+          type: array
+        name:
           type: string
       type: object
     handlers.NodeActivityBucket:
@@ -9002,11 +9597,6 @@ components:
           type: string
       type: object
     types.ServiceConfigUpdateRequest:
-      properties:
-        value:
-          items:
-            type: integer
-          type: array
       type: object
     types.SetPermissionsAllRequest:
       properties:

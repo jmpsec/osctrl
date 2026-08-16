@@ -24,6 +24,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/mfa"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/osquery"
 	"github.com/jmpsec/osctrl/pkg/posture"
@@ -80,6 +81,7 @@ const (
 	apiVersionPath = "/v1"
 	// API login path
 	apiLoginPath = "/login"
+	apiMFAPath   = "/mfa"
 	// API nodes path
 	apiNodesPath = "/nodes"
 	// API queries path
@@ -352,6 +354,34 @@ func osctrlAPIService() {
 		log.Info().Msg("Posture system disabled (enable with --posture-enabled)")
 	}
 	// Initialize settings
+	// Multi-factor authentication for password logins. The manager owns its
+	// tables and is always available; WebAuthn additionally needs a relying
+	// party id and origin, and stays nil (TOTP-only) when neither the
+	// config nor the service host provides one.
+	mfamgr := mfa.NewManager(db.Conn)
+	var webAuthn *mfa.WebAuthn
+	rpID := flagParams.Service.MFARPID
+	if rpID == "" {
+		rpID = flagParams.Service.Host
+	}
+	origins := splitAndTrim(flagParams.Service.MFAOrigins)
+	if len(origins) == 0 && rpID != "" {
+		origins = []string{"https://" + rpID}
+	}
+	if rpID != "" && len(origins) > 0 {
+		webAuthn, err = mfa.NewWebAuthn(mfamgr, rpID, mfaIssuerName(flagParams), origins)
+		if err != nil {
+			log.Err(err).Msg("WebAuthn disabled — passkeys and security keys will not be offered")
+			webAuthn = nil
+		} else {
+			log.Info().Str("rpid", rpID).Strs("origins", origins).Msg("WebAuthn enabled")
+		}
+	} else {
+		log.Warn().Msg("WebAuthn disabled — set --host or --mfa-rpid to enable passkeys and security keys")
+	}
+	if flagParams.Service.MFARequired {
+		log.Info().Msg("Multi-factor authentication is required for password logins")
+	}
 	log.Info().Msg("Initialize settings")
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
@@ -493,6 +523,7 @@ func osctrlAPIService() {
 		handlers.WithGeoIP(geoIPResolver),
 		handlers.WithPosture(posturemgr),
 		handlers.WithPostureEnabled(flagParams.Service.PostureEnabled),
+		handlers.WithMFA(mfamgr, webAuthn, flagParams.Service.MFARequired, mfaIssuerName(flagParams)),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
 		handlers.WithAuditLog(auditLog),
@@ -533,6 +564,13 @@ func osctrlAPIService() {
 	})
 	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/{env}", loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
 	muxAPI.Handle("POST "+_apiPath(apiLoginPath), loginRateLimit(http.HandlerFunc(handlersApi.LoginHandler)))
+	// Second factor. Same rate limiter as the password step: an attacker
+	// who has the password must not get unlimited guesses at a 6-digit code.
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/mfa", loginRateLimit(http.HandlerFunc(handlersApi.LoginMFAHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/mfa/webauthn/begin", loginRateLimit(http.HandlerFunc(handlersApi.LoginMFAWebAuthnBeginHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/mfa/webauthn/finish", loginRateLimit(http.HandlerFunc(handlersApi.LoginMFAWebAuthnFinishHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/mfa/enroll/begin", loginRateLimit(http.HandlerFunc(handlersApi.LoginMFAEnrollBeginHandler)))
+	muxAPI.Handle("POST "+_apiPath(apiLoginPath)+"/mfa/enroll/finish", loginRateLimit(http.HandlerFunc(handlersApi.LoginMFAEnrollFinishHandler)))
 	// Read-only pre-auth endpoints (env list for the login picker).
 	// The env list is the one piece of data the login page legitimately
 	// needs before the user has a session, so it stays pre-auth —
@@ -982,6 +1020,31 @@ func osctrlAPIService() {
 			"POST "+_apiPath(apiServiceConfigPath)+"/persist",
 			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigPersistHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
 	}
+	// API: multi-factor enrollment for the calling user
+	muxAPI.Handle(
+		"GET "+_apiPath(apiMFAPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MFAStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiMFAPath)+"/totp",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MFATOTPBeginHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiMFAPath)+"/totp/verify",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MFATOTPVerifyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiMFAPath)+"/totp",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MFATOTPDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiMFAPath)+"/recovery",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MFARecoveryHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiMFAPath)+"/webauthn",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MFAWebAuthnBeginHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiMFAPath)+"/webauthn/verify",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MFAWebAuthnFinishHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiMFAPath)+"/webauthn/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.MFAWebAuthnDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: audit log
 	if flagParams.Service.AuditLog {
 		muxAPI.Handle(
