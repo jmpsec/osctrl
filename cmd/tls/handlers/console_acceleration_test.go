@@ -25,7 +25,7 @@ func TestShouldAccelerateQueryReadForActiveConsoleSession(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(&console.Session{}))
 	queryManager := queries.CreateQueries(db)
-	handler := &HandlersTLS{Queries: queryManager}
+	handler := &HandlersTLS{Queries: queryManager, OsqueryValues: &config.YAMLConfigurationOsquery{Console: true}}
 	node := nodes.OsqueryNode{ID: 7, UUID: "NODE-UUID", EnvironmentID: 1}
 	otherNode := nodes.OsqueryNode{ID: 8, UUID: "OTHER-NODE-UUID", EnvironmentID: 1}
 
@@ -89,6 +89,26 @@ func TestShouldAccelerateQueryReadForActiveConsoleSession(t *testing.T) {
 		Active:        true,
 	}).Error)
 	require.True(t, handler.shouldAccelerateQueryRead(node, false))
+}
+
+func TestShouldNotAccelerateQueryReadForConsoleWhenConsoleDisabled(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&console.Session{}))
+	queryManager := queries.CreateQueries(db)
+	handler := &HandlersTLS{Queries: queryManager, OsqueryValues: &config.YAMLConfigurationOsquery{}}
+	node := nodes.OsqueryNode{ID: 7, UUID: "NODE-UUID", EnvironmentID: 1}
+
+	require.NoError(t, db.Create(&console.Session{
+		EnvironmentID: node.EnvironmentID,
+		NodeID:        node.ID,
+		NodeUUID:      node.UUID,
+		Creator:       "alice",
+		CWD:           "/",
+		Platform:      "linux",
+		Active:        true,
+	}).Error)
+	require.False(t, handler.shouldAccelerateQueryRead(node, false))
 }
 
 func TestShouldAccelerateQueryReadForActiveFileExplorerSession(t *testing.T) {
@@ -160,7 +180,7 @@ func TestQueryReadAcceleratesOnlyConsoleSessionNode(t *testing.T) {
 		WithQueries(queryManager),
 		WithSettings(settingsMgr),
 		WithWriteHandler(NewBatchWriter(100, time.Hour, 10, *nodesMgr)),
-		WithOsqueryValues(&config.YAMLConfigurationOsquery{Accelerated: true}),
+		WithOsqueryValues(&config.YAMLConfigurationOsquery{Accelerated: true, Console: true}),
 	)
 
 	consoleResp := queryReadResponse(t, handler, env.UUID, consoleNode.NodeKey)

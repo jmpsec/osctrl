@@ -621,8 +621,8 @@ describe('NodeDetailPage', () => {
     expect(screen.queryByText('7d 3h 12m')).not.toBeInTheDocument();
   });
 
-  it('shows the console action only when accelerated queries are enabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: true, file_explorer: false });
+  it('shows the console action when console is enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, console: true, file_explorer: false });
     const router = makeTestRouter();
 
     renderWithProviders(router);
@@ -634,8 +634,8 @@ describe('NodeDetailPage', () => {
     expect(screen.getByRole('link', { name: /console/i })).toBeInTheDocument();
   });
 
-  it('hides the console action when accelerated queries are disabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false });
+  it('hides the console action when console is disabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: true, console: false, file_explorer: false });
 
     renderWithProviders(makeTestRouter());
 
@@ -646,8 +646,8 @@ describe('NodeDetailPage', () => {
     expect(screen.queryByRole('link', { name: /console/i })).not.toBeInTheDocument();
   });
 
-  it('hides the console action from non-admin users even when accelerated queries are enabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: true, file_explorer: false });
+  it('hides the console action from non-admin users even when console is enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, console: true, file_explorer: false });
     mockGetMe.mockResolvedValue({
       admin: false,
       permissions: {
@@ -664,8 +664,8 @@ describe('NodeDetailPage', () => {
     expect(screen.queryByRole('link', { name: /console/i })).not.toBeInTheDocument();
   });
 
-  it('shows the file explorer tab when file explorer is enabled', async () => {
-    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: true, file_explorer: true });
+  it('shows the file explorer tab when file explorer is enabled without acceleration', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: true });
 
     renderWithProviders(makeTestRouter());
 

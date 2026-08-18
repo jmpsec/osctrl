@@ -108,6 +108,7 @@ services:
       #### osquery settings ####
       - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json
       - OSQUERY_ACCELERATED=true
+      - OSQUERY_CONSOLE=true
       - OSQUERY_FILE_EXPLORER=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres

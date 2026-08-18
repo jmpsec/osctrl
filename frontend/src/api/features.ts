@@ -4,6 +4,7 @@ export interface Features {
   posture: boolean;
   service_config: boolean;
   accelerated: boolean;
+  console?: boolean;
   file_explorer: boolean;
 }
 

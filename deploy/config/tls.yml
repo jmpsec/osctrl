@@ -175,7 +175,9 @@ osquery:
   carve: true
   # Allows accelerated query polling responses.
   accelerated: false
-  # Enables file explorer query behavior when accelerated/query are also enabled.
+  # Allows active console sessions to request accelerated query polling when accelerated is also enabled.
+  console: false
+  # Allows active file explorer sessions to request accelerated query polling when accelerated is also enabled.
   fileExplorer: false
   # Prevents config changes through operator surfaces when true.
   readOnly: false

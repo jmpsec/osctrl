@@ -84,11 +84,10 @@ func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http
 		apiErrorResponse(w, "error creating console session", http.StatusInternalServerError, err)
 		return
 	}
-	// Dispatch a priming metadata query so the node's next QueryRead
-	// returns an accelerated interval (fast polling) before the operator
-	// types their first command, and live osquery_info metadata can be
-	// surfaced in the console header. A priming failure is non-fatal:
-	// the session is still usable, acceleration just won't be pre-warmed.
+	// Dispatch a priming metadata query so live osquery_info metadata can
+	// be surfaced in the console header. When acceleration is enabled, the
+	// node's next QueryRead can also switch to fast polling before the
+	// operator types their first command. A priming failure is non-fatal.
 	var priming *console.Command
 	if primingCmd, primingErr := h.Console.SubmitPrimingCommand(session.ID, h.consolePrimingTimeout()); primingErr == nil {
 		priming = &primingCmd

@@ -206,6 +206,7 @@ type YAMLConfigurationOsquery struct {
 	Query        bool   `yaml:"query"`
 	Carve        bool   `yaml:"carve"`
 	Accelerated  bool   `yaml:"accelerated"`
+	Console      bool   `yaml:"console"`
 	FileExplorer bool   `yaml:"fileExplorer"`
 	ReadOnly     bool   `yaml:"readOnly"`
 }

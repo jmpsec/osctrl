@@ -109,10 +109,8 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
 
   // Poll the priming metadata command until it reaches a terminal
   // status, then fetch its osquery_info results and surface them as
-  // live node metadata in the console header. This is what makes the
-  // console "already responsive" on first open: the priming query both
-  // warms acceleration (so the node polls fast) and gives us fresh
-  // osquery version / build / start_time values.
+  // live node metadata in the console header. When accelerated polling
+  // is enabled server-side this also warms the node into fast polling.
   const primingCommandId = primingCommand?.id;
   const primingQuery = useQuery({
     queryKey: ['console-priming', env, session?.id, primingCommandId],
@@ -302,10 +300,10 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
             {primingCommand && (
               <span
                 className="inline-flex shrink-0 items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-2 py-1 text-[10px] leading-none text-[color:var(--text-3)]"
-                title="Warming accelerated query polling"
+                title="Warming console metadata"
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                accelerating
+                warming
               </span>
             )}
           </div>
