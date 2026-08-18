@@ -609,7 +609,7 @@ export function NodeDetailPage() {
     staleTime: 5 * 60_000,
   });
   const postureEnabled = features?.posture === true;
-  const acceleratedEnabled = features?.accelerated === true;
+  const consoleEnabled = features?.console === true;
   const fileExplorerEnabled = features?.file_explorer === true;
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => {
@@ -882,7 +882,7 @@ export function NodeDetailPage() {
                   Tag
                 </button>
               )}
-              {acceleratedEnabled && canAdminNode && (
+              {consoleEnabled && canAdminNode && (
                 <Link
                   to="/_app/env/$env/nodes/$uuid/console"
                   params={{ env, uuid }}

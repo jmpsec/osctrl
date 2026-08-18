@@ -293,6 +293,9 @@ func (h *HandlersTLS) shouldAccelerateQueryRead(node nodes.OsqueryNode, queryAcc
 }
 
 func (h *HandlersTLS) hasActiveConsoleSession(node nodes.OsqueryNode) bool {
+	if h.OsqueryValues == nil || !h.OsqueryValues.Console {
+		return false
+	}
 	if node.ID == 0 || node.UUID == "" || node.EnvironmentID == 0 || h.Queries == nil || h.Queries.DB == nil {
 		return false
 	}

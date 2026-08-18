@@ -741,27 +741,29 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"POST "+_apiPath(apiQueriesPath)+"/{env}/{action}/{name}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.QueriesActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		// API: accelerated per-node console
-		muxAPI.Handle(
-			"POST "+_apiPath("/console")+"/{env}/nodes/{uuid}/sessions",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		muxAPI.Handle(
-			"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		muxAPI.Handle(
-			"DELETE "+_apiPath("/console")+"/{env}/sessions/{session_id}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		muxAPI.Handle(
-			"POST "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		muxAPI.Handle(
-			"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands/{command_id}",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		muxAPI.Handle(
-			"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands/{command_id}/results",
-			handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		if flagParams.Osquery.Accelerated && flagParams.Osquery.FileExplorer {
-			// API: accelerated per-node file explorer
+		if flagParams.Osquery.Console {
+			// API: per-node console
+			muxAPI.Handle(
+				"POST "+_apiPath("/console")+"/{env}/nodes/{uuid}/sessions",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"DELETE "+_apiPath("/console")+"/{env}/sessions/{session_id}",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleSessionDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"POST "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands/{command_id}",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			muxAPI.Handle(
+				"GET "+_apiPath("/console")+"/{env}/sessions/{session_id}/commands/{command_id}/results",
+				handlerAuthCheck(http.HandlerFunc(handlersApi.ConsoleCommandResultsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		}
+		if flagParams.Osquery.FileExplorer {
+			// API: per-node file explorer
 			muxAPI.Handle(
 				"POST "+_apiPath(apiFileExplorerPath)+"/{env}/nodes/{uuid}/sessions",
 				handlerAuthCheck(http.HandlerFunc(handlersApi.FileExplorerSessionCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

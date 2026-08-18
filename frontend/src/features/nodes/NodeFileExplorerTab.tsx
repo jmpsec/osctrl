@@ -220,10 +220,10 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
             {primingRequest && (
               <span
                 className="inline-flex items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-[10px] leading-none text-[color:var(--text-3)]"
-                title="Warming accelerated query polling"
+                title="Warming file explorer metadata"
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                accelerating
+                warming
               </span>
             )}
           </div>

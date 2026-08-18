@@ -185,7 +185,9 @@ osquery:
   carve: true
   # Whether accelerated query polling features are enabled.
   accelerated: false
-  # Enables accelerated file explorer routes when query and accelerated are also true.
+  # Whether per-node console routes are enabled when query is also true.
+  console: false
+  # Whether per-node file explorer routes are enabled when query is also true.
   fileExplorer: false
   # Prevents API-driven osquery configuration changes when true.
   readOnly: false

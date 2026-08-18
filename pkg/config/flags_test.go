@@ -111,6 +111,32 @@ func TestOsqueryFileExplorerFlagDefaultsOff(t *testing.T) {
 	}
 }
 
+func TestOsqueryConsoleFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Osquery: &YAMLConfigurationOsquery{}}
+	flags := initOsqueryFlags(params)
+
+	if params.Osquery.Console {
+		t.Fatalf("console osquery default: got true want false")
+	}
+
+	var consoleFlag *cli.BoolFlag
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.BoolFlag); ok && f.Name == "osquery-console" {
+			consoleFlag = f
+			break
+		}
+	}
+	if consoleFlag == nil {
+		t.Fatalf("missing osquery-console flag")
+	}
+	if consoleFlag.Value {
+		t.Fatalf("osquery-console flag default: got true want false")
+	}
+	if consoleFlag.Destination != &params.Osquery.Console {
+		t.Fatalf("osquery-console flag destination does not wire Osquery.Console")
+	}
+}
+
 func TestRateLimitFlagsWireDefaults(t *testing.T) {
 	params := &ServiceParameters{}
 	flags := initRateLimitFlags(params, ServiceAPI)

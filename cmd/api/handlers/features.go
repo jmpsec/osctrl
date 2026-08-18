@@ -13,6 +13,7 @@ type FeaturesResponse struct {
 	// false the /api/v1/service-config routes are not registered at all.
 	ServiceConfig bool `json:"service_config"`
 	Accelerated   bool `json:"accelerated"`
+	Console       bool `json:"console"`
 	FileExplorer  bool `json:"file_explorer"`
 }
 
@@ -25,6 +26,7 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 		Posture:       h.PostureEnabled,
 		ServiceConfig: h.ServiceConfigEnabled,
 		Accelerated:   h.OsqueryValues.Accelerated,
-		FileExplorer:  h.OsqueryValues.Query && h.OsqueryValues.Accelerated && h.OsqueryValues.FileExplorer,
+		Console:       h.OsqueryValues.Query && h.OsqueryValues.Console,
+		FileExplorer:  h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,
 	})
 }

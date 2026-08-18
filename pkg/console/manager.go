@@ -19,8 +19,9 @@ const defaultCommandTimeout = 10 * time.Second
 // PrimingMetadataSQL is the read-only osquery statement dispatched when a
 // console session is opened. Its purpose is twofold:
 //  1. Be present in the node's pending distributed queue so that the
-//     next QueryRead returns an accelerated interval — the node switches
-//     to fast polling before the user types their first command.
+//     next QueryRead can return an accelerated interval when acceleration
+//     is enabled — the node switches to fast polling before the user types
+//     their first command.
 //  2. Surface live metadata (osquery version, build platform, start time,
 //     uptime) into the session UI so the operator sees fresh values
 //     rather than the last-seen DB snapshot.
@@ -185,9 +186,10 @@ func (m *Manager) SubmitCommandWithTimeout(sessionID uint, input string, timeout
 
 // SubmitPrimingCommand dispatches the console priming metadata query for
 // the session. The priming query is a hidden ConsoleQueryType distributed
-// query whose presence in the node's pending queue causes the TLS
-// QueryRead handler to return an accelerated interval — so the node
-// switches to fast polling before the operator types their first command.
+// query whose presence in the node's pending queue lets the TLS QueryRead
+// handler return an accelerated interval when acceleration is enabled — so
+// the node switches to fast polling before the operator types their first
+// command.
 //
 // Unlike SubmitCommand, priming commands are not mutually exclusive with
 // each other or with user commands: a fresh session may legitimately have

@@ -20,10 +20,11 @@ const (
 
 	// PrimingMetadataSQL is the read-only osquery statement dispatched
 	// when a file explorer session is opened. Its presence in the node's
-	// pending distributed queue causes the TLS QueryRead handler to
-	// return an accelerated interval — so the node switches to fast
-	// polling before the operator expands the first directory — and it
-	// also surfaces live osquery runtime metadata into the session.
+	// pending distributed queue lets the TLS QueryRead handler return an
+	// accelerated interval when acceleration is enabled — so the node
+	// switches to fast polling before the operator expands the first
+	// directory — and it also surfaces live osquery runtime metadata into
+	// the session.
 	PrimingMetadataSQL = "select version, build_platform, build_distro, start_time, config_valid, optimizations from osquery_info"
 )
 
@@ -201,10 +202,10 @@ func requestSQL(action, target string) (string, error) {
 // SubmitPrimingRequest dispatches the file explorer priming metadata
 // query for the session. The priming query is a hidden
 // FileExplorerQueryType distributed query whose presence in the node's
-// pending queue causes the TLS QueryRead handler to return an
-// accelerated interval — so the node switches to fast polling before
-// the operator expands the first directory — and it also surfaces live
-// osquery runtime metadata into the session UI.
+// pending queue lets the TLS QueryRead handler return an accelerated
+// interval when acceleration is enabled — so the node switches to fast
+// polling before the operator expands the first directory — and it also
+// surfaces live osquery runtime metadata into the session UI.
 //
 // Priming requests are excluded from the per-session pending cap so a
 // still-running priming query never gates the first directory listing.

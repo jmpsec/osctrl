@@ -56,10 +56,11 @@ func (h *HandlersApi) FileExplorerSessionCreateHandler(w http.ResponseWriter, r 
 		apiErrorResponse(w, "error creating file explorer session", http.StatusInternalServerError, err)
 		return
 	}
-	// Dispatch a priming metadata query so the node's next QueryRead
-	// returns an accelerated interval (fast polling) before the operator
-	// expands the first directory, and live osquery_info metadata can be
-	// surfaced in the file explorer header. Non-fatal on failure.
+	// Dispatch a priming metadata query so live osquery_info metadata can
+	// be surfaced in the file explorer header. When acceleration is
+	// enabled, the node's next QueryRead can also switch to fast polling
+	// before the operator expands the first directory. Non-fatal on
+	// failure.
 	var priming *fileexplorer.Request
 	if primingReq, primingErr := h.FileExplorer.SubmitPrimingRequest(session.ID, h.fileExplorerRequestTimeout()); primingErr == nil {
 		priming = &primingReq

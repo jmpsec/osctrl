@@ -89,8 +89,10 @@ const FIELD_HELP: Record<string, string> = {
   'tls:osquery.Carve': 'Enables file carve init/block endpoints.',
   'api:osquery.Accelerated': 'Whether accelerated query polling features are enabled.',
   'tls:osquery.Accelerated': 'Allows accelerated query polling responses.',
-  'api:osquery.FileExplorer': 'Enables accelerated file explorer routes when query and accelerated are also true.',
-  'tls:osquery.FileExplorer': 'Enables file explorer query behavior when accelerated/query are also enabled.',
+  'api:osquery.Console': 'Whether per-node console routes are enabled when query is also true.',
+  'tls:osquery.Console': 'Allows active console sessions to request accelerated query polling when accelerated is also enabled.',
+  'api:osquery.FileExplorer': 'Whether per-node file explorer routes are enabled when query is also true.',
+  'tls:osquery.FileExplorer': 'Allows active file explorer sessions to request accelerated query polling when accelerated is also enabled.',
   'api:osquery.ReadOnly': 'Prevents API-driven osquery configuration changes when true.',
   'tls:osquery.ReadOnly': 'Prevents config changes through operator surfaces when true.',
   // --- YAML-annotated: logger / carver / debug
