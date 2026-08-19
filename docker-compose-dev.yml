@@ -367,6 +367,37 @@ services:
       - osctrl-api
       - osctrl-postgres
 
+  ######################################### Sink Catch-All #########################################
+  # Lightweight catch-all log sink server for testing log sinks in the
+  # dev environment. Listens on HTTP/TCP/UDP and logs every received
+  # payload to its container stdout (visible via `docker compose logs
+  # osctrl-sink-catchall`).
+  #
+  # Configure a sink in the osctrl UI pointing at:
+  #   Splunk     → http://osctrl-sink-catchall:8080
+  #   Graylog    → http://osctrl-sink-catchall:8080
+  #   Logstash   → host=osctrl-sink-catchall port=8081 protocol=tcp
+  #   Elastic    → host=osctrl-sink-catchall port=8080
+  #
+  # The container needs no build — it uses the stock python:3-slim
+  # image and bind-mounts the server script read-only.
+  osctrl-sink-catchall:
+    container_name: 'osctrl-sink-catchall-dev'
+    image: python:3-slim
+    restart: unless-stopped
+    command: python3 /opt/sink/server.py
+    networks:
+      - osctrl-dev-backend
+    ports:
+      - 127.0.0.1:8080:8080
+      - 127.0.0.1:8081:8081
+      - 127.0.0.1:8082:8082
+    volumes:
+      - type: bind
+        source: ./deploy/docker/sink-catchall/server.py
+        target: /opt/sink/server.py
+        read_only: true
+
 networks:
   osctrl-dev-backend:
 
