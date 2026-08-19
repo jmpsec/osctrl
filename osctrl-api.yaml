@@ -2733,6 +2733,379 @@ paths:
       summary: Update enrolling package URL
       tags:
         - environments
+  /api/v1/log-sinks:
+    get:
+      description: Returns log sink rows, optionally filtered by environment. Secrets
+        are redacted unless reveal=1 is passed by an admin.
+      parameters:
+        - description: Environment ID; omit to list all environments
+          in: query
+          name: env
+          schema:
+            type: integer
+        - description: Pass 1 to include secret fields in the config (admin only)
+          in: query
+          name: reveal
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/handlers.logSinkDTO"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List log sinks
+      tags:
+        - log-sinks
+    post:
+      description: Creates a new log sink instance for the given environment (or
+        global when environment_id is 0).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.LogSinkCreateRequest"
+        description: Request body
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.logSinkDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Create a log sink
+      tags:
+        - log-sinks
+  "/api/v1/log-sinks/{id}":
+    delete:
+      description: Deletes a log sink by ID. Deletion takes effect on the next apply/reload.
+      parameters:
+        - description: Sink ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Delete a log sink
+      tags:
+        - log-sinks
+    get:
+      description: Returns a single log sink by ID. Secrets are redacted unless
+        reveal=1 is passed by an admin.
+      parameters:
+        - description: Sink ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - description: Pass 1 to include secret fields (admin only)
+          in: query
+          name: reveal
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.logSinkDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get one log sink
+      tags:
+        - log-sinks
+    put:
+      description: Replaces an existing log sink's mutable fields. A secret field set
+        to "***" is merged from the previously stored value.
+      parameters:
+        - description: Sink ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.LogSinkUpdateRequest"
+        description: Request body
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.logSinkDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Update a log sink
+      tags:
+        - log-sinks
+  /api/v1/log-sinks/apply:
+    post:
+      description: Queues a reload-log-sinks service command for osctrl-tls. The TLS
+        process rebuilds its per-environment exporter map from the log_sinks
+        table and atomically swaps it in, closing the old sinks. In-flight logs
+        to the old sinks may be dropped during the swap; no restart is required.
+      responses:
+        "202":
+          description: Reload requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ServiceConfigApplyResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service commands unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Apply log sink changes (hot reload)
+      tags:
+        - log-sinks
+  /api/v1/log-sinks/clone:
+    post:
+      description: Copies all log sinks from a source environment (use 0 for global)
+        to a target environment. With overwrite=false returns 409 if the target
+        already has sinks.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.LogSinkCloneRequest"
+        description: Request body
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/handlers.logSinkDTO"
+                type: array
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Target has sinks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Clone sinks from one environment to another
+      tags:
+        - log-sinks
+  /api/v1/log-sinks/types:
+    get:
+      description: "Returns the sink type registry: type, description, whether the
+        config carries secrets, and which JSON keys hold them."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/types.LogSinkTypeSpec"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List supported log sink types
+      tags:
+        - log-sinks
   /api/v1/login:
     post:
       description: Authenticates an API user and returns a JWT token.
@@ -8355,15 +8728,6 @@ components:
           type: string
       type: object
     handlers.MFAWebAuthnRequest:
-      properties:
-        challenge:
-          type: string
-        credential:
-          items:
-            type: integer
-          type: array
-        name:
-          type: string
       type: object
     handlers.NodeActivityBucket:
       properties:
@@ -8426,6 +8790,33 @@ components:
         total_nodes:
           description: Cross-env totals (the user's allowed envs only).
           type: integer
+      type: object
+    handlers.logSinkDTO:
+      properties:
+        config:
+          items:
+            type: integer
+          type: array
+        created_at:
+          type: string
+        enabled:
+          type: boolean
+        environment_id:
+          type: integer
+        id:
+          type: integer
+        info:
+          type: string
+        name:
+          type: string
+        order:
+          type: integer
+        source:
+          type: string
+        type:
+          type: string
+        updated_at:
+          type: string
       type: object
     nodes.OsqueryNode:
       properties:
@@ -9271,6 +9662,58 @@ components:
         username:
           type: string
       type: object
+    types.LogSinkCloneRequest:
+      properties:
+        overwrite:
+          type: boolean
+        source_environment_id:
+          type: integer
+        target_environment_id:
+          type: integer
+      type: object
+    types.LogSinkCreateRequest:
+      type: object
+    types.LogSinkFieldSpec:
+      properties:
+        default: {}
+        help:
+          type: string
+        label:
+          type: string
+        name:
+          type: string
+        options:
+          items:
+            type: string
+          type: array
+        placeholder:
+          type: string
+        required:
+          type: boolean
+        secret:
+          type: boolean
+        type:
+          type: string
+      type: object
+    types.LogSinkTypeSpec:
+      properties:
+        description:
+          type: string
+        fields:
+          items:
+            $ref: "#/components/schemas/types.LogSinkFieldSpec"
+          type: array
+        has_secret:
+          type: boolean
+        secret_fields:
+          items:
+            type: string
+          type: array
+        type:
+          type: string
+      type: object
+    types.LogSinkUpdateRequest:
+      type: object
     types.LoginEnvironment:
       properties:
         name:
@@ -9565,6 +10008,15 @@ components:
         status:
           type: string
         target_service:
+          type: string
+      type: object
+    types.ServiceConfigApplyResponse:
+      properties:
+        command:
+          $ref: "#/components/schemas/types.ServiceCommandResponse"
+        message:
+          type: string
+        service:
           type: string
       type: object
     types.ServiceConfigPersistRequest:

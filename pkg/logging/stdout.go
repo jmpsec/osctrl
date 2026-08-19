@@ -23,6 +23,9 @@ func (logStdout *LoggerStdout) Settings(mgr *settings.Settings) {
 	log.Info().Msg("No stdout logging settings")
 }
 
+// Close releases resources held by the stdout logger. None are held.
+func (logStdout *LoggerStdout) Close() error { return nil }
+
 // Log - Function that sends JSON result/status/query logs to stdout
 func (logStdout *LoggerStdout) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	switch logType {

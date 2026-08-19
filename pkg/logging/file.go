@@ -39,6 +39,12 @@ func (logFile *LoggerFile) Settings(mgr *settings.Settings) {
 	log.Info().Msg("No file logging settings")
 }
 
+// Close releases resources held by the file logger. The underlying
+// lumberjack rotating writer closes its file handle when garbage
+// collected; there is no explicit Close on the zerolog wrapper to call
+// here, so this is a no-op.
+func (logFile *LoggerFile) Close() error { return nil }
+
 // Log - Function that sends JSON result/status/query logs to stdout
 func (logFile *LoggerFile) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {

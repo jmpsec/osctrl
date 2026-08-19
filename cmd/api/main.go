@@ -24,6 +24,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/mfa"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/osquery"
@@ -104,6 +105,8 @@ const (
 	apiSettingsPath = "/settings"
 	// API service config path
 	apiServiceConfigPath = "/service-config"
+	// API log sinks path
+	apiLogSinksPath = "/log-sinks"
 	// API features path
 	apiFeaturesPath = "/features"
 	// API file explorer path
@@ -419,6 +422,12 @@ func osctrlAPIService() {
 	log.Info().Msg("Seeding service config from YAML")
 	serviceConfigMgr := serviceconfig.NewServiceConfigManager(db.Conn)
 	serviceCommandMgr := servicecommands.NewManager(db.Conn)
+	// Log sinks manager shares the service-config feature gate: when
+	// serviceConfigEnabled is false the routes are not registered and
+	// the SPA hides the section. The manager is still constructed so
+	// the table is migrated; rows can be edited directly in the DB or
+	// YAML and picked up on the next osctrl-tls boot/reload.
+	logSinksMgr := logsinks.NewLogSinksManager(db.Conn)
 	if err := serviceConfigMgr.Seed(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error seeding service config - %v", err)
 	}
@@ -516,6 +525,7 @@ func osctrlAPIService() {
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithServiceConfig(serviceConfigMgr),
+		handlers.WithLogSinks(logSinksMgr),
 		handlers.WithServiceConfigEnabled(flagParams.Service.ServiceConfigEnabled),
 		handlers.WithServiceCommands(serviceCommandMgr),
 		handlers.WithConfigPersist(persistConfig),
@@ -1021,6 +1031,35 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"POST "+_apiPath(apiServiceConfigPath)+"/persist",
 			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigPersistHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
+
+		// API: log sinks. Shares the service-config feature gate. The
+		// apply endpoint reuses the same restart limiter since a log
+		// sink reload is the same class of privileged, runtime-affecting
+		// operation as a service-config apply.
+		muxAPI.Handle(
+			"GET "+_apiPath(apiLogSinksPath),
+			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiLogSinksPath)+"/types",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksTypesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiLogSinksPath)+"/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiLogSinksPath),
+			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"PUT "+_apiPath(apiLogSinksPath)+"/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath(apiLogSinksPath)+"/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiLogSinksPath)+"/clone",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksCloneHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiLogSinksPath)+"/apply",
+			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
 	}
 	// API: multi-factor enrollment for the calling user
 	muxAPI.Handle(

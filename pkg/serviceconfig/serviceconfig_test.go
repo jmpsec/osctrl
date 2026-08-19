@@ -148,22 +148,24 @@ func TestSeed_DoesNotOverwriteDBEditedRow(t *testing.T) {
 
 	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
 
-	// Simulate an operator edit: change the logger section to source=db.
-	sc, err := m.GetSection(config.ServiceTLS, "logger", 0)
+	// Simulate an operator edit: change the osquery section to source=db.
+	// (The "logger" section is no longer registered — it is managed by
+	// pkg/logsinks — so we use osquery, which is seeded and editable.)
+	sc, err := m.GetSection(config.ServiceTLS, "osquery", 0)
 	require.NoError(t, err)
 	require.NoError(t, db.Model(&sc).Updates(map[string]any{
 		"source": SourceDB,
-		"value":  `{"type":"stdout","edited":true}`,
+		"value":  `{"version":"9.9.9","tablesFile":"./x.json","logger":true,"config":true,"query":true,"carve":true,"accelerated":false,"console":false,"fileExplorer":false,"readOnly":false}`,
 	}).Error)
 
-	// Re-seed with a different logger config — the DB value must survive.
-	cfg.Logger.Type = config.LoggingGraylog
+	// Re-seed with a different osquery config — the DB value must survive.
+	cfg.Osquery.Version = "5.12.2"
 	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
 
-	sc2, err := m.GetSection(config.ServiceTLS, "logger", 0)
+	sc2, err := m.GetSection(config.ServiceTLS, "osquery", 0)
 	require.NoError(t, err)
 	assert.Equal(t, SourceDB, sc2.Source)
-	assert.Equal(t, `{"type":"stdout","edited":true}`, sc2.Value)
+	assert.Contains(t, sc2.Value, "9.9.9")
 }
 
 // The seeded JSON must round-trip back to the original struct.
@@ -270,11 +272,13 @@ func TestVerifyServiceAndSection(t *testing.T) {
 	assert.True(t, m.VerifyService(config.ServiceAPI))
 	assert.False(t, m.VerifyService("bogus"))
 
-	assert.True(t, m.VerifySection(config.ServiceTLS, "logger"))
+	// "logger" is no longer registered (managed by pkg/logsinks); use
+	// "osquery" and "metrics" as the representative registered sections.
+	assert.True(t, m.VerifySection(config.ServiceTLS, "osquery"))
 	assert.True(t, m.VerifySection(config.ServiceAPI, "saml"))
 	assert.False(t, m.VerifySection(config.ServiceTLS, "saml"))
 	assert.False(t, m.VerifySection(config.ServiceAPI, "metrics"))
-	assert.False(t, m.VerifySection("bogus", "logger"))
+	assert.False(t, m.VerifySection("bogus", "osquery"))
 }
 
 // Seeding with different environment IDs must produce independent rows.
@@ -421,6 +425,8 @@ func TestIsEditable(t *testing.T) {
 	assert.True(t, m.IsEditable(config.ServiceTLS, "debug"))
 	assert.True(t, m.IsEditable(config.ServiceAPI, "debug"))
 	assert.False(t, m.IsEditable(config.ServiceTLS, "db"))
+	// "logger" is no longer registered; verify it reports not-editable
+	// (it is not a known section at all now).
 	assert.False(t, m.IsEditable(config.ServiceTLS, "logger"))
 	assert.True(t, m.IsEditable(config.ServiceTLS, "rateLimits"))
 	assert.True(t, m.IsEditable(config.ServiceAPI, "rateLimits"))

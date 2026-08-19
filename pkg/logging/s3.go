@@ -53,6 +53,11 @@ func (logS3 *LoggerS3) Settings(mgr *settings.Settings) {
 	log.Info().Msg("No s3 logging settings")
 }
 
+// Close releases resources held by the S3 logger. The AWS SDK v2
+// s3.Client has no explicit Close; its HTTP transport pool is
+// garbage-collected. This is a no-op kept for interface compliance.
+func (logS3 *LoggerS3) Close() error { return nil }
+
 // Send - Function that sends JSON logs to S3
 func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	ctx := context.Background()

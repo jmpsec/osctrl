@@ -217,7 +217,12 @@ tls:
   # PEM private key file when termination is true.
   keyFile: ./config/tls.key
 
-# Logger configuration to handle received logs from osquery nodes
+# Logger configuration to handle received logs from osquery nodes.
+# This section seeds the log_sinks table on first boot (create-if-missing).
+# Values can be provided via flags, env vars, or this YAML file — whichever
+# the operator uses, the resolved configuration is the seed source. Once a
+# sink is edited through the API (source=db), the service-config value is
+# ignored for that sink until the DB row is deleted.
 logger:
   # Valid values: "none", "stdout", "file", "db", "graylog", "splunk", "logstash", "kinesis", "s3", "kafka", "elastic"
   type: db

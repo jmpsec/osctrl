@@ -81,6 +81,11 @@ func (logLS *LoggerLogstash) Settings(mgr *settings.Settings) {
 	log.Info().Msg("Setting Logstash logging settings")
 }
 
+// Close releases resources held by the Logstash logger. Logstash opens
+// a fresh TCP/UDP connection per Send and uses per-call HTTP POSTs, so
+// there is no persistent client to close.
+func (logLS *LoggerLogstash) Close() error { return nil }
+
 // SendHTTP - Function that sends JSON logs to Logstash via HTTP
 func (logLS *LoggerLogstash) SendHTTP(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {

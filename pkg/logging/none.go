@@ -21,6 +21,9 @@ func (logNone *LoggerNone) Settings(mgr *settings.Settings) {
 	log.Info().Msg("No none logging settings")
 }
 
+// Close releases resources held by the none logger. None are held.
+func (logNone *LoggerNone) Close() error { return nil }
+
 // Log - Function that sends JSON result/status/query logs to stdout
 func (logNone *LoggerNone) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {

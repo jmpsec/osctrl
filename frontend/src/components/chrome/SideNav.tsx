@@ -163,6 +163,8 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
     pathname.startsWith('/_app/settings') || pathname.startsWith('/settings');
   const isServiceConfigActive =
     pathname.startsWith('/_app/config') || pathname.startsWith('/config');
+  const isLogSinksActive =
+    pathname.startsWith('/_app/log-sinks') || pathname.startsWith('/log-sinks');
   const isAuditActive = pathname.startsWith('/_app/audit') || pathname === '/audit';
   // Dashboard is now env-scoped at /_app/env/{env}
   const dashboardPath = `/_app/env/${currentEnv}`;
@@ -443,6 +445,18 @@ export function SideNav({ className, collapsed, onToggleCollapse }: SideNavProps
               }
             >
               Service Config
+            </NavItem>}
+            {features?.log_sinks && <NavItem
+              collapsed={collapsed}
+              active={isLogSinksActive}
+              to="/_app/log-sinks"
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
+                </svg>
+              }
+            >
+              Log Sinks
             </NavItem>}
           </nav>
         </>

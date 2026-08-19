@@ -637,3 +637,64 @@ type AdminUserView struct {
 	// badge alongside the existing admin/service labels.
 	AuthSource string `json:"auth_source"`
 }
+
+// LogSinkFieldSpec is one field in a sink type's config schema. The SPA
+// renders a typed form from this; the backend validates the submitted
+// JSON against the registered Decode func.
+type LogSinkFieldSpec struct {
+	Name        string   `json:"name"`
+	Label       string   `json:"label"`
+	Type        string   `json:"type"`
+	Required    bool     `json:"required"`
+	Secret      bool     `json:"secret"`
+	Placeholder string   `json:"placeholder,omitempty"`
+	Help        string   `json:"help,omitempty"`
+	Options     []string `json:"options,omitempty"`
+	Default     any      `json:"default,omitempty"`
+}
+
+// LogSinkTypeSpec is one entry in the GET /api/v1/log-sinks/types
+// response. It advertises a supported sink type, whether its config
+// contains secrets (so the SPA masks those fields), the JSON keys that
+// hold secrets (so the SPA can render password inputs for them), and
+// the typed field schema the SPA renders as a dynamic form.
+type LogSinkTypeSpec struct {
+	Type         string             `json:"type"`
+	Description  string             `json:"description"`
+	HasSecret    bool               `json:"has_secret"`
+	SecretFields []string           `json:"secret_fields,omitempty"`
+	Fields       []LogSinkFieldSpec `json:"fields,omitempty"`
+}
+
+// LogSinkCreateRequest is the body for POST /api/v1/log-sinks.
+type LogSinkCreateRequest struct {
+	Name          string          `json:"name"`
+	Type          string          `json:"type"`
+	Enabled       bool            `json:"enabled"`
+	Order         int             `json:"order"`
+	Config        json.RawMessage `json:"config"`
+	EnvironmentID uint            `json:"environment_id"`
+	Info          string          `json:"info,omitempty"`
+}
+
+// LogSinkUpdateRequest is the body for PUT /api/v1/log-sinks/{id}. All
+// fields are required; a secret field set to "***" is merged from the
+// previously stored value by the handler so the SPA can submit a form
+// without re-entering every secret.
+type LogSinkUpdateRequest struct {
+	Name    string          `json:"name"`
+	Type    string          `json:"type"`
+	Enabled bool            `json:"enabled"`
+	Order   int             `json:"order"`
+	Config  json.RawMessage `json:"config"`
+	Info    string          `json:"info,omitempty"`
+}
+
+// LogSinkCloneRequest is the body for POST /api/v1/log-sinks/clone.
+// SourceEnvironmentID 0 means "global". Overwrite=false returns 409 if
+// the target environment already has sinks.
+type LogSinkCloneRequest struct {
+	SourceEnvironmentID uint `json:"source_environment_id"`
+	TargetEnvironmentID uint `json:"target_environment_id"`
+	Overwrite           bool `json:"overwrite"`
+}

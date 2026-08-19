@@ -94,6 +94,40 @@ func (logDB *LoggerDB) Settings(mgr *settings.Settings) {
 	log.Info().Msg("Setting DB logging settings")
 }
 
+// Close releases the underlying SQL connection pool when the DB logger
+// was built from its own config (a separate logging DB). When the DB
+// logger shares the primary osctrl backend, the caller owns that
+// connection and Close is a no-op — the primary DB must outlive any
+// one exporter set. We detect "owns the connection" by checking
+// whether Database is non-nil; the primary-DB case is constructed by
+// CreateLoggerDB which is only called from cmd/tls when reusing the
+// primary backend, so we do not close there.
+//
+// To keep this safe for both paths, Close only closes when the
+// Database.Config has a non-empty Host or FilePath (i.e. it was built
+// from a dedicated logging DB config), which is true for
+// CreateLoggerDBConfig and not for the primary reuse path. This is
+// conservative; a primary-DB logger that is hot-reloaded away simply
+// leaves the primary pool intact.
+func (logDB *LoggerDB) Close() error {
+	if logDB == nil || logDB.Database == nil || logDB.Database.Conn == nil {
+		return nil
+	}
+	cfg := logDB.Database.Config
+	if cfg.Type == "sqlite" {
+		if cfg.FilePath == "" {
+			return nil
+		}
+	} else if cfg.Host == "" {
+		return nil
+	}
+	sqlDB, err := logDB.Database.Conn.DB()
+	if err != nil {
+		return fmt.Errorf("get underlying sql.DB: %w", err)
+	}
+	return sqlDB.Close()
+}
+
 // Log - Function that sends JSON result/status/query logs to the configured DB
 func (logDB *LoggerDB) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {

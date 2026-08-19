@@ -21,6 +21,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -79,6 +80,7 @@ var (
 	queriesmgr           *queries.Queries
 	filecarves           *carves.Carves
 	loggerTLS            *logging.LoggerTLS
+	logSinksMgr          *logsinks.LogSinksManager
 	handlersTLS          *handlers.HandlersTLS
 	tagsmgr              *tags.TagManager
 	carvers3             *carves.CarverS3
@@ -311,11 +313,31 @@ func osctrlService() {
 	)
 	// Initialize service metrics
 	log.Info().Msg("Loading service metrics")
-	// Initialize TLS logger
-	log.Info().Msg("Loading TLS logger")
-	loggerTLS, err = logging.CreateLoggerTLS(*flagParams, settingsmgr, nodesmgr, queriesmgr)
+	// Initialize log sinks manager and seed from the resolved service
+	// configuration (flags, env vars, or YAML — whichever the operator
+	// used). The seed is create-if-missing: once an operator edits a
+	// sink through the API (Source="db") the service-config value is
+	// ignored for that sink until the DB row is deleted.
+	log.Info().Msg("Loading log sinks manager")
+	logSinksMgr = logsinks.NewLogSinksManager(db.Conn)
+	if err := logSinksMgr.Seed(flagParams, settings.NoEnvironmentID); err != nil {
+		log.Fatal().Err(err).Msg("Error seeding log sinks from service configuration")
+	}
+	// Build env-aware exporters from the DB. Falls back to YAML-only
+	// construction if no rows exist (e.g. a deployment that disabled
+	// seeding), preserving the legacy single-set behavior.
+	sinksExporters, err := logSinksMgr.BuildExportersForEnvironments(settingsmgr)
 	if err != nil {
-		log.Fatal().Msgf("Error loading logger - %s: %v", flagParams.Logger.Type, err)
+		log.Fatal().Err(err).Msg("Error building log sink exporters from DB")
+	}
+	if len(sinksExporters) == 0 {
+		log.Info().Msg("No log_sinks rows — falling back to service-config-only logger construction")
+		loggerTLS, err = logging.CreateLoggerTLS(*flagParams, settingsmgr, nodesmgr, queriesmgr)
+		if err != nil {
+			log.Fatal().Msgf("Error loading logger - %s: %v", flagParams.Logger.Type, err)
+		}
+	} else {
+		loggerTLS = logging.CreateLoggerTLSWith(sinksExporters, nodesmgr, queriesmgr)
 	}
 	if flagParams.Metrics.Enabled {
 		log.Info().Msg("Metrics are enabled")
@@ -465,7 +487,7 @@ func osctrlService() {
 		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
 	}
 	watchCtx, stopCommandWatcher := context.WithCancel(context.Background())
-	go watchServiceCommands(watchCtx, serviceCommandMgr, serviceConfigMgr, auditLog, restartCh)
+	go watchServiceCommands(watchCtx, serviceCommandMgr, serviceConfigMgr, logSinksMgr, loggerTLS, settingsmgr, auditLog, restartCh)
 	serverErr := make(chan error, 1)
 	go func() {
 		log.Info().Msgf("%s v%s - HTTP%s listening %s", serviceName, buildVersion, map[bool]string{true: "S", false: ""}[flagParams.TLS.Termination], serviceListener)
@@ -489,7 +511,7 @@ func osctrlService() {
 	}
 }
 
-func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfgMgr *serviceconfig.ServiceConfigManager, auditLog *auditlog.AuditLogManager, restartCh chan<- struct{}) {
+func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfgMgr *serviceconfig.ServiceConfigManager, sinksMgr *logsinks.LogSinksManager, logTLS *logging.LoggerTLS, settingsMgr *settings.Settings, auditLog *auditlog.AuditLogManager, restartCh chan<- struct{}) {
 	ticker := time.NewTicker(serviceCommandPollInterval)
 	defer ticker.Stop()
 	for {
@@ -521,6 +543,21 @@ func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfg
 				}
 				auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls persist-config command %s consumed", cmd.CommandID), "local")
 				log.Info().Str("command", cmd.CommandID).Msg("Persisted TLS config to file")
+			case servicecommands.ActionReloadLogSinks:
+				// Hot-reload log sinks without restarting. Rebuild the
+				// per-environment exporter map from the DB and atomically
+				// swap it in. The old exporters are closed by
+				// ReplaceExporters; in-flight logs to them may be dropped
+				// during the swap.
+				newExporters, err := sinksMgr.BuildExportersForEnvironments(settingsMgr)
+				if err != nil {
+					log.Err(err).Str("command", cmd.CommandID).Msg("error rebuilding log sink exporters")
+					auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls reload-log-sinks command %s failed: %v", cmd.CommandID, err), "local")
+					continue
+				}
+				logTLS.ReplaceExporters(newExporters)
+				auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls reload-log-sinks command %s consumed", cmd.CommandID), "local")
+				log.Info().Str("command", cmd.CommandID).Msg("Hot-reloaded log sinks")
 			default:
 				log.Warn().Str("command", cmd.CommandID).Msgf("Ignoring unknown TLS service command action %q", cmd.Action)
 			}
