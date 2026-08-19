@@ -105,7 +105,7 @@ jobs:
 
           image_tag="${RELEASE_TAG#v}"
 
-          for component in tls admin api cli; do
+          for component in tls api cli; do
             image="${DOCKER_HUB_ORG}/osctrl-${component}"
             for tag in "${image_tag}" latest; do
               digest="$(retry 6 resolve_digest "${image}:${tag}")"
