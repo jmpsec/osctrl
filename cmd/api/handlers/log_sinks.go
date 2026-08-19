@@ -464,7 +464,7 @@ func parseLogSinkID(r *http.Request) (uint, error) {
 	if v == "" {
 		return 0, fmt.Errorf("missing id")
 	}
-	n, err := strconv.ParseUint(v, 10, 64)
+	n, err := strconv.ParseUint(v, 10, strconv.IntSize)
 	if err != nil {
 		return 0, fmt.Errorf("invalid id: %w", err)
 	}
