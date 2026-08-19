@@ -339,6 +339,12 @@ func osctrlService() {
 	} else {
 		loggerTLS = logging.CreateLoggerTLSWith(sinksExporters, nodesmgr, queriesmgr)
 	}
+	// Start the background sink-stats writer. It snapshots per-sink
+	// atomic counters (bytes sent, export count) from the live exporter
+	// map every 30s and writes them to log_sinks. The hot path never
+	// touches the DB — only atomic Int64 adds.
+	sinkStatsWriter := logsinks.NewSinkStatsWriter(logSinksMgr, loggerTLS, 30*time.Second)
+	sinkStatsWriter.Start()
 	if flagParams.Metrics.Enabled {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
@@ -501,11 +507,13 @@ func osctrlService() {
 	select {
 	case err := <-serverErr:
 		stopCommandWatcher()
+		sinkStatsWriter.Stop()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-restartCh:
 		stopCommandWatcher()
+		sinkStatsWriter.Stop()
 		log.Info().Msg("TLS service command consumed — exiting for restart")
 		os.Exit(1)
 	}

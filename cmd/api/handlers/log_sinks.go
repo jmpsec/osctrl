@@ -39,6 +39,8 @@ type logSinkDTO struct {
 	Config        json.RawMessage `json:"config"`
 	Source        string          `json:"source"`
 	Info          string          `json:"info"`
+	BytesSent     int64           `json:"bytes_sent"`
+	ExportsCount  int64           `json:"exports_count"`
 }
 
 func toLogSinkDTO(s logsinks.LogSink, reveal bool) logSinkDTO {
@@ -58,6 +60,8 @@ func toLogSinkDTO(s logsinks.LogSink, reveal bool) logSinkDTO {
 		Config:        json.RawMessage(cfg),
 		Source:        s.Source,
 		Info:          s.Info,
+		BytesSent:     s.BytesSent,
+		ExportsCount:  s.ExportsCount,
 	}
 }
 

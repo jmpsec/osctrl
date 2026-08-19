@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/logging"
@@ -59,8 +60,14 @@ type LogSink struct {
 	Enabled       bool
 	Order         int
 	Config        string `gorm:"type:text"`
-	Source        string // "yaml" (seeded) or "db" (operator-edited)
+	Source        string // "service" (seeded) or "db" (operator-edited)
 	Info          string
+	// BytesSent and ExportsCount are maintained by the background stats
+	// writer (SinkStatsWriter), which snapshots the in-process atomic
+	// counters from the live MultiExporter and flushes them here
+	// periodically. They are never written on the hot path.
+	BytesSent    int64 `gorm:"default:0"`
+	ExportsCount int64 `gorm:"default:0"`
 }
 
 // LogSinksManager manages the log_sinks table.
@@ -963,8 +970,14 @@ func MergeSecrets(typ, prevCfgJSON, newCfgJSON string) (string, error) {
 // errors are logged and the sink is skipped (one bad sink does not
 // break the whole fan-out). Returns a MultiExporter containing all
 // enabled, buildable sinks.
+// BuildExporters constructs a logging.MultiExporter from a set of sink
+// rows for one environment. Disabled sinks are skipped. Sink build
+// errors are logged and the sink is skipped (one bad sink does not
+// break the whole fan-out). Each exporter is wrapped in a
+// CountedExporter linked to its SinkStats so the background stats
+// writer can track bytes/count per sink.
 func BuildExporters(rows []LogSink, smgr *settings.Settings) *logging.MultiExporter {
-	exporters := make([]logging.DataExporter, 0, len(rows))
+	entries := make([]logging.ExporterEntry, 0, len(rows))
 	for _, row := range rows {
 		if !row.Enabled {
 			continue
@@ -984,9 +997,9 @@ func BuildExporters(rows []LogSink, smgr *settings.Settings) *logging.MultiExpor
 			log.Error().Err(err).Str("sink", row.Name).Msg("build sink exporter, skipping")
 			continue
 		}
-		exporters = append(exporters, exp)
+		entries = append(entries, logging.ExporterEntry{SinkID: row.ID, Exporter: exp})
 	}
-	return logging.NewMultiExporter(exporters...)
+	return logging.NewMultiExporterWithStats(entries)
 }
 
 // BuildExportersForEnvironments builds a map of envID -> MultiExporter
@@ -1005,4 +1018,111 @@ func (m *LogSinksManager) BuildExportersForEnvironments(smgr *settings.Settings)
 		out[envID] = BuildExporters(rows, smgr)
 	}
 	return out, nil
+}
+
+// SinkStatsWriter is a background goroutine that periodically snapshots
+// the in-process atomic counters from the live MultiExporter map and
+// flushes them to the log_sinks table. It is modeled on the TLS
+// batchWriter pattern: a ticker fires every `interval`, the writer
+// collects all SinkStats from every MultiExporter in the map, and
+// issues one bulk UPDATE per sink. The hot path (Export) never touches
+// the DB — it only does atomic Int64 adds.
+//
+// The exporter map is read via the LoggerTLS.AllExporters method, which
+// returns the current map under a read lock. This means the stats
+// writer automatically picks up new sinks after a hot reload without
+// needing its own reference.
+type SinkStatsWriter struct {
+	mgr      *LogSinksManager
+	logTLS   *logging.LoggerTLS
+	interval time.Duration
+	stop     chan struct{}
+}
+
+// NewSinkStatsWriter creates (but does not start) a stats writer. Call
+// Start() to launch the background goroutine and Stop() to shut it down.
+func NewSinkStatsWriter(mgr *LogSinksManager, logTLS *logging.LoggerTLS, interval time.Duration) *SinkStatsWriter {
+	return &SinkStatsWriter{
+		mgr:      mgr,
+		logTLS:   logTLS,
+		interval: interval,
+		stop:     make(chan struct{}),
+	}
+}
+
+func (w *SinkStatsWriter) Start() {
+	go w.run()
+}
+
+func (w *SinkStatsWriter) Stop() {
+	close(w.stop)
+}
+
+func (w *SinkStatsWriter) run() {
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-w.stop:
+			// Final flush so the last window of stats is not lost.
+			w.flush()
+			return
+		case <-ticker.C:
+			w.flush()
+		}
+	}
+}
+
+// flush snapshots all SinkStats from every live MultiExporter and
+// writes them to the DB. Each sink gets a single UPDATE with its
+// accumulated bytes and count. Sinks that were hot-reloaded away (their
+// SinkID no longer exists in the DB) are silently skipped.
+func (w *SinkStatsWriter) flush() {
+	exporters := w.logTLS.AllExporters()
+	if len(exporters) == 0 {
+		return
+	}
+	type snapshot struct {
+		sinkID      uint
+		bytesSent   int64
+		exportCount int64
+	}
+	var snaps []snapshot
+	for _, multi := range exporters {
+		for _, s := range multi.Stats() {
+			snaps = append(snaps, snapshot{
+				sinkID:      s.SinkID,
+				bytesSent:   s.BytesSent.Load(),
+				exportCount: s.ExportCount.Load(),
+			})
+		}
+	}
+	if len(snaps) == 0 {
+		return
+	}
+	// One UPDATE per sink. This is at most N sinks (typically 1-5)
+	// every 30s — negligible DB load compared to the log ingestion path.
+	for _, snap := range snaps {
+		if err := w.mgr.DB.Model(&LogSink{}).
+			Where("id = ?", snap.sinkID).
+			Updates(map[string]any{
+				"bytes_sent":    snap.bytesSent,
+				"exports_count": snap.exportCount,
+			}).Error; err != nil {
+			log.Err(err).Uint("sink_id", snap.sinkID).Msg("error updating sink stats")
+		}
+	}
+	log.Debug().Int("sinks", len(snaps)).Msg("flushed sink stats")
+}
+
+// UpdateSinkStats writes the current bytes/count values for one sink.
+// Exposed for tests that want to verify the flush without running the
+// background goroutine.
+func (m *LogSinksManager) UpdateSinkStats(sinkID uint, bytesSent, exportCount int64) error {
+	return m.DB.Model(&LogSink{}).
+		Where("id = ?", sinkID).
+		Updates(map[string]any{
+			"bytes_sent":    bytesSent,
+			"exports_count": exportCount,
+		}).Error
 }

@@ -77,6 +77,8 @@ function makeSink(overrides: Partial<LogSink> = {}): LogSink {
     config: { url: 'http://x', token: '***', host: 'h', index: 'i' },
     source: 'yaml',
     info: '',
+    bytes_sent: 0,
+    exports_count: 0,
     ...overrides,
   };
 }

@@ -20,11 +20,11 @@ export interface LogSink {
   type: string;
   enabled: boolean;
   order: number;
-  /** Raw JSON object (or stringified blob) for the sink type. Secret
-   * fields are replaced with "***" unless reveal=1 was requested. */
   config: unknown;
   source: string;
   info: string;
+  bytes_sent: number;
+  exports_count: number;
 }
 
 /** One field in a sink type's config schema. Drives the dynamic form. */
