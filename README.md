@@ -45,12 +45,12 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 - **File explorer**: Accelerated per-node directory listing and stat requests backed by osquery distributed queries.
 - **Accelerated distributed queries**: Optional osquery accelerated query reads, defaulting to a 5 second interval when enabled. Console acceleration is scoped to the target node and fresh active console sessions.
 - **osquery schema awareness**: Ships osquery table metadata through 5.23.1 and exposes authenticated table metadata to the UI/API for query authoring and console `.tables`.
-- **Security-sensitive API defaults**: JWT authentication by default for `osctrl-api`, trusted proxy controls, audit logging, and authenticated access to query/carve sample libraries.
+- **Security-sensitive API defaults**: JWT authentication by default for `osctrl-api`, optional multi-factor authentication (TOTP, passkeys/security keys, recovery codes) for password logins, trusted proxy controls, audit logging, and authenticated access to query/carve sample libraries.
 - **Posture and enrichment hooks**: Optional posture ingestion from scheduled query prefixes, optional MaxMind GeoIP country enrichment, Redis-backed activity tracking, and API-managed service configuration sections.
 
 ## 👉 Documentation
 
-You can find the documentation of the project in [https://osctrl.net](https://osctrl.net)
+You can find the documentation of the project in [https://docs.osctrl.net](https://docs.osctrl.net)
 
 ## 🗂 Project Structure
 
@@ -164,7 +164,7 @@ Ultimately you can just execute `make docker_dev` and it will automagically buil
 ### 📦 Runtime and tooling versions
 
 - Go module target: **Go 1.26.5**
-- Backend stack: **GORM** (PostgreSQL/MySQL/SQLite), **go-redis**, **zerolog**, **Viper** (YAML config), **urfave/cli**, **Prometheus client**, **JWT/SAML/OIDC auth**, **AWS SDK v2** (S3 + Kinesis), **franz-go** (Kafka), **Elasticsearch v8**, **MaxMind GeoIP**
+- Backend stack: **GORM** (PostgreSQL/MySQL/SQLite), **go-redis**, **zerolog**, **Viper** (YAML config), **urfave/cli**, **Prometheus client**, **JWT/SAML/OIDC auth**, **go-webauthn** (passkeys & security keys), **AWS SDK v2** (S3 + Kinesis), **franz-go** (Kafka), **Elasticsearch v8**, **MaxMind GeoIP**
 - Frontend runtime: **Node.js 22+**
 - Frontend stack: **React 19**, **TypeScript 7**, **Vite 8**, **Tailwind CSS 4**, **TanStack Router/Query/Table**, **zod 4**, **Monaco Editor**
 - Frontend testing: **Vitest 4**, **@testing-library/react 16**, **jsdom 30**, **Playwright 1**
@@ -175,7 +175,7 @@ Ultimately you can just execute `make docker_dev` and it will automagically buil
 
 Using the provided `deploy/provision.sh` script, you can set up a development environment on your local machine. This script will install all necessary dependencies and configure the environment for **osctrl** development in a latest Ubuntu LTS system.
 
-Check the [documentation](https://osctrl.net/deployment/natively/) for more details on how to use the provisioning script.
+Check the [documentation](https://docs.osctrl.net/deployment/natively/) for more details on how to use the provisioning script.
 
 Ultimately the script can also be used to deploy **osctrl** in production systems, please refer to the documentation for more details.
 
@@ -189,7 +189,7 @@ cd osctrl
 make
 ```
 
-This will compile all the **osctrl** [components](https://osctrl.net/components/) (`osctrl-tls`, `osctrl-api`, `osctrl-cli`), placing the binaries in the `bin/` directory.
+This will compile all the **osctrl** [components](https://docs.osctrl.net/components/) (`osctrl-tls`, `osctrl-api`, `osctrl-cli`), placing the binaries in the `bin/` directory.
 
 The default `make`/`make build` target also builds the frontend bundle. If you are working on the operator UI directly, the frontend SPA lives in `frontend/` and can be run with `make frontend-dev` or `cd frontend && npm run dev`.
 
