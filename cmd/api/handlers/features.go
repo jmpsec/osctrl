@@ -12,9 +12,13 @@ type FeaturesResponse struct {
 	// ServiceConfig gates the whole Service Config section in the SPA. When
 	// false the /api/v1/service-config routes are not registered at all.
 	ServiceConfig bool `json:"service_config"`
-	Accelerated   bool `json:"accelerated"`
-	Console       bool `json:"console"`
-	FileExplorer  bool `json:"file_explorer"`
+	// LogSinks gates the Log Sinks section in the SPA. Tied to the same
+	// flag as ServiceConfig — the log_sinks routes are registered
+	// alongside the service-config routes.
+	LogSinks     bool `json:"log_sinks"`
+	Accelerated  bool `json:"accelerated"`
+	Console      bool `json:"console"`
+	FileExplorer bool `json:"file_explorer"`
 }
 
 // FeaturesHandler — GET /api/v1/features.
@@ -25,6 +29,7 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, FeaturesResponse{
 		Posture:       h.PostureEnabled,
 		ServiceConfig: h.ServiceConfigEnabled,
+		LogSinks:      h.ServiceConfigEnabled,
 		Accelerated:   h.OsqueryValues.Accelerated,
 		Console:       h.OsqueryValues.Query && h.OsqueryValues.Console,
 		FileExplorer:  h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,

@@ -39,6 +39,8 @@ func (r *recordingExporter) Export(logType string, data []byte, params ExportPar
 	return r.err
 }
 
+func (r *recordingExporter) Close() error { return nil }
+
 func TestMultiExporterFansOutAndContinuesAfterError(t *testing.T) {
 	boom := errors.New("boom")
 	first := &recordingExporter{name: "first", enabled: true}

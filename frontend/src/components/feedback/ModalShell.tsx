@@ -31,6 +31,11 @@ export interface ModalShellProps {
   children: React.ReactNode;
   /** Optional tailwind class for the inner panel — defaults to max-w-2xl. */
   panelClassName?: string;
+  /** Optional tailwind class for the body wrapper. Defaults to none.
+   * Use this to cap the body height and make it scrollable when the
+   * form content can exceed the viewport, e.g.
+   * "max-h-[70vh] overflow-y-auto". */
+  bodyClassName?: string;
 }
 
 export function ModalShell({
@@ -39,6 +44,7 @@ export function ModalShell({
   onClose,
   children,
   panelClassName,
+  bodyClassName,
 }: ModalShellProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -131,7 +137,7 @@ export function ModalShell({
             </svg>
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className={cn('p-5', bodyClassName)}>{children}</div>
       </div>
     </div>
   );

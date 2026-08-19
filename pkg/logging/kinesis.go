@@ -66,6 +66,11 @@ func (logSK *LoggerKinesis) Settings(mgr *settings.Settings) {
 	log.Info().Msg("No kinesis logging settings")
 }
 
+// Close releases resources held by the Kinesis logger. The AWS SDK v2
+// kinesis.Client has no explicit Close; its HTTP transport pool is
+// garbage-collected. This is a no-op kept for interface compliance.
+func (logSK *LoggerKinesis) Close() error { return nil }
+
 // Send - Function that sends JSON logs to Splunk HTTP Event Collector
 func (logSK *LoggerKinesis) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {

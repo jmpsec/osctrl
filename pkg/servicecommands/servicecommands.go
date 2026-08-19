@@ -20,6 +20,12 @@ const (
 	// sections back to its own YAML file. Unlike a restart it does not
 	// change what the running process is using — only what is on disk.
 	ActionPersistConfig = "persist-config"
+	// ActionReloadLogSinks asks osctrl-tls to rebuild its per-environment
+	// log sink exporter map from the log_sinks table and swap it in
+	// without restarting. In-flight logs to the old sinks may be dropped
+	// during the swap; the old sinks are closed immediately after the
+	// new set is live.
+	ActionReloadLogSinks = "reload-log-sinks"
 
 	StatusPending   = "pending"
 	StatusConsumed  = "consumed"
@@ -36,8 +42,9 @@ var (
 // not listed here is rejected at request time, so a row in the table can
 // never name an action the consumer does not recognise.
 var validActions = map[string]struct{}{
-	ActionRestart:       {},
-	ActionPersistConfig: {},
+	ActionRestart:        {},
+	ActionPersistConfig:  {},
+	ActionReloadLogSinks: {},
 }
 
 // ServiceCommand is a one-shot control request for another osctrl service.

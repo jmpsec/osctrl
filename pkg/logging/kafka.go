@@ -85,6 +85,17 @@ func (l *LoggerKafka) Settings(mgr *settings.Settings) {
 	log.Warn().Msg("No kafka logging settings")
 }
 
+// Close releases the Kafka producer client so a hot reload does not
+// leak broker connections. In-flight records are flushed by kgo before
+// the client returns.
+func (l *LoggerKafka) Close() error {
+	if l == nil || l.producer == nil {
+		return nil
+	}
+	l.producer.Close()
+	return nil
+}
+
 func (l *LoggerKafka) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
 		log.Info().Msgf(

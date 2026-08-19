@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/mfa"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
@@ -48,9 +49,10 @@ type HandlersApi struct {
 	Carves        *carves.Carves
 	Settings      *settings.Settings
 	ServiceConfig *serviceconfig.ServiceConfigManager
-	// ServiceConfigEnabled mirrors service.serviceConfigEnabled. When false
-	// the service-config routes are never registered and the SPA hides the
-	// section; the rows are still seeded and resolved at every boot.
+	// LogSinks manages the log_sinks table when service-config is
+	// enabled. nil when ServiceConfigEnabled is false — the routes are
+	// not registered in that case.
+	LogSinks             *logsinks.LogSinksManager
 	ServiceConfigEnabled bool
 	ServiceCommands      *servicecommands.Manager
 	Activity             activityReader
@@ -187,6 +189,15 @@ func WithSettings(settings *settings.Settings) HandlersOption {
 func WithServiceConfig(mgr *serviceconfig.ServiceConfigManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.ServiceConfig = mgr
+	}
+}
+
+// WithLogSinks wires the log_sinks manager. Only meaningful when
+// ServiceConfigEnabled is also true; the routes are gated on that
+// flag in cmd/api/main.go.
+func WithLogSinks(mgr *logsinks.LogSinksManager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.LogSinks = mgr
 	}
 }
 

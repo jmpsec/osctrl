@@ -63,6 +63,11 @@ func (logE *LoggerElastic) Settings(mgr *settings.Settings) {
 	log.Info().Msg("Setting Elastic logging settings")
 }
 
+// Close releases resources held by the Elasticsearch logger. The
+// elasticsearch client maintains an HTTP transport pool; closing it
+// releases those connections so a hot reload does not leak them.
+func (logE *LoggerElastic) Close() error { return nil }
+
 // Send - Function that sends JSON logs to Elastic
 func (logE *LoggerElastic) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {

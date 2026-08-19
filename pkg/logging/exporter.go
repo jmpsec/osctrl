@@ -23,6 +23,12 @@ type DataExporter interface {
 	Name() string
 	IsEnabled() bool
 	Export(logType string, data []byte, params ExportParams) error
+	// Close releases any resources held by this exporter (network
+	// clients, DB connections, file handles). It is called by
+	// LoggerTLS.ReplaceExporters on every exporter in the old set
+	// during a hot reload so sinks are not leaked across reloads.
+	// Stateless exporters return nil.
+	Close() error
 }
 
 // MultiExporter fans out one osquery payload to multiple destinations.
@@ -92,6 +98,25 @@ func (m *MultiExporter) Export(logType string, data []byte, params ExportParams)
 		}
 		if err := exporter.Export(logType, data, params); err != nil {
 			log.Err(err).Str("exporter", exporter.Name()).Str("type", logType).Msg("error exporting osquery data")
+			errs = append(errs, fmt.Errorf("%s: %w", exporter.Name(), err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// Close closes every contained exporter. Errors are collected and
+// joined; one exporter failing to close does not stop the rest from
+// being closed.
+func (m *MultiExporter) Close() error {
+	if m == nil {
+		return nil
+	}
+	var errs []error
+	for _, exporter := range m.exporters {
+		if exporter == nil {
+			continue
+		}
+		if err := exporter.Close(); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", exporter.Name(), err))
 		}
 	}

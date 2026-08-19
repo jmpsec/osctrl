@@ -57,6 +57,11 @@ func (logGL *LoggerGraylog) Settings(mgr *settings.Settings) {
 	log.Info().Msg("No Graylog logging settings")
 }
 
+// Close releases resources held by the Graylog logger. Graylog sends
+// data via per-call HTTP POSTs, so there is no persistent client to
+// close.
+func (logGL *LoggerGraylog) Close() error { return nil }
+
 // Send - Function that sends JSON logs to Graylog
 func (logGL *LoggerGraylog) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {

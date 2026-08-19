@@ -23,7 +23,8 @@ func parseResultLogs(data json.RawMessage) ([]types.LogResultData, error) {
 
 // ProcessLogs processes and dispatches logs. Result entries are returned so
 // callers can reuse the decoded batch for secondary consumers such as posture.
-func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipaddress string, dataLen int, debug bool) []types.LogResultData {
+// envID selects the environment-scoped exporter set.
+func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint, environment, ipaddress string, dataLen int, debug bool) []types.LogResultData {
 	// Parse log to extract metadata
 	var logs []types.LogGenericData
 	var resultLogs []types.LogResultData
@@ -74,7 +75,7 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType, environment, ipad
 		BytesReceived:  dataLen,
 	}
 	// Dispatch logs and update metadata
-	l.DispatchLogs(data, uuid, logType, environment, metadata, debug)
+	l.DispatchLogs(data, uuid, logType, envID, environment, metadata, debug)
 	return resultLogs
 }
 

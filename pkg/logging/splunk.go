@@ -54,6 +54,11 @@ func (logSP *LoggerSplunk) Settings(mgr *settings.Settings) {
 	log.Info().Msg("Setting Splunk logging settings")
 }
 
+// Close releases resources held by the Splunk logger. Splunk sends data
+// via per-call HTTP POSTs using the shared utils.SendRequest helper, so
+// there is no persistent client to close.
+func (logSP *LoggerSplunk) Close() error { return nil }
+
 // Send - Function that sends JSON logs to Splunk HTTP Event Collector
 func (logSP *LoggerSplunk) Send(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {

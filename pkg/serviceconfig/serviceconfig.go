@@ -78,7 +78,11 @@ var SectionRegistry = map[string][]SectionSpec{
 		{"osctrld", true, "osctrld integration"},
 		{"metrics", true, "Prometheus metrics endpoint"},
 		{"tls", false, "TLS termination certificate/key paths — not DB-editable"},
-		{"logger", false, "Log sinks — may contain credentials (future: editable)"},
+		// Note: the "logger" section is no longer registered here. Log
+		// sinks are now managed by pkg/logsinks (log_sinks table) with
+		// its own API and frontend surface. Existing service_config
+		// rows named "logger" from older boots are left in place and
+		// ignored — they do not affect the running service.
 		{"carver", false, "File carver configuration — may contain credentials"},
 		{"debug", true, "HTTP debug dump settings"},
 		{"rateLimits", true, "HTTP request rate limits"},
@@ -92,7 +96,8 @@ var SectionRegistry = map[string][]SectionSpec{
 		{"oidc", false, "OIDC federated login configuration — not DB-editable"},
 		{"jwt", false, "JWT signing configuration — not DB-editable"},
 		{"tls", false, "TLS termination certificate/key paths — not DB-editable"},
-		{"logger", false, "Log sinks — may contain credentials (future: editable)"},
+		// See the TLS registry: the "logger" section is now managed by
+		// pkg/logsinks and is intentionally absent from this registry.
 		{"carver", false, "File carver configuration — may contain credentials"},
 		{"debug", true, "HTTP debug dump settings"},
 		{"rateLimits", true, "HTTP request rate limits"},

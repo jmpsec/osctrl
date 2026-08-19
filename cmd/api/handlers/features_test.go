@@ -55,6 +55,9 @@ func TestFeaturesHandlerReportsServiceConfigEnabled(t *testing.T) {
 	if !on.ServiceConfig {
 		t.Fatalf("service config feature: got false want true")
 	}
+	if !on.LogSinks {
+		t.Fatalf("log_sinks feature: got false want true (shares the service-config gate)")
+	}
 }
 
 func TestFeaturesHandlerReportsPostureEnabled(t *testing.T) {

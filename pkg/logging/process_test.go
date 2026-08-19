@@ -51,7 +51,7 @@ func TestProcessLogQueryResultUpdatesStatusOnlyError(t *testing.T) {
 	queryMgr := queries.CreateQueries(db)
 	logger := &LoggerTLS{
 		Logging:   config.LoggingNone,
-		Exporters: NewMultiExporter(&LoggerNone{Enabled: false}),
+		exporters: map[uint]*MultiExporter{0: NewMultiExporter(&LoggerNone{Enabled: false})},
 		Nodes:     nodeMgr,
 		Queries:   queryMgr,
 	}
