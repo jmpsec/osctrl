@@ -79,7 +79,7 @@ func parseEnvFilter(r *http.Request) (*uint, error) {
 	if v == "" {
 		return nil, nil
 	}
-	n, err := strconv.ParseUint(v, 10, 64)
+	n, err := strconv.ParseUint(v, 10, strconv.IntSize)
 	if err != nil {
 		return nil, fmt.Errorf("invalid env id: %w", err)
 	}
