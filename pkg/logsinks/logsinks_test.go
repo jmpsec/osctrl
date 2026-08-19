@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/logging"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -642,5 +643,62 @@ func TestBuildExportersForEnvironmentsGroupsByEnv(t *testing.T) {
 	}
 	if _, ok := got[5]; !ok {
 		t.Error("missing env 5 group")
+	}
+}
+
+func TestBuildExportersTracksStatsPerSink(t *testing.T) {
+	m := newTestManager(t)
+	row1, _ := m.Create("s1", config.LoggingNone, true, 0, `{}`, 0, "")
+	row2, _ := m.Create("s2", config.LoggingStdout, true, 1, `{}`, 0, "")
+
+	multi := BuildExporters([]LogSink{row1, row2}, nil)
+	stats := multi.Stats()
+	if len(stats) != 2 {
+		t.Fatalf("stats: got %d want 2", len(stats))
+	}
+
+	// Send data through the exporter — the CountedExporter wrappers
+	// should increment bytes and count atomically.
+	_ = multi.Export("result", []byte(`hello world`), logging.ExportParams{})
+	_ = multi.Export("status", []byte(`hi`), logging.ExportParams{})
+
+	byID := make(map[uint]*logging.SinkStats)
+	for _, s := range stats {
+		byID[s.SinkID] = s
+	}
+	// Both exporters receive every Export call (fan-out). Each gets
+	// 11 + 2 = 13 bytes and 2 exports.
+	for _, s := range stats {
+		if s.BytesSent.Load() != 13 {
+			t.Errorf("sink %d bytes: got %d want 13", s.SinkID, s.BytesSent.Load())
+		}
+		if s.ExportCount.Load() != 2 {
+			t.Errorf("sink %d count: got %d want 2", s.SinkID, s.ExportCount.Load())
+		}
+	}
+
+	// Persist the stats and verify they land in the DB.
+	for _, s := range stats {
+		if err := m.UpdateSinkStats(s.SinkID, s.BytesSent.Load(), s.ExportCount.Load()); err != nil {
+			t.Fatalf("update stats: %v", err)
+		}
+	}
+	got1, _ := m.Get(row1.ID)
+	if got1.BytesSent != 13 || got1.ExportsCount != 2 {
+		t.Errorf("DB stats row1: bytes=%d count=%d want 13/2", got1.BytesSent, got1.ExportsCount)
+	}
+}
+
+func TestDisabledSinkNotCounted(t *testing.T) {
+	multi := BuildExporters([]LogSink{
+		{Model: gorm.Model{ID: 1}, Name: "off", Type: config.LoggingNone, Enabled: false, Config: "{}"},
+		{Model: gorm.Model{ID: 2}, Name: "on", Type: config.LoggingStdout, Enabled: true, Config: "{}"},
+	}, nil)
+	stats := multi.Stats()
+	if len(stats) != 1 {
+		t.Fatalf("stats: got %d want 1 (disabled sink excluded)", len(stats))
+	}
+	if stats[0].SinkID != 2 {
+		t.Errorf("stats sink ID: got %d want 2", stats[0].SinkID)
 	}
 }

@@ -77,6 +77,23 @@ func (logTLS *LoggerTLS) ExportersFor(envID uint) *MultiExporter {
 	return nil
 }
 
+// AllExporters returns a snapshot of the entire exporter map. Used by
+// the SinkStatsWriter to iterate every live MultiExporter and snapshot
+// its per-sink atomic counters. The returned map is a shallow copy so
+// the caller can iterate without holding the read lock.
+func (logTLS *LoggerTLS) AllExporters() map[uint]*MultiExporter {
+	if logTLS == nil {
+		return nil
+	}
+	logTLS.mu.RLock()
+	defer logTLS.mu.RUnlock()
+	out := make(map[uint]*MultiExporter, len(logTLS.exporters))
+	for k, v := range logTLS.exporters {
+		out[k] = v
+	}
+	return out
+}
+
 // ReplaceExporters atomically swaps the entire exporter map and closes
 // every exporter in the old map. The swap happens under the write
 // lock; any Export call that already resolved its MultiExporter

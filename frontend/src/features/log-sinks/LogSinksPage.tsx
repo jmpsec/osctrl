@@ -20,7 +20,7 @@ import { listEnvironments } from '$/api/environments';
 import { getFeatures } from '$/api/features';
 import { getServiceCommand, getServiceConfig } from '$/api/service-config';
 import { AuthError, ApiError } from '$/api/client';
-import { formatRelative } from '$/lib/time';
+import { formatRelative, formatBytes } from '$/lib/time';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
@@ -435,6 +435,9 @@ export function LogSinksPage() {
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide w-24">
                 Source
               </th>
+              <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide w-32">
+                Data sent
+              </th>
               <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
                 Updated
               </th>
@@ -443,11 +446,11 @@ export function LogSinksPage() {
           </thead>
           <tbody>
             {isLoading &&
-              Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cells={7} />)}
+              Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cells={8} />)}
 
             {isError && !isLoading && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -472,7 +475,7 @@ export function LogSinksPage() {
 
             {!isLoading && !isError && sorted.length === 0 && (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -555,6 +558,9 @@ export function LogSinksPage() {
                         seed
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right font-mono-tabular" title={`${s.exports_count} exports`}>
+                    {s.bytes_sent > 0 ? formatBytes(s.bytes_sent) : '—'}
                   </td>
                   <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right font-mono-tabular">
                     <span title={s.updated_at}>{formatRelative(s.updated_at)}</span>
