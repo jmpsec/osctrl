@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/authproviders"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -52,7 +53,12 @@ type HandlersApi struct {
 	// LogSinks manages the log_sinks table when service-config is
 	// enabled. nil when ServiceConfigEnabled is false — the routes are
 	// not registered in that case.
-	LogSinks             *logsinks.LogSinksManager
+	LogSinks *logsinks.LogSinksManager
+	// AuthProviders holds the live multi-provider registry (OIDC + SAML).
+	// nil when no providers are configured. Replaced atomically during
+	// hot-reload via AuthProviderRegistry.Replace.
+	AuthProviders        *AuthProviderRegistry
+	AuthProviderMgr      *authproviders.AuthProviderManager
 	ServiceConfigEnabled bool
 	ServiceCommands      *servicecommands.Manager
 	Activity             activityReader
@@ -198,6 +204,14 @@ func WithServiceConfig(mgr *serviceconfig.ServiceConfigManager) HandlersOption {
 func WithLogSinks(mgr *logsinks.LogSinksManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.LogSinks = mgr
+	}
+}
+
+// WithAuthProviders wires the auth provider registry and manager.
+func WithAuthProviders(reg *AuthProviderRegistry, mgr *authproviders.AuthProviderManager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.AuthProviders = reg
+		h.AuthProviderMgr = mgr
 	}
 }
 

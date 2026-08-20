@@ -15,6 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
 	"github.com/jmpsec/osctrl/pkg/activity"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/authproviders"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
@@ -107,6 +108,7 @@ const (
 	apiServiceConfigPath = "/service-config"
 	// API log sinks path
 	apiLogSinksPath = "/log-sinks"
+	apiAuthProvidersPath = "/auth-providers"
 	// API features path
 	apiFeaturesPath = "/features"
 	// API file explorer path
@@ -428,6 +430,20 @@ func osctrlAPIService() {
 	// the table is migrated; rows can be edited directly in the DB or
 	// YAML and picked up on the next osctrl-tls boot/reload.
 	logSinksMgr := logsinks.NewLogSinksManager(db.Conn)
+	// Auth providers manager — shares the service-config feature gate.
+	authProvidersMgr := authproviders.NewAuthProviderManager(db.Conn)
+	if err := authProvidersMgr.Seed(flagParams); err != nil {
+		log.Fatal().Err(err).Msg("Error seeding auth providers")
+	}
+	// Build live providers from the DB. Fail-fast if an enabled
+	// provider's IdP is unreachable — same posture as the old
+	// InitOIDC/InitSAML calls.
+	var authProviderRegistry *handlers.AuthProviderRegistry
+	providerEntries, err := authProvidersMgr.BuildProviders(context.Background())
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error building auth providers from DB")
+	}
+	authProviderRegistry = handlers.NewAuthProviderRegistry(providerEntries)
 	if err := serviceConfigMgr.Seed(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error seeding service config - %v", err)
 	}
@@ -526,6 +542,7 @@ func osctrlAPIService() {
 		handlers.WithSettings(settingsmgr),
 		handlers.WithServiceConfig(serviceConfigMgr),
 		handlers.WithLogSinks(logSinksMgr),
+		handlers.WithAuthProviders(authProviderRegistry, authProvidersMgr),
 		handlers.WithServiceConfigEnabled(flagParams.Service.ServiceConfigEnabled),
 		handlers.WithServiceCommands(serviceCommandMgr),
 		handlers.WithConfigPersist(persistConfig),
@@ -1063,6 +1080,38 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"POST "+_apiPath(apiLogSinksPath)+"/apply",
 			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
+
+		// API: auth providers. Shares the service-config feature gate.
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAuthProvidersPath),
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAuthProvidersPath)+"/types",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersTypesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAuthProvidersPath)+"/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiAuthProvidersPath),
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"PUT "+_apiPath(apiAuthProvidersPath)+"/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath(apiAuthProvidersPath)+"/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiAuthProvidersPath)+"/{id}/revert",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersRevertHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiAuthProvidersPath)+"/test",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersTestHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiAuthProvidersPath)+"/fetch-metadata",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersFetchMetadataHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiAuthProvidersPath)+"/apply",
+			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
 	}
 	// API: multi-factor enrollment for the calling user
 	muxAPI.Handle(

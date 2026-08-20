@@ -103,28 +103,21 @@ type Config struct {
 	// first successful login. Matches the OIDC field semantics.
 	JITProvision bool
 
-	// SigningCertPath + SigningKeyPath are PEM paths to the SP's
-	// signing certificate + private key. When both are set, the
-	// provider signs every outbound AuthnRequest with RSA-SHA256,
-	// advertises AuthnRequestsSigned="true" in SP metadata, and
-	// includes the public cert in the metadata's KeyDescriptor.
-	//
-	// Threat closed by signing: an attacker who can MITM the
-	// browser→IdP redirect chain (malicious extension, hostile
-	// network) cannot tamper with the AuthnRequest's fields
-	// (ForceAuthn, AssertionConsumerServiceURL, etc) without
-	// invalidating the signature — the IdP's verification rejects
-	// the mutated request. Without signing the realistic attack
-	// surface is narrow (the HMAC state cookie binds the eventual
-	// response back to the same browser, so the attacker can't
-	// redirect responses to themselves) but downgrade attacks on
-	// the request itself become impossible.
-	//
-	// Empty values disable signing (D5 in the spec — v1 default
-	// for operators who don't want to manage an SP signing key).
-	// Production deployments should set them.
+	// SigningCertPath + SigningKeyPath are PEM file paths to the SP's
+	// signing certificate + private key. Legacy: when set, the
+	// provider reads them from disk at NewSAMLProvider time.
+	// Prefer SigningCertPEM / SigningKeyPEM for DB-backed configs.
 	SigningCertPath string
 	SigningKeyPath  string
+
+	// SigningCertPEM and SigningKeyPEM hold the SP's signing
+	// certificate and private key as PEM-encoded text, stored in the
+	// DB config JSON — no files on disk needed. When both are empty
+	// AND SigningCertPath/SigningKeyPath are also empty,
+	// NewSAMLProvider auto-generates a self-signed RSA 2048-bit
+	// keypair with a 10-year validity.
+	SigningCertPEM string
+	SigningKeyPEM  string
 
 	// ForceAuthn, when true, sets ForceAuthn="true" on every
 	// AuthnRequest we emit. Keycloak / Auth0 / Okta will then
@@ -197,11 +190,17 @@ func (c Config) Validate() error {
 	if c.ReplayWindow < 0 {
 		return errors.New("saml: ReplayWindow must be non-negative (minutes)")
 	}
-	// Both signing fields must be set together or both unset. A
-	// half-configured pair (e.g. cert path set, key path empty) is
-	// always a config typo, not a deliberate state.
+	// File-path signing fields must both be set or both empty.
 	if (c.SigningCertPath == "") != (c.SigningKeyPath == "") {
 		return errors.New("saml: SigningCertPath and SigningKeyPath must both be set or both be empty")
+	}
+	// PEM signing fields must both be set or both empty.
+	if (c.SigningCertPEM == "") != (c.SigningKeyPEM == "") {
+		return errors.New("saml: SigningCertPEM and SigningKeyPEM must both be set or both be empty")
+	}
+	// Cannot mix file paths and inline PEM.
+	if (c.SigningCertPath != "" || c.SigningKeyPath != "") && (c.SigningCertPEM != "" || c.SigningKeyPEM != "") {
+		return errors.New("saml: cannot mix file-path signing fields with inline PEM signing fields")
 	}
 	return nil
 }

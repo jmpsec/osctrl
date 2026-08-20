@@ -204,13 +204,14 @@ func TestSeed_ServiceSpecificSections(t *testing.T) {
 	apiNames := sectionNames(apiRows)
 	tlsNames := sectionNames(tlsRows)
 
-	assert.Contains(t, apiNames, "saml")
-	assert.Contains(t, apiNames, "oidc")
 	assert.Contains(t, apiNames, "jwt")
 	assert.Contains(t, apiNames, "rateLimits")
 	assert.NotContains(t, apiNames, "batchWriter")
 	assert.NotContains(t, apiNames, "metrics")
 	assert.NotContains(t, apiNames, "osctrld")
+	// saml and oidc are now managed by pkg/authproviders
+	assert.NotContains(t, apiNames, "saml")
+	assert.NotContains(t, apiNames, "oidc")
 
 	assert.Contains(t, tlsNames, "batchWriter")
 	assert.Contains(t, tlsNames, "configEndpoints")
@@ -275,8 +276,11 @@ func TestVerifyServiceAndSection(t *testing.T) {
 	// "logger" is no longer registered (managed by pkg/logsinks); use
 	// "osquery" and "metrics" as the representative registered sections.
 	assert.True(t, m.VerifySection(config.ServiceTLS, "osquery"))
-	assert.True(t, m.VerifySection(config.ServiceAPI, "saml"))
-	assert.False(t, m.VerifySection(config.ServiceTLS, "saml"))
+	assert.True(t, m.VerifySection(config.ServiceAPI, "jwt"))
+	assert.False(t, m.VerifySection(config.ServiceTLS, "jwt"))
+	// "saml" and "oidc" are now managed by pkg/authproviders
+	assert.False(t, m.VerifySection(config.ServiceAPI, "saml"))
+	assert.False(t, m.VerifySection(config.ServiceAPI, "oidc"))
 	assert.False(t, m.VerifySection(config.ServiceAPI, "metrics"))
 	assert.False(t, m.VerifySection("bogus", "osquery"))
 }

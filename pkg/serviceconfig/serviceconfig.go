@@ -92,8 +92,10 @@ var SectionRegistry = map[string][]SectionSpec{
 		{"db", false, "Backend connection — not DB-editable"},
 		{"redis", false, "Redis connection — not DB-editable"},
 		{"osquery", true, "osquery tables and feature toggles"},
-		{"saml", false, "SAML federated login configuration — not DB-editable"},
-		{"oidc", false, "OIDC federated login configuration — not DB-editable"},
+		// "saml" and "oidc" are now managed by pkg/authproviders and
+		// are intentionally absent from this registry. Existing
+		// service_config rows named "saml"/"oidc" are left in place
+		// and ignored.
 		{"jwt", false, "JWT signing configuration — not DB-editable"},
 		{"tls", false, "TLS termination certificate/key paths — not DB-editable"},
 		// See the TLS registry: the "logger" section is now managed by
