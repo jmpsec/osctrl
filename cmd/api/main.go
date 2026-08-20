@@ -456,8 +456,26 @@ func osctrlAPIService() {
 	if err := serviceConfigMgr.ReportFile(config.ServiceAPI, flagParams.ConfigFilePath()); err != nil {
 		log.Err(err).Msg("Error reporting service config file status")
 	}
+	// Resolve the per-feature enabled flags. They default to true
+	// when nil (backwards compat: service-config-enabled controls
+	// the master gate, and each sub-feature can be independently
+	// disabled by setting its flag to false).
+	logSinksEnabled := true
+	if flagParams.Service.LogSinksEnabled != nil {
+		logSinksEnabled = *flagParams.Service.LogSinksEnabled
+	}
+	authProvidersEnabled := true
+	if flagParams.Service.AuthProvidersEnabled != nil {
+		authProvidersEnabled = *flagParams.Service.AuthProvidersEnabled
+	}
 	if !flagParams.Service.ServiceConfigEnabled {
 		log.Info().Msg("Service config API is disabled (enable with --service-config-enabled) — sections are still seeded and resolved, change the service_config rows or the YAML file directly")
+	}
+	if !logSinksEnabled {
+		log.Info().Msg("Log sinks API is disabled (enable with --log-sinks-enabled) — rows can still be changed directly in the database")
+	}
+	if !authProvidersEnabled {
+		log.Info().Msg("Auth providers API is disabled (enable with --auth-providers-enabled) — rows can still be changed directly in the database")
 	}
 	if flagParams.RateLimits == nil {
 		flagParams.RateLimits = config.DefaultRateLimitsPtr()
@@ -544,6 +562,8 @@ func osctrlAPIService() {
 		handlers.WithLogSinks(logSinksMgr),
 		handlers.WithAuthProviders(authProviderRegistry, authProvidersMgr),
 		handlers.WithServiceConfigEnabled(flagParams.Service.ServiceConfigEnabled),
+		handlers.WithLogSinksEnabled(logSinksEnabled),
+		handlers.WithAuthProvidersEnabled(authProvidersEnabled),
 		handlers.WithServiceCommands(serviceCommandMgr),
 		handlers.WithConfigPersist(persistConfig),
 		handlers.WithActivityReader(activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)),
@@ -1005,8 +1025,16 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"PATCH "+_apiPath(apiSettingsPath)+"/{service}/{name}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SettingPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	// API: service config. The whole surface is opt-in: with
-	// --service-config-enabled off, none of these routes exist. Seeding
+	// Rate-limit the restart/apply endpoints to 3 per 10 minutes per IP
+	// by default — strict enough to prevent brute-forcing restarts,
+	// generous enough for an operator to retry after a failed restart.
+	// Rejections are audit-logged so SoC tooling sees attempted abuse.
+	restartLimiter := ratelimit.NewFromConfig(flagParams.RateLimits.ServiceConfigApply)
+	restartRateLimit := restartLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
+		handlersApi.AuditLog.SettingsAction("", fmt.Sprintf("service-config apply rate limit exceeded from %s", key), utils.GetIP(r))
+	})
+
+	// API: service config. Opt-in via --service-config-enabled. Seeding
 	// YAML into the service_config rows and resolving them at startup
 	// happen either way, so the rows stay the values the services run on
 	// and can be changed directly in the database.
@@ -1020,39 +1048,28 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiServiceConfigPath)+"/{service}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigServiceHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		// Literal-prefixed like /commands/{command_id}: "{service}/status" would
-		// conflict with it — neither pattern is more specific than the other, and
-		// ServeMux panics at registration.
 		muxAPI.Handle(
 			"GET "+_apiPath(apiServiceConfigPath)+"/status/{service}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiServiceConfigPath)+"/{service}/{section}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigSectionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		// Rate-limit the restart endpoint to 3 per 10 minutes per IP by default
-		// — strict enough to prevent brute-forcing restarts, generous enough
-		// for an operator to retry after a failed restart. Rejections are
-		// audit-logged so SoC tooling sees attempted abuse.
-		restartLimiter := ratelimit.NewFromConfig(flagParams.RateLimits.ServiceConfigApply)
-		restartRateLimit := restartLimiter.HTTPMiddleware(ratelimit.KeyByIP, func(r *http.Request, key string) {
-			handlersApi.AuditLog.SettingsAction("", fmt.Sprintf("service-config apply rate limit exceeded from %s", key), utils.GetIP(r))
-		})
 		muxAPI.Handle(
 			"PUT "+_apiPath(apiServiceConfigPath)+"/{service}/{section}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"POST "+_apiPath(apiServiceConfigPath)+"/apply",
 			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
-		// Persist writes a file rather than restarting anything, but it is the
-		// same class of privileged, disk-touching operation — same limiter.
 		muxAPI.Handle(
 			"POST "+_apiPath(apiServiceConfigPath)+"/persist",
 			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.ServiceConfigPersistHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
+	}
 
-		// API: log sinks. Shares the service-config feature gate. The
-		// apply endpoint reuses the same restart limiter since a log
-		// sink reload is the same class of privileged, runtime-affecting
-		// operation as a service-config apply.
+	// API: log sinks. Independently gated by --log-sinks-enabled. Does
+	// NOT require --service-config-enabled. The apply endpoint reuses
+	// the same restart limiter since a log sink reload is the same class
+	// of privileged operation.
+	if logSinksEnabled {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiLogSinksPath),
 			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -1080,8 +1097,12 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"POST "+_apiPath(apiLogSinksPath)+"/apply",
 			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
+	}
 
-		// API: auth providers. Shares the service-config feature gate.
+	// API: auth providers. Independently gated by
+	// --auth-providers-enabled. Does NOT require
+	// --service-config-enabled.
+	if authProvidersEnabled {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiAuthProvidersPath),
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AuthProvidersListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

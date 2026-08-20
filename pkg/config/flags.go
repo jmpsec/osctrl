@@ -284,6 +284,26 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Service.ServiceConfigEnabled,
 		},
 		&cli.BoolFlag{
+			Name:    "log-sinks-enabled",
+			Value:   true,
+			Usage:   "Serve the log-sinks API and show the matching section in the SPA. Independent of --service-config-enabled. Set false to hide the log-sinks management UI.",
+			Sources: cli.EnvVars("LOG_SINKS_ENABLED"),
+			Action: func(ctx context.Context, cmd *cli.Command, b bool) error {
+				params.Service.LogSinksEnabled = &b
+				return nil
+			},
+		},
+		&cli.BoolFlag{
+			Name:    "auth-providers-enabled",
+			Value:   true,
+			Usage:   "Serve the auth-providers API and show the matching section in the SPA. Independent of --service-config-enabled. Set false to hide the auth-providers management UI.",
+			Sources: cli.EnvVars("AUTH_PROVIDERS_ENABLED"),
+			Action: func(ctx context.Context, cmd *cli.Command, b bool) error {
+				params.Service.AuthProvidersEnabled = &b
+				return nil
+			},
+		},
+		&cli.BoolFlag{
 			Name:        "mfa-required",
 			Value:       false,
 			Usage:       "Require a second authentication factor (TOTP, passkey or security key) for password logins. Users without one enroll at their next login. Service accounts and federated logins are unaffected.",
