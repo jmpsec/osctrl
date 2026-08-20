@@ -122,6 +122,11 @@ export function deleteLogSink(id: number): Promise<void> {
   return apiFetch<void>(`/api/v1/log-sinks/${id}`, { method: 'DELETE' });
 }
 
+/** POST /api/v1/log-sinks/{id}/revert — flip source back to "service" so the next reload re-syncs from the service config. */
+export function revertLogSink(id: number): Promise<LogSink> {
+  return apiFetch<LogSink>(`/api/v1/log-sinks/${id}/revert`, { method: 'POST' });
+}
+
 /** Body for POST /api/v1/log-sinks/clone. */
 export interface LogSinkCloneRequest {
   source_environment_id: number;

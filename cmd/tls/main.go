@@ -552,11 +552,18 @@ func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfg
 				auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls persist-config command %s consumed", cmd.CommandID), "local")
 				log.Info().Str("command", cmd.CommandID).Msg("Persisted TLS config to file")
 			case servicecommands.ActionReloadLogSinks:
-				// Hot-reload log sinks without restarting. Rebuild the
-				// per-environment exporter map from the DB and atomically
-				// swap it in. The old exporters are closed by
-				// ReplaceExporters; in-flight logs to them may be dropped
-				// during the swap.
+				// Hot-reload log sinks without restarting. Re-seed from the
+				// service configuration first so reverted rows (Source flipped
+				// back to "service" by the API) get their config synced from
+				// the current flags/env/YAML, then rebuild the per-environment
+				// exporter map and atomically swap it in. The old exporters
+				// are closed by ReplaceExporters; in-flight logs to them may
+				// be dropped during the swap.
+				if err := sinksMgr.Seed(flagParams, settings.NoEnvironmentID); err != nil {
+					log.Err(err).Str("command", cmd.CommandID).Msg("error re-seeding log sinks during reload")
+					auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls reload-log-sinks command %s failed: %v", cmd.CommandID, err), "local")
+					continue
+				}
 				newExporters, err := sinksMgr.BuildExportersForEnvironments(settingsMgr)
 				if err != nil {
 					log.Err(err).Str("command", cmd.CommandID).Msg("error rebuilding log sink exporters")

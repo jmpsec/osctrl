@@ -561,6 +561,32 @@ func (m *LogSinksManager) Delete(id uint) error {
 	return nil
 }
 
+// RevertToService flips a sink row's Source from "db" back to "service",
+// so the next Seed (at TLS boot or during hot-reload) re-syncs the config
+// from the current service configuration (flags, env vars, or YAML). The
+// config itself is NOT changed here — the sync happens in the TLS
+// process during the reload, which has access to the resolved service
+// parameters. The operator clicks "Revert", then "Apply" to trigger the
+// reload; the re-seed overwrites the config with the service-config
+// values before the exporters are rebuilt.
+//
+// If the row's Source is already "service" (or the legacy "yaml"), this
+// is a no-op. Rows that do not exist return ErrSinkNotFound.
+func (m *LogSinksManager) RevertToService(id uint) error {
+	row, err := m.Get(id)
+	if err != nil {
+		return err
+	}
+	if row.Source != SourceDB {
+		return nil
+	}
+	if err := m.DB.Model(&row).Update("source", SourceService).Error; err != nil {
+		return fmt.Errorf("revert log sink %d: %w", id, err)
+	}
+	log.Debug().Uint("sink_id", id).Str("name", row.Name).Msg("Reverted sink to service config")
+	return nil
+}
+
 // ListByEnvironment returns all sinks for one environment (EnvironmentID
 // == envID), ordered by Order then CreatedAt.
 func (m *LogSinksManager) ListByEnvironment(envID uint) ([]LogSink, error) {
