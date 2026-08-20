@@ -159,6 +159,37 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+func TestRevertToService(t *testing.T) {
+	m := newTestManager(t)
+	// Create a sink (Source defaults to "db").
+	row, err := m.Create("s", config.LoggingNone, true, 0, `{}`, 0, "")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if row.Source != SourceDB {
+		t.Fatalf("new sink source: got %q want %q", row.Source, SourceDB)
+	}
+
+	// Revert flips Source back to "service".
+	if err := m.RevertToService(row.ID); err != nil {
+		t.Fatalf("revert: %v", err)
+	}
+	got, _ := m.Get(row.ID)
+	if got.Source != SourceService {
+		t.Fatalf("after revert: source=%q want %q", got.Source, SourceService)
+	}
+
+	// Reverting again is a no-op.
+	if err := m.RevertToService(row.ID); err != nil {
+		t.Fatalf("revert again: %v", err)
+	}
+
+	// Reverting a non-existent row returns ErrSinkNotFound.
+	if err := m.RevertToService(99999); !errors.Is(err, ErrSinkNotFound) {
+		t.Fatalf("revert missing: got %v want ErrSinkNotFound", err)
+	}
+}
+
 func TestListByEnvironmentAndEffectiveFor(t *testing.T) {
 	m := newTestManager(t)
 	if _, err := m.Create("g-none", config.LoggingNone, true, 0, `{}`, 0, ""); err != nil {

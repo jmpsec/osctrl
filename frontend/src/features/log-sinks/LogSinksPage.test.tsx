@@ -19,6 +19,7 @@ const mockTypes = vi.fn<() => Promise<LogSinkTypeSpec[]>>();
 const mockCreate = vi.fn();
 const mockUpdate = vi.fn();
 const mockDelete = vi.fn();
+const mockRevert = vi.fn<(id: number) => Promise<LogSink>>();
 const mockClone = vi.fn();
 const mockApply = vi.fn();
 const mockGetSink = vi.fn<(id: number, reveal?: boolean) => Promise<LogSink>>();
@@ -30,6 +31,7 @@ vi.mock('$/api/log-sinks', () => ({
   createLogSink: (...args: unknown[]) => mockCreate(...args),
   updateLogSink: (...args: unknown[]) => mockUpdate(...args),
   deleteLogSink: (id: number) => mockDelete(id),
+  revertLogSink: (id: number) => mockRevert(id),
   cloneLogSinks: (...args: unknown[]) => mockClone(...args),
   applyLogSinks: () => mockApply(),
   getLogSink: (id: number, reveal?: boolean) => mockGetSink(id, reveal),
@@ -170,6 +172,27 @@ describe('LogSinksPage', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('first')).toBeInTheDocument());
     expect(screen.getByText('second')).toBeInTheDocument();
+  });
+
+  it('shows a Revert button for edited sinks and calls revertLogSink', async () => {
+    mockRevert.mockResolvedValue(makeSink({ id: 1, name: 'edited', source: 'service' }));
+    mockList.mockResolvedValue([makeSink({ id: 1, name: 'edited', source: 'db' })]);
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+    await screen.findByText('Revert');
+    const revertBtn = screen.getByText('Revert');
+    expect(revertBtn).toBeInTheDocument();
+    await user.click(revertBtn);
+    await waitFor(() => expect(mockRevert).toHaveBeenCalledWith(1));
+    vi.mocked(window.confirm).mockRestore();
+  });
+
+  it('does not show a Revert button for seed sinks', async () => {
+    mockList.mockResolvedValue([makeSink({ id: 1, name: 'seeded', source: 'service' })]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('seeded')).toBeInTheDocument());
+    expect(screen.queryByText('Revert')).not.toBeInTheDocument();
   });
 
   it('opens the type picker, picks splunk, and creates a sink with typed config', async () => {

@@ -1055,6 +1055,9 @@ func osctrlAPIService() {
 			"DELETE "+_apiPath(apiLogSinksPath)+"/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"POST "+_apiPath(apiLogSinksPath)+"/{id}/revert",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksRevertHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"POST "+_apiPath(apiLogSinksPath)+"/clone",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksCloneHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(

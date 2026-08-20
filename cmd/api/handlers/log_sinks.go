@@ -374,6 +374,61 @@ func (h *HandlersApi) LogSinksDeleteHandler(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// LogSinksRevertHandler — POST /api/v1/log-sinks/{id}/revert
+//
+// Flips a sink row's Source from "db" back to "service" so the next
+// hot-reload re-syncs the config from the current service configuration
+// (flags, env vars, or YAML). The operator clicks "Revert", then
+// "Apply" to trigger the reload — the re-seed overwrites the config
+// with the service-config values before the exporters are rebuilt.
+//
+// @Summary Revert sink to service config
+// @Description Flips a sink's source back to "service" so the next reload re-syncs the config from the service configuration. No config change happens here — the sync runs in osctrl-tls during the reload.
+// @Tags log-sinks
+// @Produce json
+// @Param id path int true "Sink ID"
+// @Success 200 {object} logSinkDTO
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v1/log-sinks/{id}/revert [post]
+func (h *HandlersApi) LogSinksRevertHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, false)
+	}
+	user, ok := h.requireLogSinksAdmin(w, r)
+	if !ok {
+		return
+	}
+	if h.LogSinks == nil {
+		apiErrorResponse(w, "log sinks not initialized", http.StatusInternalServerError, nil)
+		return
+	}
+	id, err := parseLogSinkID(r)
+	if err != nil {
+		apiErrorResponse(w, "invalid sink id", http.StatusBadRequest, err)
+		return
+	}
+	if err := h.LogSinks.RevertToService(id); err != nil {
+		if errors.Is(err, logsinks.ErrSinkNotFound) {
+			apiErrorResponse(w, "log sink not found", http.StatusNotFound, err)
+			return
+		}
+		apiErrorResponse(w, "error reverting log sink", http.StatusInternalServerError, err)
+		return
+	}
+	row, err := h.LogSinks.Get(id)
+	if err != nil {
+		apiErrorResponse(w, "error getting reverted log sink", http.StatusInternalServerError, err)
+		return
+	}
+	h.AuditLog.SettingsAction(user, fmt.Sprintf("reverted log sink %q to service config", row.Name), strings.Split(r.RemoteAddr, ":")[0])
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, toLogSinkDTO(row, false))
+}
+
 // LogSinksCloneHandler — POST /api/v1/log-sinks/clone
 //
 // @Summary Clone sinks from one environment to another

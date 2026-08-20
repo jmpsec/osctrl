@@ -8,6 +8,7 @@ import {
   createLogSink,
   updateLogSink,
   deleteLogSink,
+  revertLogSink,
   cloneLogSinks,
   applyLogSinks,
   getLogSink,
@@ -196,6 +197,18 @@ export function LogSinksPage() {
         return;
       }
       setApplyErr(e instanceof Error ? e.message : 'Delete failed');
+    },
+  });
+
+  const revertMutation = useMutation({
+    mutationFn: (id: number) => revertLogSink(id),
+    onSuccess: () => invalidate(),
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        void navigate({ to: '/login' });
+        return;
+      }
+      setApplyErr(e instanceof Error ? e.message : 'Revert failed');
     },
   });
 
@@ -573,6 +586,21 @@ export function LogSinksPage() {
                     >
                       Edit
                     </button>
+                    {s.source === 'db' && (
+                      <button
+                        type="button"
+                        disabled={revertMutation.isPending}
+                        onClick={() => {
+                          if (confirm(`Revert "${s.name}" to service config? The config will be re-synced from the YAML/flags on the next Apply.`)) {
+                            revertMutation.mutate(s.id);
+                          }
+                        }}
+                        title="Reset this sink back to the service configuration values. Takes effect on the next Apply."
+                        className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+                      >
+                        Revert
+                      </button>
+                    )}
                     <button
                       type="button"
                       disabled={deleteMutation.isPending}
