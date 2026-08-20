@@ -134,6 +134,16 @@ type YAMLConfigurationService struct {
 	// in the YAML file, and are picked up on the next restart. Consumed by
 	// osctrl-api; osctrl-tls ignores it.
 	ServiceConfigEnabled bool `yaml:"serviceConfigEnabled"`
+	// LogSinksEnabled controls whether the log-sinks API and SPA section
+	// exist. When false, the /api/v1/log-sinks routes are not registered
+	// and the SPA hides the section. Independent of ServiceConfigEnabled.
+	// Defaults to true (nil).
+	LogSinksEnabled *bool `yaml:"logSinksEnabled"`
+	// AuthProvidersEnabled controls whether the auth-providers API and
+	// SPA section exist. When false, the /api/v1/auth-providers routes
+	// are not registered and the SPA hides the section. Independent of
+	// ServiceConfigEnabled. Defaults to true (nil).
+	AuthProvidersEnabled *bool `yaml:"authProvidersEnabled"`
 	// MFARequired makes a second authentication factor mandatory for
 	// password logins. Users who have none are sent through enrollment at
 	// their next login instead of being locked out. Service accounts are

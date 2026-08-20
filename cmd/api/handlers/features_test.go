@@ -46,6 +46,8 @@ func TestFeaturesHandlerReportsServiceConfigEnabled(t *testing.T) {
 	}
 
 	WithServiceConfigEnabled(true)(h)
+	WithLogSinksEnabled(true)(h)
+	WithAuthProvidersEnabled(true)(h)
 	w = httptest.NewRecorder()
 	h.FeaturesHandler(w, r)
 	var on FeaturesResponse
@@ -56,7 +58,10 @@ func TestFeaturesHandlerReportsServiceConfigEnabled(t *testing.T) {
 		t.Fatalf("service config feature: got false want true")
 	}
 	if !on.LogSinks {
-		t.Fatalf("log_sinks feature: got false want true (shares the service-config gate)")
+		t.Fatalf("log_sinks feature: got false want true")
+	}
+	if !on.AuthProviders {
+		t.Fatalf("auth_providers feature: got false want true")
 	}
 }
 

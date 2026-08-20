@@ -30,8 +30,8 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, FeaturesResponse{
 		Posture:       h.PostureEnabled,
 		ServiceConfig: h.ServiceConfigEnabled,
-		LogSinks:      h.ServiceConfigEnabled,
-		AuthProviders: h.ServiceConfigEnabled,
+		LogSinks:      h.LogSinksEnabled,
+		AuthProviders: h.AuthProvidersEnabled,
 		Accelerated:   h.OsqueryValues.Accelerated,
 		Console:       h.OsqueryValues.Query && h.OsqueryValues.Console,
 		FileExplorer:  h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,

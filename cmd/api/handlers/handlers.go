@@ -55,11 +55,11 @@ type HandlersApi struct {
 	// not registered in that case.
 	LogSinks *logsinks.LogSinksManager
 	// AuthProviders holds the live multi-provider registry (OIDC + SAML).
-	// nil when no providers are configured. Replaced atomically during
-	// hot-reload via AuthProviderRegistry.Replace.
 	AuthProviders        *AuthProviderRegistry
 	AuthProviderMgr      *authproviders.AuthProviderManager
 	ServiceConfigEnabled bool
+	LogSinksEnabled      bool
+	AuthProvidersEnabled bool
 	ServiceCommands      *servicecommands.Manager
 	Activity             activityReader
 	GeoIP                *geoip.GeoIPResolver
@@ -248,6 +248,18 @@ func WithPostureEnabled(enabled bool) HandlersOption {
 func WithServiceConfigEnabled(enabled bool) HandlersOption {
 	return func(h *HandlersApi) {
 		h.ServiceConfigEnabled = enabled
+	}
+}
+
+func WithLogSinksEnabled(enabled bool) HandlersOption {
+	return func(h *HandlersApi) {
+		h.LogSinksEnabled = enabled
+	}
+}
+
+func WithAuthProvidersEnabled(enabled bool) HandlersOption {
+	return func(h *HandlersApi) {
+		h.AuthProvidersEnabled = enabled
 	}
 }
 
