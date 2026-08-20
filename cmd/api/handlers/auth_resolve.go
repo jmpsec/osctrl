@@ -6,6 +6,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/auth"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/rs/zerolog/log"
 )
 
 // ErrAuthUserRejected is returned by resolveFederatedUser when the
@@ -25,10 +26,16 @@ var ErrAuthUserRejected = errors.New("auth: identity cannot be resolved to an Ad
 //     operator must grant access manually.
 //  3. Else → reject.
 //
+// When JIT creates a new user and no admin users exist yet (first-run
+// bootstrap), the new user is created with admin=true so the operator
+// can manage the system immediately. When admin users already exist,
+// the new user is admin=false — an existing admin must promote them.
+//
 // Threat T16 (privilege escalation via JIT): the JIT path
-// constructs AdminUser with admin=false, service=false. There is no
-// path in this function that produces a row with admin=true; that
-// guarantee is enforced by callsite, not by data validation.
+// only sets admin=true when CountAdmins() returns 0. On any system
+// that already has an admin, JIT users are non-admin. There is no
+// path in this function that produces a row with admin=true on an
+// already-administered system.
 //
 // Threat T25 (mass-assignment via JIT): the function never
 // deserializes ResolvedIdentity directly into the struct. Field-
@@ -65,17 +72,29 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitPr
 	if !jitProvision {
 		return users.AdminUser{}, fmt.Errorf("%w: user not provisioned and jitProvision disabled", ErrAuthUserRejected)
 	}
-	// JIT: build a NON-admin, NON-service AdminUser. The empty
-	// password means CheckLoginCredentials can never authenticate
-	// this user via /login — they MUST come back through the SSO
-	// flow. Operators may set a password later via the user-mgmt
-	// API if they want a dual-auth account.
+	// JIT: build a new AdminUser. When no admin users exist yet
+	// (first-run bootstrap scenario), the new user is created as
+	// admin=true so the operator can immediately manage the system
+	// after their first federated login. When admin users already
+	// exist, the new user is created as admin=false — the existing
+	// admin must promote them manually. This prevents a federated
+	// user from self-escalating to admin on a system that already
+	// has an operator.
+	adminCount, err := h.Users.CountAdmins()
+	if err != nil {
+		return users.AdminUser{}, fmt.Errorf("%w: counting admins: %w", ErrAuthUserRejected, err)
+	}
+	makeAdmin := adminCount == 0
+	if makeAdmin {
+		log.Info().Str("username", identity.PreferredUsername).Int64("existing_admins", adminCount).
+			Msg("JIT-provisioning first admin user via federated login")
+	}
 	u, err := h.Users.New(
 		identity.PreferredUsername, // username
 		"",                         // password (empty: forces SSO-only)
 		identity.Email,             // email (informational)
 		identity.Name,              // fullname (display)
-		false,                      // admin = false
+		makeAdmin,                  // admin = true only when no admins exist
 		false,                      // service = false
 	)
 	if err != nil {

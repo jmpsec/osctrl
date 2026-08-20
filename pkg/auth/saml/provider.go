@@ -2,14 +2,17 @@ package saml
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,8 +20,8 @@ import (
 	"time"
 
 	crewjam "github.com/crewjam/saml"
-	dsig "github.com/russellhaering/goxmldsig"
 	"github.com/rs/zerolog/log"
+	dsig "github.com/russellhaering/goxmldsig"
 
 	"github.com/jmpsec/osctrl/pkg/auth"
 )
@@ -141,13 +144,37 @@ func NewSAMLProvider(ctx context.Context, cfg Config) (*Provider, error) {
 		// cookie binding the response to a specific browser).
 		AuthnNameIDFormat: crewjam.UnspecifiedNameIDFormat,
 	}
-	// Load signing keypair if configured. This enables both
+	// Load signing keypair if configured. Three sources, checked in
+	// order: inline PEM (DB-backed), file paths (legacy YAML), and
+	// auto-generated (when neither is set). This enables both
 	// AuthnRequest signing and signed SP metadata, closing the
 	// downgrade-attack vector on the outbound redirect chain.
-	if cfg.SigningCertPath != "" && cfg.SigningKeyPath != "" {
+	switch {
+	case cfg.SigningCertPEM != "" && cfg.SigningKeyPEM != "":
+		key, cert, err := parseSPKeyPair([]byte(cfg.SigningCertPEM), []byte(cfg.SigningKeyPEM))
+		if err != nil {
+			return nil, fmt.Errorf("saml: parse SP signing PEM: %w", err)
+		}
+		sp.Key = key
+		sp.Certificate = cert
+		sp.SignatureMethod = dsig.RSASHA256SignatureMethod
+	case cfg.SigningCertPath != "" && cfg.SigningKeyPath != "":
 		key, cert, err := loadSPKeyPair(cfg.SigningCertPath, cfg.SigningKeyPath)
 		if err != nil {
 			return nil, fmt.Errorf("saml: load SP signing keypair: %w", err)
+		}
+		sp.Key = key
+		sp.Certificate = cert
+		sp.SignatureMethod = dsig.RSASHA256SignatureMethod
+	default:
+		// Auto-generate a self-signed keypair when no signing
+		// material is provided. This is the default for DB-backed
+		// configs where the operator didn't paste their own PEM.
+		// The generated keypair enables AuthnRequest signing without
+		// requiring files on disk.
+		key, cert, err := generateSPKeyPair()
+		if err != nil {
+			return nil, fmt.Errorf("saml: auto-generate SP signing keypair: %w", err)
 		}
 		sp.Key = key
 		sp.Certificate = cert
@@ -504,6 +531,80 @@ func loadSPKeyPair(certPath, keyPath string) (*rsa.PrivateKey, *x509.Certificate
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse key %s: %w", keyPath, err)
+	}
+	return key, cert, nil
+}
+
+// parseSPKeyPair reads PEM-encoded cert + private key from byte slices
+// (stored in the DB config JSON) and returns them in the shape
+// crewjam.ServiceProvider expects. Same logic as loadSPKeyPair but
+// without touching the filesystem.
+func parseSPKeyPair(certPEM, keyPEM []byte) (*rsa.PrivateKey, *x509.Certificate, error) {
+	certBlock, _ := pem.Decode(certPEM)
+	if certBlock == nil || certBlock.Type != "CERTIFICATE" {
+		return nil, nil, fmt.Errorf("cert: missing CERTIFICATE PEM block")
+	}
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse cert: %w", err)
+	}
+
+	keyBlock, _ := pem.Decode(keyPEM)
+	if keyBlock == nil {
+		return nil, nil, fmt.Errorf("key: not PEM-encoded")
+	}
+
+	var key *rsa.PrivateKey
+	switch keyBlock.Type {
+	case "RSA PRIVATE KEY":
+		key, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	case "PRIVATE KEY":
+		var anyKey any
+		anyKey, err = x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+		if err == nil {
+			var ok bool
+			key, ok = anyKey.(*rsa.PrivateKey)
+			if !ok {
+				return nil, nil, fmt.Errorf("key: PKCS#8 key is not RSA (crewjam requires RSA)")
+			}
+		}
+	default:
+		return nil, nil, fmt.Errorf("key: unsupported PEM type %q (want RSA PRIVATE KEY or PRIVATE KEY)", keyBlock.Type)
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse key: %w", err)
+	}
+	return key, cert, nil
+}
+
+// generateSPKeyPair creates a self-signed RSA 2048-bit keypair with a
+// 10-year validity period. Used when the operator didn't provide
+// signing material — enables AuthnRequest signing out of the box
+// without requiring files on disk or manual cert generation.
+func generateSPKeyPair() (*rsa.PrivateKey, *x509.Certificate, error) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, fmt.Errorf("generate RSA key: %w", err)
+	}
+
+	template := x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "osctrl-saml-sp"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create self-signed cert: %w", err)
+	}
+	cert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse generated cert: %w", err)
 	}
 	return key, cert, nil
 }

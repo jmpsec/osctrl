@@ -25,6 +25,7 @@ import { environmentsRoute } from './routes/_app/environments'
 import { settingsServiceRoute } from './routes/_app/settings.$service'
 import { serviceConfigRoute } from './routes/_app/config.$service'
 import { logSinksRoute } from './routes/_app/log-sinks'
+import { authProvidersRoute } from './routes/_app/auth-providers'
 import { auditRoute } from './routes/_app/audit'
 import { devComponentsRoute } from './routes/dev.components'
 
@@ -40,6 +41,7 @@ const routeTree = rootRoute.addChildren([
     settingsServiceRoute,
     serviceConfigRoute,
     logSinksRoute,
+    authProvidersRoute,
     auditRoute,
     envRoute.addChildren([
       envIndexRoute,

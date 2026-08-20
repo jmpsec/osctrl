@@ -238,67 +238,6 @@ paths:
       summary: List audit logs
       tags:
         - audit
-  /api/v1/auth/methods:
-    get:
-      description: Returns the authentication methods enabled for the API login UI.
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/handlers.AuthMethodsResponse"
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "404":
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "409":
-          description: Conflict
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "429":
-          description: Too many requests
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "500":
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-        "503":
-          description: Service unavailable
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/types.ApiErrorResponse"
-      summary: List authentication methods
-      tags:
-        - auth
   /api/v1/auth/oidc/callback:
     get:
       description: Handles the OIDC authorization callback and creates an API session.
@@ -2982,6 +2921,60 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Update a log sink
+      tags:
+        - log-sinks
+  "/api/v1/log-sinks/{id}/revert":
+    post:
+      description: Flips a sink's source back to "service" so the next reload re-syncs
+        the config from the service configuration. No config change happens here
+        — the sync runs in osctrl-tls during the reload.
+      parameters:
+        - description: Sink ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.logSinkDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Revert sink to service config
       tags:
         - log-sinks
   /api/v1/log-sinks/apply:
@@ -8580,28 +8573,6 @@ components:
         query:
           type: integer
       type: object
-    handlers.AuthMethod:
-      properties:
-        loginUrl:
-          description: |-
-            LoginURL is the relative URL the SPA should redirect the
-            browser to when this method is chosen. For "password" this
-            is "/api/v1/login/{env}" (env is interpolated client-side
-            from the env switcher). For "oidc" this is the global
-            "/api/v1/auth/oidc/login" — env is irrelevant for federated
-            login because the federated user resolves to a single
-            AdminUser row regardless of which env tab they were viewing.
-          type: string
-        type:
-          type: string
-      type: object
-    handlers.AuthMethodsResponse:
-      properties:
-        methods:
-          items:
-            $ref: "#/components/schemas/handlers.AuthMethod"
-          type: array
-      type: object
     handlers.EnvStats:
       properties:
         active:
@@ -8793,6 +8764,8 @@ components:
       type: object
     handlers.logSinkDTO:
       properties:
+        bytes_sent:
+          type: integer
         config:
           items:
             type: integer
@@ -8802,6 +8775,8 @@ components:
         enabled:
           type: boolean
         environment_id:
+          type: integer
+        exports_count:
           type: integer
         id:
           type: integer

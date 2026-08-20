@@ -26,6 +26,11 @@ const (
 	// during the swap; the old sinks are closed immediately after the
 	// new set is live.
 	ActionReloadLogSinks = "reload-log-sinks"
+	// ActionReloadAuthProviders asks osctrl-api to rebuild its
+	// auth provider registry from the auth_providers table and swap
+	// it in without restarting. Users mid-login may see a transient
+	// error and can retry.
+	ActionReloadAuthProviders = "reload-auth-providers"
 
 	StatusPending   = "pending"
 	StatusConsumed  = "consumed"
@@ -42,9 +47,10 @@ var (
 // not listed here is rejected at request time, so a row in the table can
 // never name an action the consumer does not recognise.
 var validActions = map[string]struct{}{
-	ActionRestart:        {},
-	ActionPersistConfig:  {},
-	ActionReloadLogSinks: {},
+	ActionRestart:             {},
+	ActionPersistConfig:       {},
+	ActionReloadLogSinks:      {},
+	ActionReloadAuthProviders: {},
 }
 
 // ServiceCommand is a one-shot control request for another osctrl service.
