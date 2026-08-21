@@ -611,6 +611,12 @@ export interface ControlResult {
   status: string;
   severity: string;
   score: number;
+  /**
+   * Risk points this control would contribute if it failed outright (its
+   * weight). Present regardless of status so a passing control can still
+   * be renormalized against — see `$/features/nodes/postureScore.ts`.
+   */
+  max_score: number;
   detail: string;
 }
 

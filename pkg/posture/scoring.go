@@ -62,8 +62,14 @@ type ControlResult struct {
 	Description string    `json:"description"`
 	Status      string    `json:"status"` // "pass", "warn", "fail"
 	Severity    Severity  `json:"severity"`
-	Score       int       `json:"score"`  // 0 = pass, otherwise earned risk points
-	Detail      string    `json:"detail"` // human-readable explanation
+	Score       int       `json:"score"` // 0 = pass, otherwise earned risk points
+	// MaxScore is the risk points this control would contribute if it
+	// failed outright (its weight). A passing control still reports this so
+	// callers can renormalize the total after excluding controls — e.g. the
+	// SPA's "what if I ignore this check" recompute — without needing the
+	// evaluation rules themselves.
+	MaxScore int    `json:"max_score"`
+	Detail   string `json:"detail"` // human-readable explanation
 }
 
 // PostureScore is the aggregate risk assessment for a node.
@@ -256,6 +262,7 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 			Description: rule.Description,
 			Status:      status,
 			Severity:    rule.Severity,
+			MaxScore:    weight,
 			Detail:      detail,
 		}
 

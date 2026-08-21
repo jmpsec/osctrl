@@ -8922,6 +8922,18 @@ components:
           type: string
         framework:
           $ref: "#/components/schemas/posture.Framework"
+        max_score:
+          description: >-
+            MaxScore is the risk points this control would contribute if it
+
+            failed outright (its weight). A passing control still reports this so
+
+            callers can renormalize the total after excluding controls — e.g. the
+
+            SPA's "what if I ignore this check" recompute — without needing the
+
+            evaluation rules themselves.
+          type: integer
         score:
           description: 0 = pass, otherwise earned risk points
           type: integer

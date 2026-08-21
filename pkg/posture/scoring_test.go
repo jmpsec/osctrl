@@ -262,6 +262,17 @@ func TestScoreIsNormalizedToEvaluatedControls(t *testing.T) {
 	if score.RiskLevel != "low" {
 		t.Errorf("expected low risk, got %s", score.RiskLevel)
 	}
+	// MaxScore lets a caller (the SPA's per-check what-if recompute)
+	// renormalize after excluding controls without knowing the rules —
+	// it must equal each control's weight regardless of pass/warn/fail,
+	// and summing it must reproduce the "possible" denominator above.
+	possible := 0
+	for _, c := range score.Controls {
+		possible += c.MaxScore
+	}
+	if possible != 35 {
+		t.Errorf("expected MaxScore to sum to 35, got %d: %+v", possible, score.Controls)
+	}
 }
 
 func TestFailingHighControlRaisesLevelToHigh(t *testing.T) {
