@@ -19,11 +19,12 @@ export function applyPostureProfileToSchedule(
 
   const entries = parsed as Record<string, unknown>;
   for (const [name, query] of Object.entries(profile.queries)) {
-    entries[POSTURE_QUERY_PREFIX + name] = {
+    entries[query.query_name || POSTURE_QUERY_PREFIX + name] = {
       query: query.query,
       interval,
       snapshot: query.snapshot,
       ...(query.platform ? { platform: query.platform } : {}),
+      profile_id: profile.id,
     };
   }
   return JSON.stringify(entries, null, 2);

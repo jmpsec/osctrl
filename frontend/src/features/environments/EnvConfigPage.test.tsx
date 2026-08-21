@@ -264,6 +264,163 @@ describe('EnvConfigPage', () => {
     await user.click(await screen.findByRole('tab', { name: 'Schedule' }));
 
     expect(screen.queryByRole('button', { name: 'Add posture checks' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Posture' })).not.toBeInTheDocument();
     expect(mockGetPostureProfiles).not.toHaveBeenCalled();
+  });
+
+  it('adds a posture profile from the schedule picker into the posture tab', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: true, service_config: false, accelerated: false, file_explorer: false });
+    mockGetPostureProfiles.mockResolvedValue([
+      {
+        id: 'linux-server',
+        name: 'Linux Servers',
+        description: 'Linux host posture checks',
+        platform: 'linux',
+        queries: {
+          users: {
+            query: 'SELECT username FROM users',
+            interval: 86400,
+            snapshot: true,
+          },
+        },
+      },
+    ]);
+
+    renderWithProviders();
+
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }));
+    await user.click(screen.getByRole('button', { name: 'Add posture checks' }));
+
+    expect(await screen.findByText('linux')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add Linux Servers to schedule' }));
+    await user.click(screen.getByRole('tab', { name: 'Posture' }));
+
+    expect(screen.getByDisplayValue('osctrl:posture:users')).toBeInTheDocument();
+    expect(screen.getByLabelText('Profile')).toHaveValue('linux-server');
+  });
+
+  it('saves the selected posture profile for a new manual check', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: true, service_config: false, accelerated: false, file_explorer: false });
+    mockGetPostureProfiles.mockResolvedValue([
+      {
+        id: 'linux-server',
+        name: 'Linux Servers',
+        description: 'Linux host posture checks',
+        platform: 'linux',
+        queries: {},
+      },
+    ]);
+    mockPatchConfig.mockImplementation(async (_env, body) => ({
+      options: '{}',
+      schedule: body.schedule,
+      packs: '{}',
+      decorators: '{}',
+      atc: '{}',
+      flags: '',
+    }));
+
+    renderWithProviders();
+
+    await user.click(await screen.findByRole('tab', { name: 'Posture' }));
+    await user.click(screen.getByRole('button', { name: 'Add check' }));
+    await user.selectOptions(screen.getByLabelText('Profile'), 'linux-server');
+    await user.click(screen.getByRole('button', { name: 'Save posture checks' }));
+
+    await waitFor(() => {
+      expect(mockPatchConfig).toHaveBeenCalledWith('dev', {
+        schedule: JSON.stringify({
+          'osctrl:posture:new_check': {
+            query: 'SELECT 1',
+            interval: 86400,
+            platform: 'linux',
+            snapshot: true,
+            profile_id: 'linux-server',
+          },
+        }, null, 2),
+      });
+    });
+  });
+
+  it('shows an environment-scoped posture tab when posture is enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: true, service_config: false, accelerated: false, file_explorer: false });
+    mockGetConfig.mockResolvedValue({
+      options: '{}',
+      schedule: JSON.stringify({
+        'osctrl:posture:users': {
+          query: 'SELECT username FROM users',
+          interval: 86400,
+          snapshot: true,
+          profile_id: 'linux-server',
+        },
+      }),
+      packs: '{}',
+      decorators: '{}',
+      atc: '{}',
+      flags: '',
+    });
+
+    renderWithProviders();
+
+    expect(await screen.findByRole('tab', { name: 'Posture' })).toBeInTheDocument();
+  });
+
+  it('hides the posture tab when posture is disabled', async () => {
+    renderWithProviders();
+
+    await screen.findByRole('tab', { name: 'Settings' });
+
+    expect(screen.queryByRole('tab', { name: 'Posture' })).not.toBeInTheDocument();
+  });
+
+  it('edits posture checks through the environment schedule', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: true, service_config: false, accelerated: false, file_explorer: false });
+    mockGetConfig.mockResolvedValue({
+      options: '{}',
+      schedule: JSON.stringify({
+        'osctrl:posture:users': {
+          query: 'SELECT username FROM users',
+          interval: 86400,
+          snapshot: true,
+          profile_id: 'linux-server',
+        },
+      }),
+      packs: '{}',
+      decorators: '{}',
+      atc: '{}',
+      flags: '',
+    });
+    mockPatchConfig.mockImplementation(async (_env, body) => ({
+      options: '{}',
+      schedule: body.schedule,
+      packs: '{}',
+      decorators: '{}',
+      atc: '{}',
+      flags: '',
+    }));
+
+    renderWithProviders();
+
+    await user.click(await screen.findByRole('tab', { name: 'Posture' }));
+    await user.clear(screen.getByLabelText('Query name'));
+    await user.type(screen.getByLabelText('Query name'), 'osctrl:posture:interactive_users');
+    await user.clear(screen.getByLabelText('Interval'));
+    await user.type(screen.getByLabelText('Interval'), '3600');
+    await user.click(screen.getByRole('button', { name: 'Save posture checks' }));
+
+    await waitFor(() => {
+      expect(mockPatchConfig).toHaveBeenCalledWith('dev', {
+        schedule: JSON.stringify({
+          'osctrl:posture:interactive_users': {
+            query: 'SELECT username FROM users',
+            interval: 3600,
+            snapshot: true,
+            profile_id: 'linux-server',
+          },
+        }, null, 2),
+      });
+    });
   });
 });

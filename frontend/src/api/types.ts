@@ -587,6 +587,7 @@ export interface NodePosture {
 }
 
 export interface ProfileQuery {
+  query_name?: string;
   query: string;
   interval: number;
   platform?: string;

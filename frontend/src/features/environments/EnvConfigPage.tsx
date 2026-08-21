@@ -24,6 +24,14 @@ import { DocsLink } from '$/components/atoms/DocsLink';
 import { AssembledConfigCard } from '$/features/enrollment/AssembledConfigCard';
 
 type SectionKey = 'options' | 'schedule' | 'packs' | 'decorators' | 'atc' | 'flags';
+type PostureScheduleEntry = {
+  profileID: string;
+  queryName: string;
+  query: string;
+  interval: number;
+  platform: string;
+  snapshot: boolean;
+};
 
 const POSTURE_INTERVALS = [
   { label: 'Daily', seconds: 86400, description: 'Once per day — sufficient for compliance' },
@@ -31,6 +39,7 @@ const POSTURE_INTERVALS = [
   { label: 'Every 6h', seconds: 21600, description: 'Four times per day — active monitoring' },
   { label: 'Every 1h', seconds: 3600, description: 'Hourly — high-frequency monitoring' },
 ];
+const POSTURE_QUERY_PREFIX = 'osctrl:posture:';
 
 // docs URLs point at the upstream osquery read-the-docs anchors so an
 // operator can jump from the section header straight to the canonical
@@ -121,6 +130,8 @@ export function EnvConfigPage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [showPosturePicker, setShowPosturePicker] = useState(false);
   const [postureAggressiveness, setPostureAggressiveness] = useState(1);
+  type TabKey = 'settings' | SectionKey | 'posture' | 'assembled';
+  const [activeTab, setActiveTab] = useState<TabKey>('settings');
   const featuresQuery = useQuery({
     queryKey: ['features'],
     queryFn: () => getFeatures(),
@@ -130,7 +141,7 @@ export function EnvConfigPage() {
   const postureProfilesQuery = useQuery({
     queryKey: ['posture-profiles'],
     queryFn: () => getPostureProfiles(),
-    enabled: showPosturePicker && postureEnabled,
+    enabled: (showPosturePicker || activeTab === 'posture') && postureEnabled,
     staleTime: 5 * 60_000,
     retry: 1,
   });
@@ -153,8 +164,6 @@ export function EnvConfigPage() {
   // config SECTION. The "settings" default keeps the slider-based forms
   // up-front so an operator who lands here to tune pull intervals doesn't
   // scroll past six 280px Monaco editors first.
-  type TabKey = 'settings' | SectionKey | 'assembled';
-  const [activeTab, setActiveTab] = useState<TabKey>('settings');
 
   useEffect(() => {
     if (cfgQuery.data && draft === null) {
@@ -341,6 +350,15 @@ export function EnvConfigPage() {
             onClick={() => setActiveTab(key)}
           />
         ))}
+        {postureEnabled && (
+          <TabButton
+            id="posture"
+            label="Posture"
+            active={activeTab === 'posture'}
+            dirty={dirty.has('schedule')}
+            onClick={() => setActiveTab('posture')}
+          />
+        )}
         <TabButton
           id="assembled"
           label="Full Configuration"
@@ -379,6 +397,15 @@ export function EnvConfigPage() {
 
         {activeTab === 'assembled' && (
           <AssembledConfigCard env={env} />
+        )}
+
+        {activeTab === 'posture' && postureEnabled && (
+          <PostureScheduleEditor
+            schedule={draft.schedule}
+            saving={saveOne.isPending}
+            onSave={(schedule) => saveOne.mutate({ key: 'schedule', value: schedule })}
+            profiles={postureProfiles ?? []}
+          />
         )}
 
         {SECTIONS.map(({ key, label, language, help, docsUrl }) => {
@@ -495,14 +522,13 @@ export function EnvConfigPage() {
       </div>
       {showPosturePicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowPosturePicker(false)}>
-          <div className="bg-[color:var(--bg-1)] rounded-xl border border-[color:var(--border)] max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[color:var(--bg-1)] rounded-md border border-[color:var(--border)] max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3 border-b border-[color:var(--border)]">
               <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">Posture check profiles</h2>
-              <button type="button" onClick={() => setShowPosturePicker(false)} className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]">✕</button>
+              <button type="button" onClick={() => setShowPosturePicker(false)} className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]">X</button>
             </div>
             <div className="p-4 space-y-4">
-              {/* Aggressiveness slider */}
-              <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
+              <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-[color:var(--text-2)]">Check frequency</span>
                   <span className="text-[10px] font-mono-tabular text-[color:var(--signal)]">
@@ -520,7 +546,8 @@ export function EnvConfigPage() {
                 />
                 <div className="flex justify-between mt-1">
                   {POSTURE_INTERVALS.map((p, i) => (
-                    <span
+                    <button
+                      type="button"
                       key={p.label}
                       className={cn(
                         'text-[9px] font-mono-tabular cursor-pointer select-none',
@@ -531,7 +558,7 @@ export function EnvConfigPage() {
                       onClick={() => setPostureAggressiveness(i + 1)}
                     >
                       {p.label}
-                    </span>
+                    </button>
                   ))}
                 </div>
                 <p className="mt-1.5 text-[10px] text-[color:var(--text-3)] leading-relaxed">
@@ -539,10 +566,9 @@ export function EnvConfigPage() {
                 </p>
               </div>
 
-              {/* Profile cards */}
               <div className="space-y-3">
                 {postureProfilesQuery.isLoading && (
-                  <p className="text-xs text-[color:var(--text-3)] text-center py-4">Loading posture profiles…</p>
+                  <p className="text-xs text-[color:var(--text-3)] text-center py-4">Loading posture profiles...</p>
                 )}
                 {postureProfilesQuery.isError && (
                   <div className="text-center py-4 space-y-2">
@@ -551,13 +577,13 @@ export function EnvConfigPage() {
                   </div>
                 )}
                 {(postureProfiles ?? []).map((profile: PostureProfile) => (
-                  <div key={profile.id} className="rounded-lg border border-[color:var(--border)] p-4">
+                  <div key={profile.id} className="rounded-md border border-[color:var(--border)] p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-[color:var(--text-1)]">{profile.name}</span>
                         <span className="text-[9px] font-mono-tabular uppercase tracking-wider px-1.5 py-0.5 rounded bg-[color:var(--bg-2)] text-[color:var(--text-3)] border border-[color:var(--border)]">{profile.platform}</span>
                       </div>
-                      <button type="button" onClick={() => applyPostureProfile(profile)} className="px-2 py-1 text-[11px] font-medium rounded text-[color:var(--signal)] hover:bg-[color:var(--signal)]/10 transition-colors">Add to schedule</button>
+                      <button type="button" onClick={() => applyPostureProfile(profile)} className="px-2 py-1 text-[11px] font-medium rounded text-[color:var(--signal)] hover:bg-[color:var(--signal)]/10 transition-colors" aria-label={`Add ${profile.name} to schedule`}>Add to schedule</button>
                     </div>
                     <p className="text-xs text-[color:var(--text-3)] mb-2">{profile.description}</p>
                     <div className="flex flex-wrap gap-1">
@@ -623,6 +649,286 @@ function TabButton({
       )}
     </button>
   );
+}
+
+function PostureScheduleEditor({
+  schedule,
+  saving,
+  onSave,
+  profiles,
+}: {
+  schedule: string;
+  saving: boolean;
+  onSave: (schedule: string) => void;
+  profiles: PostureProfile[];
+}) {
+  const parsed = useMemo(() => parsePostureSchedule(schedule, profiles), [schedule, profiles]);
+  const [rows, setRows] = useState<PostureScheduleEntry[]>(parsed.entries);
+  const [error, setError] = useState<string | null>(parsed.error);
+
+  useEffect(() => {
+    setRows(parsed.entries);
+    setError(parsed.error);
+  }, [parsed]);
+
+  function updateRow(index: number, patch: Partial<PostureScheduleEntry>) {
+    setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  function updateProfile(index: number, profileID: string) {
+    const profile = profiles.find((p) => p.id === profileID);
+    setRows((current) => current.map((row, i) => (
+      i === index
+        ? { ...row, profileID, platform: profile?.platform || row.platform }
+        : row
+    )));
+  }
+
+  function saveRows() {
+    try {
+      onSave(buildScheduleWithPosture(schedule, rows));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid posture checks.');
+    }
+  }
+
+  return (
+    <section
+      className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
+      role="tabpanel"
+      aria-labelledby="tab-posture"
+    >
+      <header className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)]">
+        <h2 className="font-display text-sm font-semibold text-[color:var(--text-1)]">Posture</h2>
+        <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">
+          Environment posture checks stored in this environment's schedule.
+        </p>
+        <button
+          type="button"
+          onClick={() =>
+            setRows((current) => [
+              ...current,
+              {
+                profileID: '',
+                queryName: POSTURE_QUERY_PREFIX + 'new_check',
+                query: 'SELECT 1',
+                interval: 86400,
+                platform: '',
+                snapshot: true,
+              },
+            ])
+          }
+          className="text-[10px] px-2 py-0.5 rounded text-[color:var(--signal)] hover:bg-[color:var(--signal)]/10"
+        >
+          Add check
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={saveRows}
+          className={cn(
+            'text-[10px] px-2 py-0.5 rounded font-medium',
+            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'disabled:opacity-40 disabled:cursor-not-allowed',
+          )}
+        >
+          {saving ? 'Saving…' : 'Save posture checks'}
+        </button>
+      </header>
+
+      {error && (
+        <p role="alert" className="m-3 text-xs text-[color:var(--danger)]">
+          {error}
+        </p>
+      )}
+
+      <div className="divide-y divide-[color:var(--border)]">
+        {rows.length === 0 && (
+          <div className="p-4 text-xs text-[color:var(--text-3)]">
+            No posture checks in this environment schedule.
+          </div>
+        )}
+        {rows.map((row, index) => (
+          <div key={index} className="p-3 grid gap-3 lg:grid-cols-[150px_minmax(180px,240px)_1fr_90px_110px_80px_auto] items-start">
+            <label className="space-y-1">
+              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+                Profile
+              </span>
+              <select
+                aria-label="Profile"
+                value={row.profileID}
+                onChange={(e) => updateProfile(index, e.target.value)}
+                className="w-full rounded border border-[color:var(--border)] bg-[color:var(--bg-0)] px-2 py-1 text-xs text-[color:var(--text-1)]"
+              >
+                <option value="">Custom</option>
+                {row.profileID && !profiles.some((profile) => profile.id === row.profileID) && (
+                  <option value={row.profileID}>{row.profileID}</option>
+                )}
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+                Query name
+              </span>
+              <input
+                aria-label="Query name"
+                value={row.queryName}
+                onChange={(e) => updateRow(index, { queryName: e.target.value })}
+                className="w-full rounded border border-[color:var(--border)] bg-[color:var(--bg-0)] px-2 py-1 text-xs text-[color:var(--text-1)]"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+                Query
+              </span>
+              <textarea
+                aria-label="Query"
+                value={row.query}
+                onChange={(e) => updateRow(index, { query: e.target.value })}
+                rows={2}
+                className="w-full rounded border border-[color:var(--border)] bg-[color:var(--bg-0)] px-2 py-1 text-xs text-[color:var(--text-1)] font-mono-tabular"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+                Interval
+              </span>
+              <input
+                aria-label="Interval"
+                type="number"
+                min={0}
+                value={row.interval}
+                onChange={(e) => updateRow(index, { interval: Number(e.target.value) })}
+                className="w-full rounded border border-[color:var(--border)] bg-[color:var(--bg-0)] px-2 py-1 text-xs text-[color:var(--text-1)]"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+                Platform
+              </span>
+              <input
+                aria-label="Platform"
+                value={row.platform}
+                onChange={(e) => updateRow(index, { platform: e.target.value })}
+                className="w-full rounded border border-[color:var(--border)] bg-[color:var(--bg-0)] px-2 py-1 text-xs text-[color:var(--text-1)]"
+              />
+            </label>
+            <label className="flex items-center gap-2 pt-5 text-xs text-[color:var(--text-2)]">
+              <input
+                aria-label="Snapshot"
+                type="checkbox"
+                checked={row.snapshot}
+                onChange={(e) => updateRow(index, { snapshot: e.target.checked })}
+                className="accent-[color:var(--signal)]"
+              />
+              Snapshot
+            </label>
+            <button
+              type="button"
+              onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
+              className="mt-5 text-[10px] px-2 py-1 rounded text-[color:var(--danger)] hover:bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)]"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function parsePostureSchedule(schedule: string, profiles: PostureProfile[]): {
+  entries: PostureScheduleEntry[];
+  error: string | null;
+} {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(schedule || '{}');
+  } catch {
+    return { entries: [], error: 'Schedule must be a JSON object.' };
+  }
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+    return { entries: [], error: 'Schedule must be a JSON object.' };
+  }
+  const entries = Object.entries(parsed as Record<string, unknown>)
+    .filter(([name]) => name.startsWith(POSTURE_QUERY_PREFIX))
+    .map(([queryName, raw]) => {
+      const value = raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>)
+        : {};
+      return {
+        profileID: typeof value.profile_id === 'string'
+          ? value.profile_id
+          : inferProfileID(queryName, value, profiles),
+        queryName,
+        query: typeof value.query === 'string' ? value.query : '',
+        interval: typeof value.interval === 'number' ? value.interval : Number(value.interval ?? 86400),
+        platform: typeof value.platform === 'string' ? value.platform : '',
+        snapshot: typeof value.snapshot === 'boolean' ? value.snapshot : true,
+      };
+    });
+  return { entries, error: null };
+}
+
+function inferProfileID(queryName: string, row: Record<string, unknown>, profiles: PostureProfile[]): string {
+  const query = typeof row.query === 'string' ? row.query : '';
+  for (const profile of profiles) {
+    for (const [category, profileQuery] of Object.entries(profile.queries)) {
+      const profileQueryName = profileQuery.query_name || POSTURE_QUERY_PREFIX + category;
+      if (profileQueryName === queryName && (!query || profileQuery.query === query)) {
+        return profile.id;
+      }
+    }
+  }
+  for (const profile of profiles) {
+    for (const [category, profileQuery] of Object.entries(profile.queries)) {
+      const profileQueryName = profileQuery.query_name || POSTURE_QUERY_PREFIX + category;
+      if (profileQueryName === queryName) {
+        return profile.id;
+      }
+    }
+  }
+  return '';
+}
+
+function buildScheduleWithPosture(schedule: string, rows: PostureScheduleEntry[]): string {
+  const parsed = JSON.parse(schedule || '{}') as Record<string, unknown>;
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+    throw new Error('Schedule must be a JSON object.');
+  }
+  for (const key of Object.keys(parsed)) {
+    if (key.startsWith(POSTURE_QUERY_PREFIX)) {
+      delete parsed[key];
+    }
+  }
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const queryName = row.queryName.trim();
+    if (!queryName) throw new Error('Query name is required.');
+    if (!queryName.startsWith(POSTURE_QUERY_PREFIX)) {
+      throw new Error(`Query name must start with ${POSTURE_QUERY_PREFIX}.`);
+    }
+    if (seen.has(queryName)) throw new Error(`Duplicate posture query ${queryName}.`);
+    seen.add(queryName);
+    if (!row.query.trim()) throw new Error(`Query is required for ${queryName}.`);
+    if (!Number.isFinite(row.interval) || row.interval < 0) {
+      throw new Error(`Interval must be zero or greater for ${queryName}.`);
+    }
+    parsed[queryName] = {
+      query: row.query.trim(),
+      interval: row.interval,
+      ...(row.platform.trim() ? { platform: row.platform.trim() } : {}),
+      snapshot: row.snapshot,
+      ...(row.profileID.trim() ? { profile_id: row.profileID.trim() } : {}),
+    };
+  }
+  return JSON.stringify(parsed, null, 2);
 }
 
 // ---------------------------------------------------------------------------

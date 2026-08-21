@@ -19,10 +19,11 @@ type PostureProfile struct {
 
 // ProfileQuery is a single scheduled query within a posture profile.
 type ProfileQuery struct {
-	Query    string `json:"query"`
-	Interval int    `json:"interval"`
-	Platform string `json:"platform,omitempty"`
-	Snapshot bool   `json:"snapshot"`
+	QueryName string `json:"query_name,omitempty"`
+	Query     string `json:"query"`
+	Interval  int    `json:"interval"`
+	Platform  string `json:"platform,omitempty"`
+	Snapshot  bool   `json:"snapshot"`
 }
 
 const uptimeProfileQuery = "SELECT days, hours, minutes, seconds, total_seconds FROM uptime"
@@ -40,6 +41,10 @@ func uptimeCheck() ProfileQuery {
 func (p PostureProfile) ToScheduleEntries() (map[string]map[string]interface{}, error) {
 	out := make(map[string]map[string]interface{}, len(p.Queries))
 	for name, q := range p.Queries {
+		queryName := q.QueryName
+		if queryName == "" {
+			queryName = QueryPrefix + name
+		}
 		entry := map[string]interface{}{
 			"query":    q.Query,
 			"interval": q.Interval,
@@ -48,7 +53,7 @@ func (p PostureProfile) ToScheduleEntries() (map[string]map[string]interface{}, 
 		if q.Platform != "" {
 			entry["platform"] = q.Platform
 		}
-		out[QueryPrefix+name] = entry
+		out[queryName] = entry
 	}
 	return out, nil
 }
@@ -68,6 +73,12 @@ func (p PostureProfile) ToScheduleJSON() (string, error) {
 
 // AllProfiles returns every predefined posture profile, sorted by name.
 func AllProfiles() []PostureProfile {
+	profiles := builtinProfiles()
+	sort.Slice(profiles, func(i, j int) bool { return profiles[i].Name < profiles[j].Name })
+	return profiles
+}
+
+func builtinProfiles() []PostureProfile {
 	profiles := []PostureProfile{
 		WindowsServerProfile(),
 		LinuxServerProfile(),
@@ -75,7 +86,6 @@ func AllProfiles() []PostureProfile {
 		WindowsLaptopProfile(),
 		LinuxLaptopProfile(),
 	}
-	sort.Slice(profiles, func(i, j int) bool { return profiles[i].Name < profiles[j].Name })
 	return profiles
 }
 

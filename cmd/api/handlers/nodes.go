@@ -697,7 +697,16 @@ func (h *HandlersApi) PostureProfilesHandler(w http.ResponseWriter, r *http.Requ
 		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
 		return
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, posture.AllProfiles())
+	if h.Posture == nil {
+		apiErrorResponse(w, "posture not configured", http.StatusServiceUnavailable, nil)
+		return
+	}
+	profiles, err := h.Posture.AllProfiles()
+	if err != nil {
+		apiErrorResponse(w, "error getting posture profiles", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, profiles)
 }
 
 // PostureProfileHandler — GET /api/v1/posture/profiles/{id}
@@ -723,8 +732,12 @@ func (h *HandlersApi) PostureProfileHandler(w http.ResponseWriter, r *http.Reque
 		apiErrorResponse(w, "profile id required", http.StatusBadRequest, nil)
 		return
 	}
-	profile := posture.GetProfile(profileID)
-	if profile == nil {
+	if h.Posture == nil {
+		apiErrorResponse(w, "posture not configured", http.StatusServiceUnavailable, nil)
+		return
+	}
+	profile, err := h.Posture.GetProfile(profileID)
+	if err != nil {
 		apiErrorResponse(w, "profile not found", http.StatusNotFound, nil)
 		return
 	}
@@ -854,7 +867,10 @@ func (h *HandlersApi) NodePostureScoreHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error getting posture", http.StatusInternalServerError, err)
 		return
 	}
-	calculator := posture.NewScoreCalculator()
-	score := calculator.Score(records)
+	score, err := h.Posture.Score(records)
+	if err != nil {
+		apiErrorResponse(w, "error scoring posture", http.StatusInternalServerError, err)
+		return
+	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, score)
 }
