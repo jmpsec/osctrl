@@ -813,7 +813,11 @@ func postureProfileScheduleQueries(profileID, prefix string, intervalOverride in
 		if intervalOverride > 0 {
 			interval = intervalOverride
 		}
-		schedule[prefix+name] = environments.ScheduleQuery{
+		queryName := query.QueryName
+		if queryName == "" {
+			queryName = prefix + name
+		}
+		schedule[queryName] = environments.ScheduleQuery{
 			Query:    query.Query,
 			Interval: json.Number(strconv.Itoa(interval)),
 			Platform: query.Platform,

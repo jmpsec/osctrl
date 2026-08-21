@@ -89,6 +89,12 @@ func NewPostureManager(db *gorm.DB) *PostureManager {
 	if err := migrateNodePosture(db); err != nil {
 		log.Fatal().Err(err).Msg("Failed to AutoMigrate table (node_posture)")
 	}
+	if err := migratePostureChecks(db); err != nil {
+		log.Fatal().Err(err).Msg("Failed to AutoMigrate table (posture_checks)")
+	}
+	if err := pm.SeedDefaultChecks(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to seed posture checks")
+	}
 	return pm
 }
 
@@ -451,7 +457,17 @@ func (pm *PostureManager) GetSummaryByNode(nodeUUID string) (*types.NodePostureS
 	if err != nil {
 		return nil, err
 	}
-	return SummaryFromRecords(records), nil
+	if len(records) == 0 {
+		return nil, nil
+	}
+	score, err := pm.Score(records)
+	if err != nil {
+		return nil, err
+	}
+	if score.RiskLevel == "" {
+		return nil, nil
+	}
+	return &types.NodePostureSummary{RiskLevel: score.RiskLevel}, nil
 }
 
 func (pm *PostureManager) GetSummaryByNodes(nodeUUIDs []string) (map[string]*types.NodePostureSummary, error) {
@@ -483,9 +499,15 @@ func (pm *PostureManager) GetSummaryByNodes(nodeUUIDs []string) (map[string]*typ
 	for _, record := range records {
 		grouped[record.NodeUUID] = append(grouped[record.NodeUUID], record)
 	}
+	checks, err := pm.enabledChecks()
+	if err != nil {
+		return nil, err
+	}
+	calculator := NewScoreCalculatorWithChecks(checks)
 	for nodeUUID, nodeRecords := range grouped {
-		if summary := SummaryFromRecords(nodeRecords); summary != nil {
-			out[nodeUUID] = summary
+		score := calculator.Score(nodeRecords)
+		if score.RiskLevel != "" {
+			out[nodeUUID] = &types.NodePostureSummary{RiskLevel: score.RiskLevel}
 		}
 	}
 	return out, nil

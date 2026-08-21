@@ -107,7 +107,7 @@ const (
 	// API service config path
 	apiServiceConfigPath = "/service-config"
 	// API log sinks path
-	apiLogSinksPath = "/log-sinks"
+	apiLogSinksPath      = "/log-sinks"
 	apiAuthProvidersPath = "/auth-providers"
 	// API features path
 	apiFeaturesPath = "/features"

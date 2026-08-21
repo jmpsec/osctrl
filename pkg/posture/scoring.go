@@ -117,6 +117,7 @@ type ScoreCalculator struct {
 
 // ScoringRule defines how to evaluate one control from posture data.
 type ScoringRule struct {
+	RuleKey string `json:"rule_key"`
 	// Categories lists every posture category that can provide evidence
 	// for this control. The rule is evaluated when at least one of them
 	// has been collected; mutually exclusive sources (deb vs rpm) belong
@@ -127,6 +128,7 @@ type ScoringRule struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Severity    Severity  `json:"severity"`
+	Weight      int       `json:"weight"`
 	// Evaluate receives the collected categories (only those present for
 	// the node) with their parsed rows and returns (status, detail).
 	// status is "pass", "warn", or "fail".
@@ -136,6 +138,57 @@ type ScoringRule struct {
 // NewScoreCalculator returns a calculator with all built-in rules.
 func NewScoreCalculator() *ScoreCalculator {
 	return &ScoreCalculator{rules: defaultRules()}
+}
+
+// NewScoreCalculatorWithChecks returns a calculator configured from enabled
+// DB checks. Checks without a built-in ScoringRule still collect posture data
+// but do not contribute to risk score.
+func NewScoreCalculatorWithChecks(checks []PostureCheck) *ScoreCalculator {
+	groups := map[string][]PostureCheck{}
+	for _, check := range checks {
+		if !check.Enabled || check.ScoringRule == "" {
+			continue
+		}
+		groups[check.ScoringRule] = append(groups[check.ScoringRule], check)
+	}
+	var rules []ScoringRule
+	for _, base := range defaultRules() {
+		checks := groups[base.RuleKey]
+		if len(checks) == 0 {
+			continue
+		}
+		sort.Slice(checks, func(i, j int) bool {
+			if checks[i].Category == checks[j].Category {
+				return checks[i].ProfileID < checks[j].ProfileID
+			}
+			return checks[i].Category < checks[j].Category
+		})
+		rule := base
+		rule.Categories = uniqueCheckCategories(checks)
+		first := checks[0]
+		if first.ControlID != "" {
+			rule.ControlID = first.ControlID
+		}
+		if first.Framework != "" {
+			rule.Framework = first.Framework
+		}
+		if first.Severity != "" {
+			rule.Severity = first.Severity
+		}
+		if first.Weight > 0 {
+			rule.Weight = first.Weight
+		}
+		if len(rule.Categories) == 1 {
+			if first.Name != "" {
+				rule.Title = first.Name
+			}
+			if first.Description != "" {
+				rule.Description = first.Description
+			}
+		}
+		rules = append(rules, rule)
+	}
+	return &ScoreCalculator{rules: rules}
 }
 
 // Score evaluates all posture records and returns the aggregate score.
@@ -193,7 +246,7 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 		}
 
 		status, detail := rule.Evaluate(data)
-		weight := SeverityWeight[rule.Severity]
+		weight := ruleWeight(rule)
 
 		result := ControlResult{
 			Category:    resultCategory,
@@ -228,6 +281,13 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 	}
 	score.RiskLevel = riskLevel(score.TotalScore, score.Controls)
 	return score
+}
+
+func ruleWeight(rule ScoringRule) int {
+	if rule.Weight > 0 {
+		return rule.Weight
+	}
+	return SeverityWeight[rule.Severity]
 }
 
 // riskLevel derives the risk level from the normalized score, escalated by
@@ -265,6 +325,7 @@ func defaultRules() []ScoringRule {
 		// macOS: "encrypted" flag) or BitLocker rows ("protection_status"),
 		// which Windows profiles store under the disk_encryption category.
 		{
+			RuleKey:    "disk_encryption",
 			Categories: []string{"disk_encryption", "bitlocker_info"},
 			ControlID:  "A.8.24", Framework: FrameworkISO27001,
 			Title:       "Disk encryption at rest",
@@ -314,6 +375,7 @@ func defaultRules() []ScoringRule {
 		// macOS), so an empty inapplicable source is not a finding: the
 		// control passes when any source has data.
 		{
+			RuleKey:    "software_inventory",
 			Categories: []string{"packages_deb", "packages_rpm", "packages_windows", "packages_apps", "packages_brew"},
 			ControlID:  "A.5.9", Framework: FrameworkISO27001,
 			Title:       "Software inventory",
@@ -346,6 +408,7 @@ func defaultRules() []ScoringRule {
 
 		// --- Users with real shells (A.8.2 / CC6.1) ---
 		{
+			RuleKey:    "users",
 			Categories: []string{"users"},
 			ControlID:  "A.8.2", Framework: FrameworkISO27001,
 			Title:       "Interactive user accounts",
@@ -375,6 +438,7 @@ func defaultRules() []ScoringRule {
 
 		// --- SSH authorized keys (A.5.17 / CC6.1) ---
 		{
+			RuleKey:    "ssh_keys",
 			Categories: []string{"ssh_keys"},
 			ControlID:  "A.5.17", Framework: FrameworkISO27001,
 			Title:       "SSH authorized keys",
@@ -405,6 +469,7 @@ func defaultRules() []ScoringRule {
 		// (RDP, SMB, SNMP, VNC) are a warning to review exposure, not a
 		// failure: RDP/SMB listen on effectively every Windows server.
 		{
+			RuleKey:    "listening_ports",
 			Categories: []string{"listening_ports"},
 			ControlID:  "A.8.20", Framework: FrameworkISO27001,
 			Title:       "Open listening ports",
@@ -451,6 +516,7 @@ func defaultRules() []ScoringRule {
 
 		// --- Patches / hotfixes (A.8.8 / CC7.1) ---
 		{
+			RuleKey:    "patches",
 			Categories: []string{"patches"},
 			ControlID:  "A.8.8", Framework: FrameworkISO27001,
 			Title:       "Security patches installed",
@@ -467,6 +533,7 @@ func defaultRules() []ScoringRule {
 
 		// --- SUID binaries (A.8.9 / CC7.4) ---
 		{
+			RuleKey:    "suid_binaries",
 			Categories: []string{"suid_binaries"},
 			ControlID:  "A.8.9", Framework: FrameworkISO27001,
 			Title:       "SUID binaries",
@@ -500,6 +567,7 @@ func defaultRules() []ScoringRule {
 
 		// --- Startup items (A.8.9 / CC8.1) ---
 		{
+			RuleKey:    "startup_items",
 			Categories: []string{"startup_items"},
 			ControlID:  "A.8.9", Framework: FrameworkISO27001,
 			Title:       "Startup items / autostart",
@@ -519,6 +587,7 @@ func defaultRules() []ScoringRule {
 
 		// --- Browser extensions (A.8.19 / CC6.6) ---
 		{
+			RuleKey:    "browser_extensions_chrome",
 			Categories: []string{"browser_extensions_chrome"},
 			ControlID:  "A.8.19", Framework: FrameworkISO27001,
 			Title:       "Chrome browser extensions",
@@ -536,6 +605,7 @@ func defaultRules() []ScoringRule {
 			},
 		},
 		{
+			RuleKey:    "browser_extensions_firefox",
 			Categories: []string{"browser_extensions_firefox"},
 			ControlID:  "A.8.19", Framework: FrameworkISO27001,
 			Title:       "Firefox browser add-ons",
@@ -555,6 +625,7 @@ func defaultRules() []ScoringRule {
 
 		// --- WiFi networks (A.8.21 / CC6.1) ---
 		{
+			RuleKey:    "wifi_networks",
 			Categories: []string{"wifi_networks"},
 			ControlID:  "A.8.21", Framework: FrameworkISO27001,
 			Title:       "Known WiFi networks",
@@ -581,6 +652,7 @@ func defaultRules() []ScoringRule {
 
 		// --- macOS sharing preferences (A.8.9 / CC6.1) ---
 		{
+			RuleKey:    "file_sharing",
 			Categories: []string{"file_sharing"},
 			ControlID:  "A.8.9", Framework: FrameworkISO27001,
 			Title:       "macOS sharing services",
@@ -607,6 +679,7 @@ func defaultRules() []ScoringRule {
 
 		// --- Kernel modules (A.8.9 / CC7.4) — Linux servers ---
 		{
+			RuleKey:    "kernel_modules",
 			Categories: []string{"kernel_modules"},
 			ControlID:  "A.8.9", Framework: FrameworkISO27001,
 			Title:       "Loaded kernel modules",
@@ -651,6 +724,22 @@ func dedupe(values []string) []string {
 		}
 		seen[v] = struct{}{}
 		out = append(out, v)
+	}
+	return out
+}
+
+func uniqueCheckCategories(checks []PostureCheck) []string {
+	seen := make(map[string]struct{}, len(checks))
+	out := make([]string, 0, len(checks))
+	for _, check := range checks {
+		if check.Category == "" {
+			continue
+		}
+		if _, ok := seen[check.Category]; ok {
+			continue
+		}
+		seen[check.Category] = struct{}{}
+		out = append(out, check.Category)
 	}
 	return out
 }

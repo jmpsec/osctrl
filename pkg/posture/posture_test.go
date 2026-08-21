@@ -235,6 +235,93 @@ func TestGetUptimeByNodesNormalizesUUIDs(t *testing.T) {
 	}
 }
 
+func TestPostureManagerSeedsDefaultChecksWithoutOverwritingAdminEdits(t *testing.T) {
+	pm := newTestManager(t)
+
+	checks, err := pm.ListChecks()
+	if err != nil {
+		t.Fatalf("list checks: %v", err)
+	}
+	if len(checks) == 0 {
+		t.Fatal("expected default posture checks to be seeded")
+	}
+
+	first := checks[0]
+	if err := pm.DB.Model(&PostureCheck{}).Where("id = ?", first.ID).Updates(map[string]interface{}{
+		"name":    "Admin edited",
+		"enabled": false,
+		"weight":  99,
+	}).Error; err != nil {
+		t.Fatalf("edit check: %v", err)
+	}
+	if err := pm.SeedDefaultChecks(); err != nil {
+		t.Fatalf("reseed checks: %v", err)
+	}
+
+	var edited PostureCheck
+	if err := pm.DB.First(&edited, first.ID).Error; err != nil {
+		t.Fatalf("load edited check: %v", err)
+	}
+	if edited.Name != "Admin edited" || edited.Enabled || edited.Weight != 99 {
+		t.Fatalf("seed overwrote admin edit: %+v", edited)
+	}
+}
+
+func TestPostureManagerBuildsProfilesFromEnabledDatabaseChecks(t *testing.T) {
+	pm := newTestManager(t)
+
+	if err := pm.DB.Model(&PostureCheck{}).
+		Where("profile_id = ? AND category = ?", "linux-server", "users").
+		Update("enabled", false).Error; err != nil {
+		t.Fatalf("disable check: %v", err)
+	}
+	profile, err := pm.GetProfile("linux-server")
+	if err != nil {
+		t.Fatalf("get profile: %v", err)
+	}
+	if _, ok := profile.Queries["users"]; ok {
+		t.Fatalf("disabled check still appears in profile: %+v", profile.Queries)
+	}
+	if _, ok := profile.Queries["packages_deb"]; !ok {
+		t.Fatalf("enabled check missing from profile: %+v", profile.Queries)
+	}
+}
+
+func TestPostureManagerScoresWithEnabledDatabaseCheckWeights(t *testing.T) {
+	pm := newTestManager(t)
+	if err := pm.DB.Model(&PostureCheck{}).Where("scoring_rule = ?", "listening_ports").Updates(map[string]interface{}{
+		"weight": 80,
+	}).Error; err != nil {
+		t.Fatalf("edit scoring check: %v", err)
+	}
+	if err := pm.DB.Model(&PostureCheck{}).Where("scoring_rule = ?", "software_inventory").Update("weight", 20).Error; err != nil {
+		t.Fatalf("edit inventory scoring check: %v", err)
+	}
+	if err := pm.DB.Model(&PostureCheck{}).Where("scoring_rule = ?", "disk_encryption").Update("enabled", false).Error; err != nil {
+		t.Fatalf("disable disk scoring check: %v", err)
+	}
+
+	score, err := pm.Score([]NodePosture{
+		postureRecord(t, "listening_ports", []map[string]interface{}{{"port": "3389"}}),
+		postureRecord(t, "packages_deb", debRows(3)),
+		postureRecord(t, "disk_encryption", []map[string]interface{}{{"name": "/dev/sda1", "encrypted": "0"}}),
+	})
+	if err != nil {
+		t.Fatalf("score: %v", err)
+	}
+	if score.TotalScore != 20 {
+		t.Fatalf("expected configured listening port weight in normalized score, got %d", score.TotalScore)
+	}
+	if score.RiskLevel != "medium" {
+		t.Fatalf("disabled critical disk rule should not escalate risk, got %s", score.RiskLevel)
+	}
+	for _, ctrl := range score.Controls {
+		if ctrl.Title == "Disk encryption at rest" {
+			t.Fatalf("disabled disk rule was evaluated: %+v", score.Controls)
+		}
+	}
+}
+
 type legacyNodePosture struct {
 	ID          uint `gorm:"primarykey"`
 	CreatedAt   time.Time

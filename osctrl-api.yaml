@@ -238,6 +238,53 @@ paths:
       summary: List audit logs
       tags:
         - audit
+  /api/v1/auth-providers/fetch-metadata:
+    post:
+      description: Fetches the SAML IdP metadata document from the given URL and
+        returns the XML.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        description: "{ \\"
+        required: true
+      responses:
+        "200":
+          description: '{ \"xml\": \"<EntityDescriptor ...>\" }'
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "502":
+          description: Fetch failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Fetch IdP metadata XML
+      tags:
+        - auth-providers
   /api/v1/auth/oidc/callback:
     get:
       description: Handles the OIDC authorization callback and creates an API session.
@@ -8972,6 +9019,8 @@ components:
         platform:
           type: string
         query:
+          type: string
+        query_name:
           type: string
         snapshot:
           type: boolean
