@@ -464,6 +464,98 @@ describe('NodeDetailPage', () => {
     expect(screen.getByRole('button', { name: /firewall/i })).toBeInTheDocument();
   });
 
+  it('recomputes the risk score live when a control is unchecked', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: true, service_config: false, accelerated: false, file_explorer: false });
+    mockGetNodePosture.mockResolvedValue([
+      {
+        id: 11,
+        created_at: '2026-07-16T09:00:00Z',
+        updated_at: '2026-07-16T09:05:00Z',
+        node_uuid: 'abc12345-0000-0000-0000-000000000001',
+        environment: 'test-env',
+        category: 'disk_encryption',
+        query_name: 'osctrl:posture:disk_encryption',
+        row_count: 1,
+        summary: JSON.stringify([{ encrypted: '0' }]),
+        first_seen: '2026-07-16T09:00:00Z',
+        last_seen: '2026-07-16T09:05:00Z',
+      },
+    ]);
+    // earned = 30 (fail) + 0 (pass) = 30, possible = 30 + 5 = 35 -> 86.
+    // total_score/risk_level here match what the server's own aggregation
+    // would produce for these two controls, since the SPA always recomputes
+    // from each control's score/max_score rather than trusting this field
+    // verbatim — see recomputePostureScore.
+    mockGetNodePostureScore.mockResolvedValue({
+      node_uuid: 'abc12345-0000-0000-0000-000000000001',
+      timestamp: '2026-07-16T09:05:00Z',
+      total_score: 86,
+      risk_level: 'critical',
+      controls: [
+        {
+          category: 'disk_encryption',
+          control_id: 'A.8.24',
+          framework: 'ISO27001',
+          title: 'Disk encryption at rest',
+          description: '',
+          status: 'fail',
+          severity: 'critical',
+          score: 30,
+          max_score: 30,
+          detail: 'Disk is not encrypted',
+        },
+        {
+          category: 'patches',
+          control_id: 'A.8.9',
+          framework: 'ISO27001',
+          title: 'Patch management',
+          description: '',
+          status: 'pass',
+          severity: 'low',
+          score: 0,
+          max_score: 5,
+          detail: 'Up to date',
+        },
+      ],
+      pass_count: 1,
+      warn_count: 0,
+      fail_count: 1,
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('tab', { name: 'Posture' }));
+
+    // Starts identical to the server score: both checks counted.
+    await waitFor(() => {
+      expect(screen.getByText('86')).toBeInTheDocument();
+    });
+    expect(screen.getByText('critical', { selector: 'span' })).toBeInTheDocument();
+
+    // Uncheck the failing critical control — only the passing low-severity
+    // one remains, so the score drops to 0 and the level to low. No new
+    // network request: this is a pure client-side recompute.
+    await user.click(screen.getByRole('checkbox', { name: /disk encryption at rest/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('0')).toBeInTheDocument();
+    });
+    expect(screen.getByText('low', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getByText('1/2 checks counted')).toBeInTheDocument();
+    expect(mockGetNodePostureScore).toHaveBeenCalledTimes(1);
+
+    // Re-checking it restores the original score.
+    await user.click(screen.getByRole('checkbox', { name: /disk encryption at rest/i }));
+    await waitFor(() => {
+      expect(screen.getByText('86')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('1/2 checks counted')).not.toBeInTheDocument();
+  });
+
   it('hides posture tab while the posture feature is disabled', async () => {
     renderWithProviders(makeTestRouter());
 

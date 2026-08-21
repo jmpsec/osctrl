@@ -37,6 +37,7 @@ import { SearchInput } from '$/components/data/SearchInput';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { HealthBadge, TagChips } from './nodeSignals';
 import { NodeFileExplorerTab } from './NodeFileExplorerTab';
+import { recomputePostureScore, controlKey } from './postureScore';
 
 // NodeHeatmapBucket is the merged per-node activity grid the heatmap renders.
 // status/result/query come from the DB-backed logging buckets (full history,
@@ -2098,6 +2099,10 @@ function PostureTab({ env, uuid }: { env: string; uuid: string }) {
     staleTime: 30_000,
     retry: 1,
   });
+  // Controls the operator has unchecked out of the risk calculation. Empty
+  // by default so the displayed score starts identical to the server's.
+  const [excludedControls, setExcludedControls] = useState<Set<string>>(() => new Set());
+  useEffect(() => setExcludedControls(new Set()), [uuid]);
 
   if (isLoading) {
     return (
@@ -2139,7 +2144,20 @@ function PostureTab({ env, uuid }: { env: string; uuid: string }) {
 
   return (
     <div className="overflow-auto p-4 space-y-3">
-      {scoreData && <PostureScorePanel score={scoreData} />}
+      {scoreData && (
+        <PostureScorePanel
+          score={scoreData}
+          excludedControls={excludedControls}
+          onToggleControl={(key) =>
+            setExcludedControls((prev) => {
+              const next = new Set(prev);
+              if (next.has(key)) next.delete(key);
+              else next.add(key);
+              return next;
+            })
+          }
+        />
+      )}
       {data.map((item) => (
         <PostureCard key={item.category} item={item} />
       ))}
@@ -2150,15 +2168,34 @@ function PostureTab({ env, uuid }: { env: string; uuid: string }) {
 // ---------------------------------------------------------------------------
 // PostureScorePanel — risk score gauge + control summary
 // ---------------------------------------------------------------------------
-function PostureScorePanel({ score }: { score: PostureScore }) {
-  const controls = score.controls ?? [];
+function PostureScorePanel({
+  score,
+  excludedControls,
+  onToggleControl,
+}: {
+  score: PostureScore;
+  excludedControls: Set<string>;
+  onToggleControl: (key: string) => void;
+}) {
+  const controls = useMemo(() => score.controls ?? [], [score.controls]);
+  // The gauge, badge and counts always reflect only the checked controls —
+  // recomputed client-side from the server's own per-control score/max_score,
+  // never re-derived from raw posture rows. With nothing unchecked this is
+  // byte-for-byte the server's PostureScore.
+  const included = useMemo(
+    () => new Set(controls.map(controlKey).filter((key) => !excludedControls.has(key))),
+    [controls, excludedControls],
+  );
+  const displayed = useMemo(() => recomputePostureScore(score, included), [score, included]);
+
   const riskColors: Record<string, string> = {
     low: 'var(--success)',
     medium: 'var(--warning)',
     high: 'var(--danger)',
     critical: 'var(--danger)',
   };
-  const riskColor = riskColors[score.risk_level] ?? 'var(--text-3)';
+  const riskColor = riskColors[displayed.risk_level] ?? 'var(--text-3)';
+  const allExcluded = controls.length > 0 && included.size === 0;
 
   return (
     <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
@@ -2171,7 +2208,7 @@ function PostureScorePanel({ score }: { score: PostureScore }) {
             <circle
               cx="32" cy="32" r="28" fill="none"
               stroke={riskColor} strokeWidth="6"
-              strokeDasharray={`${(score.total_score / 100) * 176} 176`}
+              strokeDasharray={`${(displayed.total_score / 100) * 176} 176`}
               strokeLinecap="round"
               transform="rotate(-90 32 32)"
             />
@@ -2180,7 +2217,7 @@ function PostureScorePanel({ score }: { score: PostureScore }) {
             className="absolute inset-0 flex items-center justify-center text-lg font-bold font-mono-tabular"
             style={{ color: riskColor }}
           >
-            {score.total_score}
+            {displayed.total_score}
           </span>
         </div>
         {/* Summary */}
@@ -2193,24 +2230,49 @@ function PostureScorePanel({ score }: { score: PostureScore }) {
               className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular font-semibold uppercase tracking-[0.08em] border"
               style={{ color: riskColor, borderColor: riskColor, background: `color-mix(in oklab, ${riskColor} 10%, transparent)` }}
             >
-              {score.risk_level}
+              {displayed.risk_level}
             </span>
+            {excludedControls.size > 0 && (
+              <span className="text-[10px] text-[color:var(--text-3)]" title="Unchecked controls below are excluded from this score">
+                {included.size}/{controls.length} checks counted
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-1 text-[11px] font-mono-tabular">
-            <span className="text-[color:var(--success)]">{score.pass_count} pass</span>
-            <span className="text-[color:var(--warning)]">{score.warn_count} warn</span>
-            <span className="text-[color:var(--danger)]">{score.fail_count} fail</span>
+            <span className="text-[color:var(--success)]">{displayed.pass_count} pass</span>
+            <span className="text-[color:var(--warning)]">{displayed.warn_count} warn</span>
+            <span className="text-[color:var(--danger)]">{displayed.fail_count} fail</span>
           </div>
+          {allExcluded && (
+            <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+              Every check is unchecked — check at least one to see a score.
+            </p>
+          )}
         </div>
       </div>
       {/* Control results */}
       <div className="divide-y divide-[color:var(--border)]">
         {controls.map((ctrl) => {
+          const key = controlKey(ctrl);
+          const checked = !excludedControls.has(key);
           const statusColor = ctrl.status === 'pass' ? 'var(--success)' : ctrl.status === 'warn' ? 'var(--warning)' : 'var(--danger)';
           return (
-            <div key={ctrl.control_id + ctrl.category} className="px-4 py-2 flex items-start gap-3">
+            <label
+              key={key}
+              className={cn(
+                'px-4 py-2 flex items-start gap-3 cursor-pointer hover:bg-[color:var(--bg-2)] transition-colors',
+                !checked && 'opacity-50',
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggleControl(key)}
+                className="mt-0.5 flex-shrink-0 accent-[color:var(--signal)]"
+                aria-label={`Include ${ctrl.title} in risk score`}
+              />
               <span
-                className="flex-shrink-0 mt-0.5 inline-block w-2 h-2 rounded-full"
+                className="flex-shrink-0 mt-1.5 inline-block w-2 h-2 rounded-full"
                 style={{ background: statusColor }}
               />
               <div className="flex-1 min-w-0">
@@ -2226,7 +2288,7 @@ function PostureScorePanel({ score }: { score: PostureScore }) {
                   +{ctrl.score}
                 </span>
               )}
-            </div>
+            </label>
           );
         })}
       </div>
