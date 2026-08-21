@@ -65,18 +65,21 @@ osctrl/
 │   ├── activity/                # Redis-backed node/environment activity tracking
 │   ├── auditlog/                # Audit log manager
 │   ├── auth/                    # Shared OIDC/SAML auth state and provider helpers
+│   ├── authproviders/           # Persisted federated auth provider configs (OIDC, SAML)
 │   ├── backend/                 # DB manager/bootstrap + health canary
 │   ├── cache/                   # Redis, typed JSON, and in-memory cache helpers
 │   ├── carves/                  # File carve logic/storage integrations
-│   ├── config/                  # Config structs/flags/validation
+│   ├── config/                  # Config structs/flags validation
 │   ├── console/                 # Node console sessions/commands/parser
 │   ├── dbutil/                  # Database query helpers
 │   ├── environments/            # Environment management, packages, and cache
 │   ├── fileexplorer/            # Accelerated per-node file explorer
 │   ├── filequery/               # File query helpers
 │   ├── geoip/                   # MaxMind GeoIP enrichment
-│   ├── handlers/                # Shared HTTP handlers
+│   ├── handlers/                # Shared HTTP handler helpers (query/carve targeting)
 │   ├── logging/                 # Log pipeline, readers, and logger backends
+│   ├── logsinks/                # Per-environment persisted log sink configs
+│   ├── mfa/                     # TOTP, WebAuthn, and recovery-code second factors
 │   ├── nodes/                   # Node state/registration/cache
 │   ├── osquery/                 # osquery schema/table metadata helpers
 │   ├── posture/                 # Optional posture ingestion, storage, and scoring
