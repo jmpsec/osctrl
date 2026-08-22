@@ -1,10 +1,8 @@
 package oidc
 
 import (
-	"regexp"
-	"strings"
-
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,23 +20,6 @@ type idTokenClaims struct {
 	GivenName         string `json:"given_name"`
 	FamilyName        string `json:"family_name"`
 }
-
-// usernameAllowed mirrors the character class enforced by
-// pkg/environments.EnvNameFilter — lowercase ASCII letters, digits,
-// dash, underscore. Rejects newlines, semicolons, quotes, slashes,
-// spaces, NULs, and any other shell/SQL/HTML metacharacter. Threat T23.
-//
-// We deliberately do NOT lowercase the IdP-supplied username before
-// matching: if the IdP returns "Alice" and the regex demands [a-z]
-// only, the validation rejects mixed-case rather than silently
-// canonicalizing. The CALLER (cmd/api/handlers/auth_callback.go)
-// decides whether to lowercase before reaching this check; the
-// package's job is to refuse anything that doesn't already fit the
-// safe shape.
-//
-// The 64-byte cap defeats audit-log poisoning via comically long
-// usernames (threat T26 adjacent).
-var usernameAllowed = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
 // pickUsername selects the OIDC claim to use as the AdminUser.Username
 // based on the provider's configured UsernameClaim. Always falls back
@@ -93,17 +74,17 @@ func pickUsername(c idTokenClaims, raw map[string]any, claim string) string {
 	return c.Subject
 }
 
-// sanitizeUsername enforces the safe character class. Returns the
-// username unchanged on success, empty string on rejection. Callers
-// must treat the empty return as a hard rejection — never use an
-// IdP-supplied value that fails this check, even for logging
+// sanitizeUsername enforces the safe username shape — either the plain
+// [a-zA-Z0-9_-] class or an email address, since IdPs commonly identify users
+// by mailbox. Returns the username to store on success, empty string on
+// rejection. Callers must treat the empty return as a hard rejection — never
+// use an IdP-supplied value that fails this check, even for logging
 // (audit-log poisoning, threat T26).
+//
+// The rules live in pkg/utils so OIDC, SAML and any future provisioning path
+// accept exactly the same shape.
 func sanitizeUsername(u string) string {
-	u = strings.TrimSpace(u)
-	if !usernameAllowed.MatchString(u) {
-		return ""
-	}
-	return u
+	return utils.SanitizeUsername(u)
 }
 
 // hasRequiredGroup returns true if the user's group memberships

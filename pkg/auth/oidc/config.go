@@ -105,28 +105,6 @@ type Config struct {
 	// requests. Recommended for any deployment; mandatory for public
 	// clients (those without a client secret).
 	UsePKCE bool
-
-	// LegacyPermissiveUsername disables the strict character-class
-	// validation on the resolved username, passing the IdP-supplied
-	// value (after TrimSpace) directly into ResolvedIdentity.
-	// PreferredUsername.
-	//
-	// New callers MUST leave this false — strict validation is the
-	// safe default and prevents audit-log poisoning (T26) and
-	// injection-shaped usernames (T23) from reaching downstream
-	// code.
-	//
-	// This flag exists ONLY to preserve backwards compatibility with
-	// legacy osctrl-admin deployments where operators may have
-	// pre-existing AdminUser rows whose usernames contain `.`, `@`,
-	// or spaces (typical when an IdP emits `preferred_username` as
-	// an email). Setting this true bypasses the regex but leaves
-	// every other verification step intact (signature, iss, aud,
-	// exp, nonce, groups).
-	//
-	// cmd/admin/oidc.go sets this true. cmd/api/handlers/oidc.go
-	// MUST leave it false.
-	LegacyPermissiveUsername bool
 }
 
 // Validate is called by NewOIDCProvider; callers may invoke it

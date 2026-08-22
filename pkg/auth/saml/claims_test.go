@@ -54,6 +54,10 @@ func TestSanitizeUsername_AcceptRejectMatrix(t *testing.T) {
 		"A",
 		"123",
 		strings.Repeat("a", 64),
+		// A SAML NameID is very often a mailbox, so email-shaped
+		// usernames are a first-class identity.
+		"alice@example.com",
+		"alice.tester+osctrl@sub.example.co.uk",
 	}
 	for _, u := range good {
 		if got := sanitizeUsername(u); got != u {
@@ -63,8 +67,12 @@ func TestSanitizeUsername_AcceptRejectMatrix(t *testing.T) {
 	bad := []string{
 		"",
 		strings.Repeat("a", 65),
-		"alice@example.com",
 		"alice b",
+		// Values that dress up as an email but smuggle a metacharacter.
+		"alice@example.com\nadmin",
+		"alice@example.com/../root",
+		"al..ice@example.com",
+		"alice@example",
 		"alice;DROP TABLE users",
 		"alice\nadmin",          // audit-log poisoning
 		"alice\x00root",         // NUL splicing

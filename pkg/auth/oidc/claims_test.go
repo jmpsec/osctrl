@@ -117,7 +117,8 @@ func TestPickUsernameCustomClaim(t *testing.T) {
 }
 
 // TestSanitizeUsername — threat T23, T26. The character class is
-// strict: only [a-zA-Z0-9_-], length 1..64.
+// Accepts either the plain [a-zA-Z0-9_-]{1,64} shape or an email address;
+// rejects anything carrying a metacharacter. Rules live in pkg/utils.
 func TestSanitizeUsername(t *testing.T) {
 	good := []string{
 		"alice",
@@ -127,6 +128,9 @@ func TestSanitizeUsername(t *testing.T) {
 		"A",
 		"123",
 		strings.Repeat("a", 64),
+		// IdPs commonly key on mailbox (Entra ID, Okta, Google Workspace).
+		"alice@example.com",
+		"alice.tester+osctrl@sub.example.co.uk",
 	}
 	for _, u := range good {
 		if got := sanitizeUsername(u); got != u {
@@ -135,10 +139,9 @@ func TestSanitizeUsername(t *testing.T) {
 	}
 
 	bad := []string{
-		"",                // empty
-		"   ",             // whitespace only
+		"",                          // empty
+		"   ",                       // whitespace only
 		strings.Repeat("a", 65),     // too long
-		"alice@example.com",         // dot, at
 		"alice b",                   // space
 		"alice;DROP TABLE users",    // semicolon
 		"alice'OR 1=1",              // quote
@@ -148,6 +151,10 @@ func TestSanitizeUsername(t *testing.T) {
 		"alice%20space",             // url-encoded — we reject pre-decoded too
 		"alice/bob",                 // slash
 		"alice..\\..\\root",         // path traversal
+		"alice@example.com\nadmin",  // newline behind a valid-looking email
+		"alice@example.com/../root", // traversal behind a valid-looking email
+		"al..ice@example.com",       // consecutive dots in the local part
+		"alice@example",             // no TLD
 	}
 	for _, u := range bad {
 		if got := sanitizeUsername(u); got != "" {

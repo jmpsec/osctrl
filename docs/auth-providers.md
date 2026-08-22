@@ -10,6 +10,7 @@ for each tested provider.
 - [Configuration modes](#configuration-modes)
 - [Environment variables reference](#environment-variables-reference)
 - [Username rules](#username-rules)
+- [Linking existing local accounts](#linking-existing-local-accounts)
 - [Multi-factor authentication](#multi-factor-authentication)
 - [OIDC](#oidc)
   - [Generic OIDC setup](#generic-oidc-setup)
@@ -67,6 +68,7 @@ and so on). A complete annotated example of both sections lives in
 | `OIDC_GROUPS_CLAIM` | no | id_token claim containing group memberships (default: `groups`) |
 | `OIDC_REQUIRED_GROUPS` | no | Comma-separated group names; login is denied unless the user belongs to at least one |
 | `OIDC_JIT_PROVISION` | no | Set `true` to auto-create osctrl users on first login (as non-admin) |
+| `OIDC_LINK_LOCAL_ACCOUNTS` | no | Set `true` to let an OIDC login claim an existing local password account with the same username (see [Linking existing local accounts](#linking-existing-local-accounts)) |
 | `OIDC_USE_PKCE` | no | Set `true` to enable PKCE (S256) for the authorization code flow |
 
 ### SAML
@@ -79,6 +81,7 @@ and so on). A complete annotated example of both sections lives in
 | `SAML_ACS_URL` | yes | Assertion Consumer Service URL — must end with `/api/v1/auth/saml/acs` |
 | `SAML_USERNAME_ATTRIBUTE` | no | SAML attribute name whose value becomes the osctrl username; empty = use NameID |
 | `SAML_JIT_PROVISION` | no | Set `true` to auto-create osctrl users on first login (as non-admin) |
+| `SAML_LINK_LOCAL_ACCOUNTS` | no | Set `true` to let a SAML login claim an existing local password account with the same username (see [Linking existing local accounts](#linking-existing-local-accounts)) |
 | `SAML_FORCE_AUTHN` | no | Force re-authentication at the IdP on every login (default: `true`) |
 | `SAML_SIGNING_CERT` | no | Path to PEM certificate for signing AuthnRequests |
 | `SAML_SIGNING_KEY` | no | Path to PEM RSA private key for signing AuthnRequests |
@@ -88,13 +91,43 @@ and so on). A complete annotated example of both sections lives in
 
 ## Username rules
 
-osctrl enforces a strict character set for usernames: `^[a-zA-Z0-9_-]{1,64}$`.
-Any value from the IdP that contains characters outside this set (dots,
-`@`, `|`, spaces) is rejected. This affects which claim/attribute you
-configure:
+A username may take either of two shapes:
+
+- **Plain handle** — `^[a-zA-Z0-9_-]{1,64}$`
+- **Email address** — `local@domain.tld`, up to 254 characters
+
+Email is accepted because most IdPs identify people by mailbox. Anything
+carrying a character that could survive a sanitization boundary and reach an
+audit log, an API path or a query — newlines, NULs, quotes, semicolons,
+slashes, spaces, angle brackets — is rejected in both shapes, as are values
+that merely look like an email (`al..ice@corp.com`, `alice@corp.com/../root`).
+
+Email usernames are stored **lowercased**. IdPs are not consistent about the
+casing they emit for the same mailbox, and without canonicalization
+`Jane@corp.com` and `jane@corp.com` would be two separate accounts on
+PostgreSQL but collide on MySQL's default collation. Plain handles keep their
+case, so existing mixed-case accounts continue to match on login.
 
 | IdP claim/attribute | Typical value | Passes? |
 |---------------------|---------------|---------|
+| `preferred_username` | `alice` | yes |
+| `nickname` | `alice` | yes |
+| `email` | `alice@example.com` | yes — stored as `alice@example.com` |
+| NameID (email format) | `Alice@Example.com` | yes — stored as `alice@example.com` |
+| `sub` (Auth0) | `auth0\|6a0a...` | **no** — contains `\|` |
+| `sub` (Keycloak) | `a1b2c3d4-...` | yes — a 36-char UUID fits the plain shape |
+
+**Using `email` as the username claim:** osctrl only accepts the `email` claim
+when the IdP also sets `email_verified` to true. An unverified address falls
+back to `sub`, so a user who has not proven control of a mailbox cannot claim
+an account belonging to whoever owns it.
+
+**Changing this setting on a live deployment** creates *new* accounts rather
+than renaming existing ones — the username is the identity. Moving from
+`nickname` to `email` means `alice` and `alice@example.com` are two different
+users with separate permissions. Migrate deliberately.
+
+---------------------|---------------|---------|
 | `preferred_username` | `alice` | yes |
 | `nickname` | `alice` | yes |
 | `email` | `alice@example.com` | **no** — contains `@` and `.` |
@@ -108,6 +141,47 @@ configure:
 alphanumeric identifier.
 
 ---
+
+## Linking existing local accounts
+
+A federated login whose username matches an existing **local password account**
+is refused by default:
+
+```
+username "jane@corp.com" is a local password account; set linkLocalAccounts on the oidc provider to let federated login claim it
+```
+
+This is deliberate. If a same-name match were enough, anyone who can make the
+IdP assert the username `admin` would inherit the local `admin` row and all its
+privileges. Accounts that were *already* created by federated login carry an
+auth source stamp and are matched unconditionally, including across protocols
+(a user provisioned via OIDC can sign in via SAML from the same IdP).
+
+To let the IdP adopt accounts you pre-created locally, opt in per provider:
+
+```yaml
+oidc:
+  linkLocalAccounts: true
+saml:
+  linkLocalAccounts: true
+```
+
+or `OIDC_LINK_LOCAL_ACCOUNTS=true` / `SAML_LINK_LOCAL_ACCOUNTS=true`.
+
+**What this delegates.** With it on, whoever controls the IdP's username
+namespace can claim any same-named local account, admin rows included. Enable it
+only when you trust the IdP to be authoritative over usernames — which is
+usually true for a corporate IdP you administer, and usually false for one that
+allows self-registration or spans domains you do not control.
+
+**What happens on the first such login.** The account is stamped with the
+protocol that claimed it, the event is written to the audit log and logged at
+WARN, and the stored password is left alone. Linking never grants privileges:
+a non-admin stays a non-admin, and environment permissions are unchanged.
+
+Because the row is stamped on first use, the flag is only needed for that
+initial login — you can turn it back off afterwards and already-linked accounts
+keep working.
 
 ## Multi-factor authentication
 

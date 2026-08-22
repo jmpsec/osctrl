@@ -34,9 +34,10 @@ var oidcProvider *authoidc.Provider
 // post_logout_redirect_uri). Not a secret — it's already in every
 // authorize URL the SPA renders.
 var (
-	oidcJITProvision bool
-	oidcUsePKCE      bool
-	oidcClientID     string
+	oidcJITProvision      bool
+	oidcLinkLocalAccounts bool
+	oidcUsePKCE           bool
+	oidcClientID          string
 )
 
 // InitOIDC constructs the global OIDC provider for osctrl-api from the
@@ -70,6 +71,7 @@ func InitOIDC(ctx context.Context, cfg config.YAMLConfigurationOIDC) error {
 	}
 	oidcProvider = p
 	oidcJITProvision = cfg.JITProvision
+	oidcLinkLocalAccounts = cfg.LinkLocalAccounts
 	oidcUsePKCE = cfg.UsePKCE
 	oidcClientID = cfg.ClientID
 	return nil
@@ -228,7 +230,11 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	user, err := h.resolveFederatedUser(identity, oidcJITProvision, auth.TypeOIDC)
+	user, err := h.resolveFederatedUser(identity, federatedPolicy{
+		authSource:        auth.TypeOIDC,
+		jitProvision:      oidcJITProvision,
+		linkLocalAccounts: oidcLinkLocalAccounts,
+	}, utils.GetIP(r))
 	if err != nil {
 		// resolveFederatedUser already wraps with ErrAuthUserRejected.
 		log.Warn().Err(err).Str("preferred_username", identity.PreferredUsername).Msg("oidc: user resolution failed")

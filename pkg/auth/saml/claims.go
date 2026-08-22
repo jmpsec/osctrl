@@ -1,10 +1,8 @@
 package saml
 
 import (
-	"regexp"
-	"strings"
-
 	crewjam "github.com/crewjam/saml"
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 // Common SAML attribute names. SAML doesn't have a "standard" claim set
@@ -12,19 +10,13 @@ import (
 // conventions in wide use. We cover the OASIS-recommended
 // urn:oid:* names (LDAP-derived) and the X.500 short names.
 const (
-	samlAttrEmailAddress = "urn:oid:0.9.2342.19200300.100.1.3"   // RFC822 mailbox
-	samlAttrGivenName    = "urn:oid:2.5.4.42"                    // givenName
-	samlAttrSurname      = "urn:oid:2.5.4.4"                     // sn
-	samlAttrCommonName   = "urn:oid:2.5.4.3"                     // cn
-	samlAttrUID          = "urn:oid:0.9.2342.19200300.100.1.1"   // LDAP uid
-	samlAttrEduPerson    = "urn:oid:1.3.6.1.4.1.5923.1.1.1.6"    // eduPersonPrincipalName
+	samlAttrEmailAddress = "urn:oid:0.9.2342.19200300.100.1.3" // RFC822 mailbox
+	samlAttrGivenName    = "urn:oid:2.5.4.42"                  // givenName
+	samlAttrSurname      = "urn:oid:2.5.4.4"                   // sn
+	samlAttrCommonName   = "urn:oid:2.5.4.3"                   // cn
+	samlAttrUID          = "urn:oid:0.9.2342.19200300.100.1.1" // LDAP uid
+	samlAttrEduPerson    = "urn:oid:1.3.6.1.4.1.5923.1.1.1.6"  // eduPersonPrincipalName
 )
-
-// usernameAllowed mirrors pkg/auth/oidc's regex verbatim. Same threat
-// model: reject newlines, NULs, shell/SQL metacharacters, anything that
-// could survive a sanitization boundary and reach audit logs, file
-// paths, or templated SQL.
-var usernameAllowed = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
 // pickSAMLUsername chooses the username for the AdminUser row from the
 // assertion's available identity fields. Lookup order:
@@ -50,15 +42,12 @@ func pickSAMLUsername(nameID string, attrs map[string][]string, configuredAttr s
 	return nameID
 }
 
-// sanitizeUsername — same as OIDC's version. Reuse the regex; reject
-// anything that doesn't fit the safe shape. See pkg/auth/oidc/claims.go
-// for the threat-model rationale.
+// sanitizeUsername — same rules as OIDC's version, shared from pkg/utils.
+// Accepts the plain [a-zA-Z0-9_-] class or an email address; a SAML NameID is
+// very often a mailbox. See pkg/utils/username.go for the threat-model
+// rationale.
 func sanitizeUsername(u string) string {
-	u = strings.TrimSpace(u)
-	if !usernameAllowed.MatchString(u) {
-		return ""
-	}
-	return u
+	return utils.SanitizeUsername(u)
 }
 
 // collectAttributes flattens an Assertion's AttributeStatements into a

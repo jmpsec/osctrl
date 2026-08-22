@@ -227,9 +227,18 @@ saml:
   logoutUrl: ""
   # Auto-create osctrl users on first login, as non-admin
   jitProvision: false
+  # Let a SAML login claim an existing LOCAL password account with the same
+  # username, instead of refusing it. Off by default: with this on, whoever
+  # controls the IdP's username namespace can take over any same-named local
+  # account, admins included. Turn it on when you pre-create accounts locally
+  # and want the IdP to adopt them; the first such login stamps the row as
+  # federated and is recorded in the audit log.
+  linkLocalAccounts: false
   # Attribute (Name or FriendlyName) whose value becomes the osctrl username.
-  # Empty = use the NameID verbatim. Usernames must match ^[a-zA-Z0-9_-]{1,64}$,
-  # so email-format NameIDs are rejected — point this at a short handle instead.
+  # Empty = use the NameID verbatim, which is usually a mailbox and is fine:
+  # a username may be either a plain handle (^[a-zA-Z0-9_-]{1,64}$) or an
+  # email address. Email usernames are stored lowercased so identity does not
+  # depend on the casing the IdP happens to emit.
   usernameAttribute: ""
   # PEM cert + RSA key for signing outbound AuthnRequests. Both must be set
   # to enable signing; some IdPs require it and all should support it.
@@ -257,8 +266,10 @@ oidc:
   redirectUrl: ""
   # Empty defaults to [openid, profile, email]
   scopes: []
-  # Empty defaults to preferred_username. Same charset rule as SAML applies,
-  # so `email` and Auth0's `sub` will be rejected — use `nickname` there.
+  # Empty defaults to preferred_username. `email` is supported and is stored
+  # lowercased; it is only accepted when the IdP also sets email_verified, so
+  # an unverified address cannot claim someone else's account. Auth0's `sub`
+  # (e.g. `auth0|abc123`) is still rejected — use `nickname` or `email` there.
   usernameClaim: ""
   # Empty defaults to `groups`
   groupsClaim: ""
@@ -267,6 +278,13 @@ oidc:
   requiredGroups: []
   # Auto-create osctrl users on first login, as non-admin
   jitProvision: false
+  # Let an OIDC login claim an existing LOCAL password account with the same
+  # username, instead of refusing it. Off by default: with this on, whoever
+  # controls the IdP's username namespace can take over any same-named local
+  # account, admins included. Turn it on when you pre-create accounts locally
+  # and want the IdP to adopt them; the first such login stamps the row as
+  # federated and is recorded in the audit log.
+  linkLocalAccounts: false
   # PKCE (S256) for the authorization code flow
   usePKCE: false
 

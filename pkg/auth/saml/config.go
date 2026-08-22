@@ -142,13 +142,6 @@ type Config struct {
 	// ReplayWindow is the maximum clock skew tolerated on NotBefore /
 	// NotOnOrAfter checks, in minutes. Defaults to DefaultReplayWindow.
 	ReplayWindow int
-
-	// LegacyPermissiveUsername bypasses the strict username regex
-	// the same way the OIDC config field does. Set true ONLY by
-	// the legacy cmd/admin code path which has pre-existing
-	// AdminUser rows with email-format usernames. cmd/api leaves
-	// it false.
-	LegacyPermissiveUsername bool
 }
 
 // Validate enforces the structural invariants on Config. Called once
