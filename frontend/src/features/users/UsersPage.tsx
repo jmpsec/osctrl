@@ -921,17 +921,26 @@ function CreateUserModal({
 
   const mutation = useMutation({
     mutationFn: async () => {
-      // Match the same character class the backend enforces on
-      // federated logins (pkg/auth.sanitizeUsername:
-      // ^[a-zA-Z0-9_-]{1,64}$). The password-create flow doesn't
-      // strictly enforce this server-side at create time, but
-      // pre-validating client-side prevents creating users that
-      // can't be addressed via the URL-encoded paths the rest of
-      // the API uses.
-      const trimmed = username.trim();
-      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(trimmed)) {
+      // Mirror the shape the backend accepts (pkg/utils.SanitizeUsername):
+      // either the plain class or an email address, since IdPs commonly
+      // identify users by mailbox. The password-create flow doesn't strictly
+      // enforce this server-side at create time, but pre-validating here
+      // prevents creating users that can't be addressed via the URL-encoded
+      // paths the rest of the API uses.
+      let trimmed = username.trim();
+      const plainShape = /^[a-zA-Z0-9_-]{1,64}$/;
+      const emailShape =
+        /^[a-zA-Z0-9_%+-]+(?:\.[a-zA-Z0-9_%+-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+      if (trimmed.includes('@')) {
+        if (trimmed.length > 254 || !emailShape.test(trimmed)) {
+          throw new Error('Enter a valid email address, or a plain username.');
+        }
+        // Canonicalized the same way the backend does, so a locally created
+        // account matches what an IdP would resolve to on login.
+        trimmed = trimmed.toLowerCase();
+      } else if (!plainShape.test(trimmed)) {
         throw new Error(
-          'Username must be 1-64 chars, letters/digits/dash/underscore only.',
+          'Username must be 1-64 chars (letters/digits/dash/underscore), or an email address.',
         );
       }
       if (password.length < 8) {

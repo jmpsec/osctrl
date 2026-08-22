@@ -497,64 +497,17 @@ func TestT17GroupsClaimMalformed(t *testing.T) {
 	}
 }
 
-// === Legacy permissive-username mode (backwards-compat shim) ===
-//
-// LegacyPermissiveUsername=true relaxes the regex so existing
-// osctrl-admin deployments with email-format usernames keep working.
-// Verifies that:
-//  - dots/at/spaces are accepted (would be rejected strict)
-//  - empty username is STILL rejected (sanitizer's only universal rule)
-//  - control characters (\n, \x00) are STILL rejected (audit-log safety)
-//
-// The shim must not be a complete bypass — empty + control-char
-// rejection survives because those have no legitimate use case and
-// directly enable audit-log poisoning (threat T26).
-func TestLegacyPermissiveUsernameAccepts(t *testing.T) {
-	cases := []string{
-		"alice@example.com",
-		"alice.doe",
-		"alice doe",
-		"Alice.Doe", // mixed case
-	}
-	for _, u := range cases {
-		t.Run(u, func(t *testing.T) {
-			idp := newFakeIdP(t)
-			idp.nextCode = "code-perm"
-			idp.preferredUsernameValue = u
-			cfg := goodConfig(idp)
-			cfg.LegacyPermissiveUsername = true
-			p, err := NewOIDCProvider(context.Background(), cfg)
-			if err != nil {
-				t.Fatalf("NewOIDCProvider: %v", err)
-			}
-			identity, err := p.HandleCallback(context.Background(), fakeCallback("s-default", "code-perm"), goodState())
-			if err != nil {
-				t.Fatalf("LegacyPermissiveUsername should accept %q, got %v", u, err)
-			}
-			if identity.PreferredUsername != u {
-				t.Errorf("PreferredUsername: got %q want %q", identity.PreferredUsername, u)
-			}
-		})
-	}
-}
-
-// Even in permissive mode, empty usernames must be rejected — the
-// sanitizer's whitespace-trim happens BEFORE the regex check in
-// strict mode and BEFORE the trim+empty-check in permissive mode.
-func TestLegacyPermissiveUsernameRejectsEmpty(t *testing.T) {
+// A whitespace-only username must be rejected: TrimSpace runs before the
+// shape check, so "   " reduces to "" and there is nothing left to identify
+// the user by.
+func TestWhitespaceOnlyUsernameRejected(t *testing.T) {
 	idp := newFakeIdP(t)
 	idp.nextCode = "code-empty"
-	idp.preferredUsernameValue = "   " // whitespace-only
-	cfg := goodConfig(idp)
-	cfg.LegacyPermissiveUsername = true
-	// Force pickUsername to use preferred_username (so the
-	// whitespace value flows through) by leaving claim as default.
-	p, err := NewOIDCProvider(context.Background(), cfg)
+	idp.preferredUsernameValue = "   "
+	p, err := NewOIDCProvider(context.Background(), goodConfig(idp))
 	if err != nil {
 		t.Fatalf("NewOIDCProvider: %v", err)
 	}
-	// With preferred_username = "   ", pickUsername returns "   ",
-	// which TrimSpace reduces to "" — must be rejected.
 	_, err = p.HandleCallback(context.Background(), fakeCallback("s-default", "code-empty"), goodState())
 	if !errors.Is(err, ErrUsernameInvalid) {
 		t.Fatalf("expected ErrUsernameInvalid on whitespace-only username, got %v", err)
@@ -573,8 +526,14 @@ func TestT23UsernameInjection(t *testing.T) {
 		"alice\nadmin",
 		"alice\x00root",
 		"alice<script>alert(1)</script>",
-		"alice@example.com", // dot+at — would be valid email, but we don't allow them in username
 		"alice with spaces",
+		// Email-shaped usernames are accepted now (see the sibling test
+		// below), so the injection cases that matter are the ones that
+		// dress up as an email but smuggle a metacharacter past the "@".
+		"alice@example.com\nadmin",
+		"alice@example.com/../root",
+		"alice'@example.com",
+		"al..ice@example.com",
 	}
 	for _, badUsername := range cases {
 		t.Run(badUsername, func(t *testing.T) {
@@ -590,6 +549,28 @@ func TestT23UsernameInjection(t *testing.T) {
 				t.Fatalf("expected ErrUsernameInvalid for %q, got %v", badUsername, err)
 			}
 		})
+	}
+}
+
+// An email-shaped preferred_username is a legitimate identity for IdPs that
+// key on mailbox (Entra ID, Okta, Google Workspace) and must survive the
+// callback rather than being rejected as an injection attempt.
+func TestEmailUsernameIsAccepted(t *testing.T) {
+	idp := newFakeIdP(t)
+	idp.nextCode = "code-email"
+	idp.preferredUsernameValue = "Alice@Example.com"
+	p, err := NewOIDCProvider(context.Background(), goodConfig(idp))
+	if err != nil {
+		t.Fatalf("NewOIDCProvider: %v", err)
+	}
+	identity, err := p.HandleCallback(context.Background(), fakeCallback("s-default", "code-email"), goodState())
+	if err != nil {
+		t.Fatalf("expected an email username to be accepted, got %v", err)
+	}
+	// Canonicalized to lowercase so identity does not depend on the casing
+	// the IdP happened to emit, nor on the database's collation.
+	if identity.PreferredUsername != "alice@example.com" {
+		t.Fatalf("expected canonicalized username, got %q", identity.PreferredUsername)
 	}
 }
 

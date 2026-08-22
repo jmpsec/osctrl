@@ -30,8 +30,9 @@ var samlProvider *authsaml.Provider
 // and kill the IdP session — preventing silent re-auth on the next
 // "Continue with SSO" click.
 var (
-	samlJITProvision bool
-	samlLogoutURL    string
+	samlJITProvision      bool
+	samlLinkLocalAccounts bool
+	samlLogoutURL         string
 )
 
 // InitSAML constructs the global SAML provider for osctrl-api from the
@@ -63,6 +64,7 @@ func InitSAML(ctx context.Context, cfg config.YAMLConfigurationSAML, entityID, a
 	}
 	samlProvider = p
 	samlJITProvision = cfg.JITProvision
+	samlLinkLocalAccounts = cfg.LinkLocalAccounts
 	samlLogoutURL = cfg.LogoutURL
 	return nil
 }
@@ -210,7 +212,11 @@ func (h *HandlersApi) SAMLACSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.resolveFederatedUser(identity, samlJITProvision, auth.TypeSAML)
+	user, err := h.resolveFederatedUser(identity, federatedPolicy{
+		authSource:        auth.TypeSAML,
+		jitProvision:      samlJITProvision,
+		linkLocalAccounts: samlLinkLocalAccounts,
+	}, utils.GetIP(r))
 	if err != nil {
 		log.Warn().Err(err).Str("preferred_username", identity.PreferredUsername).Msg("saml: user resolution failed")
 		http.Redirect(w, r, "/", http.StatusFound)

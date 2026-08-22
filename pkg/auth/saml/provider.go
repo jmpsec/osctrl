@@ -366,18 +366,10 @@ func (p *Provider) HandleCallback(_ context.Context, r *http.Request, state auth
 		return auth.ResolvedIdentity{}, ErrUsernameInvalid
 	}
 
-	// (6) Character-class validation. Same regex as OIDC.
-	var clean string
-	if p.cfg.LegacyPermissiveUsername {
-		clean = strings.TrimSpace(username)
-		if clean == "" {
-			return auth.ResolvedIdentity{}, ErrUsernameInvalid
-		}
-	} else {
-		clean = sanitizeUsername(username)
-		if clean == "" {
-			return auth.ResolvedIdentity{}, ErrUsernameInvalid
-		}
+	// (6) Character-class validation. Same rules as OIDC.
+	clean := sanitizeUsername(username)
+	if clean == "" {
+		return auth.ResolvedIdentity{}, ErrUsernameInvalid
 	}
 
 	// Compose display name from the standard SAML "name" attribute or

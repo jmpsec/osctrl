@@ -202,6 +202,7 @@ func (p *Provider) LoginURL(ctx context.Context, state auth.State) (string, erro
 //     go-oidc.Verifier.Verify (ErrIDTokenVerify; covers T1-T5)
 //  8. id_token nonce matches state.Nonce (ErrNonceMismatch — T1 narrow)
 //  9. Required-groups gate satisfied if configured (ErrGroupNotAllowed — T17)
+//
 // 10. Resolved username passes sanitizeUsername (ErrUsernameInvalid — T23)
 //
 // Implementations of HandleCallback MUST NOT trust the caller to
@@ -302,25 +303,13 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 	}
 
 	// (10) Character-class validation. ANY username that doesn't
-	// fit the safe shape is rejected with an opaque error — we
-	// never log or echo the bad value at INFO level.
-	//
-	// When Config.LegacyPermissiveUsername is true, the strict
-	// regex is bypassed and the trimmed claim is used as-is. Only
-	// the legacy admin shim sets this; new callers leave it false.
-	var clean string
-	if p.cfg.LegacyPermissiveUsername {
-		clean = strings.TrimSpace(username)
-		if clean == "" {
-			return auth.ResolvedIdentity{}, ErrUsernameInvalid
-		}
-	} else {
-		clean = sanitizeUsername(username)
-		if clean == "" {
-			// Log at DEBUG only; the unsanitized value never
-			// leaves the server.
-			return auth.ResolvedIdentity{}, ErrUsernameInvalid
-		}
+	// fit the safe shape — the plain class or an email address — is
+	// rejected with an opaque error; we never log or echo the bad
+	// value at INFO level, and the unsanitized value never leaves
+	// the server.
+	clean := sanitizeUsername(username)
+	if clean == "" {
+		return auth.ResolvedIdentity{}, ErrUsernameInvalid
 	}
 
 	// Compose display name if `name` claim absent.

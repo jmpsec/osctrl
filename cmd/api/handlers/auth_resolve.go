@@ -16,12 +16,30 @@ import (
 // rejected (timing-oracle and information-disclosure defense).
 var ErrAuthUserRejected = errors.New("auth: identity cannot be resolved to an AdminUser")
 
+// federatedPolicy carries the per-provider switches that govern how a
+// federated identity may become an AdminUser. They are grouped into a struct
+// because two adjacent bool arguments at a call site are indistinguishable,
+// and silently swapping them would turn a security control off.
+type federatedPolicy struct {
+	// authSource stamps the resolved row: "oidc" or "saml".
+	authSource string
+	// jitProvision allows creating a brand-new AdminUser for a username
+	// that does not exist yet.
+	jitProvision bool
+	// linkLocalAccounts allows a federated identity to claim an existing
+	// LOCAL (password) account with the same username. Off by default —
+	// see the threat note on resolveFederatedUser.
+	linkLocalAccounts bool
+}
+
 // resolveFederatedUser maps a federated identity (OIDC, SAML
 // eventually) to an existing AdminUser. Policy mirrors legacy
 // admin's:
 //
-//  1. Username exists in admin_users → use that row.
-//  2. Else if `jitProvision` is true on the env's provider config
+//  1. Username exists in admin_users → use that row. When the row is a
+//     local password account, it is claimed only if
+//     `policy.linkLocalAccounts` is set (see threat T15 below).
+//  2. Else if `policy.jitProvision` is true on the env's provider config
 //     → create a new AdminUser with zero env permissions. The
 //     operator must grant access manually.
 //  3. Else → reject.
@@ -41,35 +59,54 @@ var ErrAuthUserRejected = errors.New("auth: identity cannot be resolved to an Ad
 // deserializes ResolvedIdentity directly into the struct. Field-
 // by-field copy with explicit flags.
 //
-// Threat T15 (account takeover): if a username exists, this
-// function returns that row regardless of whether it was originally
-// created via password-login or via federated JIT. v1 has no
-// "linking" of OIDC subjects to AdminUser rows — same-name match is
-// enough. This is the legacy admin's behavior; it matches existing
-// operator expectations and avoids needing a new table. The
-// trade-off is documented in the spec.
-func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitProvision bool, authSource string) (users.AdminUser, error) {
+// Threat T15 (account takeover): a federated identity whose username
+// matches an existing LOCAL password account does NOT get that account by
+// default — otherwise anyone who can make the IdP assert the username
+// "admin" would inherit the local admin's privileges. Claiming a local
+// account requires the operator to opt in per provider with
+// linkLocalAccounts, which is a deliberate delegation of trust: with it on,
+// whoever controls the IdP's username namespace can claim any same-named
+// local account, admin rows included. Rows already stamped with an
+// AuthSource were created by federated login in the first place, so
+// cross-protocol re-matching (oidc↔saml, same IdP) stays unconditional.
+func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, policy federatedPolicy, clientIP string) (users.AdminUser, error) {
 	if identity.PreferredUsername == "" {
 		// Defensive — sanitizeUsername in pkg/auth/oidc already
 		// catches empty values, but never trust upstream.
 		return users.AdminUser{}, fmt.Errorf("%w: empty username", ErrAuthUserRejected)
 	}
 	if exists, existing := h.Users.ExistsGet(identity.PreferredUsername); exists {
-		if existing.AuthSource == "" {
-			return users.AdminUser{}, fmt.Errorf("%w: username %q is a local account and cannot be claimed by federated login",
-				ErrAuthUserRejected, identity.PreferredUsername)
+		if existing.AuthSource == "" && !policy.linkLocalAccounts {
+			return users.AdminUser{}, fmt.Errorf("%w: username %q is a local password account; set linkLocalAccounts on the %s provider to let federated login claim it",
+				ErrAuthUserRejected, identity.PreferredUsername, policy.authSource)
 		}
-		// Allow cross-protocol federated login (oidc↔saml) — same IdP
-		// may serve both protocols. Update the stamp to the current one.
-		if existing.AuthSource != authSource {
-			if err := h.Users.ChangeAuthSource(existing.Username, authSource); err != nil {
+		// Two cases reach here and both end with the row stamped for the
+		// protocol that just authenticated:
+		//   - a local account the operator has allowed to be linked;
+		//   - a federated row logging in over the other protocol
+		//     (oidc↔saml), since one IdP may serve both.
+		if existing.AuthSource != policy.authSource {
+			linkedLocal := existing.AuthSource == ""
+			if err := h.Users.ChangeAuthSource(existing.Username, policy.authSource); err != nil {
 				return users.AdminUser{}, fmt.Errorf("%w: updating auth source: %v", ErrAuthUserRejected, err)
 			}
-			existing.AuthSource = authSource
+			existing.AuthSource = policy.authSource
+			if linkedLocal {
+				// A local account changing hands is worth a loud record:
+				// from here on the IdP, not the stored password, controls
+				// who gets in — including if this row is an admin.
+				log.Warn().Str("username", existing.Username).Str("auth_source", policy.authSource).
+					Bool("admin", existing.Admin).
+					Msg("federated login claimed an existing local password account (linkLocalAccounts is enabled)")
+				if h.AuditLog != nil {
+					h.AuditLog.SettingsAction(existing.Username,
+						fmt.Sprintf("local account linked to %s federated login", policy.authSource), clientIP)
+				}
+			}
 		}
 		return existing, nil
 	}
-	if !jitProvision {
+	if !policy.jitProvision {
 		return users.AdminUser{}, fmt.Errorf("%w: user not provisioned and jitProvision disabled", ErrAuthUserRejected)
 	}
 	// JIT: build a new AdminUser. When no admin users exist yet
@@ -103,7 +140,7 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, jitPr
 	// Tag the row with the provider type (oidc / saml) so the Users
 	// page can display the right badge. Purely informational; the auth
 	// flow itself doesn't gate on this field.
-	u.AuthSource = authSource
+	u.AuthSource = policy.authSource
 	if err := h.Users.Create(u); err != nil {
 		return users.AdminUser{}, fmt.Errorf("%w: create user: %v", ErrAuthUserRejected, err)
 	}

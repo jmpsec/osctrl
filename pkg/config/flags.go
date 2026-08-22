@@ -920,6 +920,12 @@ func initOIDCFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("OIDC_USE_PKCE"),
 			Destination: &params.OIDC.UsePKCE,
 		},
+		&cli.BoolFlag{
+			Name:        "oidc-link-local-accounts",
+			Usage:       "Let an OIDC login claim an existing local password account with the same username, instead of refusing it. Disabled by default: with this on, whoever controls the IdP's username namespace can take over any same-named local account, admins included.",
+			Sources:     cli.EnvVars("OIDC_LINK_LOCAL_ACCOUNTS"),
+			Destination: &params.OIDC.LinkLocalAccounts,
+		},
 	}
 }
 
@@ -958,6 +964,12 @@ func initSAMLFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Auto-create osctrl users on first SAML login (as non-admin)",
 			Sources:     cli.EnvVars("SAML_JIT_PROVISION"),
 			Destination: &params.SAML.JITProvision,
+		},
+		&cli.BoolFlag{
+			Name:        "saml-link-local-accounts",
+			Usage:       "Let a SAML login claim an existing local password account with the same username, instead of refusing it. Disabled by default: with this on, whoever controls the IdP's username namespace can take over any same-named local account, admins included.",
+			Sources:     cli.EnvVars("SAML_LINK_LOCAL_ACCOUNTS"),
+			Destination: &params.SAML.LinkLocalAccounts,
 		},
 		&cli.StringFlag{
 			Name:        "saml-username-attribute",

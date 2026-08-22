@@ -339,6 +339,11 @@ type YAMLConfigurationSAML struct {
 	LoginURL     string `yaml:"loginUrl"`
 	LogoutURL    string `yaml:"logoutUrl"       mapstructure:"logoutUrl"`
 	JITProvision bool   `yaml:"jitProvision"   mapstructure:"jitProvision"`
+	// LinkLocalAccounts lets a SAML identity claim an existing LOCAL
+	// (password) account with the same username. Off by default: with it
+	// on, whoever controls the IdP's username namespace can take over any
+	// same-named local account, including admins.
+	LinkLocalAccounts bool `yaml:"linkLocalAccounts" mapstructure:"linkLocalAccounts"`
 	// UsernameAttribute names the SAML attribute (by Name or
 	// FriendlyName) whose value becomes the osctrl username.
 	// Empty means "use the NameID verbatim" — fine for Keycloak
@@ -378,4 +383,9 @@ type YAMLConfigurationOIDC struct {
 	RequiredGroups []string `yaml:"requiredGroups" mapstructure:"requiredGroups"`
 	JITProvision   bool     `yaml:"jitProvision"   mapstructure:"jitProvision"`
 	UsePKCE        bool     `yaml:"usePKCE"        mapstructure:"usePKCE"`
+	// LinkLocalAccounts lets an OIDC identity claim an existing LOCAL
+	// (password) account with the same username. Off by default: with it
+	// on, whoever controls the IdP's username namespace can take over any
+	// same-named local account, including admins.
+	LinkLocalAccounts bool `yaml:"linkLocalAccounts" mapstructure:"linkLocalAccounts"`
 }
