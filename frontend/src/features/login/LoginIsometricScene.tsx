@@ -21,19 +21,25 @@ export function LoginIsometricScene() {
         </filter>
       </defs>
 
-      <g className="login-scene-grid" stroke="var(--login-scene-grid)" strokeWidth="1">
-        <path d="M42 434 380 628 718 434" />
-        <path d="M42 386 380 580 718 386" />
-        <path d="M42 338 380 532 718 338" />
-        <path d="M42 290 380 484 718 290" />
-        <path d="m90 462 338-194" />
-        <path d="m162 504 338-194" />
-        <path d="m234 546 338-194" />
-        <path d="m306 588 338-194" />
-        <path d="m670 462-338-194" />
-        <path d="m598 504-338-194" />
-        <path d="m526 546-338-194" />
-        <path d="m454 588-338-194" />
+      <path
+        d="M380 240 718 434 380 628 42 434 380 240Z"
+        fill="var(--login-scene-grid-fill)"
+        stroke="var(--login-scene-grid-border)"
+        strokeWidth="1.5"
+      />
+      <g className="login-scene-grid" stroke="var(--login-scene-grid)" strokeWidth="1.25">
+        <path d="M380 240 718 434" />
+        <path d="M308 282 646 476" />
+        <path d="M236 324 574 518" />
+        <path d="M164 366 502 560" />
+        <path d="M92 408 430 602" />
+        <path d="M42 434 380 628" />
+        <path d="M380 240 42 434" />
+        <path d="M452 282 114 476" />
+        <path d="M524 324 186 518" />
+        <path d="M596 366 258 560" />
+        <path d="M668 408 330 602" />
+        <path d="M718 434 380 628" />
       </g>
 
       <g className="login-scene-links" stroke="var(--login-scene-link)" strokeWidth="2" strokeLinecap="round">

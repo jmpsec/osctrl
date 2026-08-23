@@ -1,6 +1,8 @@
 .login-visual-panel {
   --login-scene-bg: #263469;
-  --login-scene-grid: rgb(188 199 255 / 0.12);
+  --login-scene-grid: rgb(204 213 255 / 0.3);
+  --login-scene-grid-border: rgb(214 221 255 / 0.4);
+  --login-scene-grid-fill: rgb(151 169 255 / 0.055);
   --login-scene-surface: #f5f6ff;
   --login-scene-side: #b8c4f4;
   --login-scene-side-dark: #8e9edb;
@@ -19,7 +21,7 @@
   --login-scene-shadow: #111939;
 
   background-color: var(--login-scene-bg);
-  background-image: radial-gradient(circle, rgb(225 230 255 / 0.14) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgb(225 230 255 / 0.08) 1px, transparent 1px);
   background-position: 0 0;
   background-size: 24px 24px;
   container-type: inline-size;
@@ -28,7 +30,9 @@
 [data-theme="light"] .login-visual-panel,
 :root:not([data-theme="dark"]) .login-visual-panel {
   --login-scene-bg: #3450a6;
-  --login-scene-grid: rgb(226 232 255 / 0.14);
+  --login-scene-grid: rgb(226 232 255 / 0.28);
+  --login-scene-grid-border: rgb(236 239 255 / 0.42);
+  --login-scene-grid-fill: rgb(180 194 255 / 0.06);
   --login-scene-surface: #f8f9ff;
   --login-scene-side: #c6d0f7;
   --login-scene-side-dark: #98a8e5;
@@ -75,7 +79,7 @@
 }
 
 .login-scene-grid {
-  opacity: 0.72;
+  opacity: 0.94;
 }
 
 .login-scene-node,
