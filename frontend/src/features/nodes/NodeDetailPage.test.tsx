@@ -566,7 +566,7 @@ describe('NodeDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('86')).toBeInTheDocument();
     });
-    expect(screen.getByText('critical', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getByText('Critical', { selector: 'span' })).toBeInTheDocument();
 
     // Uncheck the failing critical control — only the passing low-severity
     // one remains, so the score drops to 0 and the level to low. No new
@@ -576,7 +576,7 @@ describe('NodeDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('0')).toBeInTheDocument();
     });
-    expect(screen.getByText('low', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getByText('Low', { selector: 'span' })).toBeInTheDocument();
     expect(screen.getByText('1/2 checks counted')).toBeInTheDocument();
     expect(mockGetNodePostureScore).toHaveBeenCalledTimes(1);
 
@@ -711,7 +711,7 @@ describe('NodeDetailPage', () => {
     });
 
     expect(screen.getByText('Health')).toBeInTheDocument();
-    expect(screen.getByText('attention')).toBeInTheDocument();
+    expect(screen.getByText('Attention')).toBeInTheDocument();
     expect(screen.getByText('Posture data unavailable')).toBeInTheDocument();
     expect(screen.getByText('active')).toBeInTheDocument();
     expect(screen.getByText('posture unknown')).toBeInTheDocument();

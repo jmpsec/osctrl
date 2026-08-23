@@ -16,6 +16,7 @@ import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { IconPicker, resolveEnvIcon } from '$/components/forms/IconPicker';
+import { StatusBadge } from '$/components/data/StatusBadge';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -143,7 +144,7 @@ export function EnvironmentsPage() {
             onClick={() => setModal({ kind: 'create' })}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
             )}
           >
@@ -154,7 +155,7 @@ export function EnvironmentsPage() {
             <span
               aria-live="polite"
               aria-label="Refreshing data"
-              className="text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+              className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
             </span>
@@ -215,7 +216,7 @@ export function EnvironmentsPage() {
                       <button
                         type="button"
                         onClick={() => void refetch()}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Retry
                       </button>
@@ -240,7 +241,7 @@ export function EnvironmentsPage() {
                       <button
                         type="button"
                         onClick={() => setModal({ kind: 'create' })}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Create your first environment
                       </button>
@@ -277,17 +278,17 @@ export function EnvironmentsPage() {
                         const Icon = resolveEnvIcon(env.icon);
                         return Icon ? <Icon className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]" /> : null;
                       })()}
-                      <span className="text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">
+                      <span className="text-sm font-semibold text-[color:var(--text-1)] tabular-nums">
                         {env.name}
                       </span>
                       {env.type && (
-                        <span className="ml-1 text-[10px] text-[color:var(--text-3)] uppercase tracking-wider">
+                        <span className="ml-1 text-xs text-[color:var(--text-3)] uppercase tracking-wider">
                           {env.type}
                         </span>
                       )}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[color:var(--text-2)] text-xs font-mono-tabular">
+                  <td className="px-4 py-3 text-[color:var(--text-2)] text-xs tabular-nums">
                     {env.hostname || '—'}
                   </td>
                   <td className="px-4 py-3 text-[color:var(--text-3)] text-xs font-mono-tabular truncate max-w-[180px]" title={env.uuid}>
@@ -295,13 +296,9 @@ export function EnvironmentsPage() {
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {env.accept_enrolls ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]">
-                        accepting
-                      </span>
+                      <StatusBadge variant="success" label="Accepting" />
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[color:var(--bg-2)] text-[color:var(--text-3)]">
-                        paused
-                      </span>
+                      <StatusBadge variant="dim" label="Paused" />
                     )}
                   </td>
                   <td className="px-4 py-3 tnum text-xs text-[color:var(--text-2)] text-right">
@@ -354,7 +351,7 @@ export function EnvironmentsPage() {
             'z-50',
           )}
         >
-          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+          <span className="text-[color:var(--text-2)] text-xs tabular-nums">
             {selectedNames.size} selected
           </span>
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
@@ -492,11 +489,11 @@ function CreateEnvModal({
             placeholder="e.g. production"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
-          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">
             Short identifier used in URLs and CLI commands.
           </p>
         </div>
@@ -513,11 +510,11 @@ function CreateEnvModal({
             placeholder="osctrl.example.com"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
-          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">
             Public hostname agents will phone home to (used for enroll links).
           </p>
         </div>
@@ -534,7 +531,7 @@ function CreateEnvModal({
             placeholder="osquery"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -545,7 +542,7 @@ function CreateEnvModal({
             Icon
           </label>
           <IconPicker value={icon} onChange={setIcon} id="env-icon" />
-          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">
             Font Awesome icon shown next to the env name.
           </p>
         </div>
@@ -572,7 +569,7 @@ function CreateEnvModal({
             disabled={mutation.isPending}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -655,7 +652,7 @@ function EditEnvModal({
               onChange={(e) => setName(e.target.value)}
               className={cn(
                 'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               )}
             />
@@ -671,7 +668,7 @@ function EditEnvModal({
               onChange={(e) => setType(e.target.value)}
               className={cn(
                 'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               )}
             />
@@ -689,7 +686,7 @@ function EditEnvModal({
             onChange={(e) => setHostname(e.target.value)}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -700,7 +697,7 @@ function EditEnvModal({
             Icon
           </label>
           <IconPicker value={icon} onChange={setIcon} id="edit-env-icon" />
-          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">
             Font Awesome icon shown next to the env name.
           </p>
         </div>
@@ -755,7 +752,7 @@ function EditEnvModal({
             disabled={mutation.isPending}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -802,7 +799,7 @@ function DeleteEnvModal({
   return (
     <ModalShell title="Delete environment" titleId="env-delete-modal-title" onClose={onClose}>
       <p className="text-sm text-[color:var(--text-1)]">
-        Delete <strong className="font-mono-tabular">{env.name}</strong>? Any nodes,
+        Delete <strong className="tabular-nums">{env.name}</strong>? Any nodes,
         tags, queries, or carves bound to it remain in the database but become
         inaccessible from the SPA. This cannot be undone.
       </p>
@@ -822,7 +819,7 @@ function DeleteEnvModal({
           autoComplete="off"
           className={cn(
             'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-            'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+            'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
             'focus:outline focus:outline-2 focus:outline-[color:var(--danger)]',
           )}
         />

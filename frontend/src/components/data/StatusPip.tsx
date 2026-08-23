@@ -32,15 +32,13 @@ export function StatusPip({ variant, live = false, className }: StatusPipProps) 
       role="img"
       aria-label={variantLabels[variant]}
       className={cn(
-        'inline-block w-[7px] h-[7px] rounded-full relative flex-shrink-0',
-        variantClasses[variant],
-        live && 'pip-live',
+        'relative inline-flex shrink-0 items-center justify-center rounded-full',
+        live ? 'pip-live size-3 overflow-hidden' : 'size-[7px]',
         className,
       )}
     >
-      {live && (
-        <span aria-hidden className="pip-live-ring" />
-      )}
+      {live && <span aria-hidden className={cn('pip-live-ring', variantClasses[variant])} />}
+      <span aria-hidden className={cn('relative size-[7px] rounded-full', variantClasses[variant])} />
     </span>
   );
 }

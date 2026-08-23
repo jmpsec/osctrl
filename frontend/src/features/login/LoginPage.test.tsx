@@ -102,6 +102,26 @@ describe('LoginPage SSO surface', () => {
     expect(screen.queryByRole('link', { name: /sso/i })).not.toBeInTheDocument();
   });
 
+  it('lets the operator reveal and hide the password without clearing it', async () => {
+    const user = userEvent.setup();
+    mockListMethods.mockResolvedValue([
+      { type: 'password', loginUrl: '/api/v1/login' },
+    ]);
+
+    renderWithProviders();
+
+    const password = await screen.findByLabelText(/^password$/i);
+    await user.type(password, 'hunter2');
+    expect(password).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: /show password/i }));
+    expect(password).toHaveAttribute('type', 'text');
+    expect(password).toHaveValue('hunter2');
+
+    await user.click(screen.getByRole('button', { name: /hide password/i }));
+    expect(password).toHaveAttribute('type', 'password');
+  });
+
   it('renders the OIDC button when oidc method is advertised', async () => {
     mockListMethods.mockResolvedValue([
       { type: 'password', loginUrl: '/api/v1/login' },

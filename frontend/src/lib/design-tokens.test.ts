@@ -17,8 +17,8 @@ describe('design tokens', () => {
     }
   });
 
-  it('exposes the three brand fonts', () => {
-    expect(fonts.display).toContain('Space Grotesk');
+  it('exposes the interface and data fonts', () => {
+    expect(fonts.display).toContain('Inter');
     expect(fonts.body).toContain('Inter');
     expect(fonts.mono).toContain('IBM Plex Mono');
   });

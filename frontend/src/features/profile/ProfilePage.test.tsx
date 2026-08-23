@@ -141,7 +141,7 @@ describe('ProfilePage', () => {
       expect(screen.getByText('production')).toBeInTheDocument();
     });
     expect(screen.getByText('staging')).toBeInTheDocument();
-    expect(screen.getAllByText('yes').length).toBe(5);
+    expect(screen.getAllByText('Yes').length).toBe(5);
     expect(screen.getByText('envA')).toBeInTheDocument();
     expect(screen.getByText('envB')).toBeInTheDocument();
   });

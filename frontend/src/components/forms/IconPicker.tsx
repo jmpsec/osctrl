@@ -128,7 +128,7 @@ export function IconPicker({ value, onChange, id }: IconPickerProps) {
         ) : (
           <span className="text-[color:var(--text-3)] text-xs">No icon</span>
         )}
-        <span className="flex-1 text-left truncate text-[color:var(--text-2)] font-mono-tabular">
+        <span className="flex-1 text-left truncate text-[color:var(--text-2)] tabular-nums">
           {value.trim() || 'Click to pick an icon…'}
         </span>
         <svg className="w-3.5 h-3.5 text-[color:var(--text-3)] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -180,7 +180,7 @@ export function IconPicker({ value, onChange, id }: IconPickerProps) {
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="col-span-6 py-4 text-center text-[10px] text-[color:var(--text-3)]">
+              <div className="col-span-6 py-4 text-center text-xs text-[color:var(--text-3)]">
                 No icons match "{search}".
               </div>
             )}

@@ -56,7 +56,6 @@ export function AppShell({ children, username }: AppShellProps) {
       <SideNav
         className="hidden md:flex"
         collapsed={navCollapsed}
-        onToggleCollapse={toggleNavCollapsed}
       />
 
       {/* Mobile off-canvas drawer. Kept mounted so the slide/fade can
@@ -80,15 +79,23 @@ export function AppShell({ children, username }: AppShellProps) {
             navOpen ? 'translate-x-0' : '-translate-x-full',
           )}
         >
-          <SideNav className="h-full overflow-y-auto shadow-[4px_0_24px_rgba(0,0,0,0.4)]" />
+          <SideNav className="h-full overflow-y-auto shadow-[8px_0_24px_rgba(0,0,0,0.18)]" />
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-col flex-1 min-w-0 overflow-hidden">
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 min-w-0 flex-col overflow-hidden bg-[color:var(--bg-1)]',
+          'md:my-2 md:mr-2 md:rounded-xl md:border md:border-[color:var(--border)]',
+          'md:shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
+        )}
+      >
         <TopBar
           username={username}
           onCommandPalette={() => setPaletteOpen(true)}
           onMenuToggle={() => setNavOpen((o) => !o)}
+          desktopNavCollapsed={navCollapsed}
+          onDesktopNavToggle={toggleNavCollapsed}
         />
         <main className="min-h-0 flex-1 overflow-auto">{children}</main>
       </div>

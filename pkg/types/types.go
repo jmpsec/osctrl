@@ -7,12 +7,29 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 )
 
-// OsqueryTable to show tables to query
+// OsqueryTableColumn describes a selectable field in an osquery table.
+type OsqueryTableColumn struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+	Notes       string `json:"notes"`
+	Hidden      bool   `json:"hidden"`
+	Required    bool   `json:"required"`
+	Index       bool   `json:"index"`
+}
+
+// OsqueryTable describes a table exposed by the configured osquery schema.
 type OsqueryTable struct {
-	Name      string   `json:"name"`
-	URL       string   `json:"url"`
-	Platforms []string `json:"platforms"`
-	Filter    string
+	Name        string               `json:"name"`
+	Description string               `json:"description"`
+	URL         string               `json:"url"`
+	Platforms   []string             `json:"platforms"`
+	Filter      string               `json:"filter"`
+	Evented     bool                 `json:"evented"`
+	Cacheable   bool                 `json:"cacheable"`
+	Notes       string               `json:"notes"`
+	Examples    []string             `json:"examples"`
+	Columns     []OsqueryTableColumn `json:"columns"`
 }
 
 // BuildMetadata to show build metadata

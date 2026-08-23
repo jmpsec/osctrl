@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AlertTriangle, Code2, MousePointer2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router';
 import { runQuery } from '$/api/queries';
@@ -10,6 +11,7 @@ import { QuickTemplates } from './components/QuickTemplates';
 import { TargetingPanel } from './components/TargetingPanel';
 import { OptionsPanel } from './components/OptionsPanel';
 import { StickyFooter } from './components/StickyFooter';
+import { NoCodeQueryBuilder, type QueryBuilderSummary } from './components/NoCodeQueryBuilder';
 import { Button } from '$/components/atoms/Button';
 import { cn } from '$/lib/cn';
 
@@ -20,6 +22,17 @@ const EMPTY_TARGET: TargetSelection = {
   hosts: [],
 };
 
+function summarizeTarget(target: TargetSelection) {
+  if (target.platforms.includes('all')) return 'All nodes';
+
+  const parts: string[] = [];
+  const directNodeCount = target.uuids.length + target.hosts.length;
+  if (directNodeCount > 0) parts.push(`${directNodeCount} node${directNodeCount === 1 ? '' : 's'}`);
+  if (target.platforms.length > 0) parts.push(target.platforms.join(' + '));
+  if (target.tags.length > 0) parts.push(`${target.tags.length} tag${target.tags.length === 1 ? '' : 's'}`);
+  return parts.length > 0 ? parts.join(' + ') : 'All nodes';
+}
+
 export function QueryRunPage() {
   usePageTitle('New Query');
   const { env } = useParams({ from: '/_app/env/$env/queries/new' });
@@ -29,9 +42,15 @@ export function QueryRunPage() {
   const prefillName = (search as { name?: string }).name;
 
   const [sql, setSql] = useState(prefillSql ?? 'SELECT * FROM osquery_info;');
+  const [composerMode, setComposerMode] = useState<'builder' | 'sql'>(prefillSql ? 'sql' : 'builder');
   const [target, setTarget] = useState<TargetSelection>(EMPTY_TARGET);
   const [expHours, setExpHours] = useState<number>(24);
   const [hidden, setHidden] = useState(false);
+  const [builderSummary, setBuilderSummary] = useState<QueryBuilderSummary>({
+    columnLabel: 'All columns',
+    filterCount: 0,
+    limit: 100,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -108,13 +127,21 @@ export function QueryRunPage() {
   const footerMessage = submitError
     ? ({ tone: 'error', text: submitError } as const)
     : null;
+  const targetSummary = summarizeTarget(target);
+  const scopeSummary = composerMode === 'builder'
+    ? `${builderSummary.columnLabel} · ${builderSummary.filterCount === 0 ? 'No filters' : `${builderSummary.filterCount} filter${builderSummary.filterCount === 1 ? '' : 's'}`} · ${targetSummary} · Limit ${builderSummary.limit}`
+    : `Custom SQL · ${targetSummary}`;
+  const isBroadQuery = composerMode === 'builder'
+    && builderSummary.columnLabel === 'All columns'
+    && builderSummary.filterCount === 0
+    && targetSummary === 'All nodes';
 
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="px-6 py-4 border-b border-[color:var(--border)] flex items-start justify-between gap-4">
         <div>
-          <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
+          <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-0.5 select-none">
             queries · new
           </div>
           <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
@@ -124,7 +151,7 @@ export function QueryRunPage() {
             {prefillName ? (
               <>
                 Running saved query{' '}
-                <span className="font-mono-tabular text-[color:var(--signal)]">{prefillName}</span>
+                <span className="font-medium text-[color:var(--signal)]">{prefillName}</span>
                 {' '}— review the SQL and targets before dispatching.
               </>
             ) : (
@@ -147,46 +174,88 @@ export function QueryRunPage() {
           <div className="lg:col-span-2 space-y-4">
             {/* Quick templates */}
             <section
-              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+              className="empty:hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
               aria-label="Query templates"
             >
               <QuickTemplates
                 onPick={(s) => {
                   setSql(s.sql);
+                  setComposerMode('sql');
                   setSubmitError(null);
                 }}
               />
             </section>
 
-            {/* Editor */}
+            {/* Query composer */}
             <section
               className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden"
-              aria-label="SQL editor"
+              aria-label="Query composer"
             >
-              <div className="flex items-center justify-between px-4 h-10 border-b border-[color:var(--border)]">
-                <div className="flex items-center gap-2">
-                  <span
-                    aria-hidden
-                    className="w-1.5 h-1.5 rounded-full bg-[color:var(--signal)]"
-                  />
-                  <span
-                    id="sql-query-label"
-                    className="text-[12px] font-medium text-[color:var(--text-1)]"
-                  >
-                    SQL query
-                  </span>
+              <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border)] px-4 py-2">
+                <div>
+                  <h2 id="sql-query-label" className="text-sm font-semibold text-[color:var(--text-1)]">
+                    Query composer
+                  </h2>
+                  <p className="text-xs text-[color:var(--text-3)]">
+                    {composerMode === 'builder' ? 'Build a SELECT query without writing SQL.' : 'Write or refine the SQL directly.'}
+                  </p>
                 </div>
-                <div className="text-[10px] font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.12em]">
-                  osquery · SELECT only
+                <div
+                  role="tablist"
+                  aria-label="Query composer mode"
+                  className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-0.5"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={composerMode === 'builder'}
+                    onClick={() => setComposerMode('builder')}
+                    className={cn(
+                      'inline-flex h-7 shrink-0 items-center gap-1.5 rounded px-2 text-xs text-[color:var(--text-2)]',
+                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
+                      composerMode === 'builder' && 'bg-[color:var(--bg-1)] text-[color:var(--text-1)]',
+                    )}
+                  >
+                    <MousePointer2 size={14} strokeWidth={1.8} aria-hidden className="shrink-0" />
+                    Builder
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={composerMode === 'sql'}
+                    onClick={() => setComposerMode('sql')}
+                    className={cn(
+                      'inline-flex h-7 shrink-0 items-center gap-1.5 rounded px-2 text-xs text-[color:var(--text-2)]',
+                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
+                      composerMode === 'sql' && 'bg-[color:var(--bg-1)] text-[color:var(--text-1)]',
+                    )}
+                  >
+                    <Code2 size={14} strokeWidth={1.8} aria-hidden className="shrink-0" />
+                    SQL
+                  </button>
                 </div>
               </div>
-              <CodeEditor
-                value={sql}
-                onChange={setSql}
-                language="sql"
-                height="320px"
-                aria-labelledby="sql-query-label"
-              />
+              {composerMode === 'builder' ? (
+                <NoCodeQueryBuilder
+                  onSqlChange={setSql}
+                  onEditSql={() => setComposerMode('sql')}
+                  draftKey={`osctrl:query-builder:v1:${env}`}
+                  onSummaryChange={setBuilderSummary}
+                />
+              ) : (
+                <div>
+                  <div className="flex items-center justify-end border-b border-[color:var(--border)] bg-[color:var(--bg-2)]/50 px-4 py-1.5 text-xs font-medium text-[color:var(--text-3)]">
+                    osquery · SELECT only
+                  </div>
+                  <CodeEditor
+                    value={sql}
+                    onChange={setSql}
+                    language="sql"
+                    height="360px"
+                    aria-labelledby="sql-query-label"
+                  />
+                </div>
+              )}
             </section>
 
             {/* Options */}
@@ -227,7 +296,17 @@ export function QueryRunPage() {
         onCancel={() => void navigate({ to: '/_app/env/$env/queries', params: { env } })}
         submitLabel="Run query"
         middle={
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
+            <div
+              aria-label={`Run scope: ${scopeSummary}`}
+              className={cn(
+                'flex min-w-0 items-start gap-1.5 text-sm sm:items-center',
+                isBroadQuery ? 'text-[color:var(--warning)]' : 'text-[color:var(--text-3)]',
+              )}
+            >
+              {isBroadQuery && <AlertTriangle size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />}
+              <span className="min-w-0 tabular-nums sm:truncate">{scopeSummary}</span>
+            </div>
             {!saveOpen ? (
               <button
                 type="button"
@@ -243,6 +322,8 @@ export function QueryRunPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <input
                   id="save-name"
+                  name="save-name"
+                  aria-label="Saved query name"
                   type="text"
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
@@ -262,7 +343,7 @@ export function QueryRunPage() {
                   placeholder="Name for the saved query"
                   className={cn(
                     'px-2 py-1 text-xs rounded border border-[color:var(--border)]',
-                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular w-60',
+                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] w-60',
                     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                   )}
                 />
@@ -292,7 +373,7 @@ export function QueryRunPage() {
             {saveError && (
               <span
                 role="alert"
-                className="text-[10px] text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-2 py-0.5 rounded inline-block"
+                className="text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-2 py-0.5 rounded inline-block"
               >
                 {saveError}
               </span>
@@ -300,7 +381,7 @@ export function QueryRunPage() {
             {saveOK && (
               <span
                 role="status"
-                className="text-[10px] text-[color:var(--success)] bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.08)] px-2 py-0.5 rounded inline-block"
+                className="text-xs text-[color:var(--success)] bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.08)] px-2 py-0.5 rounded inline-block"
               >
                 {saveOK}
               </span>

@@ -163,7 +163,7 @@ export function AuditPage() {
           <span
             aria-live="polite"
             aria-label="Refreshing data"
-            className="ml-auto text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+            className="ml-auto text-xs text-[color:var(--text-3)]"
           >
             refreshing…
           </span>
@@ -268,7 +268,7 @@ export function AuditPage() {
             onClick={applyFilters}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors',
             )}
           >
@@ -320,7 +320,7 @@ export function AuditPage() {
                       <button
                         type="button"
                         onClick={() => void refetch()}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Retry
                       </button>
@@ -354,15 +354,15 @@ export function AuditPage() {
                   <td className="px-4 py-2 tnum text-xs text-[color:var(--text-2)] whitespace-nowrap">
                     <span title={row.created_at}>{formatRelative(row.created_at)}</span>
                   </td>
-                  <td className="px-4 py-2 text-xs font-mono-tabular text-[color:var(--text-2)]">
+                  <td className="px-4 py-2 text-xs text-[color:var(--text-2)]">
                     {row.service}
                   </td>
                   <td className="px-4 py-2 text-xs">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular text-[color:var(--text-3)] bg-[color:var(--bg-2)]">
+                    <span className="px-1.5 py-0.5 rounded text-xs font-medium text-[color:var(--text-3)] bg-[color:var(--bg-2)]">
                       {LOG_TYPE_LABELS[row.log_type] ?? row.log_type}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-xs font-mono-tabular text-[color:var(--text-1)]">
+                  <td className="px-4 py-2 text-xs text-[color:var(--text-1)]">
                     {row.username || <span className="text-[color:var(--text-3)]">—</span>}
                   </td>
                   <td className="px-4 py-2 text-xs font-mono-tabular text-[color:var(--text-3)]">
@@ -390,7 +390,7 @@ export function AuditPage() {
 
 const inputClass = cn(
   'w-full px-3 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
-  'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+  'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
   'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
 );
 
@@ -407,7 +407,7 @@ function FilterField({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-[10px] font-semibold text-[color:var(--text-3)] uppercase tracking-wider mb-1">
+      <label htmlFor={id} className="block text-xs font-semibold text-[color:var(--text-3)] uppercase tracking-wider mb-1">
         {label}
       </label>
       {children}

@@ -119,7 +119,7 @@ function QuickFiltersGroup({ filters }: { filters: QuickFilter[] }) {
           {f.count != null && (
             <span
               className={cn(
-                'font-mono-tabular tabular-nums text-[10px]',
+                'tabular-nums text-xs',
                 f.active ? 'text-[color:var(--text-2)]' : 'text-[color:var(--text-3)]',
               )}
             >
@@ -160,7 +160,7 @@ function HostCell({ env, uuid, hostname, localname, ip, countryCode }: HostCellP
       >
         {displayName}
       </Link>
-      <div className="flex items-center gap-2 text-[10.5px] font-mono-tabular text-[color:var(--text-3)] leading-tight">
+      <div className="flex items-center gap-2 text-xs font-mono-tabular text-[color:var(--text-3)] leading-tight">
         <span title={uuid}>
           <span className="text-[color:var(--signal)]">{uuid.slice(0, 8)}</span>
           <span>…</span>
@@ -192,13 +192,13 @@ function SystemCell({ platform, platformVersion, osqueryVersion }: SystemCellPro
         <span className="text-[12px] text-[color:var(--text-1)] truncate">
           <span className="text-[color:var(--text-2)]">{platform}</span>
           {platformVersion && (
-            <span className="font-mono-tabular text-[10.5px] text-[color:var(--text-3)] ml-1.5">
+            <span className="tabular-nums text-xs text-[color:var(--text-3)] ml-1.5">
               {platformVersion}
             </span>
           )}
         </span>
         {osqueryVersion && (
-          <span className="font-mono-tabular text-[10.5px] text-[color:var(--text-3)] truncate">
+          <span className="tabular-nums text-xs text-[color:var(--text-3)] truncate">
             osquery {osqueryVersion}
           </span>
         )}
@@ -231,29 +231,18 @@ function RiskBadge({ riskLevel }: { riskLevel?: string }) {
   if (!risk) {
     return <span className="text-[color:var(--text-3)]">—</span>;
   }
-  return (
-    <span
-      aria-label={`Posture risk ${risk}`}
-      className={cn(
-        'inline-flex items-center px-1.5 py-0.5 rounded-full border',
-        'text-[9px] font-mono-tabular uppercase tracking-[0.08em]',
-        risk === 'low' && 'border-[color:var(--success)]/25 bg-[color:var(--success)]/10 text-[color:var(--success)]',
-        risk === 'medium' && 'border-[color:var(--warning)]/25 bg-[color:var(--warning)]/10 text-[color:var(--warning)]',
-        risk === 'high' && 'border-[color:var(--danger)]/25 bg-[color:var(--danger)]/10 text-[color:var(--danger)]',
-      )}
-    >
-      {risk}
-    </span>
-  );
+  const variant = risk === 'low' ? 'success' : risk === 'medium' ? 'warning' : 'danger';
+  const label = risk.charAt(0).toUpperCase() + risk.slice(1);
+  return <StatusBadge variant={variant} label={label} ariaLabel={`Posture risk ${risk}`} />;
 }
 
 function PostureCell({ uptime, posture }: { uptime?: NodeUptime; posture?: NodePostureSummary }) {
   return (
     <div className="flex flex-col gap-1 leading-tight">
-      <span className="text-[10.5px] font-mono-tabular text-[color:var(--text-3)]">
+      <span className="text-xs tabular-nums text-[color:var(--text-3)]">
         Uptime {formatTableUptime(uptime)}
       </span>
-      <span className="inline-flex items-center gap-1 text-[10.5px] font-mono-tabular text-[color:var(--text-3)]">
+      <span className="inline-flex items-center gap-1 text-xs text-[color:var(--text-3)]">
         Risk <RiskBadge riskLevel={posture?.risk_level} />
       </span>
     </div>
@@ -273,7 +262,7 @@ function ActivityCell({ lastSeen, bytesReceived }: ActivityCellProps) {
       >
         {formatRelative(lastSeen)}
       </span>
-      <span className="text-[10.5px] font-mono-tabular tabular-nums text-[color:var(--text-3)]">
+      <span className="text-xs tabular-nums text-[color:var(--text-3)]">
         {formatBytes(bytesReceived)}
       </span>
     </div>
@@ -731,7 +720,7 @@ export function NodesTablePage() {
             <span
               aria-live="polite"
               aria-label="Refreshing data"
-              className="text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+              className="text-xs text-[color:var(--text-3)]"
             >
               refreshing…
             </span>
@@ -773,13 +762,13 @@ export function NodesTablePage() {
               </th>
               <th
                 scope="col"
-                className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+                className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
               >
                 Status
               </th>
               <th
                 scope="col"
-                className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+                className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
               >
                 Health
               </th>
@@ -792,7 +781,7 @@ export function NodesTablePage() {
               />
               <th
                 scope="col"
-                className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+                className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
               >
                 Tags
               </th>
@@ -820,14 +809,14 @@ export function NodesTablePage() {
               {postureEnabled && (
                 <th
                   scope="col"
-                  className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+                  className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
                 >
                   Posture
                 </th>
               )}
               <th
                 scope="col"
-                className="px-4 py-2.5 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+                className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
               >
                 24h
               </th>
@@ -852,7 +841,7 @@ export function NodesTablePage() {
                       <button
                         type="button"
                         onClick={() => void refetch()}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Retry
                       </button>
@@ -885,7 +874,7 @@ export function NodesTablePage() {
                               page: 1,
                             })
                           }
-                          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                         >
                           Clear filters
                         </button>
@@ -925,7 +914,7 @@ export function NodesTablePage() {
                     <td className="px-4 py-2.5 align-middle">
                       <StatusBadge
                         variant={isActive ? 'success' : 'dim'}
-                        label={isActive ? 'active' : 'inactive'}
+                        label={isActive ? 'Active' : 'Inactive'}
                       />
                     </td>
 
@@ -1009,7 +998,7 @@ export function NodesTablePage() {
             'z-50',
           )}
         >
-          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+          <span className="text-[color:var(--text-2)] text-xs tabular-nums">
             {selectedUuids.size} selected
           </span>
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
@@ -1187,7 +1176,7 @@ function TagSelectedNodesModal({
             ))}
           </select>
           {!tagsLoading && list.length === 0 && (
-            <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+            <p className="mt-1 text-xs text-[color:var(--text-3)]">
               Create a tag from the Tags page first.
             </p>
           )}
@@ -1215,7 +1204,7 @@ function TagSelectedNodesModal({
             disabled={mutation.isPending || !chosen || list.length === 0}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}

@@ -11,7 +11,7 @@ export const Label = forwardRef<HTMLLabelElement, LabelProps>(
       <label
         ref={ref}
         className={cn(
-          'block text-xs text-[color:var(--text-2)] mb-1.5 select-none',
+          'block text-xs font-medium text-[color:var(--text-2)] mb-1.5 select-none',
           className
         )}
         {...props}

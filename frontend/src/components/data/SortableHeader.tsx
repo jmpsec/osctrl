@@ -35,7 +35,7 @@ export function SortableHeader<T extends string>({
       scope="col"
       aria-sort={!isActive ? undefined : currentDir === 'asc' ? 'ascending' : 'descending'}
       className={cn(
-        'px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide',
+        'px-4 py-2.5 text-left text-xs font-medium text-[color:var(--text-2)]',
         'whitespace-nowrap',
         className,
       )}
@@ -47,7 +47,7 @@ export function SortableHeader<T extends string>({
         className={cn(
           'inline-flex items-center gap-1 transition-colors',
           'hover:text-[color:var(--text-1)]',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--accent)]',
           'rounded',
           isActive && 'text-[color:var(--text-1)]',
         )}
@@ -58,7 +58,7 @@ export function SortableHeader<T extends string>({
           className={cn(
             'w-3 h-3 transition-transform',
             !isActive && 'text-[color:var(--text-3)] opacity-0 group-hover:opacity-50',
-            isActive && 'text-[color:var(--signal)]',
+            isActive && 'text-[color:var(--accent)]',
           )}
         >
           {isActive && currentDir === 'asc' ? (

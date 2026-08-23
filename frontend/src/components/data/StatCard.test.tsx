@@ -77,9 +77,10 @@ describe('StatCard', () => {
     expect(screen.getByText('last 24h')).toBeInTheDocument();
   });
 
-  it('applies the halo class via inline style', () => {
+  it('uses a flat surface without a decorative gradient', () => {
     const { container } = render(<StatCard label="Active" value={7} halo="warning" />);
     const card = container.firstElementChild as HTMLElement;
-    expect(card.style.background).toContain('rgba(var(--warning-r), var(--warning-g), var(--warning-b)');
+    expect(card.className).toContain('bg-[color:var(--bg-1)]');
+    expect(card.style.background).toBe('');
   });
 });

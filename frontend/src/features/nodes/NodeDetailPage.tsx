@@ -31,6 +31,8 @@ import { countryFlag } from '$/lib/flags';
 import { isNodeActive, useInactiveHours } from '$/lib/node-status';
 import { cn } from '$/lib/cn';
 import { StatusPip } from '$/components/data/StatusPip';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { SearchInput } from '$/components/data/SearchInput';
@@ -95,7 +97,7 @@ function KvGrid({
 }) {
   return (
     <section className="mb-5">
-      <h3 className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-2 px-1">
+      <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-2 px-1">
         {title}
       </h3>
       <div
@@ -117,7 +119,7 @@ function KvGrid({
               wide && cols === 3 && 'lg:col-span-3',
             )}
           >
-            <dt className="text-[10px] font-mono-tabular uppercase tracking-[0.1em] text-[color:var(--text-3)] mb-0.5">
+            <dt className="text-xs font-medium uppercase tracking-[0.1em] text-[color:var(--text-3)] mb-0.5">
               {label}
             </dt>
             <dd className="text-xs text-[color:var(--text-1)] break-all">{value}</dd>
@@ -189,7 +191,7 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
             {node.platform}
           </span>
           {node.platform_version && (
-            <span className="text-[10px] text-[color:var(--text-3)] ml-1 font-mono-tabular">
+            <span className="text-xs text-[color:var(--text-3)] ml-1 tabular-nums">
               {node.platform_version}
             </span>
           )}
@@ -199,7 +201,7 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
     {
       label: 'osquery',
       value: (
-        <span className="text-xs font-mono-tabular text-[color:var(--text-1)]">
+        <span className="text-xs tabular-nums text-[color:var(--text-1)]">
           {node.osquery_version}
         </span>
       ),
@@ -212,7 +214,7 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
             {formatRelative(node.last_seen)}
           </span>
           <br />
-          <span className="text-[10px] text-[color:var(--text-3)] font-mono-tabular">
+          <span className="text-xs text-[color:var(--text-3)] tabular-nums">
             {formatAbsolute(node.last_seen)}
           </span>
         </span>
@@ -221,7 +223,7 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
     {
       label: 'Data received',
       value: (
-        <span className="text-xs font-mono-tabular tnum text-[color:var(--text-1)]">
+        <span className="text-xs tabular-nums text-[color:var(--text-1)]">
           {fmtBytes(node.bytes_received)}
         </span>
       ),
@@ -241,7 +243,7 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
           key={label}
           className="px-4 py-3 border-r border-b border-[color:var(--border)] last:border-r-0"
         >
-          <div className="text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
+          <div className="text-xs font-semibold uppercase tracking-[0.1em] text-[color:var(--text-3)] mb-1">
             {label}
           </div>
           <div>{value}</div>
@@ -255,14 +257,14 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
 // Log viewer
 // ---------------------------------------------------------------------------
 
-function severityBadge(severity: unknown): { label: string; className: string } | null {
+function severityBadge(severity: unknown): { label: string; variant: 'info' | 'warning' | 'danger' } | null {
   if (severity == null) return null;
   const n = typeof severity === 'string' ? parseInt(severity, 10) : typeof severity === 'number' ? severity : null;
   if (n == null) return null;
-  if (n <= 0) return { label: 'INFO', className: 'text-[color:var(--info)] border-[color:var(--info)]/30 bg-[color:var(--info)]/10' };
-  if (n === 1) return { label: 'WARN', className: 'text-[color:var(--warning)] border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10' };
-  if (n === 2) return { label: 'ERROR', className: 'text-[color:var(--danger)] border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10' };
-  return { label: `L${n}`, className: 'text-[color:var(--danger)] border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10' };
+  if (n <= 0) return { label: 'Info', variant: 'info' };
+  if (n === 1) return { label: 'Warning', variant: 'warning' };
+  if (n === 2) return { label: 'Error', variant: 'danger' };
+  return { label: `Level ${n}`, variant: 'danger' };
 }
 
 function LogEntry({
@@ -303,7 +305,7 @@ function LogEntry({
     const entries = Object.entries(columns);
     return (
       <div className="border-b border-[color:var(--border)] py-1 px-3 group">
-        <div className="flex items-center gap-2 font-mono-tabular text-[10px] mb-0.5">
+        <div className="flex items-center gap-2 text-xs mb-0.5">
           {queryName && <span className="text-[color:var(--signal)] font-medium truncate">{queryName}</span>}
           {action && <span className="text-[color:var(--text-3)]">{action}</span>}
           {timestamp && <span className="ml-auto text-[color:var(--text-3)] tnum" title={formatAbsolute(timestamp)}>{formatRelative(timestamp)}</span>}
@@ -312,7 +314,7 @@ function LogEntry({
           {entries.map(([col, val]) => {
             const valueStr = val == null ? '' : typeof val === 'string' ? val : JSON.stringify(val);
             return (
-              <div key={col} className="group/field inline-flex items-baseline gap-1 text-[10px] font-mono-tabular">
+              <div key={col} className="group/field inline-flex items-baseline gap-1 text-xs font-mono-tabular">
                 <span className="text-[color:var(--text-3)]">{col}=</span>
                 <span className="text-[color:var(--text-1)] break-all">
                   {valueStr || <span className="text-[color:var(--text-3)] italic">∅</span>}
@@ -346,37 +348,35 @@ function LogEntry({
       <div className="border-b border-[color:var(--border)] py-2 px-4 group">
         <div className="flex items-center gap-2 mb-1">
           {sev && (
-            <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono-tabular font-semibold uppercase tracking-[0.08em] border', sev.className)}>
-              {sev.label}
-            </span>
+            <StatusBadge variant={sev.variant} label={sev.label} />
           )}
           {timestamp && (
-            <span className="font-mono-tabular text-[10px] text-[color:var(--text-3)] tnum" title={formatAbsolute(timestamp)}>
+            <span className="text-xs text-[color:var(--text-3)] tabular-nums" title={formatAbsolute(timestamp)}>
               {formatRelative(timestamp)}
             </span>
           )}
           {filename && (
-            <span className="font-mono-tabular text-[10px] text-[color:var(--text-3)] truncate" title={filename}>
+            <span className="font-mono-tabular text-xs text-[color:var(--text-3)] truncate" title={filename}>
               {filename}{line && `:${line}`}
             </span>
           )}
           {version && (
-            <span className="ml-auto font-mono-tabular text-[10px] text-[color:var(--text-3)]">
+            <span className="ml-auto text-xs text-[color:var(--text-3)] tabular-nums">
               v{version}
             </span>
           )}
         </div>
         {message && (
-          <p className="text-xs text-[color:var(--text-2)] font-mono-tabular leading-relaxed break-all">
+          <p className="text-xs text-[color:var(--text-2)] leading-relaxed break-all">
             {message}
           </p>
         )}
         {extras.length > 0 && (
           <details className="mt-1.5">
-            <summary className="text-[10px] font-mono-tabular text-[color:var(--text-3)] cursor-pointer hover:text-[color:var(--text-2)] select-none">
+            <summary className="text-xs text-[color:var(--text-3)] cursor-pointer hover:text-[color:var(--text-2)] select-none">
               {extras.length} more field{extras.length !== 1 ? 's' : ''}
             </summary>
-            <pre className="mt-1 text-[10px] text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed">
+            <pre className="mt-1 text-xs text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed">
               {JSON.stringify(Object.fromEntries(extras), null, 2)}
             </pre>
           </details>
@@ -392,21 +392,21 @@ function LogEntry({
   return (
     <div className="border-b border-[color:var(--border)] py-2 px-4 group">
       <div className="flex items-center gap-2 mb-1">
-        {queryName && <span className="font-mono-tabular text-[11px] text-[color:var(--signal)] font-medium">{queryName}</span>}
-        {action && <span className="font-mono-tabular text-[10px] text-[color:var(--text-2)]">{action}</span>}
-        {timestamp && <span className="ml-auto font-mono-tabular text-[10px] text-[color:var(--text-3)] tnum" title={formatAbsolute(timestamp)}>{formatRelative(timestamp)}</span>}
+        {queryName && <span className="text-xs text-[color:var(--signal)] font-medium">{queryName}</span>}
+        {action && <span className="text-xs text-[color:var(--text-2)]">{action}</span>}
+        {timestamp && <span className="ml-auto text-xs text-[color:var(--text-3)] tabular-nums" title={formatAbsolute(timestamp)}>{formatRelative(timestamp)}</span>}
       </div>
       {typeof columnsRaw === 'string' && (
-        <pre className="text-[10px] text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed max-h-32 overflow-auto">
+        <pre className="text-xs text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed max-h-32 overflow-auto">
           {columnsRaw}
         </pre>
       )}
       {resultExtras.length > 0 && (
         <details className="mt-1.5">
-          <summary className="text-[10px] font-mono-tabular text-[color:var(--text-3)] cursor-pointer hover:text-[color:var(--text-2)] select-none">
+          <summary className="text-xs text-[color:var(--text-3)] cursor-pointer hover:text-[color:var(--text-2)] select-none">
             {resultExtras.length} more field{resultExtras.length !== 1 ? 's' : ''}
           </summary>
-          <pre className="mt-1 text-[10px] text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed">
+          <pre className="mt-1 text-xs text-[color:var(--text-3)] font-mono-tabular whitespace-pre-wrap break-all leading-relaxed">
             {JSON.stringify(Object.fromEntries(resultExtras), null, 2)}
           </pre>
         </details>
@@ -748,12 +748,11 @@ export function NodeDetailPage() {
   // Node-scoped activity heatmap — now embedded in the default Details view.
   // Keep the polling scoped to the Details tab so switching into raw log views
   // does not leave a background refresh loop running for an off-screen chart.
-  // DB-backed per-node activity, requested at HOURLY granularity so it can be
-  // merged with the hourly Redis config series below. status/result/query
+  // DB-backed per-node activity, requested at an interval-scaled granularity
+  // and merged with the hourly Redis config series below. status/result/query
   // keep their full history from the logging tables; carve is dropped in
   // favor of config (see mergeNodeActivityBuckets).
-  // Fixed 24-column grid: the DB bucket size scales with the window so the
-  // heatmap always renders 24 squares regardless of the selected interval.
+  // The fixed-resolution grid keeps the same density at every selected range.
   const activityBucketSeconds =
     (NODE_INTERVAL_HOURS[activityInterval] * 3600) / NODE_ACTIVITY_COLUMNS;
   const { data: activityBuckets = [], isLoading: activityLoading } = useQuery({
@@ -992,7 +991,7 @@ export function NodeDetailPage() {
             {actionError && (
               <div
                 role="alert"
-                className="mt-2 w-full text-xs text-[color:var(--danger)] font-mono-tabular"
+                className="mt-2 w-full text-xs text-[color:var(--danger)]"
               >
                 {actionError}
               </div>
@@ -1000,7 +999,7 @@ export function NodeDetailPage() {
             {copyNodeKeyError && (
               <div
                 role="alert"
-                className="mt-2 w-full text-xs text-[color:var(--danger)] font-mono-tabular"
+                className="mt-2 w-full text-xs text-[color:var(--danger)]"
               >
                 {copyNodeKeyError}
               </div>
@@ -1101,7 +1100,7 @@ export function NodeDetailPage() {
             {
               label: 'Physical cores',
               value: (
-                <span className="font-mono-tabular tnum">
+                <span className="tabular-nums">
                   {sys?.cpu_physical_cores ?? '—'}
                 </span>
               ),
@@ -1109,7 +1108,7 @@ export function NodeDetailPage() {
             {
               label: 'Logical cores',
               value: (
-                <span className="font-mono-tabular tnum">
+                <span className="tabular-nums">
                   {sys?.cpu_logical_cores ?? '—'}
                 </span>
               ),
@@ -1153,12 +1152,7 @@ export function NodeDetailPage() {
                     value: node.health?.signals?.length ? (
                       <div className="flex flex-wrap gap-1">
                         {node.health.signals.map((signal) => (
-                          <span
-                            key={signal}
-                            className="rounded-full border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-[10.5px] font-mono-tabular text-[color:var(--text-2)]"
-                          >
-                            {signal}
-                          </span>
+                          <MetadataBadge key={signal}>{signal}</MetadataBadge>
                         ))}
                       </div>
                     ) : '—',
@@ -1178,7 +1172,7 @@ export function NodeDetailPage() {
                   {
                     label: 'IP address',
                     value: (
-                      <span className="font-mono-tabular text-xs flex items-center gap-1.5">
+                      <span className="text-xs flex items-center gap-1.5">
                         {node.country_code && (
                           <span className="text-sm" title={node.country_code}>
                             {countryFlag(node.country_code)}
@@ -1210,14 +1204,14 @@ export function NodeDetailPage() {
                   {
                     label: 'Memory',
                     value: (
-                      <span className="font-mono-tabular tnum text-xs">{memoryDisplay}</span>
+                      <span className="tabular-nums text-xs">{memoryDisplay}</span>
                     ),
                   },
                   { label: 'Platform', value: node.platform },
                   {
                     label: 'Platform version',
                     value: (
-                      <span className="font-mono-tabular text-xs">
+                      <span className="text-xs tabular-nums">
                         {node.platform_version || '—'}
                       </span>
                     ),
@@ -1225,7 +1219,7 @@ export function NodeDetailPage() {
                   {
                     label: 'osquery version',
                     value: (
-                      <span className="font-mono-tabular text-xs">{node.osquery_version}</span>
+                      <span className="text-xs tabular-nums">{node.osquery_version}</span>
                     ),
                   },
                   {
@@ -1272,7 +1266,7 @@ export function NodeDetailPage() {
                       label: 'Uptime',
                       value: (
                         <span
-                          className="font-mono-tabular tnum text-xs"
+                          className="tabular-nums text-xs"
                           title={node.uptime?.last_seen ? `Collected ${formatAbsolute(node.uptime.last_seen)}` : undefined}
                         >
                           {formatNodeUptime(node.uptime)}
@@ -1283,7 +1277,7 @@ export function NodeDetailPage() {
                   {
                     label: 'First seen',
                     value: (
-                      <span className="font-mono-tabular tnum text-xs">
+                      <span className="tabular-nums text-xs">
                         {formatAbsolute(node.created_at)}
                       </span>
                     ),
@@ -1291,7 +1285,7 @@ export function NodeDetailPage() {
                   {
                     label: 'Data received',
                     value: (
-                      <span className="font-mono-tabular tnum text-xs">
+                      <span className="tabular-nums text-xs">
                         {node.bytes_received.toLocaleString()} B
                       </span>
                     ),
@@ -1485,7 +1479,7 @@ function RunNodeQueryModal({
           <button
             type="submit"
             disabled={mutation.isPending || sql.trim().length === 0}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {mutation.isPending ? 'Running…' : 'Run on node'}
           </button>
@@ -1562,7 +1556,7 @@ function CarveNodeFileModal({
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {mutation.isPending ? 'Starting…' : 'Start carve'}
           </button>
@@ -1680,7 +1674,7 @@ function TagNodeModal({
           <button
             type="submit"
             disabled={mutation.isPending || (!chosen && customTag.trim().length === 0)}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {mutation.isPending ? 'Tagging…' : 'Apply tag'}
           </button>
@@ -1736,9 +1730,10 @@ const NODE_INTERVAL_HOURS: Record<ActivityInterval, number> = {
 };
 
 // Intervals offered in the node activity picker. The heatmap renders a fixed
-// 24-column grid, so every entry must divide evenly into 24 buckets whose size
+// column count, so every entry must divide evenly into buckets whose size
 // is a backend-supported bucket_seconds value (see activityAllowedBucketSeconds).
-// 3h is omitted because 3h/24 = 450s is not a supported bucket size.
+// 3h is omitted because 3h / 48 would require 225-second buckets, below the
+// backend's five-minute minimum.
 const NODE_INTERVALS: ActivityInterval[] = ['6h', '12h', '1d', '2d', '3d', '7d'];
 
 // Fixed column count for the node activity heatmap. Every interval renders
@@ -1754,9 +1749,10 @@ function nodeFormatHHMM(iso: string): string {
   return `${h}:${m}`;
 }
 
-// mergeNodeActivityBuckets aligns the hourly Redis config + query read/write
-// + status-error series onto the DB-backed activity grid (status/result/query). The DB grid
-// uses a window-scaled bucket so the heatmap always has 24 columns; the Redis
+// mergeNodeActivityBuckets aligns the hourly Redis config, query read/write,
+// and status-error series onto the DB-backed activity grid
+// (status/result/query). The DB grid uses a window-scaled bucket so the
+// heatmap keeps a fixed column count; the Redis
 // hourly series are folded into each cell by summing every hour that overlaps
 // the cell:
 //   - sub-hourly cells (6h/12h) → one hour overlaps, so the hour's count is
@@ -1941,7 +1937,7 @@ function NodeActivityHeatmap({
                 aria-selected={active}
                 onClick={() => onIntervalChange(iv)}
                 className={cn(
-                  'px-2 py-0.5 rounded text-[11px] font-mono-tabular transition-colors',
+                  'px-2 py-0.5 rounded text-xs font-medium tabular-nums transition-colors',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   active
                     ? 'bg-[color:var(--bg-3)] text-[color:var(--text-1)]'
@@ -1983,7 +1979,7 @@ function NodeActivityHeatmap({
               <span
                 key={i}
                 className={cn(
-                  'text-[9px] font-mono-tabular text-[color:var(--text-3)]',
+                  'text-xs tabular-nums text-[color:var(--text-3)]',
                   i === 0 && '-translate-x-1/2',
                   i === tickLabels.length - 1 && 'translate-x-1/2',
                 )}
@@ -1995,7 +1991,7 @@ function NodeActivityHeatmap({
         )}
 
         {isEmpty && (
-          <p className="mt-2 text-[11px] text-[color:var(--text-3)]">
+          <p className="mt-2 text-xs text-[color:var(--text-3)]">
             No activity in the {NODE_INTERVAL_LABEL[interval]}.
           </p>
         )}
@@ -2007,7 +2003,7 @@ function NodeActivityHeatmap({
           {NODE_ACTIVITY_CATEGORIES.map(({ key, label, cssVar }) => (
             <span
               key={key}
-              className="inline-flex items-center gap-1.5 text-[10px] font-mono-tabular text-[color:var(--text-3)]"
+              className="inline-flex items-center gap-1.5 text-xs text-[color:var(--text-3)]"
             >
               <span
                 aria-hidden
@@ -2018,7 +2014,7 @@ function NodeActivityHeatmap({
             </span>
           ))}
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+        <div className="flex items-center gap-1.5 text-xs text-[color:var(--text-3)]">
           <span>less</span>
           {[0, 1, 2, 3, 4].map((step) => (
             <span
@@ -2122,7 +2118,7 @@ function NodeFragmentRow({
   const skeletonN = isLoading || n === 0 ? NODE_ACTIVITY_COLUMNS : n;
   return (
     <>
-      <span className="text-[10px] font-mono-tabular uppercase tracking-[0.1em] text-[color:var(--text-3)] self-center pr-2">
+      <span className="text-xs font-medium uppercase tracking-[0.1em] text-[color:var(--text-3)] self-center pr-2">
         {label}
       </span>
       {isLoading || n === 0
@@ -2290,7 +2286,7 @@ function PostureScorePanel({
             />
           </svg>
           <span
-            className="absolute inset-0 flex items-center justify-center text-lg font-bold font-mono-tabular"
+            className="absolute inset-0 flex items-center justify-center text-lg font-bold tabular-nums"
             style={{ color: riskColor }}
           >
             {displayed.total_score}
@@ -2302,25 +2298,23 @@ function PostureScorePanel({
             <span className="text-sm font-display font-semibold text-[color:var(--text-1)]">
               Risk score
             </span>
-            <span
-              className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular font-semibold uppercase tracking-[0.08em] border"
-              style={{ color: riskColor, borderColor: riskColor, background: `color-mix(in oklab, ${riskColor} 10%, transparent)` }}
-            >
-              {displayed.risk_level}
-            </span>
+            <StatusBadge
+              variant={displayed.risk_level === 'low' ? 'success' : displayed.risk_level === 'medium' ? 'warning' : 'danger'}
+              label={displayed.risk_level.charAt(0).toUpperCase() + displayed.risk_level.slice(1)}
+            />
             {excludedControls.size > 0 && (
-              <span className="text-[10px] text-[color:var(--text-3)]" title="Unchecked controls below are excluded from this score">
+              <span className="text-xs text-[color:var(--text-3)]" title="Unchecked controls below are excluded from this score">
                 {included.size}/{controls.length} checks counted
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-1 text-[11px] font-mono-tabular">
+          <div className="flex items-center gap-3 mt-1 text-xs tabular-nums">
             <span className="text-[color:var(--success)]">{displayed.pass_count} pass</span>
             <span className="text-[color:var(--warning)]">{displayed.warn_count} warn</span>
             <span className="text-[color:var(--danger)]">{displayed.fail_count} fail</span>
           </div>
           {allExcluded && (
-            <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+            <p className="mt-1 text-xs text-[color:var(--text-3)]">
               Every check is unchecked — check at least one to see a score.
             </p>
           )}
@@ -2354,13 +2348,13 @@ function PostureScorePanel({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-[color:var(--text-1)]">{ctrl.title}</span>
-                  <span className="text-[9px] font-mono-tabular text-[color:var(--text-3)] px-1 rounded bg-[color:var(--bg-2)]">{ctrl.control_id}</span>
-                  <span className="text-[9px] font-mono-tabular text-[color:var(--text-3)]">{ctrl.framework}</span>
+                  <span className="text-xs font-mono-tabular text-[color:var(--text-3)] px-1 rounded bg-[color:var(--bg-2)]">{ctrl.control_id}</span>
+                  <span className="text-xs text-[color:var(--text-3)]">{ctrl.framework}</span>
                 </div>
-                <p className="text-[10px] text-[color:var(--text-3)] mt-0.5">{ctrl.detail}</p>
+                <p className="text-xs text-[color:var(--text-3)] mt-0.5">{ctrl.detail}</p>
               </div>
               {ctrl.score > 0 && (
-                <span className="flex-shrink-0 text-[10px] font-mono-tabular font-semibold" style={{ color: statusColor }}>
+                <span className="flex-shrink-0 text-xs tabular-nums font-semibold" style={{ color: statusColor }}>
                   +{ctrl.score}
                 </span>
               )}
@@ -2393,11 +2387,11 @@ function PostureCard({ item }: { item: NodePosture }) {
           <span className="text-sm font-display font-semibold text-[color:var(--text-1)]">
             {item.category}
           </span>
-          <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+          <span className="text-xs tabular-nums text-[color:var(--text-3)]">
             {item.row_count} row{item.row_count !== 1 ? 's' : ''}
           </span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+        <div className="flex items-center gap-2 text-xs tabular-nums text-[color:var(--text-3)]">
           <span title={item.last_seen}>{formatRelative(item.last_seen)}</span>
           <svg className={cn('w-3.5 h-3.5 transition-transform', expanded && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M6 9l6 6 6-6" />

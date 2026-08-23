@@ -292,7 +292,7 @@ describe('EnvConfigPage', () => {
     await user.click(await screen.findByRole('tab', { name: 'Schedule' }));
     await user.click(screen.getByRole('button', { name: 'Add posture checks' }));
 
-    expect(await screen.findByText('linux')).toBeInTheDocument();
+    expect(await screen.findByText('Linux')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Add Linux Servers to schedule' }));
     await user.click(screen.getByRole('tab', { name: 'Posture' }));
 

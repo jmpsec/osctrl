@@ -1,4 +1,5 @@
 import { cn } from '$/lib/cn';
+import { Menu, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 
@@ -12,6 +13,8 @@ interface TopBarProps {
   username?: string;
   onCommandPalette?: () => void;
   onMenuToggle?: () => void;
+  desktopNavCollapsed?: boolean;
+  onDesktopNavToggle?: () => void;
 }
 
 export function TopBar({
@@ -19,12 +22,14 @@ export function TopBar({
   username,
   onCommandPalette,
   onMenuToggle,
+  desktopNavCollapsed,
+  onDesktopNavToggle,
 }: TopBarProps) {
   return (
     <header
       className={cn(
         'topbar-glass',
-        'h-14 flex items-center gap-3 px-4 md:px-6',
+        'h-12 flex items-center gap-3 px-3',
         'border-b border-[color:var(--border)]',
         'sticky top-0 z-30',
       )}
@@ -36,20 +41,41 @@ export function TopBar({
           onClick={onMenuToggle}
           aria-label="Open navigation menu"
           className={cn(
-            'md:hidden -ml-1 p-1.5 rounded-md',
+            'md:hidden -ml-1 flex h-8 w-8 items-center justify-center rounded-md',
             'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
             'transition-colors duration-[120ms]',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',
           )}
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <Menu size={18} strokeWidth={1.75} />
+        </button>
+      )}
+
+      {/* Persistent desktop sidebar control. Keeping this in the toolbar
+          means it remains discoverable even when the rail is collapsed. */}
+      {onDesktopNavToggle && (
+        <button
+          type="button"
+          onClick={onDesktopNavToggle}
+          aria-label={desktopNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          title={desktopNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          className={cn(
+            'hidden md:flex -ml-1 h-8 w-8 items-center justify-center rounded-md',
+            'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
+            'transition-colors duration-[120ms]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',
+          )}
+        >
+          {desktopNavCollapsed ? (
+            <PanelLeftOpen size={18} strokeWidth={1.75} />
+          ) : (
+            <PanelLeftClose size={18} strokeWidth={1.75} />
+          )}
         </button>
       )}
 
       {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] min-w-0">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm min-w-0">
         {breadcrumbs.map((seg, idx) => {
           const isLast = idx === breadcrumbs.length - 1;
           return (
@@ -77,26 +103,23 @@ export function TopBar({
       </nav>
 
       {/* Right controls */}
-      <div className="ml-auto flex items-center gap-2.5">
+      <div className="ml-auto flex items-center gap-1.5">
         {onCommandPalette && (
           <button
             type="button"
             onClick={onCommandPalette}
             aria-label="Open command palette"
             className={cn(
-              'flex items-center gap-2 px-2.5 py-1 rounded-md text-xs',
-              'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
-              'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:border-[color:var(--signal)]',
-              'transition-colors duration-[120ms]',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+              'flex h-8 items-center gap-2 rounded-md border border-[color:var(--border)] px-2.5 text-xs',
+              'bg-[color:var(--bg-1)] text-[color:var(--text-2)]',
+              'hover:border-[color:var(--border-strong)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
+              'transition-colors duration-[100ms]',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',
             )}
           >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
+            <Search size={14} strokeWidth={1.8} />
             <span className="hidden md:inline">Search</span>
-            <kbd className="hidden md:inline font-mono-tabular text-[10px] text-[color:var(--text-3)]">⌘K</kbd>
+            <kbd className="hidden md:inline font-mono-tabular text-xs text-[color:var(--text-3)]">⌘K</kbd>
           </button>
         )}
         <ThemeToggle />

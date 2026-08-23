@@ -4,22 +4,15 @@ import { listEnvTags } from '$/api/tags';
 import { listNodes } from '$/api/nodes';
 import { cn } from '$/lib/cn';
 import type { TargetSelection } from '$/components/forms/TargetSelector';
+import { FilterChip } from '$/components/data/FilterChip';
+import { PlatformIcon, PLATFORM_OPTIONS, type PlatformId } from '$/components/data/PlatformIcon';
+import { SelectionChip } from '$/components/data/SelectionChip';
 
 interface TargetingPanelProps {
   value: TargetSelection;
   onChange: (v: TargetSelection) => void;
   env: string;
 }
-
-const PLATFORM_OPTIONS = [
-  { id: 'linux',   label: 'Linux',   color: 'var(--plat-linux, var(--warning))' },
-  { id: 'darwin',  label: 'macOS',   color: 'var(--plat-mac, var(--info))' },
-  { id: 'windows', label: 'Windows', color: 'var(--plat-windows, var(--info))' },
-  { id: 'freebsd', label: 'FreeBSD', color: 'var(--text-3)' },
-  { id: 'all',     label: 'All',     color: 'var(--signal)' },
-] as const;
-
-type PlatformId = (typeof PLATFORM_OPTIONS)[number]['id'];
 
 function parseList(raw: string): string[] {
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
@@ -94,32 +87,18 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
     <div className="space-y-4">
       {/* ── Platforms ─────────────────────────────────────────────────── */}
       <div>
-        <SectionLabel>Platforms</SectionLabel>
+        <SectionLabel>Select Platforms</SectionLabel>
         <div className="flex flex-wrap gap-1.5">
           {PLATFORM_OPTIONS.map((p) => {
             const active = value.platforms.includes(p.id);
             return (
-              <button
+              <FilterChip
                 key={p.id}
-                type="button"
                 onClick={() => togglePlatform(p.id)}
-                aria-pressed={active}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full',
-                  'text-[11px] font-medium transition-colors duration-[120ms]',
-                  'border focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  active
-                    ? 'bg-[color:var(--signal)]/12 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'
-                    : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)]',
-                )}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: p.color }}
-                  aria-hidden
-                />
-                {p.label}
-              </button>
+                selected={active}
+                label={p.label}
+                icon={<PlatformIcon platform={p.id} />}
+              />
             );
           })}
         </div>
@@ -127,32 +106,24 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
 
       {/* ── Tags ──────────────────────────────────────────────────────── */}
       <div>
-        <SectionLabel>Tags</SectionLabel>
+        <SectionLabel>Select Tags</SectionLabel>
         {envTags && envTags.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {envTags.map((t) => {
               const active = value.tags.includes(t.name);
               return (
-                <button
+                <FilterChip
                   key={t.id}
-                  type="button"
                   onClick={() => toggleTag(t.name)}
-                  aria-pressed={active}
-                  className={cn(
-                    'px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors duration-[120ms]',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                    active
-                      ? 'bg-[color:var(--signal)]/12 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'
-                      : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)]',
-                  )}
-                >
-                  {t.name}
-                </button>
+                  selected={active}
+                  label={t.name}
+                  markerColor={t.color}
+                />
               );
             })}
           </div>
         ) : (
-          <p className="text-[11px] text-[color:var(--text-3)] italic">
+          <p className="text-xs text-[color:var(--text-3)] italic">
             No tags in this environment.
           </p>
         )}
@@ -292,7 +263,6 @@ function TypeaheadInput({
         className={cn(
           'w-full px-2.5 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
           'bg-[color:var(--bg-2)] text-[color:var(--text-1)] placeholder-[color:var(--text-3)]',
-          'font-mono-tabular',
           'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
         )}
         autoComplete="off"
@@ -325,10 +295,10 @@ function TypeaheadInput({
                   'focus:outline focus:outline-2 focus:outline-[color:var(--signal)] focus:bg-[color:var(--bg-1)]',
                 )}
               >
-                <span className="font-mono-tabular text-[color:var(--text-1)]">
+                <span className="text-[color:var(--text-1)]">
                   {n.hostname}
                 </span>
-                <span className="ml-2 font-mono-tabular text-[color:var(--text-3)] text-[10px]">
+                <span className="ml-2 font-mono-tabular text-[color:var(--text-3)] text-xs">
                   {n.uuid.slice(0, 12)}…
                 </span>
               </button>
@@ -342,7 +312,7 @@ function TypeaheadInput({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1.5">
+    <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1.5">
       {children}
     </label>
   );
@@ -359,29 +329,19 @@ function ChipList({
 }) {
   return (
     <div className="flex flex-wrap gap-1 mt-1.5">
-      {items.map((it) => (
-        <span
-          key={it}
-          className={cn(
-            'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px]',
-            'bg-[color:var(--signal)]/10 text-[color:var(--signal-bright,var(--signal))]',
-            'border border-[color:var(--signal)]/30',
-            mono && 'font-mono-tabular',
-          )}
-        >
-          <span className="truncate max-w-[100px]" title={it}>
-            {mono ? it.slice(0, 8) + (it.length > 8 ? '…' : '') : it}
-          </span>
-          <button
-            type="button"
-            onClick={() => onRemove(it)}
-            aria-label={`Remove ${it}`}
-            className="text-[color:var(--text-3)] hover:text-[color:var(--danger)] transition-colors"
-          >
-            ×
-          </button>
-        </span>
-      ))}
+      {items.map((it) => {
+        const label = mono ? it.slice(0, 8) + (it.length > 8 ? '…' : '') : it;
+        return (
+          <SelectionChip
+            key={it}
+            label={label}
+            title={it}
+            mono={mono}
+            removeLabel={it}
+            onRemove={() => onRemove(it)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -405,28 +365,15 @@ function NodeChipList({
     <div className="flex flex-wrap gap-1 mt-1.5">
       {uuids.map((u) => {
         const host = lookup.get(u);
+        const label = host ?? u.slice(0, 8) + (u.length > 8 ? '…' : '');
         return (
-          <span
+          <SelectionChip
             key={u}
-            className={cn(
-              'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px]',
-              'bg-[color:var(--signal)]/10 text-[color:var(--signal-bright,var(--signal))]',
-              'border border-[color:var(--signal)]/30 font-mono-tabular',
-            )}
+            label={label}
             title={u}
-          >
-            <span className="truncate max-w-[120px]">
-              {host ?? u.slice(0, 8) + (u.length > 8 ? '…' : '')}
-            </span>
-            <button
-              type="button"
-              onClick={() => onRemove(u)}
-              aria-label={`Remove ${host ?? u}`}
-              className="text-[color:var(--text-3)] hover:text-[color:var(--danger)] transition-colors"
-            >
-              ×
-            </button>
-          </span>
+            removeLabel={host ?? u}
+            onRemove={() => onRemove(u)}
+          />
         );
       })}
     </div>
@@ -456,16 +403,16 @@ function TargetPreview({ value, total }: TargetPreviewProps) {
           : 'bg-[color:var(--bg-2)]',
       )}
     >
-      <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1">
+      <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
         Target preview
       </div>
       {total === 0 ? (
-        <p className="text-[11px] text-[color:var(--warning)]">
+        <p className="text-xs text-[color:var(--warning)]">
           No targets selected — the query will fire against <strong>all nodes</strong> in this env.
         </p>
       ) : (
-        <p className="text-[11px] text-[color:var(--text-1)]">
-          Will fire against <span className="text-[color:var(--signal)] font-mono-tabular">{parts.join(' · ')}</span>.
+        <p className="text-xs text-[color:var(--text-1)]">
+          Will fire against <span className="text-[color:var(--signal)] font-medium">{parts.join(' · ')}</span>.
         </p>
       )}
     </div>

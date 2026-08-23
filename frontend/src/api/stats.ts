@@ -121,9 +121,9 @@ export function getNodeActivity(
 ): Promise<NodeActivityBucket[]> {
   const sp = new URLSearchParams();
   sp.set('interval', interval);
-  // Optional hourly override: the per-node heatmap aligns to an hourly grid so
-  // it can merge in the Redis-backed config series (hourly). Omitted for the
-  // Nodes-table sparklines, which keep the interval's native bucket size.
+  // Optional resolution override: the per-node heatmap requests a fixed number
+  // of cells and merges the result with the Redis-backed hourly config series.
+  // Omitted for the Nodes-table sparklines, which keep the native bucket size.
   if (bucketSeconds) sp.set('bucket_seconds', String(bucketSeconds));
   return apiFetch<NodeActivityBucket[]>(
     `/api/v1/stats/activity/node/${encodeURIComponent(env)}/${encodeURIComponent(uuid)}?${sp.toString()}`,

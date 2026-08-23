@@ -211,7 +211,7 @@ describe('DashboardPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument(),
     );
-    expect(screen.getByText(/overview/)).toBeInTheDocument();
+    expect(screen.getByText(/prod · osquery activity within the last 24 hours/)).toBeInTheDocument();
   });
 
   it('renders KPI card labels from the stats response', async () => {

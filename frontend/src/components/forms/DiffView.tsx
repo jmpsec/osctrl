@@ -115,7 +115,7 @@ export function DiffView({
         className,
       )}
     >
-      <div className="flex items-center justify-between px-3 py-1.5 text-[10px] font-mono-tabular uppercase tracking-wider bg-[color:var(--bg-0)] border-b border-[color:var(--border)] text-[color:var(--text-3)]">
+      <div className="flex items-center justify-between px-3 py-1.5 text-xs font-mono-tabular uppercase tracking-wider bg-[color:var(--bg-0)] border-b border-[color:var(--border)] text-[color:var(--text-3)]">
         <span>
           {leftLabel} → {rightLabel}
         </span>

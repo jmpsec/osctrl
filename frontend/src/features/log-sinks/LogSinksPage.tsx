@@ -26,6 +26,8 @@ import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { cn } from '$/lib/cn';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 
 const GLOBAL_ENV_ID = 0;
 
@@ -319,7 +321,7 @@ export function LogSinksPage() {
             <span
               aria-live="polite"
               aria-label="Refreshing data"
-              className="text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+              className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
             </span>
@@ -339,7 +341,7 @@ export function LogSinksPage() {
             onClick={() => setModal({ kind: 'create' })}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
             )}
           >
@@ -388,7 +390,7 @@ export function LogSinksPage() {
           onChange={(e) => setSelectedEnv(Number(e.target.value))}
           aria-label="Select environment whose sinks to show"
           className={cn(
-            'px-2 py-1 rounded font-mono-tabular',
+            'px-2 py-1 rounded tabular-nums',
             'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
@@ -476,7 +478,7 @@ export function LogSinksPage() {
                       <button
                         type="button"
                         onClick={() => void refetch()}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Retry
                       </button>
@@ -510,7 +512,7 @@ export function LogSinksPage() {
                       <button
                         type="button"
                         onClick={() => setModal({ kind: 'create' })}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Add a sink
                       </button>
@@ -527,16 +529,16 @@ export function LogSinksPage() {
                   key={s.id}
                   className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
                 >
-                  <td className="px-4 py-3 text-xs font-mono-tabular text-[color:var(--text-3)]">
+                  <td className="px-4 py-3 text-xs tabular-nums text-[color:var(--text-3)]">
                     {s.order}
                   </td>
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">
+                      <span className="text-sm font-semibold text-[color:var(--text-1)] tabular-nums">
                         {s.name}
                       </span>
                       {s.info && (
-                        <span className="text-[10px] text-[color:var(--text-3)] truncate max-w-[240px]" title={s.info}>
+                        <span className="text-xs text-[color:var(--text-3)] truncate max-w-[240px]" title={s.info}>
                           — {s.info}
                         </span>
                       )}
@@ -547,35 +549,27 @@ export function LogSinksPage() {
                       <span className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]">
                         {sinkTypeIcon(s.type)}
                       </span>
-                      <span className="font-mono-tabular">{s.type}</span>
+                      <span className="tabular-nums">{s.type}</span>
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {s.enabled ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]">
-                        on
-                      </span>
+                      <StatusBadge variant="success" label="Enabled" />
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[color:var(--bg-2)] text-[color:var(--text-3)]">
-                        off
-                      </span>
+                      <StatusBadge variant="dim" label="Disabled" />
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {s.source === 'db' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
-                        edited
-                      </span>
+                      <MetadataBadge>Edited</MetadataBadge>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[color:var(--bg-2)] text-[color:var(--text-3)]" title={`Seeded from service configuration (source: ${s.source})`}>
-                        seed
-                      </span>
+                      <MetadataBadge className="cursor-help" title={`Seeded from service configuration (source: ${s.source})`}>Seeded</MetadataBadge>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right font-mono-tabular" title={`${s.exports_count} exports`}>
+                  <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right tabular-nums" title={`${s.exports_count} exports`}>
                     {s.bytes_sent > 0 ? formatBytes(s.bytes_sent) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right font-mono-tabular">
+                  <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right tabular-nums">
                     <span title={s.updated_at}>{formatRelative(s.updated_at)}</span>
                   </td>
                   <td className="px-2 py-3 text-right whitespace-nowrap">
@@ -727,10 +721,10 @@ function SinkTypePicker({
                 {sinkTypeIcon(t.type)}
               </span>
               <span className="flex flex-col gap-0.5 min-w-0">
-                <span className="text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">
+                <span className="text-sm font-semibold text-[color:var(--text-1)] tabular-nums">
                   {t.type}
                 </span>
-                <span className="text-[10px] text-[color:var(--text-3)]">
+                <span className="text-xs text-[color:var(--text-3)]">
                   {t.description}
                 </span>
               </span>
@@ -861,7 +855,7 @@ function SinkEditor({
 
   const inputClass = cn(
     'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
   );
 
@@ -894,7 +888,7 @@ function SinkEditor({
             placeholder="e.g. prod-splunk"
             className={inputClass}
           />
-          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">
             Unique label for this sink within its environment.
           </p>
         </div>
@@ -906,14 +900,14 @@ function SinkEditor({
           <span className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
             Type
           </span>
-          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] text-sm font-mono-tabular text-[color:var(--text-1)]">
+          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] text-sm tabular-nums text-[color:var(--text-1)]">
             <span className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]">
               {sinkTypeIcon(sinkType)}
             </span>
             {sinkType}
           </span>
           {spec?.has_secret && (
-            <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+            <p className="mt-1 text-xs text-[color:var(--text-3)]">
               This sink type stores credentials ({spec.secret_fields?.join(', ')}).
               {mode === 'edit' && ' Secret fields are revealed below for editing.'}
             </p>
@@ -944,7 +938,7 @@ function SinkEditor({
                 onChange={(e) => setEnabled(e.target.checked)}
                 className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
               />
-              <span className="font-mono-tabular">enabled</span>
+              <span className="tabular-nums">enabled</span>
             </label>
           </fieldset>
         </div>
@@ -999,7 +993,7 @@ function SinkEditor({
             disabled={mutation.isPending || !name.trim()}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -1034,7 +1028,7 @@ function SinkConfigFields({
 
   if (!spec || !spec.fields || spec.fields.length === 0) {
     return (
-      <p className="text-[10px] text-[color:var(--text-3)] italic">
+      <p className="text-xs text-[color:var(--text-3)] italic">
         This sink type has no configurable fields.
       </p>
     );
@@ -1090,7 +1084,7 @@ function SinkConfigFields({
             onClick={copyFromExistingDB}
             disabled={copying}
             className={cn(
-              'px-2.5 py-1 text-[11px] font-medium rounded',
+              'px-2.5 py-1 text-xs font-medium rounded',
               'border border-[color:var(--border)] text-[color:var(--text-2)]',
               'hover:bg-[color:var(--bg-2)] transition-colors',
               'disabled:opacity-50',
@@ -1098,11 +1092,11 @@ function SinkConfigFields({
           >
             {copying ? 'Copying…' : 'Copy from existing DB'}
           </button>
-          <span className="text-[10px] text-[color:var(--text-3)]">
+          <span className="text-xs text-[color:var(--text-3)]">
             Pre-fills from the osctrl-tls db section.
           </span>
           {copyErr && (
-            <span className="text-[10px] text-[color:var(--danger)]">{copyErr}</span>
+            <span className="text-xs text-[color:var(--danger)]">{copyErr}</span>
           )}
         </div>
       )}
@@ -1141,13 +1135,13 @@ function ConfigField({
     </label>
   );
   const helpEl = field.help && (
-    <p className="mt-1 text-[10px] text-[color:var(--text-3)]">{field.help}</p>
+    <p className="mt-1 text-xs text-[color:var(--text-3)]">{field.help}</p>
   );
 
   // Group secret fields under a label that makes the reveal-on-edit
   // behavior obvious.
   const secretHint = field.secret && (
-    <span className="ml-2 text-[10px] text-[color:var(--text-3)]">(secret)</span>
+    <span className="ml-2 text-xs text-[color:var(--text-3)]">(secret)</span>
   );
 
   switch (field.type) {
@@ -1163,7 +1157,7 @@ function ConfigField({
               onChange={(e) => onChange(e.target.checked)}
               className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
             />
-            <span className="font-mono-tabular">{field.label}</span>
+            <span className="tabular-nums">{field.label}</span>
             {secretHint}
           </label>
           {helpEl}
@@ -1345,7 +1339,7 @@ function CloneModal({
 
   const selectClass = cn(
     'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
   );
 
@@ -1423,7 +1417,7 @@ function CloneModal({
               onChange={(e) => setOverwrite(e.target.checked)}
               className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
             />
-            <span className="font-mono-tabular">overwrite</span>
+            <span className="tabular-nums">overwrite</span>
             <span className="text-[color:var(--text-3)]">
               — delete the target’s existing sinks first
             </span>
@@ -1452,7 +1446,7 @@ function CloneModal({
             disabled={pending || source === target}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -1498,7 +1492,7 @@ function ApplyConfirmDialog({
         </p>
 
         <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-0)] p-3">
-          <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-3)] mb-2">
+          <p className="text-xs uppercase tracking-[0.08em] text-[color:var(--text-3)] mb-2">
             Pending changes ({pendingSinks.length})
           </p>
           {pendingSinks.length === 0 ? (
@@ -1516,7 +1510,7 @@ function ApplyConfirmDialog({
                   <span className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]">
                     {sinkTypeIcon(s.type)}
                   </span>
-                  <span className="font-mono-tabular text-[color:var(--text-1)]">
+                  <span className="tabular-nums text-[color:var(--text-1)]">
                     {s.name}
                   </span>
                   <span className="text-[color:var(--text-3)]">— {s.type}</span>

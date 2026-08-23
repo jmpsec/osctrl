@@ -14,6 +14,10 @@ import { StatCard } from '$/components/data/StatCard';
 import { Sparkline } from '$/components/data/Sparkline';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { StatusPip } from '$/components/data/StatusPip';
+import { TagChip } from '$/components/data/TagChip';
+import { FilterChip } from '$/components/data/FilterChip';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { SelectionChip } from '$/components/data/SelectionChip';
 import { StatusTabs } from '$/components/data/StatusTabs';
 import { Pagination } from '$/components/data/Pagination';
 import { SearchInput } from '$/components/data/SearchInput';
@@ -31,13 +35,14 @@ export function ComponentGallery() {
   const [page, setPage] = useState(2);
   const [code, setCode] = useState('SELECT name, version FROM osquery_info;');
   const [tab, setTab] = useState<DemoTab>('all');
+  const [filterSelected, setFilterSelected] = useState(false);
   const [sort, setSort] = useState<DemoSort>('name');
   const [dir, setDir] = useState<SortDir>('asc');
 
   return (
-    <div className="p-6 space-y-8 max-w-5xl mx-auto">
+    <div className="p-5 space-y-6 max-w-5xl mx-auto">
       <header>
-        <h1 className="font-display text-2xl font-bold text-[color:var(--text-1)]">
+        <h1 className="font-display text-xl font-semibold text-[color:var(--text-1)]">
           Component gallery
         </h1>
         <p className="text-sm text-[color:var(--text-3)] mt-1">
@@ -122,6 +127,22 @@ export function ComponentGallery() {
         </div>
       </Section>
 
+      <Section title="Chip language">
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusBadge variant="success" label="Healthy" />
+          <TagChip label="production" color="#5b8def" />
+          <FilterChip
+            label="Linux"
+            markerColor="var(--warning)"
+            selected={filterSelected}
+            onClick={() => setFilterSelected((selected) => !selected)}
+          />
+          <MetadataBadge>Admin</MetadataBadge>
+          <SelectionChip label="web-server-01" onRemove={() => {}} />
+          <span className="text-xs font-medium tabular-nums text-[color:var(--text-3)]">24</span>
+        </div>
+      </Section>
+
       <Section title="Status tabs">
         <StatusTabs
           value={tab}
@@ -196,8 +217,8 @@ export function ComponentGallery() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border border-[color:var(--border)] rounded-md p-4 bg-[color:var(--bg-1)]">
-      <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-[color:var(--text-3)] mb-3">
+    <section className="border-b border-[color:var(--border)] pb-5 last:border-0">
+      <h2 className="font-display text-sm font-semibold text-[color:var(--text-1)] mb-3">
         {title}
       </h2>
       {children}

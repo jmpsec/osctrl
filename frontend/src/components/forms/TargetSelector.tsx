@@ -3,6 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { listEnvTags } from '$/api/tags';
 import { listNodes } from '$/api/nodes';
 import { cn } from '$/lib/cn';
+import { FilterChip } from '$/components/data/FilterChip';
+import { PlatformIcon, PLATFORM_OPTIONS, type PlatformId } from '$/components/data/PlatformIcon';
+import { SelectionChip } from '$/components/data/SelectionChip';
 
 export interface TargetSelection {
   uuids: string[];
@@ -10,9 +13,6 @@ export interface TargetSelection {
   tags: string[];
   hosts: string[];
 }
-
-const PLATFORMS = ['linux', 'darwin', 'windows', 'freebsd', 'all'] as const;
-type Platform = (typeof PLATFORMS)[number];
 
 interface TargetSelectorProps {
   value: TargetSelection;
@@ -126,7 +126,7 @@ export function TargetSelector({ value, onChange, className, env }: TargetSelect
     onChange({ ...value, uuids: next });
   }
 
-  function togglePlatform(p: Platform) {
+  function togglePlatform(p: PlatformId) {
     const has = value.platforms.includes(p);
     const next = has
       ? value.platforms.filter((x) => x !== p)
@@ -211,10 +211,10 @@ export function TargetSelector({ value, onChange, className, env }: TargetSelect
                         'focus:outline focus:outline-2 focus:outline-[color:var(--signal)] focus:bg-[color:var(--bg-1)]',
                       )}
                     >
-                      <span className="font-mono-tabular text-[color:var(--text-1)]">
+                      <span className="tabular-nums text-[color:var(--text-1)]">
                         {n.hostname}
                       </span>
-                      <span className="ml-2 font-mono-tabular text-[color:var(--text-3)] text-[10px]">
+                      <span className="ml-2 font-mono-tabular text-[color:var(--text-3)] text-xs">
                         {n.uuid.slice(0, 12)}…
                       </span>
                     </button>
@@ -227,22 +227,12 @@ export function TargetSelector({ value, onChange, className, env }: TargetSelect
                 {value.uuids.map((u) => {
                   const host = nodeByUuid.get(u) ?? u;
                   return (
-                    <button
+                    <SelectionChip
                       key={u}
-                      type="button"
-                      onClick={() => removeUuid(u)}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full',
-                        'bg-[color:var(--signal)] text-black border border-[color:var(--signal)]',
-                        'hover:opacity-90 transition-opacity',
-                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                      )}
+                      label={host}
                       title={u}
-                      aria-label={`Remove ${host}`}
-                    >
-                      <span className="font-mono-tabular">{host}</span>
-                      <span aria-hidden className="text-[10px]">×</span>
-                    </button>
+                      onRemove={() => removeUuid(u)}
+                    />
                   );
                 })}
               </div>
@@ -263,27 +253,19 @@ export function TargetSelector({ value, onChange, className, env }: TargetSelect
       {/* Platforms */}
       <div>
         <span className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
-          Platforms
+          Select Platforms
         </span>
         <div className="flex flex-wrap gap-1.5">
-          {PLATFORMS.map((p) => {
-            const active = value.platforms.includes(p);
+          {PLATFORM_OPTIONS.map((platform) => {
+            const active = value.platforms.includes(platform.id);
             return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => togglePlatform(p)}
-                aria-pressed={active}
-                className={cn(
-                  'px-3 py-1 text-xs font-medium rounded-full border transition-colors capitalize',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  active
-                    ? 'bg-[color:var(--signal)] text-black border-[color:var(--signal)]'
-                    : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)]',
-                )}
-              >
-                {p}
-              </button>
+              <FilterChip
+                key={platform.id}
+                onClick={() => togglePlatform(platform.id)}
+                selected={active}
+                label={platform.label}
+                icon={<PlatformIcon platform={platform.id} />}
+              />
             );
           })}
         </div>
@@ -292,28 +274,20 @@ export function TargetSelector({ value, onChange, className, env }: TargetSelect
       {/* Tags — env-scoped multi-select */}
       <div>
         <span className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
-          Tags
+          Select Tags
         </span>
         {env && envTags && envTags.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {envTags.map((t) => {
               const active = value.tags.includes(t.name);
               return (
-                <button
+                <FilterChip
                   key={t.id}
-                  type="button"
                   onClick={() => toggleTag(t.name)}
-                  aria-pressed={active}
-                  className={cn(
-                    'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                    active
-                      ? 'bg-[color:var(--signal)] text-black border-[color:var(--signal)]'
-                      : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)]',
-                  )}
-                >
-                  {t.name}
-                </button>
+                  selected={active}
+                  label={t.name}
+                  markerColor={t.color}
+                />
               );
             })}
           </div>

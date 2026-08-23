@@ -1,5 +1,4 @@
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
-import { Loader2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getCarve, getCarveArchiveUrl, actOnCarve } from '$/api/carves';
@@ -9,6 +8,12 @@ import type { CarveFile } from '$/api/types';
 import { formatRelative } from '$/lib/time';
 import { cn } from '$/lib/cn';
 import { EmptyState } from '$/components/data/EmptyState';
+import { StatusBadge as SharedStatusBadge } from '$/components/data/StatusBadge';
+
+function formatStatusLabel(status?: string): string {
+  const normalized = (status || 'Unknown').replaceAll('_', ' ').toLowerCase();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
 
 function StatusBadge({ status }: { status: string }) {
   const normalized = status.toUpperCase();
@@ -20,60 +25,31 @@ function StatusBadge({ status }: { status: string }) {
         : normalized === 'SCHEDULED' || normalized === 'QUERIED'
           ? 'warning'
           : 'dim';
-  const cls = {
-    success:
-      'bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]',
-    info:
-      'bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]',
-    warning:
-      'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]',
-    dim: 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
-  }[variant];
   const inProgress = normalized === 'IN PROGRESS' || normalized === 'SCHEDULED' || normalized === 'QUERIED';
-  return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
-      {inProgress && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
-      {status || 'Unknown'}
-    </span>
-  );
+  return <SharedStatusBadge variant={variant} label={formatStatusLabel(status)} live={inProgress} />;
 }
 
 // Overall carve lifecycle badge for the header — mirrors the status column
 // of the carves list (colors and spinner) so both surfaces read the same.
 function CarveStatusBadge({ status }: { status?: string }) {
   const normalized = (status || '').toUpperCase();
-  const { variant, label, spin } = (() => {
+  const { variant, label, live } = (() => {
     switch (normalized) {
       case 'PENDING':
-        return { variant: 'warning' as const, label: 'Pending', spin: true };
+        return { variant: 'warning' as const, label: 'Pending', live: true };
       case 'COMPLETED':
-        return { variant: 'success' as const, label: 'Completed', spin: false };
+        return { variant: 'success' as const, label: 'Completed', live: false };
       case 'EXPIRED':
-        return { variant: 'warning' as const, label: 'Expired', spin: false };
+        return { variant: 'warning' as const, label: 'Expired', live: false };
       case 'DELETED':
-        return { variant: 'danger' as const, label: 'Deleted', spin: false };
+        return { variant: 'danger' as const, label: 'Deleted', live: false };
       case 'ACTIVE':
-        return { variant: 'info' as const, label: 'Active', spin: true };
+        return { variant: 'info' as const, label: 'Active', live: true };
       default:
-        return { variant: 'dim' as const, label: status || 'Unknown', spin: false };
+        return { variant: 'dim' as const, label: formatStatusLabel(status), live: false };
     }
   })();
-  const cls = {
-    success:
-      'bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]',
-    warning:
-      'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]',
-    danger:
-      'bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.12)] text-[color:var(--danger)]',
-    info: 'bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]',
-    dim: 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
-  }[variant];
-  return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
-      {spin && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
-      {label}
-    </span>
-  );
+  return <SharedStatusBadge variant={variant} label={label} live={live} />;
 }
 
 function formatBytes(n: number): string {
@@ -139,7 +115,7 @@ export function CarveDetailPage() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] flex items-center gap-2">
-              <span className="font-mono-tabular">{name}</span>
+              <span>{name}</span>
               {query?.carve_status && <CarveStatusBadge status={query.carve_status} />}
             </h1>
             <p className="text-sm text-[color:var(--text-2)] mt-0.5">
@@ -155,25 +131,25 @@ export function CarveDetailPage() {
           {query && (
             <dl className="flex items-center gap-4 text-xs text-[color:var(--text-2)] tnum">
               <div>
-                <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">Path</dt>
+                <dt className="text-xs uppercase tracking-wide text-[color:var(--text-3)]">Path</dt>
                 <dd className="font-mono-tabular">{query.path || '—'}</dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">Creator</dt>
+                <dt className="text-xs uppercase tracking-wide text-[color:var(--text-3)]">Creator</dt>
                 <dd>{query.creator}</dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">Progress</dt>
+                <dt className="text-xs uppercase tracking-wide text-[color:var(--text-3)]">Progress</dt>
                 <dd>
                   {query.executions + query.errors}/{query.expected || '—'}
                 </dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">Created</dt>
+                <dt className="text-xs uppercase tracking-wide text-[color:var(--text-3)]">Created</dt>
                 <dd title={query.created_at}>{formatRelative(query.created_at)}</dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">Expires</dt>
+                <dt className="text-xs uppercase tracking-wide text-[color:var(--text-3)]">Expires</dt>
                 <dd title={hasRealTimestamp(query.expiration) ? query.expiration : 'no expiration'}>
                   {hasRealTimestamp(query.expiration) ? formatRelative(query.expiration) : 'never'}
                 </dd>
@@ -190,7 +166,7 @@ export function CarveDetailPage() {
               disabled={completeMutation.isPending}
               className={cn(
                 'px-3 py-1.5 text-xs font-medium rounded-md',
-                'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+                'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
                 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
@@ -203,7 +179,7 @@ export function CarveDetailPage() {
 
         {query && query.targets !== undefined && (
           <div className="mt-3">
-            <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
+            <div className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
               Targets
             </div>
             {query.targets.length === 0 ? (
@@ -217,7 +193,7 @@ export function CarveDetailPage() {
                     key={`${t.type}-${t.value}-${i}`}
                     className={cn(
                       'inline-flex items-center gap-1 px-2 py-0.5 rounded-md',
-                      'text-[11px] font-mono-tabular',
+                      'text-xs font-medium',
                       'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
                       'text-[color:var(--text-2)]',
                     )}
@@ -270,7 +246,7 @@ export function CarveDetailPage() {
             {isFetching && !isLoading && (
               <span
                 aria-live="polite"
-                className="text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+                className="text-xs text-[color:var(--text-3)]"
               >
                 refreshing…
               </span>
@@ -302,7 +278,7 @@ export function CarveDetailPage() {
               <button
                 type="button"
                 onClick={() => void refetch()}
-                className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
               >
                 Retry
               </button>
@@ -375,7 +351,7 @@ export function CarveDetailPage() {
                     </td>
                     <td className="px-3 py-2 text-xs whitespace-nowrap">
                       {f.archived ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]">yes</span>
+                        <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]">yes</span>
                       ) : (
                         <span className="text-[color:var(--text-3)]">no</span>
                       )}
@@ -417,7 +393,7 @@ export function CarveDetailPage() {
               href={getCarveArchiveUrl(env, name)}
               className={cn(
                 'inline-block px-3 py-1.5 text-xs font-medium rounded-md',
-                'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors',
+                'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors',
               )}
             >
               Download archive
@@ -460,10 +436,10 @@ function CarveSummary({
     <dl className="grid grid-cols-4 gap-px bg-[color:var(--border)] border border-[color:var(--border)] rounded-md overflow-hidden mb-3">
       {stats.map((st) => (
         <div key={st.label} className="bg-[color:var(--bg-1)] px-3 py-2">
-          <dt className="text-[10px] uppercase tracking-wide text-[color:var(--text-3)]">{st.label}</dt>
-          <dd className="text-sm font-mono-tabular text-[color:var(--text-1)] tnum mt-0.5">
+          <dt className="text-xs uppercase tracking-wide text-[color:var(--text-3)]">{st.label}</dt>
+          <dd className="text-sm tabular-nums text-[color:var(--text-1)] mt-0.5">
             {st.value}
-            {st.sub && <span className="ml-1.5 text-[10px] text-[color:var(--text-3)] font-normal">{st.sub}</span>}
+            {st.sub && <span className="ml-1.5 text-xs text-[color:var(--text-3)] font-normal">{st.sub}</span>}
           </dd>
         </div>
       ))}

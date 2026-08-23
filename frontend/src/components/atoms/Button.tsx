@@ -11,19 +11,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: [
-    'bg-gradient-to-b from-[color:var(--signal-bright)] to-[color:var(--signal)]',
-    'text-[#051010]',
+    'bg-[color:var(--accent)] hover:bg-[color:var(--accent-hover)]',
+    'text-[color:var(--accent-contrast)]',
     'font-semibold',
-    'border border-[color:var(--signal)]/60',
-    'shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_1px_14px_-2px_var(--signal-glow)]',
-    'hover:brightness-110',
-    '[data-theme=light]:text-white',
+    'border border-[color:var(--accent)]',
   ].join(' '),
   ghost: [
-    'bg-[color:var(--bg-2)]',
-    'text-[color:var(--text-1)]',
+    'bg-[color:var(--bg-1)]',
+    'text-[color:var(--text-2)]',
     'border border-[color:var(--border)]',
-    'hover:bg-[color:var(--bg-3)] hover:border-[color:var(--border-strong)]',
+    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)]',
   ].join(' '),
   danger: [
     'bg-[color:var(--danger)]/10',
@@ -34,9 +31,9 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-2.5 py-1 text-xs rounded-md',
-  md: 'px-3.5 py-2 text-sm rounded-lg',
-  lg: 'px-5 py-2.5 text-base rounded-lg',
+  sm: 'h-6 px-2 text-xs rounded-md',
+  md: 'h-8 px-3 text-sm rounded-md',
+  lg: 'h-10 px-4 text-sm rounded-lg',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -47,8 +44,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled}
         className={cn(
           'inline-flex items-center justify-center gap-2 font-medium',
-          'transition-all duration-[120ms] ease-out',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]',
+          'transition-[background-color,border-color,color] duration-[100ms] ease-out',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:border-[color:var(--accent)]',
           'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
           variantClasses[variant],
           sizeClasses[size],

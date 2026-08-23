@@ -563,13 +563,23 @@ export interface OsqueryTableColumn {
   name: string;
   description: string;
   type: string;
+  notes?: string;
+  hidden?: boolean;
+  required?: boolean;
+  index?: boolean;
 }
 
 export interface OsqueryTable {
   name: string;
+  description: string;
   url: string;
   platforms: string[];
   filter: string;
+  evented?: boolean;
+  cacheable?: boolean;
+  notes?: string;
+  examples?: string[];
+  columns: OsqueryTableColumn[];
 }
 
 export interface NodePosture {

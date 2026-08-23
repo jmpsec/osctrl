@@ -6,28 +6,35 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  /* surfaces */
-  --bg-0: #07090c;
-  --bg-1: #0c1014;
-  --bg-2: #11171d;
-  --bg-3: #18202a;
-  --border: #1e2934;
-  --border-strong: #2a3845;
+  /* Neutral workspace surfaces, ordered from chrome to raised controls. */
+  --bg-0: #191919;
+  --bg-1: #171717;
+  --bg-2: #1b1b1b;
+  --bg-3: #232323;
+  --border: #2b2b2b;
+  --border-strong: #484848;
 
   /* text */
-  --text-1: #ecf1f6;
-  --text-2: #a6b3c0;
-  --text-3: #6a7886;
-  --text-link: #5fb8ff;
+  --text-1: #ebebeb;
+  --text-2: #b3b3b3;
+  --text-3: #808080;
+  --text-4: #666666;
+  --text-link: #8da4ff;
 
-  /* brand */
-  --signal: #2bc4be;
-  --signal-bright: #5fe3df;
-  --signal-deep: #0a6b66;
-  --signal-glow: rgba(43, 196, 190, 0.35);
-  --halo-r: 43;
-  --halo-g: 196;
-  --halo-b: 190;
+  /* action */
+  --accent: #6e7ff2;
+  --accent-hover: #7f8ff7;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(110, 127, 242, 0.16);
+
+  /* Compatibility aliases used by existing controls and live state. */
+  --signal: #6e7ff2;
+  --signal-bright: #8da4ff;
+  --signal-deep: #3e63dd;
+  --signal-glow: rgba(110, 127, 242, 0.16);
+  --halo-r: 110;
+  --halo-g: 127;
+  --halo-b: 242;
 
   /* semantic */
   --success: #4ade80;
@@ -38,6 +45,10 @@
      warning/danger tones used for degraded-but-expected states. */
   --error-bright: #ff4d4f;
   --info: #67c0ff;
+  /* Navigation icon tiles use object-like colors, not status semantics. */
+  --nav-teal: #5eead4;
+  --nav-violet: #a78bfa;
+  --nav-rose: #fb7185;
   --success-r: 74; --success-g: 222; --success-b: 128;
   --warning-r: 251; --warning-g: 191; --warning-b: 36;
   --danger-r: 248; --danger-g: 113; --danger-b: 113;
@@ -48,25 +59,31 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --bg-0: #f4f7f8;
+  --bg-0: #f8f8f8;
   --bg-1: #ffffff;
-  --bg-2: #f8fafb;
-  --bg-3: #edf1f3;
-  --border: #e2e8ec;
-  --border-strong: #cfd8de;
+  --bg-2: #fcfcfc;
+  --bg-3: #f1f1f1;
+  --border: #eaeaea;
+  --border-strong: #d6d6d6;
 
-  --text-1: #0e1620;
-  --text-2: #495766;
-  --text-3: #7a8694;
-  --text-link: #1f6fd9;
+  --text-1: #333333;
+  --text-2: #666666;
+  --text-3: #999999;
+  --text-4: #b3b3b3;
+  --text-link: #3e63dd;
 
-  --signal: #0a8a85;
-  --signal-bright: #14a8a3;
-  --signal-deep: #074a48;
-  --signal-glow: rgba(10, 138, 133, 0.22);
-  --halo-r: 10;
-  --halo-g: 138;
-  --halo-b: 133;
+  --accent: #3e63dd;
+  --accent-hover: #3451b2;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(62, 99, 221, 0.12);
+
+  --signal: #3e63dd;
+  --signal-bright: #3451b2;
+  --signal-deep: #263ea5;
+  --signal-glow: rgba(62, 99, 221, 0.12);
+  --halo-r: 62;
+  --halo-g: 99;
+  --halo-b: 221;
 
   --success: #16a34a;
   --warning: #d97706;
@@ -75,6 +92,9 @@
      still reads as "bright red" against a light ground. */
   --error-bright: #f01c1c;
   --info: #2563eb;
+  --nav-teal: #0f766e;
+  --nav-violet: #7c3aed;
+  --nav-rose: #e11d48;
   --success-r: 22; --success-g: 163; --success-b: 74;
   --warning-r: 217; --warning-g: 119; --warning-b: 6;
   --danger-r: 220; --danger-g: 38; --danger-b: 38;

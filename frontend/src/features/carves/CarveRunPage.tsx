@@ -9,6 +9,8 @@ import type { TargetSelection } from '$/components/forms/TargetSelector';
 import { TargetingPanel } from '$/features/queries/components/TargetingPanel';
 import { StickyFooter } from '$/features/queries/components/StickyFooter';
 import { cn } from '$/lib/cn';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 
 const PLATFORM_LABELS: Record<CarveSample['platform'], string> = {
   linux: 'Linux',
@@ -129,7 +131,7 @@ export function CarveRunPage() {
     <div className="flex flex-col h-full min-h-0">
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="px-6 py-4 border-b border-[color:var(--border)]">
-        <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
+        <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-0.5 select-none">
           carves · new
         </div>
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
@@ -206,33 +208,18 @@ export function CarveRunPage() {
               )}
             />
 
-            <div className="mt-2 flex items-center justify-between gap-2 text-[10.5px]">
+            <div className="mt-2 flex items-center justify-between gap-2 text-xs">
               <span className="text-[color:var(--text-3)]">
                 Absolute path on the target host(s). osquery must have read access.
               </span>
               {path && pathValidation.kind !== 'ok' && (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full',
-                    pathValidation.kind === 'err'
-                      ? 'text-[color:var(--danger)] bg-[color:var(--danger)]/10 border border-[color:var(--danger)]/30'
-                      : 'text-[color:var(--warning)] bg-[color:var(--warning)]/10 border border-[color:var(--warning)]/30',
-                  )}
-                >
-                  <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-current" />
-                  {pathValidation.msg}
-                </span>
+                <StatusBadge
+                  variant={pathValidation.kind === 'err' ? 'danger' : 'warning'}
+                  label={pathValidation.msg}
+                />
               )}
               {path && pathValidation.kind === 'ok' && (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full',
-                    'text-[color:var(--success)] bg-[color:var(--success)]/10 border border-[color:var(--success)]/30',
-                  )}
-                >
-                  <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-current" />
-                  absolute path
-                </span>
+                <StatusBadge variant="success" label="Absolute path" />
               )}
             </div>
           </section>
@@ -243,7 +230,7 @@ export function CarveRunPage() {
               className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] px-5 py-4"
               aria-label="Sample forensic paths"
             >
-              <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-2.5">
+              <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-2.5">
                 Sample paths
               </div>
               <div className="space-y-2">
@@ -252,22 +239,14 @@ export function CarveRunPage() {
                   if (!rows || rows.length === 0) return null;
                   return (
                     <div key={plat} className="flex items-start gap-2">
-                      <span
-                        className={cn(
-                          'flex-shrink-0 inline-flex items-center gap-1.5',
-                          'px-1.5 py-0.5 rounded text-[10px] font-mono-tabular uppercase tracking-[0.1em]',
-                          'bg-[color:var(--bg-3)] text-[color:var(--text-2)]',
-                          'border border-[color:var(--border)]',
-                          'w-[80px] justify-start mt-0.5',
-                        )}
-                      >
+                      <MetadataBadge className="mt-0.5 w-[80px] shrink-0 justify-start gap-1.5">
                         <span
                           aria-hidden
                           className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                           style={{ background: PLATFORM_COLOR[plat] }}
                         />
                         {PLATFORM_LABELS[plat]}
-                      </span>
+                      </MetadataBadge>
                       <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
                         {rows.map((s) => {
                           const active = path === s.path;
@@ -279,7 +258,7 @@ export function CarveRunPage() {
                               onClick={() => setPath(s.path)}
                               aria-pressed={active}
                               className={cn(
-                                'px-2 py-0.5 rounded text-[11px] font-mono-tabular',
+                                'px-2 py-0.5 rounded text-xs font-medium',
                                 'border transition-colors duration-[120ms]',
                                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                                 active
@@ -306,7 +285,7 @@ export function CarveRunPage() {
           >
             <label
               htmlFor="carve-exp"
-              className="block text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-2"
+              className="block text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-2"
             >
               Expiration
             </label>
@@ -320,7 +299,7 @@ export function CarveRunPage() {
                     onClick={() => setExpHours(opt.value)}
                     aria-pressed={active}
                     className={cn(
-                      'px-2.5 py-1 text-[11px] font-medium rounded-md border transition-colors duration-[120ms]',
+                      'px-2.5 py-1 text-xs font-medium rounded-md border transition-colors duration-[120ms]',
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                       active
                         ? 'bg-[color:var(--signal)]/12 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'

@@ -219,7 +219,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
             <h2 className="text-sm font-semibold text-[color:var(--text-1)]">File Explorer</h2>
             {primingRequest && (
               <span
-                className="inline-flex items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-[10px] leading-none text-[color:var(--text-3)]"
+                className="inline-flex items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-xs leading-none text-[color:var(--text-3)]"
                 title="Warming file explorer metadata"
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -227,13 +227,13 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
               </span>
             )}
           </div>
-          <p className="font-mono-tabular text-[11px] text-[color:var(--text-3)] truncate">{root}</p>
+          <p className="font-mono-tabular text-xs text-[color:var(--text-3)] truncate">{root}</p>
           {primingItems.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1.5">
               {primingItems.map((item) => (
                 <span
                   key={`${item.label}-${item.value}`}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-[10px] leading-none text-[color:var(--text-3)]"
+                  className="inline-flex max-w-full items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-xs leading-none text-[color:var(--text-3)]"
                 >
                   <span className="uppercase tracking-normal text-[color:var(--text-4)]">{item.label}</span>
                   <span className="truncate font-mono-tabular text-[color:var(--text-2)]">{item.value}</span>
@@ -327,7 +327,7 @@ function renderEntries(
           )}
           {isDirectory ? <Folder className="h-3.5 w-3.5" /> : <File className="h-3.5 w-3.5" />}
           <span className="truncate font-medium">{name}</span>
-          <span className="font-mono-tabular text-[10px] text-[color:var(--text-3)]">
+          <span className="font-mono-tabular text-xs text-[color:var(--text-3)]">
             {isLoading ? <LoadingInline /> : formatSize(entry.size)}
           </span>
         </button>
@@ -388,7 +388,7 @@ function FileDetails({
         <dl className="space-y-2">
           {rows.map(([label, value]) => (
             <div key={label}>
-              <dt className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--text-3)]">{label}</dt>
+              <dt className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-3)]">{label}</dt>
               <dd className="break-all font-mono-tabular text-xs text-[color:var(--text-1)]">{value}</dd>
             </div>
           ))}
@@ -398,7 +398,7 @@ function FileDetails({
       )}
       <div className="mt-4 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-1)] p-3">
         <h4 className="text-xs font-semibold text-[color:var(--text-1)]">Carve</h4>
-        <p className="mt-1 break-all font-mono-tabular text-[11px] text-[color:var(--text-3)]">
+        <p className="mt-1 break-all font-mono-tabular text-xs text-[color:var(--text-3)]">
           {entry?.path ?? 'No path selected'}
         </p>
         <button
@@ -407,7 +407,7 @@ function FileDetails({
           disabled={!entry || carving}
           className={cn(
             'mt-3 inline-flex h-8 w-full items-center justify-center gap-2 rounded border border-[color:var(--border)] px-3',
-            'bg-[color:var(--signal)] text-xs font-medium text-black hover:bg-[color:var(--signal-bright)]',
+            'bg-[color:var(--signal)] text-xs font-medium text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
             'disabled:cursor-not-allowed disabled:opacity-50',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
           )}

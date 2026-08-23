@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Moon, Sun } from 'lucide-react';
 import { cn } from '$/lib/cn';
 import { toggleTheme, getInitialTheme, applyTheme } from '$/lib/theme';
 import type { Theme } from '$/lib/design-tokens';
@@ -13,38 +14,25 @@ export function ThemeToggle() {
     applyTheme(current);
   }, [current]);
 
-  function handleToggle(theme: 'dark' | 'light') {
-    if (theme === current) return;
+  function handleToggle() {
     const next = toggleTheme();
     setCurrent(next);
   }
 
   return (
-    <div
-      role="group"
-      aria-label="Toggle color theme"
+    <button
+      type="button"
+      onClick={handleToggle}
+      aria-label={`Switch to ${current === 'dark' ? 'light' : 'dark'} theme`}
+      title={`Switch to ${current === 'dark' ? 'light' : 'dark'} theme`}
       className={cn(
-        'flex items-center gap-0.5 p-1 rounded-full',
-        'bg-[color:var(--bg-1)] border border-[color:var(--border)]',
+        'flex h-8 w-8 items-center justify-center rounded-md',
+        'text-[color:var(--text-3)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
+        'transition-colors duration-[100ms]',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--accent)]',
       )}
     >
-      {(['dark', 'light'] as const).map((theme) => (
-        <button
-          key={theme}
-          onClick={() => handleToggle(theme)}
-          aria-pressed={current === theme}
-          className={cn(
-            'px-2.5 py-1 rounded-full text-[11px] font-medium font-mono-tabular uppercase tracking-[0.04em]',
-            'transition-colors duration-[120ms] ease-out',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
-            current === theme
-              ? 'bg-[color:var(--bg-3)] text-[color:var(--text-1)]'
-              : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]'
-          )}
-        >
-          {theme.toUpperCase()}
-        </button>
-      ))}
-    </div>
+      {current === 'dark' ? <Sun size={16} strokeWidth={1.75} /> : <Moon size={16} strokeWidth={1.75} />}
+    </button>
   );
 }

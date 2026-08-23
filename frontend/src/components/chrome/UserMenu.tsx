@@ -35,14 +35,13 @@ export function UserMenu({ username = 'admin' }: UserMenuProps) {
         <button
           aria-label={`User menu for ${username}`}
           className={cn(
-            'w-9 h-9 rounded-full flex items-center justify-center',
-            'font-mono-tabular text-[11px] font-semibold',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-            'shadow-[0_0_0_2px_rgba(var(--halo-r),var(--halo-g),var(--halo-b),0.18)]',
-            'transition-all duration-[120ms]',
-            'hover:border-[color:var(--border-strong)] hover:shadow-[0_0_0_2px_rgba(var(--halo-r),var(--halo-g),var(--halo-b),0.32)]',
+            'w-8 h-8 rounded-md flex items-center justify-center',
+            'text-xs font-semibold',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)]',
+            'transition-colors duration-[100ms]',
+            'hover:border-[color:var(--border-strong)] hover:bg-[color:var(--bg-2)]',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1',
-            'focus-visible:outline-[color:var(--signal)]',
+            'focus-visible:outline-[color:var(--accent)]',
             'text-[color:var(--text-1)]'
           )}
         >
@@ -50,7 +49,7 @@ export function UserMenu({ username = 'admin' }: UserMenuProps) {
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align="end" sideOffset={8}>
-        <DropdownMenu.Label className="font-mono-tabular">{username}</DropdownMenu.Label>
+        <DropdownMenu.Label className="tabular-nums">{username}</DropdownMenu.Label>
         <DropdownMenu.Separator />
         <DropdownMenu.Item
           onClick={handleLogout}
