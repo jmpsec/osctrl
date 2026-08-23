@@ -1,6 +1,7 @@
 package fileexplorer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -185,6 +186,16 @@ func (m *Manager) submitRequest(sessionID uint, action, target string, timeout t
 	if err != nil {
 		return Request{}, err
 	}
+
+	// Invalidate the query-dispatch cache for the target node so the next
+	// QueryRead hits the DB and picks up the new pending request. Without
+	// this, a recently cached "no pending queries" entry (5s TTL) would
+	// hide the request from the node until the TTL expires — a frequent
+	// cause of file explorer request timeouts.
+	if m.Queries.Cache != nil {
+		m.Queries.Cache.Invalidate(context.Background(), session.NodeID)
+	}
+
 	return request, nil
 }
 
@@ -268,6 +279,14 @@ func (m *Manager) SubmitPrimingRequest(sessionID uint, timeout time.Duration) (R
 	if err != nil {
 		return Request{}, err
 	}
+
+	// Invalidate the query-dispatch cache so the priming query is visible
+	// to the next QueryRead immediately, warming acceleration before the
+	// operator expands the first directory.
+	if m.Queries.Cache != nil {
+		m.Queries.Cache.Invalidate(context.Background(), session.NodeID)
+	}
+
 	return request, nil
 }
 

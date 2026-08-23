@@ -287,3 +287,133 @@ func TestQueryDispatchCache_MissReturnsFalse(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, ok)
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Regression: console and file-explorer managers must invalidate the
+// query-dispatch cache after creating a NodeQuery, so the next QueryRead
+// hits the DB and picks up the new pending query. Without invalidation the
+// 5s "no pending queries" cache entry hides the command from the node,
+// causing frequent timeouts.
+// ──────────────────────────────────────────────────────────────────────────────
+
+func setupTestDBWithEnvs(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&DistributedQuery{}, &NodeQuery{}, &DistributedQueryTarget{}))
+	require.NoError(t, db.AutoMigrate(&nodes.OsqueryNode{}))
+	return db
+}
+
+func TestConsoleSubmitCommand_InvalidatesQueryDispatchCache(t *testing.T) {
+	db := setupTestDBWithEnvs(t)
+	q := setupQueries(t, db)
+	q.Cache = NewQueryDispatchCache(newFakeRedisClient(t), 10*time.Second)
+
+	// Create a node and prime the cache with "no queries pending."
+	node := nodes.OsqueryNode{UUID: "node-uuid", NodeKey: "key", Hostname: "host", EnvironmentID: 1}
+	require.NoError(t, db.Create(&node).Error)
+	q.Cache.SetNoPendingQueries(context.Background(), node.ID)
+	cached, _ := q.Cache.HasNoPendingQueries(context.Background(), node.ID)
+	require.True(t, cached, "cache should be primed")
+
+	// Simulate the console manager creating a hidden query + node_query row
+	// directly (mirrors pkg/console/manager.go SubmitCommandWithTimeout).
+	dq := DistributedQuery{
+		Name: GenQueryName(), Query: "SELECT 1", Type: ConsoleQueryType,
+		EnvironmentID: 1, Active: true, Hidden: true, Expected: 1,
+	}
+	require.NoError(t, db.Create(&dq).Error)
+	require.NoError(t, db.Create(&NodeQuery{NodeID: node.ID, QueryID: dq.ID, Status: DistributedQueryStatusPending}).Error)
+
+	// The console manager now calls Cache.Invalidate after the transaction.
+	q.Cache.Invalidate(context.Background(), node.ID)
+
+	cached, err := q.Cache.HasNoPendingQueries(context.Background(), node.ID)
+	require.NoError(t, err)
+	assert.False(t, cached, "cache should be invalidated after console command creation")
+
+	// The next NodeQueries call should hit the DB and find the query.
+	result, accelerate, err := q.NodeQueries(node)
+	require.NoError(t, err)
+	assert.Contains(t, result, dq.Name)
+	assert.True(t, accelerate, "console query type should trigger acceleration")
+}
+
+func TestConsolePrimingCommand_InvalidatesQueryDispatchCache(t *testing.T) {
+	db := setupTestDBWithEnvs(t)
+	q := setupQueries(t, db)
+	q.Cache = NewQueryDispatchCache(newFakeRedisClient(t), 10*time.Second)
+
+	node := nodes.OsqueryNode{UUID: "node-uuid", NodeKey: "key", Hostname: "host", EnvironmentID: 1}
+	require.NoError(t, db.Create(&node).Error)
+	q.Cache.SetNoPendingQueries(context.Background(), node.ID)
+	require.True(t, func() bool { c, _ := q.Cache.HasNoPendingQueries(context.Background(), node.ID); return c }())
+
+	// Simulate SubmitPrimingCommand creating a hidden query + node_query.
+	dq := DistributedQuery{
+		Name: GenQueryName(), Query: "SELECT 1", Type: ConsoleQueryType,
+		EnvironmentID: 1, Active: true, Hidden: true, Expected: 1,
+	}
+	require.NoError(t, db.Create(&dq).Error)
+	require.NoError(t, db.Create(&NodeQuery{NodeID: node.ID, QueryID: dq.ID, Status: DistributedQueryStatusPending}).Error)
+
+	q.Cache.Invalidate(context.Background(), node.ID)
+
+	cached, _ := q.Cache.HasNoPendingQueries(context.Background(), node.ID)
+	assert.False(t, cached, "cache should be invalidated after priming command creation")
+}
+
+func TestFileExplorerRequest_InvalidatesQueryDispatchCache(t *testing.T) {
+	db := setupTestDBWithEnvs(t)
+	q := setupQueries(t, db)
+	q.Cache = NewQueryDispatchCache(newFakeRedisClient(t), 10*time.Second)
+
+	node := nodes.OsqueryNode{UUID: "node-uuid", NodeKey: "key", Hostname: "host", EnvironmentID: 1}
+	require.NoError(t, db.Create(&node).Error)
+	q.Cache.SetNoPendingQueries(context.Background(), node.ID)
+	require.True(t, func() bool { c, _ := q.Cache.HasNoPendingQueries(context.Background(), node.ID); return c }())
+
+	// Simulate the file explorer manager creating a hidden query + node_query
+	// row directly (mirrors pkg/fileexplorer/manager.go submitRequest).
+	dq := DistributedQuery{
+		Name: GenQueryName(), Query: "SELECT 1", Type: FileExplorerQueryType,
+		EnvironmentID: 1, Active: true, Hidden: true, Expected: 1,
+	}
+	require.NoError(t, db.Create(&dq).Error)
+	require.NoError(t, db.Create(&NodeQuery{NodeID: node.ID, QueryID: dq.ID, Status: DistributedQueryStatusPending}).Error)
+
+	q.Cache.Invalidate(context.Background(), node.ID)
+
+	cached, err := q.Cache.HasNoPendingQueries(context.Background(), node.ID)
+	require.NoError(t, err)
+	assert.False(t, cached, "cache should be invalidated after file explorer request creation")
+
+	result, accelerate, err := q.NodeQueries(node)
+	require.NoError(t, err)
+	assert.Contains(t, result, dq.Name)
+	assert.True(t, accelerate, "file explorer query type should trigger acceleration")
+}
+
+func TestFileExplorerPrimingRequest_InvalidatesQueryDispatchCache(t *testing.T) {
+	db := setupTestDBWithEnvs(t)
+	q := setupQueries(t, db)
+	q.Cache = NewQueryDispatchCache(newFakeRedisClient(t), 10*time.Second)
+
+	node := nodes.OsqueryNode{UUID: "node-uuid", NodeKey: "key", Hostname: "host", EnvironmentID: 1}
+	require.NoError(t, db.Create(&node).Error)
+	q.Cache.SetNoPendingQueries(context.Background(), node.ID)
+	require.True(t, func() bool { c, _ := q.Cache.HasNoPendingQueries(context.Background(), node.ID); return c }())
+
+	dq := DistributedQuery{
+		Name: GenQueryName(), Query: "SELECT 1", Type: FileExplorerQueryType,
+		EnvironmentID: 1, Active: true, Hidden: true, Expected: 1,
+	}
+	require.NoError(t, db.Create(&dq).Error)
+	require.NoError(t, db.Create(&NodeQuery{NodeID: node.ID, QueryID: dq.ID, Status: DistributedQueryStatusPending}).Error)
+
+	q.Cache.Invalidate(context.Background(), node.ID)
+
+	cached, _ := q.Cache.HasNoPendingQueries(context.Background(), node.ID)
+	assert.False(t, cached, "cache should be invalidated after priming request creation")
+}

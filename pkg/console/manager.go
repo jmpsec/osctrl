@@ -1,6 +1,7 @@
 package console
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -181,6 +182,15 @@ func (m *Manager) SubmitCommandWithTimeout(sessionID uint, input string, timeout
 		return Command{}, ParsedCommand{}, err
 	}
 
+	// Invalidate the query-dispatch cache for the target node so the next
+	// QueryRead hits the DB and picks up the new pending query. Without this,
+	// a recently cached "no pending queries" entry (5s TTL) would hide the
+	// command from the node until the TTL expires — a frequent cause of
+	// console command timeouts.
+	if m.Queries.Cache != nil {
+		m.Queries.Cache.Invalidate(context.Background(), session.NodeID)
+	}
+
 	return command, parsed, nil
 }
 
@@ -256,6 +266,14 @@ func (m *Manager) SubmitPrimingCommand(sessionID uint, timeout time.Duration) (C
 	if err != nil {
 		return Command{}, err
 	}
+
+	// Invalidate the query-dispatch cache so the priming query is visible
+	// to the next QueryRead immediately, warming acceleration before the
+	// operator types their first command.
+	if m.Queries.Cache != nil {
+		m.Queries.Cache.Invalidate(context.Background(), session.NodeID)
+	}
+
 	return command, nil
 }
 
