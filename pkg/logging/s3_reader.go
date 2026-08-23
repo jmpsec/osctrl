@@ -50,7 +50,7 @@ func NewS3LogReader(client *s3.Client, bucket string) LogReader {
 // prefix (node-scoped by key layout), applies the since/search filters
 // (best-effort — the search is applied against the decoded JSON body),
 // and returns up to `limit` rows ordered newest-first.
-func (r *s3LogReader) NodeLogs(logType, env, uuid string, since time.Time, limit int, search string) ([]map[string]any, error) {
+func (r *s3LogReader) NodeLogs(logType, env, uuid string, since time.Time, limit int, search string, severity string) ([]map[string]any, error) {
 	logTypePrefix, err := normalizeLogType(logType)
 	if err != nil {
 		return nil, err
@@ -101,6 +101,13 @@ func (r *s3LogReader) NodeLogs(logType, env, uuid string, since time.Time, limit
 		}
 		if search != "" && !nodeLogMatchesSearch(decoded, logType, search) {
 			continue
+		}
+		if severity != "" && logType == types.StatusLog {
+			if s, ok := decoded["severity"]; ok {
+				if fmt.Sprintf("%v", s) != severity {
+					continue
+				}
+			}
 		}
 		rows = append(rows, decoded)
 	}

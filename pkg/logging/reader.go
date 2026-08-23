@@ -27,8 +27,11 @@ type LogReader interface {
 	// result), ordered by created_at DESC. since is exclusive; empty means
 	// no lower bound. limit is clamped to [1,1000] by the caller. search
 	// is an optional case-insensitive substring filter against the row's
-	// human-readable columns (best-effort for S3).
-	NodeLogs(logType, env, uuid string, since time.Time, limit int, search string) ([]map[string]any, error)
+	// human-readable columns (best-effort for S3). severity is an optional
+	// filter for status logs only (osquery severity integers: 0=info,
+	// 1=warning, 2=error); "" or -1 means "no severity filter". Ignored
+	// for result logs.
+	NodeLogs(logType, env, uuid string, since time.Time, limit int, search string, severity string) ([]map[string]any, error)
 
 	// QueryResults returns rows of query result data (one per node) for a
 	// single query name, ordered by created_at ASC. env is the environment
@@ -57,8 +60,8 @@ func NewDBLogReader(db *gorm.DB) LogReader {
 	return &dbLogReader{db: db}
 }
 
-func (r *dbLogReader) NodeLogs(logType, env, uuid string, since time.Time, limit int, search string) ([]map[string]any, error) {
-	return GetNodeLogs(r.db, logType, env, uuid, since, limit, search)
+func (r *dbLogReader) NodeLogs(logType, env, uuid string, since time.Time, limit int, search string, severity string) ([]map[string]any, error) {
+	return GetNodeLogs(r.db, logType, env, uuid, since, limit, search, severity)
 }
 
 func (r *dbLogReader) QueryResults(env, name string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {

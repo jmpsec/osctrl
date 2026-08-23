@@ -31,6 +31,7 @@ type fakeNodeLogsCall struct {
 	Since              time.Time
 	Limit              int
 	Search             string
+	Severity           string
 }
 
 type fakeQueryResultsCall struct {
@@ -39,8 +40,8 @@ type fakeQueryResultsCall struct {
 	Page, Size int
 }
 
-func (f *fakeLogReader) NodeLogs(logType, env, uuid string, since time.Time, limit int, search string) ([]map[string]any, error) {
-	f.nodeLogsCalls = append(f.nodeLogsCalls, fakeNodeLogsCall{logType, env, uuid, since, limit, search})
+func (f *fakeLogReader) NodeLogs(logType, env, uuid string, since time.Time, limit int, search string, severity string) ([]map[string]any, error) {
+	f.nodeLogsCalls = append(f.nodeLogsCalls, fakeNodeLogsCall{logType, env, uuid, since, limit, search, severity})
 	if f.nodeLogsRows == nil {
 		return []map[string]any{}, nil
 	}
@@ -115,6 +116,31 @@ func TestNodeLogsHandlerUsesLogReader(t *testing.T) {
 	require.Equal(t, tc.envName, call.Env)
 	require.Equal(t, tc.nodeUUID, call.UUID)
 	require.Equal(t, 100, call.Limit)
+	require.Equal(t, "", call.Severity, "no severity param should pass empty string")
+}
+
+func TestNodeLogsHandlerPassesSeverityFilter(t *testing.T) {
+	tc := setupLogReaderTest(t)
+
+	fake := &fakeLogReader{
+		nodeLogsRows: []map[string]any{
+			{"line": "1", "message": "error", "uuid": tc.nodeUUID, "environment": tc.envName, "severity": "2"},
+		},
+	}
+	tc.h.LogReader = fake
+
+	req := consoleRequest(http.MethodGet, "/logs/status/env-uuid/NODE-UUID?severity=2", nil, "alice")
+	req.SetPathValue("type", "status")
+	req.SetPathValue("env", tc.envName)
+	req.SetPathValue("uuid", tc.nodeUUID)
+	rr := httptest.NewRecorder()
+
+	tc.h.NodeLogsHandler(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	require.Len(t, fake.nodeLogsCalls, 1)
+	call := fake.nodeLogsCalls[0]
+	require.Equal(t, "2", call.Severity, "severity query param should be passed to the reader")
 }
 
 func TestQueryResultsHandlerUsesLogReader(t *testing.T) {

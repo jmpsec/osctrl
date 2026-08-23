@@ -3,6 +3,7 @@ package logging
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -80,5 +81,65 @@ func TestProcessLogQueryResultUpdatesStatusOnlyError(t *testing.T) {
 	}
 	if nodeQuery.Status != queries.DistributedQueryStatusError {
 		t.Fatalf("expected status-only query write to mark node query error, got %q", nodeQuery.Status)
+	}
+}
+
+func TestGetNodeLogsSeverityFilter(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	if err := db.AutoMigrate(&OsqueryStatusData{}); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	rows := []OsqueryStatusData{
+		{UUID: "NODE-UUID", Environment: "env", Message: "info msg", Severity: "0"},
+		{UUID: "NODE-UUID", Environment: "env", Message: "warn msg", Severity: "1"},
+		{UUID: "NODE-UUID", Environment: "env", Message: "error msg", Severity: "2"},
+	}
+	for _, r := range rows {
+		if err := db.Create(&r).Error; err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	// No severity filter — all 3 rows
+	all, err := GetNodeLogs(db, types.StatusLog, "env", "node-uuid", time.Time{}, 100, "", "")
+	if err != nil {
+		t.Fatalf("GetNodeLogs: %v", err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("expected 3 rows without filter, got %d", len(all))
+	}
+
+	// Filter by severity=2 (error) — only 1 row
+	errOnly, err := GetNodeLogs(db, types.StatusLog, "env", "node-uuid", time.Time{}, 100, "", "2")
+	if err != nil {
+		t.Fatalf("GetNodeLogs: %v", err)
+	}
+	if len(errOnly) != 1 {
+		t.Fatalf("expected 1 error row, got %d", len(errOnly))
+	}
+	if errOnly[0]["severity"] != "2" {
+		t.Fatalf("expected severity 2, got %v", errOnly[0]["severity"])
+	}
+
+	// Filter by severity=1 (warning) — only 1 row
+	warnOnly, err := GetNodeLogs(db, types.StatusLog, "env", "node-uuid", time.Time{}, 100, "", "1")
+	if err != nil {
+		t.Fatalf("GetNodeLogs: %v", err)
+	}
+	if len(warnOnly) != 1 {
+		t.Fatalf("expected 1 warning row, got %d", len(warnOnly))
+	}
+
+	// Filter by severity=0 (info) — only 1 row
+	infoOnly, err := GetNodeLogs(db, types.StatusLog, "env", "node-uuid", time.Time{}, 100, "", "0")
+	if err != nil {
+		t.Fatalf("GetNodeLogs: %v", err)
+	}
+	if len(infoOnly) != 1 {
+		t.Fatalf("expected 1 info row, got %d", len(infoOnly))
 	}
 }

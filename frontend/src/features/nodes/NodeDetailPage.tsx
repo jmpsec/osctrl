@@ -486,22 +486,26 @@ function LogsTab({
   // scratch so the page reflects only matching rows.
   const [searchQ, setSearchQ] = useState('');
 
+  // Severity filter for status logs only. '' = "all severities".
+  const [severity, setSeverity] = useState('');
+
   // Reset accumulator + search when tab type changes
   useEffect(() => {
     accumulatedRef.current = [];
     sinceRef.current = undefined;
     setSearchQ('');
+    setSeverity('');
   }, [type]);
 
   // Drop the running accumulator + since cursor whenever the (debounced)
-  // search term changes, so the next query starts fresh.
+  // search term or severity filter changes, so the next query starts fresh.
   useEffect(() => {
     accumulatedRef.current = [];
     sinceRef.current = undefined;
-  }, [searchQ]);
+  }, [searchQ, severity]);
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
-    queryKey: ['node-logs', env, uuid, type, searchQ],
+    queryKey: ['node-logs', env, uuid, type, searchQ, severity],
     queryFn: async () => {
       const res = await listNodeLogs(
         env,
@@ -510,6 +514,7 @@ function LogsTab({
         100,
         sinceRef.current,
         searchQ || undefined,
+        type === 'status' && severity ? severity : undefined,
       );
       if (res.items.length > 0) {
         // API returns newest-first (ORDER BY created_at DESC); items[0] is the most recent.
@@ -536,13 +541,32 @@ function LogsTab({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Search header — debounced via SearchInput's internal 300ms timer */}
-      <div className="px-4 py-2 border-b border-[color:var(--border)]">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-[color:var(--border)]">
         <SearchInput
           id={`node-logs-search-${type}`}
           value={searchQ}
           onChange={setSearchQ}
           placeholder={`Search ${type} logs…`}
+          className="flex-1"
         />
+        {type === 'status' && (
+          <select
+            aria-label="Filter by severity"
+            value={severity}
+            onChange={(e) => setSeverity(e.target.value)}
+            className={cn(
+              'px-2 py-1.5 text-xs rounded-md border shrink-0',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
+              'border-[color:var(--border)]',
+            )}
+          >
+            <option value="">All severities</option>
+            <option value="0">Info</option>
+            <option value="1">Warning</option>
+            <option value="2">Error</option>
+          </select>
+        )}
       </div>
 
       {isLoading ? (
@@ -568,7 +592,7 @@ function LogsTab({
               <path d="M9 12h6M9 16h6M9 8h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
             </svg>
           }
-          title={searchQ ? `No ${type} logs match “${searchQ}”.` : 'No log entries.'}
+          title={searchQ || severity ? `No ${type} logs match the current filters.` : 'No log entries.'}
         />
       ) : (
         <div className="overflow-auto" data-stale={isFetching ? 'true' : undefined}>
