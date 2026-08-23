@@ -267,7 +267,7 @@ func (logDB *LoggerDB) ResultLogsLimit(uuid, environment string, limit int) ([]O
 // The `LIKE` is unindexed today. If the result_data / status_data tables
 // grow large enough to make this slow, an operator-side workaround is to
 // narrow `since` first, which keeps the matched row count small.
-func GetNodeLogs(db *gorm.DB, logType, env, uuid string, since time.Time, limit int, search string) ([]map[string]any, error) {
+func GetNodeLogs(db *gorm.DB, logType, env, uuid string, since time.Time, limit int, search string, severity string) ([]map[string]any, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -305,6 +305,9 @@ func GetNodeLogs(db *gorm.DB, logType, env, uuid string, since time.Time, limit 
 				"LOWER(line) LIKE ? OR LOWER(message) LIKE ? OR LOWER(filename) LIKE ?",
 				lowerNeedle, lowerNeedle, lowerNeedle,
 			)
+		}
+		if severity != "" {
+			q = q.Where("severity = ?", severity)
 		}
 		if err := q.Order("created_at DESC").Limit(limit).Find(&rows).Error; err != nil {
 			return nil, err

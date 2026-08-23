@@ -72,6 +72,7 @@ export function listNodeLogs(
   limit?: number,
   since?: string,
   q?: string,
+  severity?: string,
 ): Promise<NodeLogsResponse> {
   const params = new URLSearchParams();
   if (limit != null) params.set('limit', String(limit));
@@ -81,6 +82,9 @@ export function listNodeLogs(
   // line/message/filename; result rows match against name/action/columns.
   // Empty string is treated as "no filter" by the API.
   if (q && q.trim()) params.set('q', q.trim());
+  // Severity filter for status logs only (0=info, 1=warning, 2=error).
+  // Ignored by the backend for result logs.
+  if (severity) params.set('severity', severity);
 
   const qs = params.toString();
   return apiFetch<NodeLogsResponse>(

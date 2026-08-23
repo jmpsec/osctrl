@@ -44,6 +44,8 @@ type NodeLogsResponse struct {
 // @Param uuid path string true "Node UUID"
 // @Param limit query int false "Maximum number of log rows"
 // @Param since query string false "RFC3339 lower bound"
+// @Param q query string false "Free-text search (substring, case-insensitive)"
+// @Param severity query string false "Severity filter for status logs (0=info, 1=warning, 2=error)"
 // @Success 200 {object} NodeLogsResponse
 // @Failure 400 {object} types.ApiErrorResponse "Bad request"
 // @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
@@ -121,9 +123,13 @@ func (h *HandlersApi) NodeLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// operators can search the full history, not just the visible page.
 	search := strings.TrimSpace(q.Get("q"))
 
+	// Optional severity filter for status logs only. osquery severity is
+	// an integer: 0=info, 1=warning, 2=error. Ignored for result logs.
+	severity := strings.TrimSpace(q.Get("severity"))
+
 	// Use the node's canonical UUID (already upper-cased in the DB) from the
 	// verified node record, not the raw URL parameter.
-	items, err := h.logReader().NodeLogs(logType, env.Name, node.UUID, since, limit, search)
+	items, err := h.logReader().NodeLogs(logType, env.Name, node.UUID, since, limit, search, severity)
 	if err != nil {
 		apiErrorResponse(w, "failed to query logs", http.StatusInternalServerError, err)
 		return
