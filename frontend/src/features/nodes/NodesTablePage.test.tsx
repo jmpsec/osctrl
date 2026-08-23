@@ -144,6 +144,7 @@ function makeTileSeries(overrides: Partial<NodeTileSeries> = {}): NodeTileSeries
     start: '2026-07-31T00:00:00Z',
     bucket_seconds: 3600,
     enroll: new Array(48).fill(0),
+    status_error: new Array(48).fill(0),
     config: new Array(48).fill(0),
     status: new Array(48).fill(0),
     result: new Array(48).fill(0),
@@ -286,7 +287,37 @@ describe('NodesTablePage', () => {
       name: /Node activity over the last 24 hours, 5 events total/i,
     });
 
-    expect(heatmap.querySelectorAll('span')).toHaveLength(96);
+    // 5 lanes (status / result / config / queries / errors) x 24 hours.
+    expect(heatmap.querySelectorAll('span')).toHaveLength(120);
+  });
+
+  // The errors lane is what makes a misbehaving node visible while scanning
+  // the table, so its presence and its count are worth pinning.
+  it('surfaces reported errors in the node heatmap', async () => {
+    const status = new Array(48).fill(0);
+    const total = new Array(48).fill(0);
+    const statusError = new Array(48).fill(0);
+    status[47] = 3;
+    total[47] = 3;
+    statusError[47] = 2;
+
+    mockListNodes.mockResolvedValue(makeResponse());
+    mockGetNodeActivityTilesBatch.mockResolvedValue({
+      'abc12345-0000-0000-0000-000000000001': makeTileSeries({
+        start: '2026-07-30T00:00:00Z',
+        status,
+        total,
+        status_error: statusError,
+      }),
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    // The accessible name calls the errors out rather than burying them in
+    // the total, so a screen-reader user gets the same signal as the colour.
+    expect(
+      await screen.findByRole('img', { name: /2 errors/i }),
+    ).toBeInTheDocument();
   });
 
   it('shows nothing except skeleton rows while loading', async () => {

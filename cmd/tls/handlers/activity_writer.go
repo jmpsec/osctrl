@@ -2,11 +2,17 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/activity"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 )
+
+// osquerySeverityError is osquery's ERROR level on the 0=INFO, 1=WARNING,
+// 2=ERROR status-log ladder.
+const osquerySeverityError types.StringInt = 2
 
 type activityStore interface {
 	IncrementMany(ctx context.Context, events []activity.Event) error
@@ -189,7 +195,15 @@ func resetTimer(timer *time.Timer, timeout time.Duration) {
 // request path. The counters feed the per-node/per-env activity heatmaps
 // surfaced in the admin frontend.
 func (h *HandlersTLS) recordActivity(envUUID, nodeUUID string, typ activity.EventType) {
-	if h == nil || h.ActivityWriter == nil || envUUID == "" || nodeUUID == "" {
+	h.recordActivityCount(envUUID, nodeUUID, typ, 1)
+}
+
+// recordActivityCount is recordActivity for counters that advance by more than
+// one per request — a single status POST carries a batch of log lines, so the
+// error counter moves by however many of them osquery flagged. Same
+// fire-and-forget contract: it can never block or fail the request path.
+func (h *HandlersTLS) recordActivityCount(envUUID, nodeUUID string, typ activity.EventType, count uint16) {
+	if h == nil || h.ActivityWriter == nil || envUUID == "" || nodeUUID == "" || count == 0 {
 		return
 	}
 	h.ActivityWriter.addEvent(activity.Event{
@@ -197,8 +211,42 @@ func (h *HandlersTLS) recordActivity(envUUID, nodeUUID string, typ activity.Even
 		NodeUUID: nodeUUID,
 		Type:     typ,
 		At:       time.Now(),
-		Count:    1,
+		Count:    count,
 	})
+}
+
+// countStatusErrors reports how many entries in a status-log batch osquery
+// flagged at ERROR severity.
+//
+// Only ERROR counts. osquery's severity ladder is 0=INFO, 1=WARNING,
+// 2=ERROR, and warnings are common enough in normal operation (a table that
+// is unavailable on this platform, a transient permission issue) that
+// counting them would keep the dashboard permanently amber and train
+// operators to ignore it.
+//
+// A malformed batch yields 0 rather than an error: this feeds a dashboard
+// counter, and losing a count is strictly better than failing log ingestion.
+// The parse is deliberately narrow — only the severity field is decoded, so
+// the cost is a fraction of the full ProcessLogs pass it runs alongside.
+func countStatusErrors(data json.RawMessage) uint16 {
+	var entries []struct {
+		Severity types.StringInt `json:"severity"`
+	}
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return 0
+	}
+	var errors int
+	for _, entry := range entries {
+		if entry.Severity == osquerySeverityError {
+			errors++
+		}
+	}
+	// Counters are uint16 in the rollup blob; saturate rather than wrap, so
+	// an implausibly large batch reads as "very many" instead of "a few".
+	if errors > int(^uint16(0)) {
+		return ^uint16(0)
+	}
+	return uint16(errors)
 }
 
 // logActivityType maps an osquery log type ("status"/"result") to its

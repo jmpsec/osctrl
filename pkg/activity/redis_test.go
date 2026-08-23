@@ -164,3 +164,102 @@ func TestStoreReadEnvSeries(t *testing.T) {
 		t.Fatalf("expected env key TTL to be 24h, got %s", got)
 	}
 }
+
+// TopErrorNodes powers the dashboard drill-down: which nodes are erroring.
+// It must rank worst-first, merge across the UTC day boundary the 24h window
+// straddles, and cap at the requested limit.
+func TestStoreTopErrorNodes(t *testing.T) {
+	client, _ := newTestRedisClient(t)
+	store := NewRedisStore(client, "nodeact:v1", 7, 24*time.Hour)
+	ctx := context.Background()
+
+	yesterday := time.Date(2026, 6, 14, 23, 20, 0, 0, time.UTC)
+	today := time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC)
+
+	err := store.IncrementMany(ctx, []Event{
+		// NODE1 errors on both days — the two must be summed, not shadowed.
+		{EnvUUID: "ENV1", NodeUUID: "NODE1", Type: EventStatusError, At: yesterday, Count: 3},
+		{EnvUUID: "ENV1", NodeUUID: "NODE1", Type: EventStatusError, At: today, Count: 4},
+		{EnvUUID: "ENV1", NodeUUID: "NODE2", Type: EventStatusError, At: today, Count: 5},
+		{EnvUUID: "ENV1", NodeUUID: "NODE3", Type: EventStatusError, At: today, Count: 1},
+		// Non-error activity must never appear in the ranking.
+		{EnvUUID: "ENV1", NodeUUID: "NODE4", Type: EventStatus, At: today, Count: 99},
+		// Another environment must not leak in.
+		{EnvUUID: "ENV2", NodeUUID: "NODE9", Type: EventStatusError, At: today, Count: 50},
+	})
+	if err != nil {
+		t.Fatalf("increment failed: %v", err)
+	}
+
+	got, err := store.TopErrorNodes(ctx, "ENV1", today, 2, 10)
+	if err != nil {
+		t.Fatalf("TopErrorNodes failed: %v", err)
+	}
+
+	want := []NodeErrorCount{
+		{NodeUUID: "NODE1", Errors: 7},
+		{NodeUUID: "NODE2", Errors: 5},
+		{NodeUUID: "NODE3", Errors: 1},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("expected %d ranked nodes, got %+v", len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("rank %d: got %+v want %+v", i, got[i], want[i])
+		}
+	}
+
+	// The limit truncates the tail, keeping the worst offenders.
+	capped, err := store.TopErrorNodes(ctx, "ENV1", today, 2, 2)
+	if err != nil {
+		t.Fatalf("TopErrorNodes failed: %v", err)
+	}
+	if len(capped) != 2 || capped[0].NodeUUID != "NODE1" || capped[1].NodeUUID != "NODE2" {
+		t.Fatalf("expected the two worst nodes, got %+v", capped)
+	}
+}
+
+// An environment nobody has reported errors for must come back empty rather
+// than erroring — a healthy fleet is the common case.
+func TestStoreTopErrorNodesEmpty(t *testing.T) {
+	client, _ := newTestRedisClient(t)
+	store := NewRedisStore(client, "nodeact:v1", 7, 24*time.Hour)
+
+	got, err := store.TopErrorNodes(context.Background(), "QUIET-ENV", time.Now(), 1, 10)
+	if err != nil {
+		t.Fatalf("TopErrorNodes failed: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("expected no ranked nodes, got %+v", got)
+	}
+}
+
+// The per-node series must carry the error counter too — it lives behind a
+// different code path than the env series and previously missed new types.
+func TestStoreReadSeriesIncludesStatusErrors(t *testing.T) {
+	client, _ := newTestRedisClient(t)
+	store := NewRedisStore(client, "nodeact:v1", 7, 24*time.Hour)
+	ctx := context.Background()
+	at := time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC)
+
+	if err := store.IncrementMany(ctx, []Event{
+		{EnvUUID: "ENV1", NodeUUID: "NODE1", Type: EventStatus, At: at, Count: 6},
+		{EnvUUID: "ENV1", NodeUUID: "NODE1", Type: EventStatusError, At: at, Count: 2},
+	}); err != nil {
+		t.Fatalf("increment failed: %v", err)
+	}
+
+	out, err := store.ReadSeries(ctx, "ENV1", []string{"NODE1"}, at, 1)
+	if err != nil {
+		t.Fatalf("read failed: %v", err)
+	}
+	series := out["NODE1"]
+	if got := series.StatusError[10]; got != 2 {
+		t.Fatalf("StatusError at hour 10 = %d, want 2", got)
+	}
+	// Errors are a subset of status, so Total must not double-count them.
+	if got := series.Total[10]; got != 6 {
+		t.Fatalf("Total at hour 10 = %d, want 6 (errors must not be added twice)", got)
+	}
+}

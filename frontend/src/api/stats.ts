@@ -174,6 +174,12 @@ export interface NodeTileSeries {
   result: number[];
   query_read: number[];
   query_write: number[];
+  /**
+   * Status logs the node reported at osquery's ERROR severity. A subset of
+   * `status`, not a sibling — the same log increments both — so it is
+   * deliberately excluded from `total`.
+   */
+  status_error: number[];
   total: number[];
 }
 
@@ -183,7 +189,8 @@ export type TileCategory =
   | 'status'
   | 'result'
   | 'query_read'
-  | 'query_write';
+  | 'query_write'
+  | 'status_error';
 
 export const TILE_CATEGORIES: TileCategory[] = [
   'config',
@@ -191,6 +198,9 @@ export const TILE_CATEGORIES: TileCategory[] = [
   'result',
   'query_read',
   'query_write',
+  // Last on purpose: errors are the exception row, read after the normal
+  // endpoint traffic above them.
+  'status_error',
 ];
 
 export const TILE_CATEGORY_LABELS: Record<TileCategory, string> = {
@@ -199,6 +209,7 @@ export const TILE_CATEGORY_LABELS: Record<TileCategory, string> = {
   result: 'Result',
   query_read: 'Query read',
   query_write: 'Query write',
+  status_error: 'Errors',
 };
 
 export function getNodeActivityTiles(
@@ -268,4 +279,24 @@ export function tileCategoryTotal(series: NodeTileSeries, category: TileCategory
   let sum = 0;
   for (const c of counts) sum += c;
   return sum;
+}
+
+/** One node in the dashboard's reported-errors drill-down. */
+export interface ErrorNodeRow {
+  uuid: string;
+  /** Empty when the node has been deleted since it last errored. */
+  hostname: string;
+  errors: number;
+}
+
+/**
+ * Nodes reporting the most ERROR-severity osquery status logs, worst first.
+ * Capped server-side; backs the reported-errors tile drill-down.
+ */
+export function getEnvErrorNodes(env: string, days = 1): Promise<ErrorNodeRow[]> {
+  const sp = new URLSearchParams();
+  sp.set('days', String(days));
+  return apiFetch<ErrorNodeRow[]>(
+    `/api/v1/stats/activity/error-nodes/${encodeURIComponent(env)}?${sp.toString()}`,
+  );
 }

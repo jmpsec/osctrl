@@ -3,6 +3,7 @@ package activity
 import (
 	"context"
 	"errors"
+	"sort"
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
@@ -41,7 +42,13 @@ func (s *RedisStore) IncrementMany(ctx context.Context, events []Event) error {
 		offset int64
 	}
 
+	type rankCounterKey struct {
+		key      string
+		nodeUUID string
+	}
+
 	aggregated := make(map[counterKey]uint32)
+	ranked := make(map[rankCounterKey]int64)
 	for _, event := range events {
 		if event.EnvUUID == "" || event.Type >= EventTypeCount {
 			continue
@@ -65,9 +72,20 @@ func (s *RedisStore) IncrementMany(ctx context.Context, events []Event) error {
 			offset: offset,
 		}
 		aggregated[envKey] += uint32(event.Count)
+
+		// Errors additionally feed a per-env ranking so the dashboard can
+		// name the offending nodes without walking the whole fleet. Only
+		// errors pay this cost, and only when there are any.
+		if event.Type == EventStatusError && event.NodeUUID != "" {
+			rankKey := rankCounterKey{
+				key:      ErrorRankKey(s.prefix, event.EnvUUID, event.At),
+				nodeUUID: event.NodeUUID,
+			}
+			ranked[rankKey] += int64(event.Count)
+		}
 	}
 
-	if len(aggregated) == 0 {
+	if len(aggregated) == 0 && len(ranked) == 0 {
 		return nil
 	}
 
@@ -75,6 +93,10 @@ func (s *RedisStore) IncrementMany(ctx context.Context, events []Event) error {
 	expireKeys := make(map[string]struct{})
 	for key, count := range aggregated {
 		pipe.BitField(ctx, key.key, "OVERFLOW", "SAT", "INCRBY", "u16", key.offset, int64(count))
+		expireKeys[key.key] = struct{}{}
+	}
+	for key, count := range ranked {
+		pipe.ZIncrBy(ctx, key.key, float64(count), key.nodeUUID)
 		expireKeys[key.key] = struct{}{}
 	}
 	for key := range expireKeys {
@@ -136,24 +158,10 @@ func (s *RedisStore) ReadSeries(ctx context.Context, envUUID string, nodeUUIDs [
 
 		decoded := decodeDay(blob)
 		series := out[fetch.nodeUUID]
-		base := fetch.dayIndex * BucketsPerDay
-		for hour := 0; hour < BucketsPerDay; hour++ {
-			idx := base + hour
-			series.Enroll[idx] = decoded[EventEnroll][hour]
-			series.Config[idx] = decoded[EventConfig][hour]
-			series.Status[idx] = decoded[EventStatus][hour]
-			series.Result[idx] = decoded[EventResult][hour]
-			series.QueryRead[idx] = decoded[EventQueryRead][hour]
-			series.QueryWrite[idx] = decoded[EventQueryWrite][hour]
-			series.Total[idx] = saturatingSum(
-				decoded[EventEnroll][hour],
-				decoded[EventConfig][hour],
-				decoded[EventStatus][hour],
-				decoded[EventResult][hour],
-				decoded[EventQueryRead][hour],
-				decoded[EventQueryWrite][hour],
-			)
-		}
+		// Shared with ReadEnvSeries so a new event type only has to be
+		// wired into one place — this loop used to be duplicated here and
+		// silently missed counters added later.
+		fillSeries(&series, fetch.dayIndex*BucketsPerDay, decoded)
 		out[fetch.nodeUUID] = series
 	}
 
@@ -210,6 +218,7 @@ func newSeries(start time.Time, bucketCount int) NodeTileSeries {
 		Result:        make([]uint16, bucketCount),
 		QueryRead:     make([]uint16, bucketCount),
 		QueryWrite:    make([]uint16, bucketCount),
+		StatusError:   make([]uint16, bucketCount),
 		Total:         make([]uint16, bucketCount),
 	}
 }
@@ -223,6 +232,10 @@ func fillSeries(series *NodeTileSeries, base int, decoded [EventTypeCount][Bucke
 		series.Result[idx] = decoded[EventResult][hour]
 		series.QueryRead[idx] = decoded[EventQueryRead][hour]
 		series.QueryWrite[idx] = decoded[EventQueryWrite][hour]
+		series.StatusError[idx] = decoded[EventStatusError][hour]
+		// EventStatusError is intentionally absent from Total: it is a
+		// subset of EventStatus, and including it would count an erroring
+		// status log twice in the activity heatmap.
 		series.Total[idx] = saturatingSum(
 			decoded[EventEnroll][hour],
 			decoded[EventConfig][hour],
@@ -260,4 +273,66 @@ func saturatingSum(values ...uint16) uint16 {
 	}
 
 	return uint16(total)
+}
+
+// TopErrorNodes returns the nodes with the most ERROR-severity status logs in
+// the requested window, worst first, capped at limit.
+//
+// The window is expressed in whole UTC days because that is how the counters
+// are bucketed; a 24h view spans at most two of them. Each day's ranking is
+// read in full and merged here — bounded by the number of nodes that actually
+// errored, which is the small number in any fleet worth alerting on.
+func (s *RedisStore) TopErrorNodes(ctx context.Context, envUUID string, end time.Time, days, limit int) ([]NodeErrorCount, error) {
+	if days <= 0 {
+		days = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	start := dayStart(end).Add(-time.Duration(days-1) * 24 * time.Hour)
+	pipe := s.client.Pipeline()
+	cmds := make([]*redis.ZSliceCmd, 0, days)
+	for dayIndex := 0; dayIndex < days; dayIndex++ {
+		day := start.Add(time.Duration(dayIndex) * 24 * time.Hour)
+		cmds = append(cmds, pipe.ZRevRangeWithScores(ctx, ErrorRankKey(s.prefix, envUUID, day), 0, -1))
+	}
+	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
+		return nil, err
+	}
+
+	totals := make(map[string]int64)
+	for _, cmd := range cmds {
+		entries, err := cmd.Result()
+		if err != nil {
+			if errors.Is(err, redis.Nil) {
+				continue
+			}
+			return nil, err
+		}
+		for _, entry := range entries {
+			nodeUUID, ok := entry.Member.(string)
+			if !ok || nodeUUID == "" || entry.Score <= 0 {
+				continue
+			}
+			totals[nodeUUID] += int64(entry.Score)
+		}
+	}
+
+	out := make([]NodeErrorCount, 0, len(totals))
+	for nodeUUID, errCount := range totals {
+		out = append(out, NodeErrorCount{NodeUUID: nodeUUID, Errors: errCount})
+	}
+	// Worst first; ties broken by UUID so the list is stable between polls
+	// and does not shuffle under the operator's cursor.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Errors == out[j].Errors {
+			return out[i].NodeUUID < out[j].NodeUUID
+		}
+		return out[i].Errors > out[j].Errors
+	})
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
 }

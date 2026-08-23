@@ -289,6 +289,7 @@ describe('NodeDetailPage', () => {
       start: new Date(Date.now() - 23 * 3600_000).toISOString(),
       bucket_seconds: 3600,
       enroll: [],
+      status_error: [],
       config: [],
       status: [],
       result: [],
@@ -377,6 +378,37 @@ describe('NodeDetailPage', () => {
     });
 
     vi.unstubAllGlobals();
+  });
+
+  // The errors row sits alongside status/result/query/config in the node
+  // activity heatmap, with the count stated in text so it is not colour-only.
+  it('shows an errors row in the node activity heatmap', async () => {
+    // The Redis series is aligned onto the DB buckets by timestamp, so the
+    // fixture has to start where makeActivityBuckets() does or the errors
+    // land outside the window and correctly read zero.
+    mockGetNodeActivityTiles.mockResolvedValue({
+      start: '2026-06-17T10:00:00Z',
+      bucket_seconds: 3600,
+      enroll: [0, 0],
+      status_error: [3, 0],
+      config: [0, 0],
+      status: [9, 0],
+      result: [0, 0],
+      query_read: [0, 0],
+      query_write: [0, 0],
+      total: [9, 0],
+    });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Node activity heatmap')).toBeInTheDocument();
+    });
+    const heatmap = screen.getByLabelText('Node activity heatmap');
+    // The row label, alongside status/result/query/config.
+    expect(within(heatmap).getAllByText('errors').length).toBeGreaterThan(0);
+    // And the count stated in the header, not left to the colour alone.
+    expect(heatmap.textContent).toContain('3 errors');
   });
 
   it('shows posture data for the selected node', async () => {

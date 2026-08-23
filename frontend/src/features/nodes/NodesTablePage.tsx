@@ -293,7 +293,10 @@ interface HeatmapCellProps {
 
 /**
  * Per-row 5×24 mini activity heatmap from Redis-backed per-node tile data.
- *   - 5 rows of categories: status / result / config / query read / query write.
+ *   - 5 rows of categories: status / result / config / queries / errors.
+ *     The errors lane is ERROR-severity osquery status logs — a subset of the
+ *     status lane above it, not additional traffic — tinted bright red so a
+ *     misbehaving node is visible while scanning the table.
  *   - 24 columns, one per hour of the last 24h (left = oldest, right = now).
  *   - Intensity uses a global max across all visible nodes (passed via
  *     globalMax) so nodes with more activity show brighter than nodes with
@@ -330,6 +333,8 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
       trimToNow(tiles!.result.map((v) => v)),
       trimToNow(tiles!.config.map((v) => v)),
       trimToNow(tiles!.query_read.map((v) => v)),
+      // Optional-chained: a server predating the counter omits the field.
+      trimToNow(tiles!.status_error?.map((v) => v)),
     ];
   } else {
     // Fallback: place a single config-row cell at the hour corresponding
@@ -340,6 +345,9 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
     const status = new Array<number>(24).fill(0);
     const result = new Array<number>(24).fill(0);
     const query = new Array<number>(24).fill(0);
+    // No tile data means no evidence of errors — the lane stays dark rather
+    // than borrowing the last_seen signal the other lanes fall back to.
+    const errors = new Array<number>(24).fill(0);
     if (lastSeen) {
       const d = new Date(lastSeen);
       if (!isNaN(d.getTime())) {
@@ -352,7 +360,7 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
         }
       }
     }
-    categoryHourly = [status, result, config, query];
+    categoryHourly = [status, result, config, query, errors];
   }
 
   const CATEGORIES = [
@@ -360,6 +368,7 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
     { key: 'result', label: 'Result logs', baseVar: '--signal' },
     { key: 'config', label: 'Config fetches', baseVar: '--warning' },
     { key: 'query', label: 'Queries', baseVar: '--success' },
+    { key: 'error', label: 'Errors', baseVar: '--error-bright' },
   ] as const;
 
   function tintForStep(baseVar: string, step: 0 | 1 | 2 | 3 | 4): string {
@@ -378,15 +387,20 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
   }
 
   const totalEvents = categoryHourly.flat().reduce((a, b) => a + b, 0);
+  const errorEvents = categoryHourly[4].reduce((a, b) => a + b, 0);
 
-  // 7px cells + 2px gaps → 24*7 + 23*2 = 214px wide, 4*7 + 3*2 = 34px tall.
+  // 7px cells + 2px gaps → 24*7 + 23*2 = 214px wide, 5*7 + 4*2 = 43px tall.
   // Fits in the dedicated 240px-wide column with room for px-4 padding (32px).
   return (
     <div
       className="inline-grid gap-[2px]"
-      style={{ gridTemplateColumns: 'repeat(24, 7px)', gridTemplateRows: 'repeat(4, 7px)' }}
+      style={{ gridTemplateColumns: 'repeat(24, 7px)', gridTemplateRows: 'repeat(5, 7px)' }}
       role="img"
-      aria-label={`Node activity over the last 24 hours, ${totalEvents} events total`}
+      aria-label={
+        errorEvents > 0
+          ? `Node activity over the last 24 hours, ${totalEvents} events total, ${errorEvents} errors`
+          : `Node activity over the last 24 hours, ${totalEvents} events total`
+      }
       title="Node activity · last 24h"
     >
       {CATEGORIES.map((cat, catIdx) =>
@@ -559,13 +573,14 @@ export function NodesTablePage() {
   // Without this, per-row normalization makes every node's busiest hour
   // look identical (all step-4) even when the counts differ 10x.
   const globalMax = (() => {
-    const max: Record<string, number> = { status: 0, result: 0, config: 0, query: 0 };
+    const max: Record<string, number> = { status: 0, result: 0, config: 0, query: 0, error: 0 };
     for (const tiles of Object.values(tilesByUuid ?? {})) {
       if (!tiles.total?.some((v) => v > 0)) continue;
       for (const v of tiles.status ?? []) { if (v > max.status) max.status = v; }
       for (const v of tiles.result ?? []) { if (v > max.result) max.result = v; }
       for (const v of tiles.config ?? []) { if (v > max.config) max.config = v; }
       for (const v of tiles.query_read ?? []) { if (v > max.query) max.query = v; }
+      for (const v of tiles.status_error ?? []) { if (v > max.error) max.error = v; }
     }
     return max;
   })();

@@ -23,9 +23,11 @@ import {
   TILE_CATEGORY_LABELS,
   tileCategoryTotal,
   tileLastSeen,
+  getEnvErrorNodes,
 } from '$/api/stats';
 import type { PlatformCounts, NodeTileSeries, ActivityInterval, TileCategory } from '$/api/stats';
-import { listAuditLogs, LOG_TYPE, LOG_TYPE_LABELS } from '$/api/audit';
+import { ModalShell } from '$/components/feedback/ModalShell';
+import { listAuditLogs, LOG_TYPE_LABELS } from '$/api/audit';
 import { listNodes } from '$/api/nodes';
 import { listQueries } from '$/api/queries';
 import { listEnvironments } from '$/api/environments';
@@ -48,13 +50,14 @@ import { DEFAULT_INACTIVE_HOURS } from '$/lib/node-status';
 // When the tiles endpoint hasn't returned yet (or Redis is unavailable),
 // all-zero arrays are returned so the chart renders an empty frame.
 // ---------------------------------------------------------------------------
-export type ChartCategory = 'status' | 'result' | 'config' | 'query';
+export type ChartCategory = 'status' | 'result' | 'config' | 'query' | 'error';
 
 interface ActivitySeries {
   status: number[];
   result: number[];
   config: number[];
   query: number[];
+  statusError: number[];
   total: number[];
 }
 
@@ -64,6 +67,7 @@ function emptySeries(n: number): ActivitySeries {
     result: new Array<number>(n).fill(0),
     config: new Array<number>(n).fill(0),
     query: new Array<number>(n).fill(0),
+    statusError: new Array<number>(n).fill(0),
     total: new Array<number>(n).fill(0),
   };
 }
@@ -76,6 +80,8 @@ function tileSeriesToActivity(tiles: NodeTileSeries | undefined): ActivitySeries
     result: tiles.result.map((v) => v),
     config: tiles.config.map((v) => v),
     query: tiles.query_read.map((v) => v),
+    // Tolerate a server that predates the status_error counter.
+    statusError: (tiles.status_error ?? []).map((v) => v),
     total: tiles.total.map((v) => v),
   };
 }
@@ -194,6 +200,7 @@ const DEFAULT_PALETTE: ChartPalette = {
   result:  '#2bc4be', // signal teal — query results
   config:  '#a78bfa', // violet — config fetches (agent heartbeat)
   query:   '#4ade80', // green — distributed query reads
+  error:   '#ff4d4f', // bright red — ERROR-severity status logs
 };
 
 const PALETTE_STORAGE_KEY = 'osctrl.dashboard-chart-palette';
@@ -274,6 +281,8 @@ function LineChart({
     { key: 'result', data: series.result },
     { key: 'config', data: series.config },
     { key: 'query', data: series.query },
+    // Drawn last so it sits on top of the traffic lines it is a subset of.
+    { key: 'error', data: series.statusError },
   ];
 
   function linePath(data: number[]): string {
@@ -291,7 +300,7 @@ function LineChart({
         : ['-24h', '-20h', '-16h', '-12h', '-8h', '-4h', 'now'];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Node activity by category">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Node activity by category, including reported errors">
       {/* gridlines */}
       <g stroke="var(--border)" strokeDasharray="2 4" strokeWidth="1">
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -385,8 +394,16 @@ interface KpiCardProps {
   polarity?: 'up-good' | 'up-bad';
   /** Override the auto-computed delta label. */
   deltaLabel?: string;
+  /**
+   * Makes the card actionable. When set the card renders as a button so it
+   * is reachable by keyboard and announced as interactive, rather than a div
+   * with a click handler bolted on.
+   */
+  onClick?: () => void;
+  /** Accessible name for the action; required whenever onClick is set. */
+  actionLabel?: string;
 }
-function KpiCard({ label, value, sparkline, halo, polarity = 'up-good', deltaLabel }: KpiCardProps) {
+function KpiCard({ label, value, sparkline, halo, polarity = 'up-good', deltaLabel, onClick, actionLabel }: KpiCardProps) {
   const pct = computeDeltaPct(sparkline);
   const tone = deltaTone(pct, polarity);
   const text =
@@ -399,13 +416,23 @@ function KpiCard({ label, value, sparkline, halo, polarity = 'up-good', deltaLab
   const haloStyle: React.CSSProperties = {
     background: `radial-gradient(ellipse at top right, ${haloRgba[halo]} 0%, transparent 70%), var(--bg-1)`,
   };
+  const interactive = !!onClick;
+  const Tag = interactive ? 'button' : 'div';
   return (
-    <div
+    <Tag
+      type={interactive ? 'button' : undefined}
+      onClick={onClick}
+      aria-label={interactive ? actionLabel : undefined}
       className={cn(
         'relative rounded-xl border border-[color:var(--border)]',
         'px-5 pt-4 pb-4 min-h-[136px]',
         'transition-shadow duration-[120ms] hover:shadow-[0_0_0_1px_var(--signal)]',
         'flex flex-col',
+        interactive && [
+          'text-left cursor-pointer',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
+          'focus-visible:outline-[color:var(--signal)]',
+        ],
       )}
       style={haloStyle}
     >
@@ -432,7 +459,7 @@ function KpiCard({ label, value, sparkline, halo, polarity = 'up-good', deltaLab
         </span>
         <InlineSparkline points={sparkline} color={sparkColor[halo]} width={84} height={26} />
       </div>
-    </div>
+    </Tag>
   );
 }
 
@@ -641,6 +668,79 @@ function ActivityRow({
 }
 
 // ---------------------------------------------------------------------------
+// Reported-errors drill-down — which nodes are erroring, worst first.
+// ---------------------------------------------------------------------------
+function ErrorNodesDialog({
+  env,
+  onClose,
+}: {
+  env: string;
+  onClose: () => void;
+}) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['dashboard-error-nodes', env],
+    queryFn: () => getEnvErrorNodes(env, 1),
+    staleTime: 30_000,
+    retry: 1,
+  });
+  const rows = data ?? [];
+
+  return (
+    <ModalShell
+      title="Nodes reporting errors (24h)"
+      titleId="error-nodes-title"
+      onClose={onClose}
+      panelClassName="max-w-lg"
+    >
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
+      ) : isError ? (
+        <p className="text-sm text-[color:var(--danger)]">
+          Could not load the erroring nodes.
+        </p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-[color:var(--text-3)]">
+          No node reported an error in the last 24 hours.
+        </p>
+      ) : (
+        <>
+          <p className="mb-3 text-xs text-[color:var(--text-3)]">
+            Counting osquery status logs at ERROR severity. Warnings are not
+            included.
+          </p>
+          <ul className="divide-y divide-[color:var(--border)] rounded-md border border-[color:var(--border)]">
+            {rows.map((row) => (
+              <li key={row.uuid} className="flex items-center justify-between gap-3 px-3 py-2">
+                <Link
+                  to="/_app/env/$env/nodes/$uuid"
+                  params={{ env, uuid: row.uuid }}
+                  onClick={onClose}
+                  className="min-w-0 text-xs text-[color:var(--text-1)] hover:text-[color:var(--signal)] truncate"
+                >
+                  {/* A node deleted since it errored has no hostname left;
+                      its UUID is still the honest identifier. */}
+                  {row.hostname || row.uuid}
+                </Link>
+                <span
+                  className="font-mono-tabular text-xs font-semibold tabular-nums flex-shrink-0"
+                  style={{ color: 'var(--error-bright)' }}
+                >
+                  {row.errors.toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </ModalShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Endpoint health — selected-environment osquery endpoint activity.
 // ---------------------------------------------------------------------------
 const ENDPOINT_HEALTH_TONE: Record<TileCategory, string> = {
@@ -649,6 +749,9 @@ const ENDPOINT_HEALTH_TONE: Record<TileCategory, string> = {
   result: 'var(--signal)',
   query_read: 'var(--warning)',
   query_write: 'var(--signal)',
+  // Hotter than the --danger used elsewhere: every other row on this panel
+  // is normal traffic, so the errors row has to be unmistakable at a glance.
+  status_error: 'var(--error-bright)',
 };
 
 function EndpointHealthPanel({
@@ -708,10 +811,20 @@ function EndpointHealthPanel({
             </div>
             {rows.map((row) => {
               const label = TILE_CATEGORY_LABELS[row.category];
+              // The errors row goes fully red once there is something to
+              // report. At zero it stays neutral like every other row —
+              // a permanently red panel is one nobody reads.
+              const alarming = row.category === 'status_error' && row.total > 0;
+              const rowColor = alarming
+                ? 'var(--error-bright)'
+                : 'var(--text-1)';
               return (
                 <div
                   key={row.category}
-                  className="grid grid-cols-[1fr_auto_auto] gap-3 items-center py-2.5 border-b border-[color:var(--border)] last:border-0"
+                  className={cn(
+                    'grid grid-cols-[1fr_auto_auto] gap-3 items-center py-2.5 border-b border-[color:var(--border)] last:border-0',
+                    alarming && 'bg-[rgba(var(--error-bright-r),var(--error-bright-g),var(--error-bright-b),0.07)]',
+                  )}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span
@@ -719,11 +832,20 @@ function EndpointHealthPanel({
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ background: ENDPOINT_HEALTH_TONE[row.category] }}
                     />
-                    <span className="text-[13px] font-medium text-[color:var(--text-1)] truncate">
+                    <span
+                      className="text-[13px] font-medium truncate"
+                      style={{ color: rowColor }}
+                    >
                       {label}
                     </span>
                   </div>
-                  <span className="font-mono-tabular text-[12px] text-[color:var(--text-1)] tabular-nums text-right">
+                  <span
+                    className={cn(
+                      'font-mono-tabular text-[12px] tabular-nums text-right',
+                      alarming && 'font-semibold',
+                    )}
+                    style={{ color: rowColor }}
+                  >
                     {row.total.toLocaleString()}
                   </span>
                   {row.lastSeen ? (
@@ -1248,26 +1370,6 @@ export function DashboardPage() {
     retry: 1,
   });
 
-  // ── Failed enrolls (24h) — Node-typed audit lines starting with
-  //    "failed enroll". Capped at 200 by the request; >= 200 → render "200+".
-  //    The since-timestamp is computed inside queryFn (not in the query key)
-  //    so it doesn't change on every render and trigger a refetch storm.
-  const { data: failedEnrollData } = useQuery({
-    queryKey: ['dashboard-failed-enrolls'],
-    queryFn: () => {
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      return listAuditLogs({ type: LOG_TYPE.Node, since, page_size: 200 });
-    },
-    refetchInterval: 5 * 60_000,
-    refetchIntervalInBackground: false,
-    retry: 1,
-  });
-  const failedEnrollItems = failedEnrollData?.items ?? [];
-  const failedEnrolls = failedEnrollItems.filter((it) =>
-    (it.line ?? '').startsWith('failed enroll'),
-  ).length;
-  const failedEnrollOverflow = failedEnrollItems.length >= 200;
-
   // ── Environments list (NEW) — enriches EnvStats rows with enroll_expire.
   //    May 401 / 403 for non-super-admins; we silently fall back to no expire.
   const { data: envList } = useQuery({
@@ -1332,6 +1434,7 @@ export function DashboardPage() {
       result: trim(rawSeries.result),
       config: trim(rawSeries.config),
       query: trim(rawSeries.query),
+      statusError: trim(rawSeries.statusError),
       total: trim(rawSeries.total),
     };
   })();
@@ -1348,9 +1451,22 @@ export function DashboardPage() {
       result: slice(trimmedSeries.result),
       config: slice(trimmedSeries.config),
       query: slice(trimmedSeries.query),
+      statusError: slice(trimmedSeries.statusError),
       total: slice(trimmedSeries.total),
     };
   })();
+  const [showErrorNodes, setShowErrorNodes] = useState(false);
+
+  // ── Reported errors (24h) — status logs the fleet sent at osquery's ERROR
+  //    severity, counted at ingest into the activity rollup. Always the last
+  //    24 hourly buckets regardless of which interval the chart is showing,
+  //    so the tile's meaning does not change when the chart selector does.
+  //    Scoped to the selected environment, like every other tile fed by this
+  //    series.
+  const reportedErrors = trimmedSeries.statusError
+    .slice(-24)
+    .reduce((sum, n) => sum + n, 0);
+
   const activityWindowLabel =
     activityInterval === '7d'
       ? 'Last 7 days'
@@ -1528,7 +1644,7 @@ export function DashboardPage() {
                 'text-xs text-[color:var(--text-2)]',
               )}
             >
-              {(['status', 'result', 'config', 'query'] as ChartCategory[]).map((key) => (
+              {(['status', 'result', 'config', 'query', 'error'] as ChartCategory[]).map((key) => (
                 <label key={key} className="flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="color"
@@ -1611,20 +1727,29 @@ export function DashboardPage() {
                     : 'no nodes'
                 }
               />
-              {/* Failed enrolls (24h) — danger-tinted when >0. */}
+              {/* Reported errors (24h) — ERROR-severity status logs from the
+                  fleet, danger-tinted when >0. Warnings are excluded on
+                  purpose: they are routine enough that counting them would
+                  keep this tile permanently lit. */}
               <KpiCard
-                label="Failed enrolls (24h)"
-                value={failedEnrolls}
-                sparkline={chartSeries.result}
-                halo={failedEnrolls > 0 ? 'danger' : 'success'}
+                label="Reported errors (24h)"
+                value={reportedErrors}
+                sparkline={chartSeries.statusError}
+                halo={reportedErrors > 0 ? 'danger' : 'success'}
                 polarity="up-bad"
                 deltaLabel={
-                  failedEnrollOverflow
-                    ? '200+ in 24h'
-                    : failedEnrolls === 0
-                      ? 'all clear'
-                      : `${failedEnrolls} in 24h`
+                  reportedErrors === 0
+                    ? 'all clear'
+                    : `${reportedErrors} in 24h — see nodes`
                 }
+                // Only actionable when there is something to drill into, and
+                // only once an environment is resolved to scope the query.
+                onClick={
+                  reportedErrors > 0 && effectiveEnv
+                    ? () => setShowErrorNodes(true)
+                    : undefined
+                }
+                actionLabel="Show the nodes reporting errors"
               />
               <KpiCard
                 label="Active Queries"
@@ -1930,6 +2055,9 @@ export function DashboardPage() {
         )}
       </section>
 
+      {showErrorNodes && effectiveEnv && (
+        <ErrorNodesDialog env={effectiveEnv} onClose={() => setShowErrorNodes(false)} />
+      )}
     </div>
   );
 }
