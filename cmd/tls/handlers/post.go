@@ -360,6 +360,14 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 			results := h.Logs.ProcessLogs(t.Data, t.LogType, env.ID, env.Name, utils.GetIP(r), len(body), env.DebugHTTP)
 			duration := time.Since(start).Seconds()
 			logProcessDuration.WithLabelValues(string(env.UUID), t.LogType).Observe(duration)
+			// Count ERROR-severity status logs into the activity rollup.
+			// Done here rather than at the sink so the counter is identical
+			// whatever logger.type is configured — with an external sink
+			// (S3, Splunk, Kafka) nothing lands in the database to count
+			// later. Inside this goroutine so it stays off the hot path.
+			if t.LogType == types.StatusLog {
+				h.recordActivityCount(env.UUID, node.UUID, activity.EventStatusError, countStatusErrors(t.Data))
+			}
 			// Ingest posture data from result logs (if enabled)
 			if h.Posture != nil && t.LogType == "result" {
 				h.ingestPosture(results, node.UUID, env.Name)

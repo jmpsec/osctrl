@@ -50,6 +50,11 @@ interface NodeHeatmapBucket {
   result: number;
   query: number;
   config: number;
+  /**
+   * ERROR-severity status logs. A subset of the status traffic rather than
+   * additional events, so it is deliberately left out of the heatmap's total.
+   */
+  error: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -1676,6 +1681,9 @@ const NODE_ACTIVITY_CATEGORIES = [
   { key: 'result', label: 'result', cssVar: '--signal' },
   { key: 'query', label: 'query', cssVar: '--success' },
   { key: 'config', label: 'config', cssVar: '--warning' },
+  // Last, and the only row that is not ordinary traffic: these are the status
+  // logs osquery flagged ERROR.
+  { key: 'error', label: 'errors', cssVar: '--error-bright' },
 ] as const;
 
 type NodeActivityCategoryKey = (typeof NODE_ACTIVITY_CATEGORIES)[number]['key'];
@@ -1723,7 +1731,7 @@ function nodeFormatHHMM(iso: string): string {
 }
 
 // mergeNodeActivityBuckets aligns the hourly Redis config + query read/write
-// series onto the DB-backed activity grid (status/result/query). The DB grid
+// + status-error series onto the DB-backed activity grid (status/result/query). The DB grid
 // uses a window-scaled bucket so the heatmap always has 24 columns; the Redis
 // hourly series are folded into each cell by summing every hour that overlaps
 // the cell:
@@ -1742,21 +1750,33 @@ export function mergeNodeActivityBuckets(
   const config = tiles?.config;
   const queryRead = tiles?.query_read;
   const queryWrite = tiles?.query_write;
+  const statusError = tiles?.status_error;
   const cellMs =
     buckets.length >= 2
       ? Date.parse(buckets[1].bucket_start) - Date.parse(buckets[0].bucket_start)
       : 3600_000;
+  // Length is taken from whichever series is present rather than from config
+  // specifically, so a series that ships status_error without config (or vice
+  // versa) still aligns instead of silently reading zero.
+  const seriesLength = Math.max(
+    config?.length ?? 0,
+    queryRead?.length ?? 0,
+    queryWrite?.length ?? 0,
+    statusError?.length ?? 0,
+  );
   return buckets.map((b) => {
     let configCount = 0;
     let queryCount = b.query;
-    if (config && config.length > 0 && !Number.isNaN(startMs)) {
+    let errorCount = 0;
+    if (seriesLength > 0 && !Number.isNaN(startMs)) {
       const cellStart = Date.parse(b.bucket_start);
       const cellEnd = cellStart + cellMs;
       let h = Math.floor((cellStart - startMs) / hourMs);
-      while (h < config.length && startMs + h * hourMs < cellEnd) {
+      while (h < seriesLength && startMs + h * hourMs < cellEnd) {
         if (h >= 0) {
-          configCount += config[h];
+          configCount += config?.[h] ?? 0;
           queryCount += (queryRead?.[h] ?? 0) + (queryWrite?.[h] ?? 0);
+          errorCount += statusError?.[h] ?? 0;
         }
         h += 1;
       }
@@ -1767,6 +1787,7 @@ export function mergeNodeActivityBuckets(
       result: b.result,
       query: queryCount,
       config: configCount,
+      error: errorCount,
     };
   });
 }
@@ -1826,12 +1847,17 @@ function NodeActivityHeatmap({
     result: nodeMakeIntensityScale(buckets, 'result'),
     query: nodeMakeIntensityScale(buckets, 'query'),
     config: nodeMakeIntensityScale(buckets, 'config'),
+    error: nodeMakeIntensityScale(buckets, 'error'),
   };
 
+  // Errors are excluded on purpose: they are a subset of the status traffic
+  // already counted here, so adding them would report more events than the
+  // node actually sent.
   const totalEvents = buckets.reduce(
     (sum, b) => sum + b.status + b.result + b.query + b.config,
     0,
   );
+  const totalErrors = buckets.reduce((sum, b) => sum + b.error, 0);
   const isEmpty = !isLoading && n > 0 && totalEvents === 0;
 
   // 5 evenly-spaced HH:mm ticks under the grid. Rendered as a flex row that
@@ -1857,9 +1883,25 @@ function NodeActivityHeatmap({
     >
       {/* Header: title + interval picker */}
       <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[color:var(--border)]">
-        <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
-          Node activity · {NODE_INTERVAL_LABEL[interval]}
-        </h2>
+        <div className="flex items-center gap-2 min-w-0">
+          <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
+            Node activity · {NODE_INTERVAL_LABEL[interval]}
+          </h2>
+          {/* States the error count in text as well as colour, so the row is
+              not the only way to notice it. */}
+          {totalErrors > 0 && (
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono-tabular font-semibold border whitespace-nowrap"
+              style={{
+                color: 'var(--error-bright)',
+                borderColor: 'rgba(var(--error-bright-r),var(--error-bright-g),var(--error-bright-b),0.4)',
+                background: 'rgba(var(--error-bright-r),var(--error-bright-g),var(--error-bright-b),0.08)',
+              }}
+            >
+              {totalErrors.toLocaleString()} {totalErrors === 1 ? 'error' : 'errors'}
+            </span>
+          )}
+        </div>
         <div
           role="tablist"
           aria-label="Activity interval"
@@ -1991,6 +2033,10 @@ function NodeEndpointLastSeen({ series, isLoading }: NodeEndpointLastSeenProps) 
   const items: KvItem[] = TILE_CATEGORIES.map((cat: TileCategory) => {
     const total = series ? tileCategoryTotal(series, cat) : 0;
     const last = series ? tileLastSeen(series, cat) : null;
+    // Errors are the one category worth colouring: every other row is normal
+    // endpoint traffic where a number is just a number. Only once there is
+    // something to report — a permanently red row stops being a signal.
+    const alarming = cat === 'status_error' && total > 0;
     return {
       label: TILE_CATEGORY_LABELS[cat],
       value: isLoading ? (
@@ -1998,12 +2044,18 @@ function NodeEndpointLastSeen({ series, isLoading }: NodeEndpointLastSeenProps) 
       ) : (
         <span className="inline-flex items-baseline gap-2">
           <span
-            className="text-[color:var(--text-1)]"
+            className={alarming ? 'font-semibold' : 'text-[color:var(--text-1)]'}
+            style={alarming ? { color: 'var(--error-bright)' } : undefined}
             title={last ? `${formatAbsolute(last)} · ${total} events` : 'No activity in the last 24h'}
           >
             {last ? formatBucketAgo(last, bucketSeconds) : 'No activity'}
           </span>
-          <span className="text-[color:var(--text-3)]">{total} events in 24h</span>
+          <span
+            className={alarming ? 'font-semibold' : 'text-[color:var(--text-3)]'}
+            style={alarming ? { color: 'var(--error-bright)' } : undefined}
+          >
+            {total} {cat === 'status_error' ? 'errors' : 'events'} in 24h
+          </span>
         </span>
       ),
     };

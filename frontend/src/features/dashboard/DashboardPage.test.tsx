@@ -10,13 +10,15 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { DashboardPage } from './DashboardPage';
-import type { NodeTileSeries, StatsResponse } from '$/api/stats';
+import userEvent from '@testing-library/user-event';
+import type { NodeTileSeries, StatsResponse, ErrorNodeRow } from '$/api/stats';
 
 // ---------------------------------------------------------------------------
 // Mock the stats API module
 // ---------------------------------------------------------------------------
 const mockGetStats = vi.fn<() => Promise<StatsResponse>>();
 const mockGetEnvActivityTiles = vi.fn<(env: string, days?: number) => Promise<NodeTileSeries>>();
+const mockGetEnvErrorNodes = vi.fn<(env: string, days?: number) => Promise<ErrorNodeRow[]>>();
 
 vi.mock('$/api/stats', async () => {
   const actual = await vi.importActual<typeof import('$/api/stats')>('$/api/stats');
@@ -27,6 +29,7 @@ vi.mock('$/api/stats', async () => {
     // resolve to empty so the queries don't reject and trigger extra logs.
     getOsqueryVersionCounts: () => Promise.resolve([]),
     getEnvActivityTiles: (env: string, days?: number) => mockGetEnvActivityTiles(env, days),
+    getEnvErrorNodes: (env: string, days?: number) => mockGetEnvErrorNodes(env, days),
   };
 });
 
@@ -89,7 +92,7 @@ function makeStatsResponse(overrides: Partial<StatsResponse> = {}): StatsRespons
   };
 }
 
-function makeTileSeries(): NodeTileSeries {
+function makeTileSeries(overrides: Partial<NodeTileSeries> = {}): NodeTileSeries {
   const buckets = 24;
   const start = new Date(Date.now() - (buckets - 1) * 60 * 60 * 1000).toISOString();
   const zeros = () => Array.from({ length: buckets }, () => 0);
@@ -97,12 +100,14 @@ function makeTileSeries(): NodeTileSeries {
     start,
     bucket_seconds: 3600,
     enroll: zeros(),
+    status_error: zeros(),
     config: [...zeros().slice(0, buckets - 1), 3],
     status: [...zeros().slice(0, buckets - 2), 1, 2],
     result: [...zeros().slice(0, buckets - 3), 2, 1, 1],
     query_read: [...zeros().slice(0, buckets - 1), 1],
     query_write: [...zeros().slice(0, buckets - 1), 1],
     total: [...zeros().slice(0, buckets - 3), 2, 2, 7],
+    ...overrides,
   };
 }
 
@@ -169,6 +174,7 @@ describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetEnvActivityTiles.mockResolvedValue(makeTileSeries());
+    mockGetEnvErrorNodes.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -217,6 +223,100 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Inactive ≥ 72h')).toBeInTheDocument();
     expect(screen.getByText('Active Queries')).toBeInTheDocument();
     expect(screen.getByText('Forensic Carves')).toBeInTheDocument();
+  });
+
+  // The tile replaced a "Failed enrolls" counter that read the audit log.
+  // It now sums ERROR-severity status logs from the activity rollup, which is
+  // the only source that works whatever logger.type the deployment uses.
+  it('sums the last 24h of status errors into the reported-errors tile', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    mockGetEnvActivityTiles.mockResolvedValue(
+      makeTileSeries({ status_error: [2, 0, 3] }),
+    );
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => expect(screen.getByText('Reported errors (24h)')).toBeInTheDocument());
+    expect(await screen.findByText('5 in 24h — see nodes')).toBeInTheDocument();
+    // The old tile must be gone, not merely relabeled.
+    expect(screen.queryByText('Failed enrolls (24h)')).not.toBeInTheDocument();
+  });
+
+  it('reads all clear when no errors were reported', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    mockGetEnvActivityTiles.mockResolvedValue(makeTileSeries());
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => expect(screen.getByText('Reported errors (24h)')).toBeInTheDocument());
+    expect(screen.getByText('all clear')).toBeInTheDocument();
+  });
+
+  it('opens the erroring-nodes drill-down from the tile', async () => {
+    const user = userEvent.setup();
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    mockGetEnvActivityTiles.mockResolvedValue(makeTileSeries({ status_error: [4] }));
+    mockGetEnvErrorNodes.mockResolvedValue([
+      { uuid: 'NODE-1', hostname: 'web-01', errors: 3 },
+      // A node deleted since it errored keeps its row, shown by UUID.
+      { uuid: 'NODE-2', hostname: '', errors: 1 },
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    const tile = await screen.findByRole('button', { name: /nodes reporting errors/i });
+    await user.click(tile);
+
+    expect(await screen.findByText('web-01')).toBeInTheDocument();
+    expect(screen.getByText('NODE-2')).toBeInTheDocument();
+    expect(mockGetEnvErrorNodes).toHaveBeenCalled();
+  });
+
+  // A tile with nothing behind it must not look clickable.
+  it('leaves the errors tile inert when there are no errors', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    mockGetEnvActivityTiles.mockResolvedValue(makeTileSeries());
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => expect(screen.getByText('Reported errors (24h)')).toBeInTheDocument());
+    expect(
+      screen.queryByRole('button', { name: /nodes reporting errors/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows an Errors row in endpoint health', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    mockGetEnvActivityTiles.mockResolvedValue(makeTileSeries({ status_error: [7] }));
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => expect(screen.getByText('Errors')).toBeInTheDocument());
+  });
+
+  it('draws the errors line in the activity chart', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    mockGetEnvActivityTiles.mockResolvedValue(
+      makeTileSeries({ status_error: [0, 2, 0, 5] }),
+    );
+    renderWithProviders(makeTestRouter());
+
+    const chart = await screen.findByRole('img', {
+      name: /Node activity by category/i,
+    });
+
+    // The chart element exists before the tiles query resolves, so wait on
+    // the drawn data rather than on the element — every path is d="" until
+    // the series arrives.
+    await waitFor(() => {
+      const errorLine = chart.querySelector('path[stroke="#ff4d4f"]');
+      expect(errorLine?.getAttribute('d')).toBeTruthy();
+    });
+
+    // One line per category, errors included and styled like the rest.
+    const strokes = Array.from(chart.querySelectorAll('path')).map((p) =>
+      p.getAttribute('stroke'),
+    );
+    expect(strokes).toContain('#ff4d4f');
+    expect(chart.querySelectorAll('circle')).toHaveLength(0);
+
+    // And it is recolourable like every other line.
+    expect(screen.getByLabelText('error color')).toBeInTheDocument();
   });
 
   it('uses the backend stats threshold for inactive labeling', async () => {

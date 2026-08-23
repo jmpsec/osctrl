@@ -736,6 +736,7 @@ func (h *HandlersApi) OsqueryVersionsHandler(w http.ResponseWriter, r *http.Requ
 type activityReader interface {
 	ReadSeries(ctx context.Context, envUUID string, nodeUUIDs []string, end time.Time, days int) (map[string]activity.NodeTileSeries, error)
 	ReadEnvSeries(ctx context.Context, envUUID string, end time.Time, days int) (activity.EnvSeries, error)
+	TopErrorNodes(ctx context.Context, envUUID string, end time.Time, days, limit int) ([]activity.NodeErrorCount, error)
 }
 
 // activityTileDays parses and clamps the ?days query parameter for the
@@ -997,4 +998,84 @@ func (h *HandlersApi) EnvActivityTilesHandler(w http.ResponseWriter, r *http.Req
 	}
 	w.Header().Set("Cache-Control", "private, max-age=30")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
+}
+
+// errorNodesLimit caps the drill-down list. The tile answers "who is
+// erroring", not "give me every node" — an operator scanning a list longer
+// than this wants the Nodes table with a filter, not a dashboard popover.
+const errorNodesLimit = 10
+
+// ErrorNodeRow is one entry in the reported-errors drill-down.
+type ErrorNodeRow struct {
+	UUID     string `json:"uuid"`
+	Hostname string `json:"hostname"`
+	Errors   int64  `json:"errors"`
+}
+
+// EnvErrorNodesHandler — GET /api/v1/stats/activity/error-nodes/{env}
+//
+// Returns the nodes reporting the most ERROR-severity status logs in the
+// window, worst first. Backs the dashboard's reported-errors tile drill-down.
+// @Summary Top erroring nodes for an environment
+// @Description Returns nodes with the most ERROR-severity osquery status logs.
+// @Tags stats
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param days query int false "Days of history (default 1)"
+// @Success 200 {array} ErrorNodeRow
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/activity/error-nodes/{env} [get]
+func (h *HandlersApi) EnvErrorNodesHandler(w http.ResponseWriter, r *http.Request) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	ctx := ctxVal.(ContextValue)
+	user := ctx[ctxUser]
+
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "error with environment", http.StatusBadRequest, nil)
+		return
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
+		return
+	}
+	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
+		return
+	}
+	if h.Activity == nil {
+		apiErrorResponse(w, "activity store not configured", http.StatusServiceUnavailable, nil)
+		return
+	}
+
+	days := activityTileDays(r.URL.Query().Get("days"))
+	ranked, err := h.Activity.TopErrorNodes(r.Context(), env.UUID, time.Now(), days, errorNodesLimit)
+	if err != nil {
+		apiErrorResponse(w, "failed to load erroring nodes", http.StatusInternalServerError, err)
+		return
+	}
+
+	rows := make([]ErrorNodeRow, 0, len(ranked))
+	for _, entry := range ranked {
+		row := ErrorNodeRow{UUID: entry.NodeUUID, Errors: entry.Errors}
+		// Resolve the hostname for display. A node deleted since it last
+		// errored keeps its row — the errors were still real — it just
+		// shows by UUID.
+		if node, nerr := h.Nodes.GetByUUIDEnv(entry.NodeUUID, env.ID); nerr == nil {
+			row.Hostname = node.Hostname
+		}
+		rows = append(rows, row)
+	}
+
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rows)
 }

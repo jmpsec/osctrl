@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ func newTestRedisClient(t *testing.T) (*redis.Client, *fakeRedisStore) {
 	store := &fakeRedisStore{
 		values:  make(map[string][]byte),
 		expires: make(map[string]time.Duration),
+		zsets:   make(map[string]map[string]float64),
 	}
 	client := redis.NewClient(&redis.Options{
 		Addr:     "fake-redis",
@@ -44,6 +46,7 @@ type fakeRedisStore struct {
 	mu      sync.Mutex
 	values  map[string][]byte
 	expires map[string]time.Duration
+	zsets   map[string]map[string]float64
 }
 
 func serveFakeRedis(conn net.Conn, store *fakeRedisStore) {
@@ -117,6 +120,36 @@ func handleFakeRedisCommand(conn net.Conn, store *fakeRedisStore, args []string)
 		}
 		_, err = conn.Write(append(value, []byte("\r\n")...))
 		return err
+
+	case "ZINCRBY":
+		if len(args) != 4 {
+			return fmt.Errorf("unexpected ZINCRBY args: %v", args)
+		}
+		delta, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		total := store.zincrby(args[1], args[3], delta)
+		_, err = fmt.Fprintf(conn, "$%d\r\n%s\r\n", len(formatScore(total)), formatScore(total))
+		return err
+
+	case "ZREVRANGE":
+		// Only the WITHSCORES form over a full range is used.
+		if len(args) < 4 {
+			return fmt.Errorf("unexpected ZREVRANGE args: %v", args)
+		}
+		members := store.zrevrange(args[1])
+		if _, err := fmt.Fprintf(conn, "*%d\r\n", len(members)*2); err != nil {
+			return err
+		}
+		for _, m := range members {
+			score := formatScore(m.score)
+			if _, err := fmt.Fprintf(conn, "$%d\r\n%s\r\n$%d\r\n%s\r\n",
+				len(m.member), m.member, len(score), score); err != nil {
+				return err
+			}
+		}
+		return nil
 
 	case "PING":
 		_, err := conn.Write([]byte("+PONG\r\n"))
@@ -216,4 +249,43 @@ func readRESPArray(reader *bufio.Reader) ([]string, error) {
 	}
 
 	return args, nil
+}
+
+// --- sorted-set support, for the per-env error ranking ---
+
+type fakeZMember struct {
+	member string
+	score  float64
+}
+
+func formatScore(score float64) string {
+	return strconv.FormatFloat(score, 'g', -1, 64)
+}
+
+func (s *fakeRedisStore) zincrby(key, member string, delta float64) float64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.zsets[key] == nil {
+		s.zsets[key] = make(map[string]float64)
+	}
+	s.zsets[key][member] += delta
+	return s.zsets[key][member]
+}
+
+// zrevrange returns every member, highest score first. The production code
+// only ever asks for the full range.
+func (s *fakeRedisStore) zrevrange(key string) []fakeZMember {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]fakeZMember, 0, len(s.zsets[key]))
+	for member, score := range s.zsets[key] {
+		out = append(out, fakeZMember{member: member, score: score})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].score == out[j].score {
+			return out[i].member < out[j].member
+		}
+		return out[i].score > out[j].score
+	})
+	return out
 }

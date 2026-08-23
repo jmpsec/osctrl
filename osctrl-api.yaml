@@ -6696,6 +6696,59 @@ paths:
       summary: Get environment activity tiles
       tags:
         - stats
+  "/api/v1/stats/activity/error-nodes/{env}":
+    get:
+      description: Returns nodes with the most ERROR-severity osquery status logs.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Days of history (default 1)
+          in: query
+          name: days
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/handlers.ErrorNodeRow"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Top erroring nodes for an environment
+      tags:
+        - stats
   "/api/v1/stats/activity/node-batch/{env}":
     get:
       description: Returns activity buckets for multiple nodes in an environment.
@@ -8401,6 +8454,10 @@ components:
           items:
             type: integer
           type: array
+        status_error:
+          items:
+            type: integer
+          type: array
         total:
           items:
             type: integer
@@ -8433,6 +8490,10 @@ components:
         start:
           type: string
         status:
+          items:
+            type: integer
+          type: array
+        status_error:
           items:
             type: integer
           type: array
@@ -8648,6 +8709,15 @@ components:
             is independent.
         total:
           type: integer
+        uuid:
+          type: string
+      type: object
+    handlers.ErrorNodeRow:
+      properties:
+        errors:
+          type: integer
+        hostname:
+          type: string
         uuid:
           type: string
       type: object

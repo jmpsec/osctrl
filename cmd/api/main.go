@@ -752,6 +752,11 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiStatsPath)+"/activity/env-tiles/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvActivityTilesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: nodes reporting the most osquery ERROR status logs (dashboard
+	// reported-errors drill-down).
+	muxAPI.Handle(
+		"GET "+_apiPath(apiStatsPath)+"/activity/error-nodes/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvErrorNodesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: queries by environment
 	if flagParams.Osquery.Query {
 		// Sample-templates library (post-auth). Pre-auth exposure
