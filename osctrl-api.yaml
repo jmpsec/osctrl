@@ -8373,7 +8373,7 @@ paths:
       tags:
         - system
 servers:
-  - url: /
+  - url: https://osctrl.net
 components:
   requestBodies:
     handlers.MFAWebAuthnRequest:
