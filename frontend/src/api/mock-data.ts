@@ -434,6 +434,11 @@ function tileSeries(seed = 1, days = 2): NodeTileSeries {
     });
   const config = make(1, 2);
   const status = make(2, 8);
+  // Reported errors are a subset of status logs, not an additional activity
+  // category, so they should not be added to the aggregate total below.
+  const status_error = status.map((count, index) =>
+    count > 0 && (index + seed) % 11 === 0 ? 1 : 0,
+  );
   const result = make(3, 5);
   const query_read = make(4, 2);
   const query_write = make(5, 1);
@@ -445,6 +450,7 @@ function tileSeries(seed = 1, days = 2): NodeTileSeries {
     start: new Date(now - (length - 1) * HOUR).toISOString(),
     bucket_seconds: 3600,
     enroll,
+    status_error,
     config,
     status,
     result,
