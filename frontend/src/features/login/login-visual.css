@@ -7,6 +7,7 @@
   --login-scene-side: #b8c4f4;
   --login-scene-side-dark: #8e9edb;
   --login-scene-screen: #24315f;
+  --login-scene-screen-alt: #30427b;
   --login-scene-screen-ink: #edf0ff;
   --login-scene-edge: #6f82d1;
   --login-scene-link: rgb(210 218 255 / 0.58);
@@ -37,6 +38,7 @@
   --login-scene-side: #c6d0f7;
   --login-scene-side-dark: #98a8e5;
   --login-scene-screen: #24366f;
+  --login-scene-screen-alt: #304985;
   --login-scene-screen-ink: #f4f6ff;
   --login-scene-edge: #7187da;
   --login-scene-link: rgb(232 237 255 / 0.66);
@@ -82,20 +84,23 @@
   opacity: 0.94;
 }
 
-.login-scene-node,
-.login-scene-core,
+.login-scene-tower-base,
+.login-scene-tower-shaft,
+.login-scene-tower-cabin,
+.login-scene-tower-roof,
+.login-scene-antenna,
 .login-scene-caption {
   animation: login-scene-arrive 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
   transform-box: fill-box;
   transform-origin: center;
 }
 
-.login-scene-node-a { animation-delay: 80ms; }
-.login-scene-node-b { animation-delay: 140ms; }
-.login-scene-core { animation-delay: 200ms; }
-.login-scene-node-c { animation-delay: 260ms; }
-.login-scene-node-d { animation-delay: 320ms; }
-.login-scene-caption { animation-delay: 400ms; }
+.login-scene-tower-base { animation-delay: 80ms; }
+.login-scene-tower-shaft { animation-delay: 150ms; }
+.login-scene-tower-cabin { animation-delay: 220ms; }
+.login-scene-tower-roof { animation-delay: 290ms; }
+.login-scene-antenna { animation-delay: 360ms; }
+.login-scene-caption { animation-delay: 430ms; }
 
 .login-scene-packet {
   animation: login-scene-packet 3.2s ease-in-out infinite;
@@ -131,8 +136,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .login-scene-node,
-  .login-scene-core,
+  .login-scene-tower-base,
+  .login-scene-tower-shaft,
+  .login-scene-tower-cabin,
+  .login-scene-tower-roof,
+  .login-scene-antenna,
   .login-scene-caption,
   .login-scene-packet {
     animation: none;

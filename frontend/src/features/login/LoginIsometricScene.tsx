@@ -19,114 +19,89 @@ export function LoginIsometricScene() {
         <filter id="login-scene-soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="8" stdDeviation="8" floodColor="var(--login-scene-shadow)" floodOpacity="0.18" />
         </filter>
+        <pattern id="login-scene-grid-pattern" width="96" height="56" patternUnits="userSpaceOnUse">
+          <path d="M-48 0 48 56M48 0l96 56M-48 56 48 0M48 56l96-56" stroke="var(--login-scene-grid)" strokeWidth="1.25" />
+        </pattern>
       </defs>
 
+      {/* The operating plane deliberately continues beyond the illustration frame. */}
       <path
-        d="M380 240 718 434 380 628 42 434 380 240Z"
+        className="login-scene-grid-plane"
+        d="M380 126 1052 512 380 898-292 512 380 126Z"
         fill="var(--login-scene-grid-fill)"
         stroke="var(--login-scene-grid-border)"
         strokeWidth="1.5"
       />
-      <g className="login-scene-grid" stroke="var(--login-scene-grid)" strokeWidth="1.25">
-        <path d="M380 240 718 434" />
-        <path d="M308 282 646 476" />
-        <path d="M236 324 574 518" />
-        <path d="M164 366 502 560" />
-        <path d="M92 408 430 602" />
-        <path d="M42 434 380 628" />
-        <path d="M380 240 42 434" />
-        <path d="M452 282 114 476" />
-        <path d="M524 324 186 518" />
-        <path d="M596 366 258 560" />
-        <path d="M668 408 330 602" />
-        <path d="M718 434 380 628" />
-      </g>
+      <path
+        className="login-scene-grid"
+        d="M380 126 1052 512 380 898-292 512 380 126Z"
+        fill="url(#login-scene-grid-pattern)"
+      />
 
       <g className="login-scene-links" stroke="var(--login-scene-link)" strokeWidth="2" strokeLinecap="round">
-        <path d="M210 215c32 7 64 30 88 58" strokeDasharray="5 8" />
-        <path d="M550 215c-32 7-64 30-88 58" strokeDasharray="5 8" />
-        <path d="M175 405c42-1 91 13 127 38" strokeDasharray="5 8" />
-        <path d="M585 405c-42-1-91 13-127 38" strokeDasharray="5 8" />
+        <path d="M-64 450c154-52 251-41 330 13" strokeDasharray="5 9" />
+        <path d="M824 450c-154-52-251-41-330 13" strokeDasharray="5 9" />
+        <path d="M24 548c124-22 202-18 268 16" strokeDasharray="5 9" />
+        <path d="M736 548c-124-22-202-18-268 16" strokeDasharray="5 9" />
       </g>
 
       <g className="login-scene-packet login-scene-packet-a">
-        <circle cx="266" cy="252" r="5" fill="var(--login-scene-accent)" />
+        <circle cx="187" cy="433" r="5" fill="var(--login-scene-accent)" />
       </g>
       <g className="login-scene-packet login-scene-packet-b">
-        <circle cx="494" cy="252" r="5" fill="var(--login-scene-success)" />
+        <circle cx="573" cy="433" r="5" fill="var(--login-scene-success)" />
       </g>
 
-      {/* Linux endpoint */}
-      <g className="login-scene-node login-scene-node-a" filter="url(#login-scene-soft-shadow)">
-        <path d="m104 157 106-61 106 61-106 61-106-61Z" fill="var(--login-scene-surface)" stroke="var(--login-scene-edge)" />
-        <path d="m104 157 106 61v18l-106-61v-18Z" fill="var(--login-scene-side-dark)" stroke="var(--login-scene-edge)" />
-        <path d="m210 218 106-61v18l-106 61v-18Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" />
-        <path d="m159 159 51-29 51 29-51 29-51-29Z" fill="var(--login-scene-screen)" />
-        <path d="m188 150-10 7 10 7M199 169h25" stroke="var(--login-scene-screen-ink)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="130" cy="166" r="4" fill="var(--login-scene-success)" />
-        <text x="210" y="78" textAnchor="middle" fill="var(--login-scene-muted)" className="login-scene-label">Linux endpoints</text>
+      {/* Ground plinth */}
+      <g className="login-scene-tower-base" filter="url(#login-scene-shadow)">
+        <path d="m380 392 176 101-176 101-176-101 176-101Z" fill="var(--login-scene-surface)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m204 493 176 101v28L204 521v-28Z" fill="var(--login-scene-side-dark)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m380 594 176-101v28L380 622v-28Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m250 493 130-75 130 75-130 75-130-75Z" fill="var(--login-scene-accent-soft)" stroke="var(--login-scene-accent)" strokeWidth="1.5" />
+        <circle cx="253" cy="504" r="5" fill="var(--login-scene-success)" />
+        <circle cx="273" cy="515" r="5" fill="var(--login-scene-accent)" />
       </g>
 
-      {/* macOS endpoint */}
-      <g className="login-scene-node login-scene-node-b" filter="url(#login-scene-soft-shadow)">
-        <path d="m444 157 106-61 106 61-106 61-106-61Z" fill="var(--login-scene-surface)" stroke="var(--login-scene-edge)" />
-        <path d="m444 157 106 61v18l-106-61v-18Z" fill="var(--login-scene-side-dark)" stroke="var(--login-scene-edge)" />
-        <path d="m550 218 106-61v18l-106 61v-18Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" />
-        <path d="m499 159 51-29 51 29-51 29-51-29Z" fill="var(--login-scene-screen)" />
-        <path d="M536 149c0-8 6-13 14-13s14 5 14 13c0 11-7 20-14 20s-14-9-14-20Z" stroke="var(--login-scene-screen-ink)" strokeWidth="3" />
-        <path d="M550 135c0-5 4-9 9-9" stroke="var(--login-scene-screen-ink)" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="470" cy="166" r="4" fill="var(--login-scene-success)" />
-        <text x="550" y="78" textAnchor="middle" fill="var(--login-scene-muted)" className="login-scene-label">macOS endpoints</text>
+      {/* Tapered tower shaft */}
+      <g className="login-scene-tower-shaft" filter="url(#login-scene-soft-shadow)">
+        <path d="m333 272 47 27v181l-74-43 20-135 7-30Z" fill="var(--login-scene-surface)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m380 299 47-27 27 165-74 43V299Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m320 346 60 35 60-35" stroke="var(--login-scene-edge)" strokeWidth="1.5" opacity="0.7" />
+        <path d="m314 392 66 38 66-38" stroke="var(--login-scene-edge)" strokeWidth="1.5" opacity="0.7" />
+        <path d="m352 328 28 16 28-16" stroke="var(--login-scene-accent)" strokeWidth="3" strokeLinecap="round" />
       </g>
 
-      {/* Windows endpoint */}
-      <g className="login-scene-node login-scene-node-c" filter="url(#login-scene-soft-shadow)">
-        <path d="m69 404 106-61 106 61-106 61-106-61Z" fill="var(--login-scene-surface)" stroke="var(--login-scene-edge)" />
-        <path d="m69 404 106 61v18L69 422v-18Z" fill="var(--login-scene-side-dark)" stroke="var(--login-scene-edge)" />
-        <path d="m175 465 106-61v18l-106 61v-18Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" />
-        <path d="m124 406 51-29 51 29-51 29-51-29Z" fill="var(--login-scene-screen)" />
-        <g fill="var(--login-scene-screen-ink)">
-          <path d="m153 397 19-10v17l-19 10v-17Z" />
-          <path d="m177 384 20-11v17l-20 11v-17Z" />
-          <path d="m153 418 19-10v17l-19 10v-17Z" />
-          <path d="m177 405 20-11v17l-20 11v-17Z" />
+      {/* Panoramic control room */}
+      <g className="login-scene-tower-cabin" filter="url(#login-scene-soft-shadow)">
+        <path d="m254 165 126 73v70l-105-61-21-82Z" fill="var(--login-scene-screen)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m380 238 126-73-21 82-105 61v-70Z" fill="var(--login-scene-screen-alt)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+
+        <g stroke="var(--login-scene-screen-ink)" strokeWidth="1.5" opacity="0.55">
+          <path d="m287 184 2 82M320 203l1 82M350 220v82M473 184l-2 82M440 203l-1 82M410 220v82" />
         </g>
-        <circle cx="95" cy="413" r="4" fill="var(--login-scene-success)" />
-        <text x="175" y="504" textAnchor="middle" fill="var(--login-scene-muted)" className="login-scene-label">Windows endpoints</text>
+        <path d="m275 247 105 61v16l-101-58-4-19Z" fill="var(--login-scene-side-dark)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m380 308 105-61-4 19-101 58v-16Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <circle cx="286" cy="221" r="5" fill="var(--login-scene-success)" />
       </g>
 
-      {/* Query result surface */}
-      <g className="login-scene-node login-scene-node-d" filter="url(#login-scene-soft-shadow)">
-        <path d="m479 404 106-61 106 61-106 61-106-61Z" fill="var(--login-scene-surface)" stroke="var(--login-scene-edge)" />
-        <path d="m479 404 106 61v18l-106-61v-18Z" fill="var(--login-scene-side-dark)" stroke="var(--login-scene-edge)" />
-        <path d="m585 465 106-61v18l-106 61v-18Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" />
-        <path d="m534 406 51-29 51 29-51 29-51-29Z" fill="var(--login-scene-screen)" />
-        <path d="m552 411 12-9 12 3 13-16 15 10 14-12" stroke="var(--login-scene-success)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="505" cy="413" r="4" fill="var(--login-scene-accent)" />
-        <text x="585" y="504" textAnchor="middle" fill="var(--login-scene-muted)" className="login-scene-label">Query results</text>
+      {/* Roof deck and signal mast */}
+      <g className="login-scene-antenna" strokeLinecap="round">
+        <path d="M380 110V44" stroke="var(--login-scene-screen-ink)" strokeWidth="4" />
+        <circle cx="380" cy="38" r="7" fill="var(--login-scene-success)" stroke="var(--login-scene-screen)" strokeWidth="3" />
+        <path d="M362 57a26 26 0 0 1 36 0M350 44a43 43 0 0 1 60 0" stroke="var(--login-scene-link)" strokeWidth="2" />
       </g>
-
-      {/* Central control plane */}
-      <g className="login-scene-core" filter="url(#login-scene-shadow)">
-        <path d="m235 354 145-84 145 84-145 84-145-84Z" fill="var(--login-scene-side-dark)" opacity="0.48" />
-        <path d="m222 324 158-91 158 91-158 91-158-91Z" fill="var(--login-scene-surface)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
-        <path d="m222 324 158 91v34l-158-91v-34Z" fill="var(--login-scene-side-dark)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
-        <path d="m380 415 158-91v34l-158 91v-34Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
-
-        <path d="m293 323 87-50 87 50-87 50-87-50Z" fill="var(--login-scene-accent-soft)" stroke="var(--login-scene-accent)" strokeWidth="2" />
-        <path d="m346 317 34-20 34 20-34 20-34-20Z" fill="var(--login-scene-accent)" />
-        <path d="m368 317 9 9 17-20" stroke="var(--login-scene-accent-ink)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-
-        <circle cx="258" cy="338" r="5" fill="var(--login-scene-success)" />
-        <circle cx="275" cy="348" r="5" fill="var(--login-scene-accent)" />
-        <path d="m420 380 64-37" stroke="var(--login-scene-ink)" strokeWidth="3" strokeLinecap="round" opacity="0.55" />
-        <path d="m433 387 51-29" stroke="var(--login-scene-ink)" strokeWidth="3" strokeLinecap="round" opacity="0.3" />
+      <g className="login-scene-tower-roof" filter="url(#login-scene-soft-shadow)">
+        <path d="m380 88 139 80-139 80-139-80 139-80Z" fill="var(--login-scene-surface)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m241 168 139 80v17l-139-80v-17Z" fill="var(--login-scene-side-dark)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m380 248 139-80v17l-139 80v-17Z" fill="var(--login-scene-side)" stroke="var(--login-scene-edge)" strokeWidth="1.5" />
+        <path d="m334 168 46-27 46 27-46 27-46-27Z" fill="var(--login-scene-accent-soft)" stroke="var(--login-scene-accent)" strokeWidth="1.5" />
+        <path d="m366 168 14-8 14 8-14 8-14-8Z" fill="var(--login-scene-accent)" />
       </g>
 
       <g className="login-scene-caption">
-        <rect x="287" y="487" width="186" height="34" rx="17" fill="var(--login-scene-caption)" stroke="var(--login-scene-caption-border)" />
-        <circle cx="309" cy="504" r="4" fill="var(--login-scene-success)" />
-        <text x="325" y="509" fill="var(--login-scene-ink)" className="login-scene-status">Environment connected</text>
+        <rect x="298" y="568" width="164" height="34" rx="17" fill="var(--login-scene-caption)" stroke="var(--login-scene-caption-border)" />
+        <circle cx="320" cy="585" r="4" fill="var(--login-scene-success)" />
+        <text x="336" y="590" fill="var(--login-scene-ink)" className="login-scene-status">Control plane online</text>
       </g>
     </svg>
   );
