@@ -509,6 +509,61 @@ describe('ServiceConfigPage', () => {
     expect(screen.getByText('email')).toBeInTheDocument();
   });
 
+  it('renders read-only booleans as disabled toggle switches', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: false,
+        Name: 'service',
+        Value: '{"AuthEnabled":true,"InsecureCookies":false}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('service')).toBeInTheDocument();
+    });
+    await user.click(screen.getByText('service'));
+    const switches = screen.getAllByRole('switch');
+    expect(switches).toHaveLength(2);
+    expect(switches[0]).toHaveAttribute('aria-checked', 'true');
+    expect(switches[1]).toHaveAttribute('aria-checked', 'false');
+    // Read-only toggles must be disabled so they cannot be clicked on
+    expect(switches[0]).toBeDisabled();
+    expect(switches[1]).toBeDisabled();
+  });
+
+  it('renders nullable boolean fields (*bool null from Go) as toggles, not "null" text', async () => {
+    const user = userEvent.setup();
+    // LogSinksEnabled/AuthProvidersEnabled are *bool in Go; nil marshals to JSON null.
+    // The backend treats null as the default (enabled), but the UI must still
+    // render a toggle, not the generic "null" placeholder.
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true,
+        Name: 'service',
+        Value: '{"LogSinksEnabled":null,"AuthProvidersEnabled":null,"AuditLog":true}',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('service')).toBeInTheDocument();
+    });
+    // Editable sections start expanded — no click needed.
+    // All three booleans render as switches — no "null" text placeholder.
+    expect(screen.queryByText('null')).not.toBeInTheDocument();
+    const switches = screen.getAllByRole('switch');
+    expect(switches).toHaveLength(3);
+    // Null coerces to false (off) in the UI
+    expect(switches[0]).toHaveAttribute('aria-checked', 'false');
+    expect(switches[1]).toHaveAttribute('aria-checked', 'false');
+    expect(switches[2]).toHaveAttribute('aria-checked', 'true');
+    // Toggling a null-derived flag marks the section dirty
+    await user.click(switches[0]);
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
   it('does not show Apply & Restart button when no sections have source=db', async () => {
     mockList.mockResolvedValue([makeSection({ Source: 'yaml' })]);
     renderWithProviders(makeTestRouter());

@@ -46,6 +46,20 @@ function isSensitive(key: string): boolean {
   return SENSITIVE_KEYS.has(key);
 }
 
+// Nullable boolean fields: Go marshals a nil *bool as JSON null, which the
+// backend treats as the default (true for LogSinksEnabled/AuthProvidersEnabled).
+// In the UI they render as toggles, so a null is coerced to false here rather
+// than the generic "null" placeholder text. The set is small and stable —
+// only these two service flags are *bool in the config types.
+const NULLABLE_BOOLEAN_KEYS = new Set([
+  'LogSinksEnabled',
+  'AuthProvidersEnabled',
+]);
+
+function isNullableBoolean(key: string): boolean {
+  return NULLABLE_BOOLEAN_KEYS.has(key);
+}
+
 // Keys come in three shapes, resolved most-specific first by resolveScoped():
 //   `${service}:${section}.${field}` -> `${section}.${field}` -> `${field}`
 // The scoped keys carry the text from the annotated sample YAML (deploy/config/{api,tls}.yml);
@@ -75,6 +89,10 @@ const FIELD_HELP: Record<string, string> = {
   'tls:service.DBHealthCheck': 'DB health monitor. When enabled, osctrl-tls pings the database every dbHealthInterval seconds. After dbHealthThreshold consecutive failures, EnvCache and SettingsCache switch to stale-serve mode: cached entries are served on DB miss instead of returning 500, and TTLs are extended to ~60m so cached envs/settings stay warm for the duration of the outage. This keeps osquery nodes that already have a cached env row receiving config/log/query responses during a DB outage. The stale-serve window is bounded at 60m so rotated enroll secrets are not accepted indefinitely. Disabled by default; enable in production where DB blips are expected and osquery fleet stability is prioritized.',
   'api:service.DBHealthThreshold': 'Consecutive failures before EnvCache enters stale-serve mode.',
   'tls:service.DBHealthThreshold': 'Consecutive failures before caches enter stale-serve mode.',
+  'api:service.LogSinksEnabled': 'Master switch for the Log Sinks section and the /api/v1/log-sinks endpoints. Independent of ServiceConfigEnabled — turning this off hides the Log Sinks page while leaving the rest of service-config available. When nil (default) the endpoints are registered, preserving backwards compatibility. The rows can still be changed directly in the database; osctrl-tls reloads them on a reload-log-sinks service command.',
+  'tls:service.LogSinksEnabled': 'Only osctrl-api serves the log-sinks endpoints, so this value is inert for osctrl-tls — it is kept so the service section round-trips unchanged. osctrl-tls reads the log_sinks table at boot and on a reload-log-sinks service command either way.',
+  'api:service.AuthProvidersEnabled': 'Master switch for the Auth Providers section and the /api/v1/auth-providers endpoints. Independent of ServiceConfigEnabled — turning this off hides the Auth Providers page while leaving the rest of service-config available. When nil (default) the endpoints are registered, preserving backwards compatibility. The rows can still be changed directly in the database; osctrl-api reloads them on a reload-auth-providers service command.',
+  'tls:service.AuthProvidersEnabled': 'Only osctrl-api serves the auth-providers endpoints, so this value is inert for osctrl-tls — it is kept so the service section round-trips unchanged. osctrl-api reads the auth_providers table at boot and on a reload-auth-providers service command either way.',
   // --- YAML-annotated: osquery section
   'api:osquery.Version': 'osquery schema version shown to query-building UI.',
   'tls:osquery.Version': 'osquery schema version used for table metadata.',
@@ -916,14 +934,18 @@ function ConfigSectionCard({
 
   const fieldEntries = Object.entries(editableOriginalFields);
 
-  const booleanFields = section.Editable
-    ? fieldEntries.filter(([, v]) => typeof v === 'boolean')
-    : [];
-  const nonBooleanFields = section.Editable
-    ? fieldEntries.filter(([, v]) => typeof v !== 'boolean')
-    : fieldEntries;
+  // Boolean fields (including nullable *bool fields that JSON-marshal to null)
+  // always render in the Feature Toggles grid, regardless of section editability
+  // or count. Keeping every boolean in one place per section makes the toggle set
+  // easy to scan and consistent across read-only and editable sections.
+  const booleanFields = fieldEntries.filter(
+    ([key, v]) => typeof v === 'boolean' || (v === null && isNullableBoolean(key)),
+  );
+  const nonBooleanFields = fieldEntries.filter(
+    ([key, v]) => !(typeof v === 'boolean' || (v === null && isNullableBoolean(key))),
+  );
 
-  const hasManyBooleans = booleanFields.length >= 3;
+  const hasBooleans = booleanFields.length > 0;
 
   const scope = useMemo(() => ({ service, section: section.Name }), [service, section.Name]);
   const sectionHelp = SECTION_HELP[`${service}:${section.Name}`] ?? SECTION_HELP[section.Name];
@@ -1058,7 +1080,7 @@ function ConfigSectionCard({
         )}
 
         {/* Regular object fields */}
-        {!isArray && section.Name !== 'rateLimits' && (hasManyBooleans ? nonBooleanFields : fieldEntries).map(([key]) => {
+        {!isArray && section.Name !== 'rateLimits' && nonBooleanFields.map(([key]) => {
           const originalValue = originalFields[key];
           const currentValue = draft[key];
           const type = inferType(originalValue);
@@ -1120,17 +1142,6 @@ function ConfigSectionCard({
                 value={originalValue}
                 type={type}
               />
-            );
-          }
-
-          if (type === 'boolean' && !hasManyBooleans) {
-            return (
-              <FieldRow key={key} fieldKey={key} dirty={dirtyKeys.includes(key)}>
-                <ToggleSwitch
-                  checked={currentValue as boolean}
-                  onChange={(v) => updateField(key, v)}
-                />
-              </FieldRow>
             );
           }
 
@@ -1214,8 +1225,10 @@ function ConfigSectionCard({
           );
         })}
 
-        {/* Compact boolean grid for sections with many boolean flags */}
-        {!isArray && hasManyBooleans && booleanFields.length > 0 && (
+        {/* Feature Toggles grid — all boolean fields in this section, including
+            nullable *bool fields (rendered as null in JSON). Editable sections
+            show interactive toggles; read-only sections show disabled toggles. */}
+        {!isArray && hasBooleans && (
           <>
             <div className="h-px bg-[color:var(--border)]" />
             <div className="px-3.5 py-3">
@@ -1223,21 +1236,26 @@ function ConfigSectionCard({
                 Feature Toggles
               </p>
               <div className="grid grid-cols-2 gap-2">
-                {booleanFields.map(([key]) => (
-                  <div
-                    key={key}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] hover:border-[color:var(--border-strong)] transition-colors"
-                  >
-                    <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular flex-1 flex items-center gap-1.5">
-                      {key}
-                      <FieldHelpIcon fieldKey={key} />
-                    </span>
-                    <ToggleSwitch
-                      checked={draft[key] as boolean}
-                      onChange={(v) => updateField(key, v)}
-                    />
-                  </div>
-                ))}
+                {booleanFields.map(([key]) => {
+                  const currentValue = draft[key];
+                  const boolVal = currentValue === null ? false : Boolean(currentValue);
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] hover:border-[color:var(--border-strong)] transition-colors"
+                    >
+                      <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular flex-1 flex items-center gap-1.5">
+                        {key}
+                        <FieldHelpIcon fieldKey={key} />
+                      </span>
+                      <ToggleSwitch
+                        checked={boolVal}
+                        onChange={(v) => updateField(key, v)}
+                        disabled={!section.Editable}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -1579,9 +1597,21 @@ function ReadOnlyFieldRow({
     );
   }
 
-  const displayValue = type === 'boolean'
-    ? (value ? 'true' : 'false')
-    : String(value ?? '');
+  if (type === 'boolean') {
+    return (
+      <div className="flex items-center min-h-[44px] px-3.5 gap-3 border-b border-[color:var(--border)] last:border-b-0">
+        <div className="flex items-center gap-2 w-[200px] min-w-[200px] shrink-0">
+          <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular">{fieldKey}</span>
+          <FieldHelpIcon fieldKey={fieldKey} />
+        </div>
+        <div className="flex-1 flex items-center min-w-0">
+          <ToggleSwitch checked={Boolean(value)} onChange={() => {}} disabled />
+        </div>
+      </div>
+    );
+  }
+
+  const displayValue = String(value ?? '');
 
   return (
     <div className="flex items-center min-h-[44px] px-3.5 gap-3 border-b border-[color:var(--border)] last:border-b-0">
@@ -1631,9 +1661,11 @@ function ReadOnlyFieldRow({
 function ToggleSwitch({
   checked,
   onChange,
+  disabled,
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2.5">
@@ -1641,9 +1673,11 @@ function ToggleSwitch({
         type="button"
         role="switch"
         aria-checked={checked}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(
           'relative w-9 h-5 rounded-full border transition-colors shrink-0',
+          disabled && 'opacity-60 cursor-not-allowed',
           checked
             ? 'bg-[color:var(--signal-deep)] border-[color:var(--signal)]'
             : 'bg-[color:var(--bg-3)] border-[color:var(--border)]',
