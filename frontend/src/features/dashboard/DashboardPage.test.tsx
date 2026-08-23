@@ -296,9 +296,15 @@ describe('DashboardPage', () => {
     );
     renderWithProviders(makeTestRouter());
 
-    const chart = await screen.findByRole('img', {
-      name: /Node activity by category/i,
-    });
+    const chart = await screen.findByRole(
+      'img',
+      { name: /Node activity by category/i },
+      // ActivityLineChart is intentionally code-split. A busy CI worker can
+      // take longer than Testing Library's one-second default to resolve the
+      // lazy module even though the same import is effectively instant in a
+      // local run.
+      { timeout: 5_000 },
+    );
 
     // BKLiT's responsive plot intentionally does not lay out in jsdom, so
     // verify the chart's accessible series contract through its legend.
