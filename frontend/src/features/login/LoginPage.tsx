@@ -6,14 +6,15 @@ import { z } from 'zod';
 import { useRouter } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '$/lib/cn';
-import { CircleAlert, Eye, EyeOff, KeyRound, LockKeyhole, Network, ScanSearch, ShieldCheck } from 'lucide-react';
+import { CircleAlert, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { Logo } from '$/components/atoms/Logo';
 import { ThemeToggle } from '$/components/chrome/ThemeToggle';
 import { login, listAuthMethods } from '$/api/client';
-import './login-cyber-grid.css';
+import { LoginIsometricScene } from './LoginIsometricScene';
+import './login-visual.css';
 import {
   submitMFACode,
   beginMFAEnrollment,
@@ -40,11 +41,11 @@ interface MFAState {
 
 function AuthIntro({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex flex-col gap-2">
-      <h1 className="text-balance font-display text-2xl font-semibold tracking-tight text-[color:var(--text-1)]">
+    <div className="flex flex-col gap-3">
+      <h1 className="max-w-[15ch] text-balance font-display text-3xl font-semibold leading-[1.08] tracking-tight text-[color:var(--text-1)]">
         {title}
       </h1>
-      <p className="max-w-[40ch] text-pretty text-base text-[color:var(--text-2)] sm:text-sm">{description}</p>
+      <p className="max-w-[42ch] text-pretty text-base leading-6 text-[color:var(--text-2)]">{description}</p>
     </div>
   );
 }
@@ -61,56 +62,36 @@ function InlineError({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProductContextPanel() {
-  const capabilities = [
-    {
-      icon: Network,
-      title: 'Work in context',
-      description: 'Enter the right fleet environment from the moment you sign in.',
-    },
-    {
-      icon: ScanSearch,
-      title: 'Investigate in one place',
-      description: 'Move from endpoint visibility to query results without losing context.',
-    },
-    {
-      icon: ShieldCheck,
-      title: 'Act with confidence',
-      description: 'Keep sensitive operator actions visible and reviewable.',
-    },
-  ];
-
+function ProductVisualPanel() {
   return (
-    <aside className="relative hidden min-w-0 overflow-hidden p-3 pr-0 lg:order-1 lg:flex" aria-label="About the osctrl workspace">
-      <div className="login-circuit-texture" aria-hidden="true" />
-      <div className="relative z-[1] flex min-w-0 flex-1 flex-col justify-between overflow-hidden">
-        <div className="flex items-center gap-2 p-8 text-sm font-medium text-[color:var(--text-2)]">
-          <ShieldCheck size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
-          Operator workspace
+    <aside
+      className="login-visual-panel relative hidden min-w-0 overflow-hidden rounded-xl lg:flex lg:flex-col"
+      aria-label="osctrl fleet operations"
+    >
+      <div className="relative z-[2] flex items-center justify-between gap-4 py-6 pl-7 pr-20 text-sm text-[color:var(--login-scene-muted)] xl:py-8 xl:pl-9 xl:pr-24">
+        <div className="flex items-center gap-2 font-medium">
+          <ShieldCheck size={16} strokeWidth={1.8} aria-hidden />
+          Fleet control plane
         </div>
-
-        <div className="flex max-w-xl flex-col gap-5 p-10 xl:p-14">
-          <p className="text-sm font-medium text-[color:var(--text-link)]">osquery fleet operations</p>
-          <h2 className="text-balance font-display text-3xl font-semibold tracking-tight text-[color:var(--text-1)] xl:text-4xl">
-            Secure fleet operations, without the noise.
-          </h2>
-          <p className="max-w-[52ch] text-pretty text-base text-[color:var(--text-2)]">
-            Move from endpoint visibility to investigation and response in one calm, environment-aware control plane.
-          </p>
+        <div className="flex items-center gap-2 text-xs font-medium">
+          <span className="size-1.5 rounded-full bg-[color:var(--login-scene-success)]" aria-hidden />
+          Environment aware
         </div>
+      </div>
 
-        <div className="grid grid-cols-3 gap-5 px-10 py-8 xl:gap-8 xl:px-14">
-          {capabilities.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="flex min-w-0 flex-col gap-3">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--bg-1)] text-[color:var(--text-link)] ring-1 ring-inset ring-[color:var(--border)]">
-                <Icon size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[color:var(--text-1)]">{title}</p>
-                <p className="mt-1 text-sm leading-5 text-[color:var(--text-2)]">{description}</p>
-              </div>
-            </div>
-          ))}
+      <div className="absolute inset-0 flex items-center justify-center px-2 pb-14 pt-12 xl:px-8">
+        <LoginIsometricScene />
+      </div>
+
+      <div className="relative z-[2] mt-auto max-w-xl px-7 pb-7 text-[color:var(--login-scene-muted)] xl:px-9 xl:pb-9">
+        <p className="text-sm font-medium">osquery fleet operations</p>
+        <h2 className="mt-2 max-w-[20ch] text-balance font-display text-2xl font-semibold leading-tight tracking-tight xl:text-3xl">
+          See the whole environment. Act on one endpoint.
+        </h2>
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium opacity-80">
+          <span>Observe</span>
+          <span>Query</span>
+          <span>Investigate</span>
         </div>
       </div>
     </aside>
@@ -219,8 +200,8 @@ export function LoginPage() {
   }
 
   return (
-    <div className="isolate min-h-dvh bg-[color:var(--bg-2)] text-[color:var(--text-1)]">
-      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-5 sm:p-6">
+    <div className="isolate min-h-dvh overflow-x-hidden bg-[color:var(--bg-2)] text-[color:var(--text-1)]">
+      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 py-5 sm:px-9 sm:py-7">
         <div className="flex items-center gap-2.5">
           <Logo size={28} decorative />
           <div className="font-wordmark text-lg font-semibold text-[color:var(--text-1)]">osctrl</div>
@@ -230,10 +211,9 @@ export function LoginPage() {
         </div>
       </header>
 
-      <main className="grid min-h-dvh lg:grid-cols-[7fr_5fr]">
-        <section className="min-w-0 p-3 lg:order-2 lg:pl-0" aria-label="Sign in">
-          <div className="flex min-h-[calc(100dvh-1.5rem)] w-full items-center rounded-xl bg-[color:var(--bg-1)] px-6 pb-12 pt-28 ring-1 ring-inset ring-[color:var(--border)] sm:px-10 lg:px-16">
-            <div className="mx-auto flex w-full max-w-sm flex-col gap-8">
+      <main className="grid min-h-dvh gap-3 p-3 lg:grid-cols-[minmax(420px,0.86fr)_minmax(560px,1.14fr)]">
+        <section className="flex min-w-0 items-center px-3 pb-12 pt-28 sm:px-9 lg:px-12 xl:px-16" aria-label="Sign in">
+            <div className="mx-auto flex w-full max-w-[420px] flex-col gap-8">
               {recoveryCodes ? (
                 <AuthIntro
                   title="Save your recovery codes"
@@ -481,10 +461,9 @@ export function LoginPage() {
                 <p className="text-pretty">Protected by your deployment&apos;s authentication policy.</p>
               </div>
             </div>
-          </div>
         </section>
 
-        <ProductContextPanel />
+        <ProductVisualPanel />
       </main>
     </div>
   );
