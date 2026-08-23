@@ -38,18 +38,46 @@ export function LoginIsometricScene() {
         fill="url(#login-scene-grid-pattern)"
       />
 
-      <g className="login-scene-links" stroke="var(--login-scene-link)" strokeWidth="2" strokeLinecap="round">
-        <path d="M-64 450c154-52 251-41 330 13" strokeDasharray="5 9" />
-        <path d="M824 450c-154-52-251-41-330 13" strokeDasharray="5 9" />
-        <path d="M24 548c124-22 202-18 268 16" strokeDasharray="5 9" />
-        <path d="M736 548c-124-22-202-18-268 16" strokeDasharray="5 9" />
+      {/* Circuit traces converge on the control plane without becoming decorative glow. */}
+      <g className="login-scene-circuitry">
+        <g fill="none" stroke="var(--login-scene-circuit)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M-64 456 32 400h66l48 28h74l70-40" />
+          <path d="M32 400 8 386l54-31h68l42 24" />
+          <path d="m146 428-36 21v42l62 36h80l49-28" />
+          <path d="M-24 556 68 503h62l48 28h80l43-25" />
+
+          <path d="M824 456 728 400h-66l-48 28h-74l-70-40" />
+          <path d="m728 400 24-14-54-31h-68l-42 24" />
+          <path d="m614 428 36 21v42l-62 36h-80l-49-28" />
+          <path d="m784 556-92-53h-62l-48 28h-80l-43-25" />
+        </g>
+
+        <g fill="var(--login-scene-circuit-via)" stroke="var(--login-scene-bg)" strokeWidth="2">
+          <circle cx="32" cy="400" r="5" />
+          <circle cx="146" cy="428" r="5" />
+          <circle cx="110" cy="491" r="5" />
+          <circle cx="178" cy="531" r="5" />
+          <circle cx="728" cy="400" r="5" />
+          <circle cx="614" cy="428" r="5" />
+          <circle cx="650" cy="491" r="5" />
+          <circle cx="582" cy="531" r="5" />
+        </g>
+
+        <g fill="var(--login-scene-circuit-pad)" stroke="var(--login-scene-circuit)" strokeWidth="1.5">
+          <path d="m98 386 15 9-15 9-15-9 15-9Z" />
+          <path d="m130 341 18 10-18 10-18-10 18-10Z" />
+          <path d="m68 492 18 11-18 10-18-10 18-11Z" />
+          <path d="m662 386 15 9-15 9-15-9 15-9Z" />
+          <path d="m630 341 18 10-18 10-18-10 18-10Z" />
+          <path d="m692 492 18 11-18 10-18-10 18-11Z" />
+        </g>
       </g>
 
       <g className="login-scene-packet login-scene-packet-a">
-        <circle cx="187" cy="433" r="5" fill="var(--login-scene-accent)" />
+        <circle cx="220" cy="428" r="5" fill="var(--login-scene-accent)" />
       </g>
       <g className="login-scene-packet login-scene-packet-b">
-        <circle cx="573" cy="433" r="5" fill="var(--login-scene-success)" />
+        <circle cx="540" cy="428" r="5" fill="var(--login-scene-success)" />
       </g>
 
       {/* Ground plinth */}

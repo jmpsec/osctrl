@@ -3,6 +3,9 @@
   --login-scene-grid: rgb(204 213 255 / 0.3);
   --login-scene-grid-border: rgb(214 221 255 / 0.4);
   --login-scene-grid-fill: rgb(151 169 255 / 0.055);
+  --login-scene-circuit: rgb(224 229 255 / 0.72);
+  --login-scene-circuit-via: #a7b5ff;
+  --login-scene-circuit-pad: rgb(173 187 255 / 0.22);
   --login-scene-surface: #f5f6ff;
   --login-scene-side: #b8c4f4;
   --login-scene-side-dark: #8e9edb;
@@ -34,6 +37,9 @@
   --login-scene-grid: rgb(226 232 255 / 0.28);
   --login-scene-grid-border: rgb(236 239 255 / 0.42);
   --login-scene-grid-fill: rgb(180 194 255 / 0.06);
+  --login-scene-circuit: rgb(239 242 255 / 0.76);
+  --login-scene-circuit-via: #bac5ff;
+  --login-scene-circuit-pad: rgb(199 208 255 / 0.24);
   --login-scene-surface: #f8f9ff;
   --login-scene-side: #c6d0f7;
   --login-scene-side-dark: #98a8e5;
@@ -81,7 +87,11 @@
 }
 
 .login-scene-grid {
-  opacity: 0.94;
+  opacity: 0.46;
+}
+
+.login-scene-circuitry {
+  opacity: 0.86;
 }
 
 .login-scene-tower-base,
