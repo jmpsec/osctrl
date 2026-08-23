@@ -102,6 +102,17 @@ describe('LoginPage SSO surface', () => {
     expect(screen.queryByRole('link', { name: /sso/i })).not.toBeInTheDocument();
   });
 
+  it('keeps the circuit texture decorative', async () => {
+    mockListMethods.mockResolvedValue([
+      { type: 'password', loginUrl: '/api/v1/login' },
+    ]);
+
+    const { container } = renderWithProviders();
+
+    await screen.findByRole('button', { name: /sign in/i });
+    expect(container.querySelector('.login-circuit-texture')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('lets the operator reveal and hide the password without clearing it', async () => {
     const user = userEvent.setup();
     mockListMethods.mockResolvedValue([

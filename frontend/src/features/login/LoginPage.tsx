@@ -13,6 +13,7 @@ import { Label } from '$/components/atoms/Label';
 import { Logo } from '$/components/atoms/Logo';
 import { ThemeToggle } from '$/components/chrome/ThemeToggle';
 import { login, listAuthMethods } from '$/api/client';
+import './login-cyber-grid.css';
 import {
   submitMFACode,
   beginMFAEnrollment,
@@ -80,8 +81,9 @@ function ProductContextPanel() {
   ];
 
   return (
-    <aside className="hidden min-w-0 p-3 pr-0 lg:order-1 lg:flex" aria-label="About the osctrl workspace">
-      <div className="flex min-w-0 flex-1 flex-col justify-between overflow-hidden">
+    <aside className="relative hidden min-w-0 overflow-hidden p-3 pr-0 lg:order-1 lg:flex" aria-label="About the osctrl workspace">
+      <div className="login-circuit-texture" aria-hidden="true" />
+      <div className="relative z-[1] flex min-w-0 flex-1 flex-col justify-between overflow-hidden">
         <div className="flex items-center gap-2 p-8 text-sm font-medium text-[color:var(--text-2)]">
           <ShieldCheck size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
           Operator workspace
