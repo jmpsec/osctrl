@@ -410,8 +410,7 @@ function prepare_deployment() {
   fi
 
   log "Installing required packages"
-  packages git sudo curl wget gcc make openssl tmux bc rsync
-  install_yq
+  packages git sudo curl wget gcc make openssl tmux bc rsync yq
   install_nvm
 
   # Install go 1.26.5 if not present
@@ -553,6 +552,13 @@ function provision_postgresql() {
   local POSTGRES_PSQL="$__psql"
 
   if [[ "$__distro" == "ubuntu" ]]; then
+    # Ubuntu 26.04 uses postgresql 18
+    if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "26" ]]; then
+      package postgresql-18
+      package postgresql-contrib
+      package postgresql-client-18
+      POSTGRES_SERVICE="postgresql"
+      POSTGRES_PSQL="/usr/lib/postgresql/18/bin/psql"
     # Ubuntu 24.04 uses postgresql 16
     if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
       package postgresql-16
