@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useRouterState, useParams } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -27,6 +27,11 @@ import { getMe } from '$/api/users';
 import { getFeatures } from '$/api/features';
 import type { EnvAccess } from '$/api/types';
 import { readActiveEnvironment, writeActiveEnvironment } from '$/lib/environment-scope';
+import {
+  SIDE_NAV_PREVIEW_ID,
+  SideNavPreview,
+  type SideNavPreviewKind,
+} from './SideNavPreview';
 
 interface NavItemProps {
   active?: boolean;
@@ -35,6 +40,7 @@ interface NavItemProps {
   icon: React.ReactNode;
   tone?: NavIconTone;
   collapsed?: boolean;
+  previewExpanded?: boolean;
   children: React.ReactNode;
 }
 
@@ -59,7 +65,16 @@ const navIconToneVariables: Record<NavIconTone, string> = {
   neutral: 'var(--text-2)',
 };
 
-function NavItem({ active, to, href, icon, tone = 'neutral', collapsed, children }: NavItemProps) {
+function NavItem({
+  active,
+  to,
+  href,
+  icon,
+  tone = 'neutral',
+  collapsed,
+  previewExpanded,
+  children,
+}: NavItemProps) {
   const className = cn(
     'flex h-7 items-center gap-2 rounded-md px-1.5 text-[13px] font-medium',
     collapsed && 'justify-center',
@@ -93,7 +108,14 @@ function NavItem({ active, to, href, icon, tone = 'neutral', collapsed, children
 
   if (to) {
     return (
-      <Link to={to} aria-current={active ? 'page' : undefined} className={className} title={title}>
+      <Link
+        to={to}
+        aria-current={active ? 'page' : undefined}
+        aria-expanded={previewExpanded}
+        aria-controls={previewExpanded !== undefined ? SIDE_NAV_PREVIEW_ID : undefined}
+        className={className}
+        title={title}
+      >
         {content}
       </Link>
     );
@@ -103,6 +125,8 @@ function NavItem({ active, to, href, icon, tone = 'neutral', collapsed, children
     <a
       href={href ?? '#'}
       aria-current={active ? 'page' : undefined}
+      aria-expanded={previewExpanded}
+      aria-controls={previewExpanded !== undefined ? SIDE_NAV_PREVIEW_ID : undefined}
       className={className}
       title={title}
     >
@@ -123,9 +147,17 @@ interface SideNavProps {
   className?: string;
   /** Desktop icon-rail mode: labels collapse to tooltips, rail narrows. */
   collapsed?: boolean;
+  /** Context previews are desktop-only; the mobile drawer navigates directly. */
+  previewsEnabled?: boolean;
 }
 
-export function SideNav({ className, collapsed }: SideNavProps = {}) {
+interface OpenPreview {
+  kind: SideNavPreviewKind;
+  anchor: { top: number; right: number };
+  focusFirstItem: boolean;
+}
+
+export function SideNav({ className, collapsed, previewsEnabled = true }: SideNavProps = {}) {
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
   const params = useParams({ strict: false });
@@ -225,10 +257,89 @@ export function SideNav({ className, collapsed }: SideNavProps = {}) {
   const dashboardPath = `/_app/env/${currentEnv}`;
   const isDashboardActive = pathname === dashboardPath || pathname === dashboardPath + '/';
 
+  const [preview, setPreview] = useState<OpenPreview | null>(null);
+  const openTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
+  const previewTrigger = useRef<HTMLAnchorElement | null>(null);
+
+  function clearOpenTimer() {
+    if (openTimer.current != null) window.clearTimeout(openTimer.current);
+    openTimer.current = null;
+  }
+
+  function clearCloseTimer() {
+    if (closeTimer.current != null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  }
+
+  function openPreview(
+    kind: SideNavPreviewKind,
+    triggerContainer: HTMLElement,
+    options: { immediate?: boolean; focusFirstItem?: boolean } = {},
+  ) {
+    if (!previewsEnabled) return;
+    clearOpenTimer();
+    clearCloseTimer();
+    const show = () => {
+      const rect = triggerContainer.getBoundingClientRect();
+      previewTrigger.current = triggerContainer.querySelector('a');
+      setPreview({
+        kind,
+        anchor: { top: rect.top, right: rect.right },
+        focusFirstItem: options.focusFirstItem ?? false,
+      });
+    };
+    if (options.immediate) show();
+    else openTimer.current = window.setTimeout(show, 140);
+  }
+
+  function schedulePreviewClose() {
+    clearOpenTimer();
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(() => setPreview(null), 220);
+  }
+
+  function dismissPreview({ restoreFocus = false } = {}) {
+    clearOpenTimer();
+    clearCloseTimer();
+    setPreview(null);
+    if (restoreFocus) previewTrigger.current?.focus();
+  }
+
+  function previewTriggerProps(kind: SideNavPreviewKind) {
+    return {
+      onMouseEnter: (event: React.MouseEvent<HTMLDivElement>) => openPreview(kind, event.currentTarget),
+      onMouseLeave: schedulePreviewClose,
+      onFocus: (event: React.FocusEvent<HTMLDivElement>) => {
+        openPreview(kind, event.currentTarget, { immediate: true });
+      },
+      onBlur: schedulePreviewClose,
+      onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          openPreview(kind, event.currentTarget, { immediate: true, focusFirstItem: true });
+        }
+        if (event.key === 'Escape' && preview?.kind === kind) {
+          event.preventDefault();
+          dismissPreview();
+        }
+      },
+    };
+  }
+
+  useEffect(() => {
+    dismissPreview();
+  }, [pathname, currentEnv]);
+
+  useEffect(() => () => {
+    clearOpenTimer();
+    clearCloseTimer();
+  }, []);
+
   return (
     <aside
       className={cn(
-        'relative shrink-0 flex min-h-0 flex-col overflow-y-auto bg-[color:var(--bg-0)] px-2 py-2',
+        'side-nav-circuit relative shrink-0 flex min-h-0 flex-col overflow-y-auto bg-[color:var(--bg-0)] px-2 py-2',
         'transition-[width] duration-200 ease-out',
         collapsed ? 'w-14' : 'w-60',
         className,
@@ -272,26 +383,32 @@ export function SideNav({ className, collapsed }: SideNavProps = {}) {
           Dashboard
         </NavItem>
         {canSeeEnv && (
-          <NavItem
-            collapsed={collapsed}
-            active={isNodesActive}
-            to={nodesPath}
-            tone="sky"
-            icon={<Monitor size={14} strokeWidth={1.8} />}
-          >
-            Nodes
-          </NavItem>
+          <div {...previewTriggerProps('nodes')}>
+            <NavItem
+              collapsed={collapsed}
+              active={isNodesActive}
+              to={nodesPath}
+              tone="sky"
+              icon={<Monitor size={14} strokeWidth={1.8} />}
+              previewExpanded={preview?.kind === 'nodes'}
+            >
+              Nodes
+            </NavItem>
+          </div>
         )}
         {canQuery && (
-          <NavItem
-            collapsed={collapsed}
-            active={isQueriesActive}
-            to={queriesPath}
-            tone="violet"
-            icon={<FileSearch size={14} strokeWidth={1.8} />}
-          >
-            Queries
-          </NavItem>
+          <div {...previewTriggerProps('queries')}>
+            <NavItem
+              collapsed={collapsed}
+              active={isQueriesActive}
+              to={queriesPath}
+              tone="violet"
+              icon={<FileSearch size={14} strokeWidth={1.8} />}
+              previewExpanded={preview?.kind === 'queries'}
+            >
+              Queries
+            </NavItem>
+          </div>
         )}
         {canQuery && (
           <NavItem
@@ -465,6 +582,17 @@ export function SideNav({ className, collapsed }: SideNavProps = {}) {
             Profile
           </NavItem>
         </nav>
+      )}
+      {preview && (
+        <SideNavPreview
+          kind={preview.kind}
+          env={currentEnv}
+          anchor={preview.anchor}
+          focusFirstItem={preview.focusFirstItem}
+          onDismiss={() => dismissPreview({ restoreFocus: true })}
+          onInteractionStart={clearCloseTimer}
+          onInteractionEnd={schedulePreviewClose}
+        />
       )}
     </aside>
   );

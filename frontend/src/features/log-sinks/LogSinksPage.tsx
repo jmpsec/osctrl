@@ -25,6 +25,7 @@ import { formatRelative, formatBytes } from '$/lib/time';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { Button } from '$/components/atoms/Button';
 import { cn } from '$/lib/cn';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
@@ -336,17 +337,12 @@ export function LogSinksPage() {
           >
             Clone from…
           </button>
-          <button
+          <Button
             type="button"
             onClick={() => setModal({ kind: 'create' })}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
-              'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            )}
           >
             New sink
-          </button>
+          </Button>
           <button
             type="button"
             disabled={reloading || !hasPending}

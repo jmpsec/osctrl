@@ -28,6 +28,7 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 import { cn } from '$/lib/cn';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { Button } from '$/components/atoms/Button';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -168,10 +169,9 @@ export function AuthProvidersPage() {
           {isFetching && !isLoading && (
             <span className="text-xs text-[color:var(--text-3)] tabular-nums">refreshing…</span>
           )}
-          <button type="button" onClick={() => setModal({ kind: 'create' })}
-            className={cn('px-3 py-1.5 text-xs font-medium rounded-md', 'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]', 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]')}>
+          <Button type="button" onClick={() => setModal({ kind: 'create' })}>
             New provider
-          </button>
+          </Button>
           <button type="button" disabled={reloading}
             onClick={() => { setApplyErr(null); setModal({ kind: 'apply' }); }}
             className={cn('px-3 py-1 text-xs font-medium rounded transition-colors',

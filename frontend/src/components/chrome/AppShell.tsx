@@ -56,6 +56,7 @@ export function AppShell({ children, username }: AppShellProps) {
       <SideNav
         className="hidden md:flex"
         collapsed={navCollapsed}
+        previewsEnabled
       />
 
       {/* Mobile off-canvas drawer. Kept mounted so the slide/fade can
@@ -79,7 +80,10 @@ export function AppShell({ children, username }: AppShellProps) {
             navOpen ? 'translate-x-0' : '-translate-x-full',
           )}
         >
-          <SideNav className="h-full overflow-y-auto shadow-[8px_0_24px_rgba(0,0,0,0.18)]" />
+          <SideNav
+            className="h-full overflow-y-auto shadow-[8px_0_24px_rgba(0,0,0,0.18)]"
+            previewsEnabled={false}
+          />
         </div>
       </div>
 

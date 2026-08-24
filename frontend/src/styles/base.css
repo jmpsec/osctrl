@@ -97,6 +97,39 @@ textarea {
   background: var(--bg-1);
 }
 
+.side-nav-circuit {
+  isolation: isolate;
+}
+
+.side-nav-circuit::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 42%,
+    color-mix(in srgb, var(--accent) 42%, var(--text-2)) 64%,
+    color-mix(in srgb, var(--accent) 58%, var(--text-2)) 100%
+  );
+  content: "";
+  opacity: 0.055;
+  pointer-events: none;
+  -webkit-mask-image: url('/img/circuit.svg');
+  mask-image: url('/img/circuit.svg');
+  -webkit-mask-position: center top;
+  mask-position: center top;
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 240px 240px;
+  mask-size: 240px 240px;
+}
+
+.side-nav-circuit > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* Dense data views keep their structure without shouty all-caps headers. */
 thead th {
   letter-spacing: 0 !important;

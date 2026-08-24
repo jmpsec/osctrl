@@ -119,7 +119,6 @@ export function SavedQueriesPage() {
             type="button"
             size="md"
             onClick={() => setModal({ kind: 'create' })}
-            className="text-xs"
           >
             New saved query
           </Button>

@@ -24,6 +24,7 @@ import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { Button } from '$/components/atoms/Button';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -163,13 +164,12 @@ export function UsersPage() {
         <p className="text-xs text-[color:var(--text-3)] flex-1">
           Super-admin view. Per-env permissions and API token management.
         </p>
-        <button
+        <Button
           type="button"
           onClick={() => setModal({ kind: 'create' })}
-          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
         >
-          + Add user
-        </button>
+          Add user
+        </Button>
       </div>
 
       <div className="flex-1 overflow-auto min-h-0">

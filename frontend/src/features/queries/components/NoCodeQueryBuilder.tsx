@@ -6,9 +6,7 @@ import {
   Braces,
   Check,
   ChevronDown,
-  Code2,
   Columns3,
-  Copy,
   Hash,
   Plus,
   Search,
@@ -382,7 +380,6 @@ export function NoCodeQueryBuilder({
   const [sortOpen, setSortOpen] = useState(Boolean(initialDraft.orderBy));
   const [resetSnapshot, setResetSnapshot] = useState<QueryBuilderState | null>(null);
   const [recents, setRecents] = useState<QueryBuilderRecents>(() => readRecents(draftKey));
-  const [copied, setCopied] = useState(false);
   const nextConditionId = useRef(Math.max(0, ...initialDraft.conditions.map((condition) => condition.id)) + 1);
   const valueInputRefs = useRef(new Map<number, HTMLInputElement>());
   const pendingValueFocusId = useRef<number | null>(null);
@@ -618,16 +615,6 @@ export function NoCodeQueryBuilder({
     if (resetTimer.current !== undefined) window.clearTimeout(resetTimer.current);
   }
 
-  async function copySql() {
-    try {
-      await navigator.clipboard.writeText(sql);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1_400);
-    } catch {
-      setCopied(false);
-    }
-  }
-
   return (
     <div className="min-w-0">
       <section className="px-4 py-4 sm:px-5" aria-label="No-code query builder">
@@ -642,8 +629,11 @@ export function NoCodeQueryBuilder({
         )}
 
         {!isLoading && !isError && (
-          <div className="rounded-lg bg-[color:var(--bg-2)]/70 p-2 ring-1 ring-inset ring-[color:var(--border)]">
-            <div className="flex min-w-0 flex-wrap items-center gap-2" aria-label="Query filters">
+          <div
+            className="rounded-lg bg-[color:var(--bg-2)]/70 p-2 ring-1 ring-inset ring-[color:var(--border)]"
+            aria-label="Query filters"
+          >
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Popover.Root open={tablePickerOpen} onOpenChange={setTablePickerOpen}>
                 <Popover.Trigger asChild>
                   <button
@@ -762,6 +752,11 @@ export function NoCodeQueryBuilder({
                 </PickerSurface>
               </Popover.Root>
 
+            </div>
+
+            {conditions.length > 0 && (
+              <div className="mt-2 flex min-w-0 flex-col items-start gap-2">
+
               {conditions.map((condition, index) => {
                 const operator = QUERY_BUILDER_OPERATORS.find((item) => item.value === condition.operator);
                 const column = availableColumns.find((item) => item.name === condition.column);
@@ -836,6 +831,11 @@ export function NoCodeQueryBuilder({
                   </div>
                 );
               })}
+
+              </div>
+            )}
+
+            <div className="mt-2 flex min-w-0 items-center gap-2">
 
               <Popover.Root open={filterPickerOpen} onOpenChange={setFilterPickerOpen}>
                 <Popover.Trigger asChild>
@@ -1016,34 +1016,6 @@ export function NoCodeQueryBuilder({
         )}
       </section>
 
-      <section className="border-t border-[color:var(--border)] bg-[color:var(--bg-2)]/50 px-4 py-3 sm:px-5" aria-labelledby="query-builder-preview">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-sm">
-            <Code2 size={16} strokeWidth={1.8} aria-hidden className="shrink-0 text-[color:var(--text-3)]" />
-            <h3 id="query-builder-preview" className="font-semibold text-[color:var(--text-1)]">Generated SQL</h3>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => void copySql()}
-              className={cn('inline-flex h-7 items-center gap-1 py-1 pr-2 pl-1 text-sm font-medium text-[color:var(--text-3)] hover:text-[color:var(--text-1)]', focusClass)}
-            >
-              {copied ? <Check size={16} strokeWidth={2} aria-hidden className="shrink-0" /> : <Copy size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
-            <button
-              type="button"
-              onClick={onEditSql}
-              className={cn('h-7 rounded-md bg-[color:var(--bg-1)] px-2 text-sm font-medium text-[color:var(--text-2)] ring-1 ring-inset ring-[color:var(--border)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]', focusClass)}
-            >
-              Edit SQL
-            </button>
-          </div>
-        </div>
-        <pre className="mt-2 overflow-x-auto rounded-md bg-[color:var(--bg-0)] p-3 text-xs text-[color:var(--text-2)] ring-1 ring-inset ring-[color:var(--border)]">
-          <code className="font-mono-tabular">{sql}</code>
-        </pre>
-      </section>
     </div>
   );
 }

@@ -69,9 +69,10 @@ export default function ActivityLineChart({
       >
         <BklitGrid
           horizontal
-          numTicksRows={4}
-          stroke="var(--chart-grid)"
-          strokeDasharray="1 5"
+          numTicksRows={6}
+          stroke="color-mix(in srgb, var(--text-3) 72%, transparent)"
+          strokeDasharray="4 5"
+          strokeOpacity={1}
           hideHorizontalEdgeLines
         />
         <BklitLine dataKey="status" stroke={palette.status} strokeWidth={2} fadeEdges={false} />

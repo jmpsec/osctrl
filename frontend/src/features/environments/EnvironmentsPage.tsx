@@ -17,6 +17,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { IconPicker, resolveEnvIcon } from '$/components/forms/IconPicker';
 import { StatusBadge } from '$/components/data/StatusBadge';
+import { Button } from '$/components/atoms/Button';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -139,17 +140,12 @@ export function EnvironmentsPage() {
         </p>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => setModal({ kind: 'create' })}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
-              'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            )}
           >
             New environment
-          </button>
+          </Button>
 
           {isFetching && !isLoading && (
             <span

@@ -9,8 +9,8 @@
  *                                                       config, query read/write)
  */
 
-import { lazy, Suspense, useState } from 'react';
-import { RotateCcw, RotateCw } from 'lucide-react';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
+import { FileSearch, FolderOpen, RotateCcw, RotateCw } from 'lucide-react';
 import { useParams } from '@tanstack/react-router';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -30,6 +30,7 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 import { listAuditLogs, LOG_TYPE_LABELS } from '$/api/audit';
 import { listNodes } from '$/api/nodes';
 import { listQueries } from '$/api/queries';
+import { listCarves } from '$/api/carves';
 import { listEnvironments } from '$/api/environments';
 import { AuthError } from '$/api/client';
 import { Skeleton } from '$/components/data/Skeleton';
@@ -39,6 +40,7 @@ import { StatusBadge } from '$/components/data/StatusBadge';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
 import { DEFAULT_INACTIVE_HOURS } from '$/lib/node-status';
+import type { DistributedQuery } from '$/api/types';
 
 // ---------------------------------------------------------------------------
 // Node-activity series, derived from the Redis-backed env-tiles endpoint.
@@ -52,10 +54,6 @@ import { DEFAULT_INACTIVE_HOURS } from '$/lib/node-status';
 // all-zero arrays are returned so the chart renders an empty frame.
 // ---------------------------------------------------------------------------
 export type ChartCategory = 'status' | 'result' | 'config' | 'query' | 'error';
-
-// Picker variants are temporary design-review UI. Keep the baseline-only DOM
-// in unit tests so semantic assertions continue to exercise the shipping view.
-const UI_PICKER_ENABLED = import.meta.env.MODE !== 'test';
 
 export interface ActivitySeries {
   status: number[];
@@ -367,7 +365,6 @@ interface KpiCardProps {
   polarity?: 'up-good' | 'up-bad';
   /** Override the auto-computed delta label. */
   deltaLabel?: string;
-  presentation?: 'cards' | 'rail' | 'tonal';
   /**
    * Makes the card actionable. When set the card renders as a button so it
    * is reachable by keyboard and announced as interactive, rather than a div
@@ -384,7 +381,6 @@ function KpiCard({
   halo,
   polarity = 'up-good',
   deltaLabel,
-  presentation = 'cards',
   onClick,
   actionLabel,
 }: KpiCardProps) {
@@ -405,24 +401,14 @@ function KpiCard({
       onClick={onClick}
       aria-label={interactive ? actionLabel : undefined}
       className={cn(
-        'px-4 py-3.5 min-h-[124px]',
-        'relative flex flex-col transition-colors duration-[100ms]',
-        presentation === 'cards' &&
-          'rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] hover:border-[color:var(--border-strong)]',
-        presentation === 'rail' &&
-          'bg-[color:var(--bg-1)] hover:bg-[color:var(--bg-2)]',
-        presentation === 'tonal' &&
-          'rounded-lg border hover:border-[color:var(--border-strong)]',
+        'relative flex min-h-[124px] flex-col bg-[color:var(--bg-1)] px-4 py-3.5',
+        'transition-colors duration-[100ms] hover:bg-[color:var(--bg-2)]',
         interactive && [
           'text-left cursor-pointer',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
           'focus-visible:outline-[color:var(--signal)]',
         ],
       )}
-      style={presentation === 'tonal' ? {
-        backgroundColor: `color-mix(in srgb, ${sparkColor[halo]} 5%, var(--bg-1))`,
-        borderColor: `color-mix(in srgb, ${sparkColor[halo]} 18%, var(--border))`,
-      } : undefined}
     >
       <div className="text-xs font-medium text-[color:var(--text-2)] select-none">
         {label}
@@ -452,7 +438,6 @@ function KpiCard({
 }
 
 interface DashboardKpiSetProps {
-  presentation: 'cards' | 'rail' | 'tonal';
   loading: boolean;
   activeNodes: number;
   totalNodes: number;
@@ -465,7 +450,6 @@ interface DashboardKpiSetProps {
 }
 
 function DashboardKpiSet({
-  presentation,
   loading,
   activeNodes,
   totalNodes,
@@ -477,17 +461,10 @@ function DashboardKpiSet({
   chartSeries,
 }: DashboardKpiSetProps) {
   return (
-    <div
-      className={cn(
-        'grid grid-cols-2 lg:grid-cols-4',
-        presentation === 'rail'
-          ? 'gap-px overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--border)]'
-          : 'gap-3',
-      )}
-    >
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--border)] lg:grid-cols-4">
       {loading ? (
         Array.from({ length: 4 }).map((_, index) => (
-          <KpiSkeletonCard key={index} presentation={presentation} />
+          <KpiSkeletonCard key={index} />
         ))
       ) : (
         <>
@@ -497,7 +474,6 @@ function DashboardKpiSet({
             sparkline={chartSeries.config}
             halo="success"
             polarity="up-good"
-            presentation={presentation}
             deltaLabel={totalNodes > 0 ? `${Math.round((activeNodes / totalNodes) * 100)}% of fleet` : 'no nodes'}
           />
           <KpiCard
@@ -506,7 +482,6 @@ function DashboardKpiSet({
             sparkline={chartSeries.status}
             halo="warning"
             polarity="up-bad"
-            presentation={presentation}
             deltaLabel={totalNodes > 0 ? `${Math.round((inactiveNodes / totalNodes) * 100)}% of fleet` : 'no nodes'}
           />
           <KpiCard
@@ -515,7 +490,6 @@ function DashboardKpiSet({
             sparkline={chartSeries.statusError}
             halo={reportedErrors > 0 ? 'danger' : 'success'}
             polarity="up-bad"
-            presentation={presentation}
             deltaLabel={reportedErrors === 0 ? 'all clear' : `${reportedErrors} in 24h — see nodes`}
             onClick={onReportedErrorsClick}
             actionLabel="Show the nodes reporting errors"
@@ -526,7 +500,6 @@ function DashboardKpiSet({
             sparkline={chartSeries.query}
             halo="signal"
             polarity="up-good"
-            presentation={presentation}
             deltaLabel={`${activeQueries} executing`}
           />
         </>
@@ -536,55 +509,233 @@ function DashboardKpiSet({
 }
 
 // ---------------------------------------------------------------------------
-// Hero KPI (large stat on the right of the time-series row).
+// Operational workload — the original two-card stack, with the unused right
+// side promoted into a quick-access lane for live work.
 // ---------------------------------------------------------------------------
-function HeroKpi({
-  label,
-  description,
-  value,
-  unit,
-  tone,
-  toneText,
-}: {
-  label: string;
+interface OperationalWorkloadCardsProps {
+  activeQueries: number;
+  activeCarves: number;
+  featuredQuery?: ActiveQueryRow;
+  recentCarve?: DistributedQuery;
+  env: string;
+}
+
+type WorkloadKind = 'query' | 'carve';
+
+interface WorkloadEntry {
+  kind: WorkloadKind;
+  title: string;
   description: string;
-  value: number | string;
-  unit?: string;
-  tone: 'success' | 'info' | 'warning' | 'danger';
-  toneText: string;
+  count: number;
+  statusVariant: 'success' | 'info' | 'dim';
+  statusLabel: string;
+  emptyLabel: string;
+  name?: string;
+  linkEnv: string;
+  progress: number;
+  progressMeta: string;
+  progressColor: string;
+}
+
+function WorkloadRouteLink({
+  entry,
+  className,
+  children,
+}: {
+  entry: WorkloadEntry;
+  className: string;
+  children: ReactNode;
 }) {
-  const toneStyles: Record<string, string> = {
-    success: 'bg-[color:var(--success)]/10 text-[color:var(--success)] border-[color:var(--success)]/25',
-    info: 'bg-[color:var(--info)]/10 text-[color:var(--info)] border-[color:var(--info)]/25',
-    warning: 'bg-[color:var(--warning)]/10 text-[color:var(--warning)] border-[color:var(--warning)]/25',
-    danger: 'bg-[color:var(--danger)]/10 text-[color:var(--danger)] border-[color:var(--danger)]/25',
-  };
+  if (entry.name && entry.kind === 'query') {
+    return (
+      <Link
+        to="/_app/env/$env/queries/$name"
+        params={{ env: entry.linkEnv, name: entry.name }}
+        className={className}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  if (entry.name) {
+    return (
+      <Link
+        to="/_app/env/$env/carves/$name"
+        params={{ env: entry.linkEnv, name: entry.name }}
+        className={className}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  return entry.kind === 'query' ? (
+    <Link to="/_app/env/$env/queries" params={{ env: entry.linkEnv }} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <Link to="/_app/env/$env/carves" params={{ env: entry.linkEnv }} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+function WorkloadItemIcon({ kind }: { kind: WorkloadKind }) {
+  return kind === 'query' ? (
+    <FileSearch size={16} strokeWidth={1.7} className="shrink-0 text-[color:var(--nav-violet)]" aria-hidden />
+  ) : (
+    <FolderOpen size={16} strokeWidth={1.7} className="shrink-0 text-[color:var(--nav-rose)]" aria-hidden />
+  );
+}
+
+function progressPercent(executions: number, expected: number): number {
+  if (expected <= 0) return 0;
+  return Math.min(100, Math.round((executions / expected) * 100));
+}
+
+function WorkloadProgress({
+  value,
+  color,
+  label,
+}: {
+  value: number;
+  color: string;
+  label: string;
+}) {
   return (
     <div
-      className={cn(
-        'relative overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)]',
-        'px-4 py-3.5 flex flex-col h-full min-h-[120px]',
-        'transition-colors duration-[100ms] hover:border-[color:var(--border-strong)]',
-      )}
+      className="mt-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--bg-3)]"
+      role="meter"
+      aria-label={label}
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={100}
     >
-      <div className="text-sm font-display font-semibold text-[color:var(--text-1)]">{label}</div>
-      <div className="text-xs text-[color:var(--text-3)] mt-0.5">{description}</div>
-      <div className="font-display tabular-nums mt-3 flex items-baseline gap-2 text-[color:var(--text-1)]" style={{ fontSize: 36, fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1 }}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
-        {unit && <span className="text-sm text-[color:var(--text-3)] font-normal">{unit}</span>}
-      </div>
-      <div className="mt-3">
-        <span
+      <div
+        className="h-full w-full rounded-full transition-transform duration-300"
+        style={{
+          backgroundColor: color,
+          transformOrigin: 'left',
+          transform: `scaleX(${value / 100})`,
+        }}
+      />
+    </div>
+  );
+}
+
+function OperationalWorkloadCards({
+  activeQueries,
+  activeCarves,
+  featuredQuery,
+  recentCarve,
+  env,
+}: OperationalWorkloadCardsProps) {
+  const queryProgress = featuredQuery
+    ? progressPercent(featuredQuery.executions, featuredQuery.expected)
+    : 0;
+  const carveProgress = recentCarve
+    ? progressPercent(recentCarve.executions, recentCarve.expected)
+    : 0;
+  const carveReady = recentCarve?.completed || recentCarve?.carve_status === 'COMPLETED';
+
+  const workloads: WorkloadEntry[] = [
+    {
+      kind: 'query',
+      title: 'Queries',
+      description: 'Active fleet investigations',
+      count: activeQueries,
+      statusVariant: activeQueries > 0 ? 'success' : 'dim',
+      statusLabel: activeQueries > 0 ? 'Executing' : 'Idle',
+      emptyLabel: 'View query history',
+      name: featuredQuery?.name,
+      linkEnv: featuredQuery?.envUuid ?? env,
+      progress: queryProgress,
+      progressMeta: featuredQuery
+        ? `${featuredQuery.executions.toLocaleString()} of ${featuredQuery.expected.toLocaleString()} responses`
+        : '',
+      progressColor: featuredQuery?.errors ? 'var(--warning)' : 'var(--info)',
+    },
+    {
+      kind: 'carve',
+      title: 'Forensic Carves',
+      description: 'File collections in flight',
+      count: activeCarves,
+      statusVariant: activeCarves > 0 ? 'info' : 'dim',
+      statusLabel: activeCarves > 0 ? 'In flight' : 'Idle',
+      emptyLabel: 'View carve history',
+      name: recentCarve?.name,
+      linkEnv: env,
+      progress: carveReady ? 100 : carveProgress,
+      progressMeta: recentCarve
+        ? carveReady
+          ? 'Archive ready'
+          : `${recentCarve.executions.toLocaleString()} of ${recentCarve.expected.toLocaleString()} nodes`
+        : '',
+      progressColor: carveReady ? 'var(--success)' : 'var(--info)',
+    },
+  ];
+
+  return (
+    <div
+      role="group"
+      aria-label="Operational workload"
+      className="grid min-h-[240px] grid-rows-2 overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)]"
+    >
+      {workloads.map((entry, index) => (
+        <article
+          key={entry.kind}
           className={cn(
-            'inline-flex items-center gap-1 px-1.5 py-0.5 rounded',
-            'text-xs font-medium tabular-nums border',
-            toneStyles[tone],
+            '@container grid min-h-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-4 px-4 py-3.5',
+            index > 0 && 'border-t border-[color:var(--border)]',
           )}
         >
-          <span aria-hidden className="w-[6px] h-[6px] rounded-full bg-current" />
-          {toneText}
-        </span>
-      </div>
+          <div className="flex min-w-0 flex-col">
+            <h2 className="truncate font-display text-sm font-semibold text-[color:var(--text-1)]">
+              {entry.title}
+            </h2>
+            <p className="mt-1 text-[13px] text-[color:var(--text-3)]">{entry.description}</p>
+            <div className="mt-auto flex items-start gap-3 pt-3">
+              <span className="font-display text-[30px] font-semibold tabular-nums text-[color:var(--text-1)]">
+                {entry.count.toLocaleString()}
+              </span>
+              <span className="pt-1">
+                <StatusBadge variant={entry.statusVariant} label={entry.statusLabel} />
+              </span>
+            </div>
+          </div>
+
+          <div className="flex min-w-0 flex-col border-l border-[color:var(--border)] pl-4">
+            <div className="text-[13px] font-medium text-[color:var(--text-3)]">
+              {entry.kind === 'query' ? 'Query in progress' : 'Latest carve'}
+            </div>
+            <WorkloadRouteLink
+              entry={entry}
+              className="group mt-2 min-w-0 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                {entry.name && <WorkloadItemIcon kind={entry.kind} />}
+                <span className="truncate text-[13px] font-medium text-[color:var(--text-1)] group-hover:text-[color:var(--text-link)]">
+                  {entry.name ?? entry.emptyLabel}
+                </span>
+              </span>
+              {entry.name && (
+                <>
+                  <span className="mt-1.5 flex justify-between gap-2 text-[12px] tabular-nums text-[color:var(--text-3)]">
+                    <span>{entry.progressMeta}</span>
+                    <span>{entry.progress}%</span>
+                  </span>
+                  <WorkloadProgress
+                    value={entry.progress}
+                    color={entry.progressColor}
+                    label={`${entry.kind === 'query' ? 'Query' : 'Carve'} progress, ${entry.progress}% complete`}
+                  />
+                </>
+              )}
+            </WorkloadRouteLink>
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
@@ -935,12 +1086,9 @@ function EndpointHealthPanel({
 // ---------------------------------------------------------------------------
 // Skeletons
 // ---------------------------------------------------------------------------
-function KpiSkeletonCard({ presentation = 'cards' }: { presentation?: 'cards' | 'rail' | 'tonal' }) {
+function KpiSkeletonCard() {
   return (
-    <div className={cn(
-      'bg-[color:var(--bg-1)] px-4 py-3.5 min-h-[124px] flex flex-col gap-3',
-      presentation !== 'rail' && 'rounded-lg border border-[color:var(--border)]',
-    )}>
+    <div className="flex min-h-[124px] flex-col gap-3 bg-[color:var(--bg-1)] px-4 py-3.5">
       <Skeleton className="h-3 w-20" />
       <Skeleton className="h-8 w-16" />
       <Skeleton className="h-[22px] w-24 mt-auto" />
@@ -1583,6 +1731,29 @@ export function DashboardPage() {
   const activeQueriesLoading =
     activeQueriesPerEnv.length > 0 &&
     activeQueriesPerEnv.some((r) => r.isLoading);
+  const featuredQuery =
+    activeQueriesFlat.find((query) => query.envUuid === effectiveEnv)
+    ?? activeQueriesFlat[0];
+
+  // The carve card uses the newest record, regardless of whether it is still
+  // active, so completed archives remain one click away after collection.
+  const { data: recentCarvesData } = useQuery({
+    queryKey: ['dashboard-recent-carves', effectiveEnv],
+    queryFn: () => listCarves({
+      env: effectiveEnv,
+      target: 'all',
+      sort: 'created',
+      dir: 'desc',
+      page: 1,
+      pageSize: 3,
+    }),
+    enabled: !!effectiveEnv,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    retry: 1,
+  });
+  const recentCarve = recentCarvesData?.items[0];
 
   return (
     <div className="flex flex-col gap-4 px-4 py-4 md:px-5 md:py-5 max-w-[1440px] mx-auto w-full">
@@ -1676,86 +1847,32 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-rows-2 gap-4">
-          <HeroKpi
-            label="Queries"
-            description="queries ran in the last 24 hours"
-            value={data?.total_active_queries ?? 0}
-            tone="success"
-            toneText={`${data?.total_active_queries ?? 0} active`}
-          />
-          <HeroKpi
-            label="Forensic Carves"
-            description="active carve operations in flight"
-            value={data?.total_active_carves ?? 0}
-            tone="info"
-            toneText={`${data?.total_active_carves ?? 0} in flight`}
-          />
-        </div>
+        <OperationalWorkloadCards
+          activeQueries={data?.total_active_queries ?? 0}
+          activeCarves={data?.total_active_carves ?? 0}
+          featuredQuery={featuredQuery}
+          recentCarve={recentCarve}
+          env={envParam}
+        />
       </section>
 
       {/* ── Mid 4-KPI row ────────────────────────────────────────────────── */}
       <section aria-label="Environment KPIs" aria-busy={isLoading}>
-        <div data-uidotsh-pick="KPI presentation" className="contents">
-          <div data-uidotsh-option="Separate cards (current)" className="contents">
-            <DashboardKpiSet
-              presentation="cards"
-              loading={isLoading || (isError && !is401)}
-              activeNodes={data?.active_nodes ?? 0}
-              totalNodes={data?.total_nodes ?? 0}
-              inactiveNodes={data?.inactive_nodes ?? 0}
-              inactiveHours={inactiveHours}
-              reportedErrors={reportedErrors}
-              onReportedErrorsClick={
-                reportedErrors > 0 && effectiveEnv
-                  ? () => setShowErrorNodes(true)
-                  : undefined
-              }
-              activeQueries={data?.total_active_queries ?? 0}
-              chartSeries={chartSeries}
-            />
-          </div>
-          {UI_PICKER_ENABLED && (
-            <>
-              <div data-uidotsh-option="Unified metric rail" className="contents" hidden>
-                <DashboardKpiSet
-                  presentation="rail"
-                  loading={isLoading || (isError && !is401)}
-                  activeNodes={data?.active_nodes ?? 0}
-                  totalNodes={data?.total_nodes ?? 0}
-                  inactiveNodes={data?.inactive_nodes ?? 0}
-                  inactiveHours={inactiveHours}
-                  reportedErrors={reportedErrors}
-                  onReportedErrorsClick={
-                    reportedErrors > 0 && effectiveEnv
-                      ? () => setShowErrorNodes(true)
-                      : undefined
-                  }
-                  activeQueries={data?.total_active_queries ?? 0}
-                  chartSeries={chartSeries}
-                />
-              </div>
-              <div data-uidotsh-option="Soft tonal tiles" className="contents" hidden>
-                <DashboardKpiSet
-                  presentation="tonal"
-                  loading={isLoading || (isError && !is401)}
-                  activeNodes={data?.active_nodes ?? 0}
-                  totalNodes={data?.total_nodes ?? 0}
-                  inactiveNodes={data?.inactive_nodes ?? 0}
-                  inactiveHours={inactiveHours}
-                  reportedErrors={reportedErrors}
-                  onReportedErrorsClick={
-                    reportedErrors > 0 && effectiveEnv
-                      ? () => setShowErrorNodes(true)
-                      : undefined
-                  }
-                  activeQueries={data?.total_active_queries ?? 0}
-                  chartSeries={chartSeries}
-                />
-              </div>
-            </>
-          )}
-        </div>
+        <DashboardKpiSet
+          loading={isLoading || (isError && !is401)}
+          activeNodes={data?.active_nodes ?? 0}
+          totalNodes={data?.total_nodes ?? 0}
+          inactiveNodes={data?.inactive_nodes ?? 0}
+          inactiveHours={inactiveHours}
+          reportedErrors={reportedErrors}
+          onReportedErrorsClick={
+            reportedErrors > 0 && effectiveEnv
+              ? () => setShowErrorNodes(true)
+              : undefined
+          }
+          activeQueries={data?.total_active_queries ?? 0}
+          chartSeries={chartSeries}
+        />
       </section>
 
       {/* ── Active queries with live progress ────────────────────────────── */}

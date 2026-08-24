@@ -14,6 +14,8 @@ interface StickyFooterProps {
   onCancel: () => void;
   /** Optional middle "Save as" affordance — caller renders the inline form. */
   middle?: React.ReactNode;
+  /** Optional review content displayed in the same pane above the actions. */
+  panel?: React.ReactNode;
   submitLabel?: string;
 }
 
@@ -29,6 +31,7 @@ export function StickyFooter({
   onSubmit,
   onCancel,
   middle,
+  panel,
   submitLabel = 'Run query',
 }: StickyFooterProps) {
   return (
@@ -37,37 +40,39 @@ export function StickyFooter({
         'sticky bottom-0 left-0 right-0 z-20',
         'border-t border-[color:var(--border)]',
         'bg-[color:var(--bg-0)]/85 backdrop-blur-[10px]',
-        'px-6 py-3',
       )}
     >
-      {message && (
-        <div
-          role={message.tone === 'error' ? 'alert' : 'status'}
-          className={cn(
-            'mb-2.5 text-xs px-3 py-2 rounded-md inline-block',
-            message.tone === 'error'
-              ? 'text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)]'
-              : 'text-[color:var(--success)] bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.08)]',
-          )}
-        >
-          {message.text}
-        </div>
-      )}
-      <div className="flex items-center gap-3 flex-wrap">
-        {middle && <div className="flex-1 min-w-0">{middle}</div>}
-        <div className={cn('flex items-center gap-2', !middle && 'ml-auto')}>
-          <Button type="button" variant="ghost" size="md" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            onClick={onSubmit}
-            disabled={disabled}
+      {panel && <div className="border-b border-[color:var(--border)]">{panel}</div>}
+      <div className="mx-auto max-w-[1400px] px-6 py-3">
+        {message && (
+          <div
+            role={message.tone === 'error' ? 'alert' : 'status'}
+            className={cn(
+              'mb-2.5 text-xs px-3 py-2 rounded-md inline-block',
+              message.tone === 'error'
+                ? 'text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)]'
+                : 'text-[color:var(--success)] bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.08)]',
+            )}
           >
-            {submitting ? 'Submitting…' : submitLabel}
-          </Button>
+            {message.text}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {middle && <div className="min-w-0 flex-1">{middle}</div>}
+          <div className={cn('flex items-center gap-2', !middle && 'ml-auto')}>
+            <Button type="button" variant="ghost" size="md" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              onClick={onSubmit}
+              disabled={disabled}
+            >
+              {submitting ? 'Submitting…' : submitLabel}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

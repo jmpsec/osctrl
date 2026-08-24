@@ -16,6 +16,7 @@ import { SearchInput } from '$/components/data/SearchInput';
 import { SortableHeader } from '$/components/data/SortableHeader';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { buttonClasses } from '$/components/atoms/Button';
 
 function QueryStatusBadge({
   q,
@@ -217,11 +218,7 @@ export function QueriesListPage() {
           <Link
             to="/_app/env/$env/queries/new"
             params={{ env }}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
-              'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            )}
+            className={buttonClasses()}
           >
             Run query
           </Link>

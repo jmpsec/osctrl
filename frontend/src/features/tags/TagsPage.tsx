@@ -12,6 +12,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { IconPicker, resolveTagIcon } from '$/components/forms/IconPicker';
 import { TagChip } from '$/components/data/TagChip';
+import { Button } from '$/components/atoms/Button';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -143,17 +144,12 @@ export function TagsPage() {
         </p>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => setModal({ kind: 'create' })}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
-              'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            )}
           >
             New tag
-          </button>
+          </Button>
 
           {isFetching && !isLoading && (
             <span

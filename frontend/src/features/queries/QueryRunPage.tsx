@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Code2, MousePointer2 } from 'lucide-react';
+import { AlertTriangle, Check, Code2, Copy, MousePointer2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router';
 import { runQuery } from '$/api/queries';
@@ -21,6 +21,61 @@ const EMPTY_TARGET: TargetSelection = {
   tags: [],
   hosts: [],
 };
+
+function GeneratedSqlReview({ sql, onEditSql }: { sql: string; onEditSql: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copySql() {
+    try {
+      await navigator.clipboard.writeText(sql);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1_400);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <section
+      className="bg-[color:var(--bg-1)]"
+      aria-labelledby="query-builder-preview"
+    >
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-6 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Code2 size={16} strokeWidth={1.8} aria-hidden className="shrink-0 text-[color:var(--text-3)]" />
+          <div className="min-w-0">
+            <h2 id="query-builder-preview" className="text-sm font-semibold text-[color:var(--text-1)]">
+              Generated SQL
+            </h2>
+            <p className="text-xs text-[color:var(--text-3)]">Review the final statement before running it.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void copySql()}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-[color:var(--text-3)] hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
+          >
+            {copied ? <Check size={16} strokeWidth={2} aria-hidden /> : <Copy size={16} strokeWidth={1.8} aria-hidden />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            onClick={onEditSql}
+            className="h-8 rounded-md bg-[color:var(--bg-2)] px-2.5 text-sm font-medium text-[color:var(--text-2)] ring-1 ring-inset ring-[color:var(--border)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
+          >
+            Edit SQL
+          </button>
+        </div>
+      </div>
+      <div className="mx-auto max-w-[1400px] px-6 pb-3">
+        <pre className="max-h-24 overflow-auto rounded-md bg-[color:var(--bg-0)] p-3 text-xs text-[color:var(--text-2)] ring-1 ring-inset ring-[color:var(--border)]">
+          <code className="font-mono-tabular">{sql}</code>
+        </pre>
+      </div>
+    </section>
+  );
+}
 
 function summarizeTarget(target: TargetSelection) {
   if (target.platforms.includes('all')) return 'All nodes';
@@ -163,13 +218,8 @@ export function QueryRunPage() {
 
       {/* ── Scroll container ──────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <div
-          className={cn(
-            'grid gap-6 p-6',
-            // 1-col on small/medium, 3-col grid on lg: editor 2/3, targeting 1/3.
-            'lg:grid-cols-3 max-w-[1400px] mx-auto',
-          )}
-        >
+        <div className="mx-auto flex min-h-full max-w-[1400px] flex-col gap-6 p-6">
+          <div className="grid gap-6 lg:grid-cols-3">
           {/* ── Left: editor + templates ─────────────────────────────── */}
           <div className="lg:col-span-2 space-y-4">
             {/* Quick templates */}
@@ -258,18 +308,6 @@ export function QueryRunPage() {
               )}
             </section>
 
-            {/* Options */}
-            <section
-              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
-              aria-label="Options"
-            >
-              <OptionsPanel
-                expHours={expHours}
-                onExpChange={setExpHours}
-                hidden={hidden}
-                onHiddenChange={setHidden}
-              />
-            </section>
           </div>
 
           {/* ── Right: targeting + save-as ──────────────────────────── */}
@@ -283,7 +321,20 @@ export function QueryRunPage() {
               </h2>
               <TargetingPanel value={target} onChange={setTarget} env={env} />
             </section>
+            <section
+              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+              aria-label="Options"
+            >
+              <OptionsPanel
+                expHours={expHours}
+                onExpChange={setExpHours}
+                hidden={hidden}
+                onHiddenChange={setHidden}
+              />
+            </section>
           </aside>
+          </div>
+
         </div>
       </div>
 
@@ -295,6 +346,9 @@ export function QueryRunPage() {
         onSubmit={() => void handleSubmit()}
         onCancel={() => void navigate({ to: '/_app/env/$env/queries', params: { env } })}
         submitLabel="Run query"
+        panel={composerMode === 'builder' ? (
+          <GeneratedSqlReview sql={sql} onEditSql={() => setComposerMode('sql')} />
+        ) : undefined}
         middle={
           <div className="flex flex-col gap-1.5">
             <div

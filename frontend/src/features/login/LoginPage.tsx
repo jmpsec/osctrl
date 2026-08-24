@@ -71,7 +71,7 @@ function ProductVisualPanel() {
       <div className="relative z-[2] flex items-center justify-between gap-4 py-6 pl-7 pr-20 text-sm text-[color:var(--login-scene-muted)] xl:py-8 xl:pl-9 xl:pr-24">
         <div className="flex items-center gap-2 font-medium">
           <ShieldCheck size={16} strokeWidth={1.8} aria-hidden />
-          Fleet control plane
+          Performant OSQuery Fleet Management
         </div>
         <div className="flex items-center gap-2 text-xs font-medium">
           <span className="size-1.5 rounded-full bg-[color:var(--login-scene-success)]" aria-hidden />

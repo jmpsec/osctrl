@@ -9,6 +9,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
 }
 
+interface ButtonStyleOptions {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+}
+
 const variantClasses: Record<ButtonVariant, string> = {
   primary: [
     'bg-[color:var(--accent)] hover:bg-[color:var(--accent-hover)]',
@@ -36,21 +42,29 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: 'h-10 px-4 text-sm rounded-lg',
 };
 
+export function buttonClasses({
+  variant = 'primary',
+  size = 'md',
+  className,
+}: ButtonStyleOptions = {}) {
+  return cn(
+    'inline-flex items-center justify-center gap-2 font-medium',
+    'transition-[background-color,border-color,color] duration-[100ms] ease-out',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:border-[color:var(--accent)]',
+    'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
+    variantClasses[variant],
+    sizeClasses[size],
+    className,
+  );
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', className, disabled, children, ...props }, ref) => {
     return (
       <button
         ref={ref}
         disabled={disabled}
-        className={cn(
-          'inline-flex items-center justify-center gap-2 font-medium',
-          'transition-[background-color,border-color,color] duration-[100ms] ease-out',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-soft)] focus-visible:border-[color:var(--accent)]',
-          'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
-          variantClasses[variant],
-          sizeClasses[size],
-          className
-        )}
+        className={buttonClasses({ variant, size, className })}
         {...props}
       >
         {children}

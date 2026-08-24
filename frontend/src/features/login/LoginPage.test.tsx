@@ -111,6 +111,9 @@ describe('LoginPage SSO surface', () => {
 
     await screen.findByRole('button', { name: /sign in/i });
     expect(container.querySelector('.login-isometric-scene')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('Performant OSQuery Fleet Management')).toBeInTheDocument();
+    expect(screen.queryByText('Fleet control plane')).not.toBeInTheDocument();
+    expect(screen.queryByText('Control plane online')).not.toBeInTheDocument();
   });
 
   it('lets the operator reveal and hide the password without clearing it', async () => {

@@ -8,7 +8,28 @@ import ActivityLineChart from './ActivityLineChart';
 // responsive SVG layout is intentionally not exercised in jsdom; the mocks
 // expose the exact data and line props that our component sends to BKLiT.
 vi.mock('$/components/charts/grid', () => ({
-  Grid: () => null,
+  Grid: ({
+    horizontal,
+    numTicksRows,
+    stroke,
+    strokeDasharray,
+    strokeOpacity,
+  }: {
+    horizontal?: boolean;
+    numTicksRows?: number;
+    stroke?: string;
+    strokeDasharray?: string;
+    strokeOpacity?: number;
+  }) => (
+    <span
+      data-testid="activity-grid"
+      data-horizontal={horizontal}
+      data-row-ticks={numTicksRows}
+      data-stroke={stroke}
+      data-stroke-dasharray={strokeDasharray}
+      data-stroke-opacity={strokeOpacity}
+    />
+  ),
 }));
 
 vi.mock('$/components/charts/line', () => ({
@@ -44,6 +65,46 @@ const palette: ChartPalette = {
 };
 
 describe('ActivityLineChart', () => {
+  it('renders readable horizontal dashed guides', () => {
+    const series: ActivitySeries = {
+      status: [4, 5, 6, 7],
+      result: [1, 2, 3, 4],
+      config: [2, 2, 2, 2],
+      query: [0, 1, 0, 1],
+      statusError: [0, 2, 0, 5],
+      total: [7, 10, 11, 14],
+    };
+
+    render(
+      <ActivityLineChart
+        series={series}
+        intervalLabel="24h"
+        palette={palette}
+      />,
+    );
+
+    expect(screen.getByTestId('activity-grid')).toHaveAttribute(
+      'data-horizontal',
+      'true',
+    );
+    expect(screen.getByTestId('activity-grid')).toHaveAttribute(
+      'data-row-ticks',
+      '6',
+    );
+    expect(screen.getByTestId('activity-grid')).toHaveAttribute(
+      'data-stroke-dasharray',
+      '4 5',
+    );
+    expect(screen.getByTestId('activity-grid')).toHaveAttribute(
+      'data-stroke',
+      'color-mix(in srgb, var(--text-3) 72%, transparent)',
+    );
+    expect(screen.getByTestId('activity-grid')).toHaveAttribute(
+      'data-stroke-opacity',
+      '1',
+    );
+  });
+
   it('maps reported errors into the BKLiT data and error line', () => {
     const series: ActivitySeries = {
       status: [4, 5, 6, 7],
