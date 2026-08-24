@@ -560,7 +560,7 @@ function provision_postgresql() {
       POSTGRES_SERVICE="postgresql"
       POSTGRES_PSQL="/usr/lib/postgresql/18/bin/psql"
     # Ubuntu 24.04 uses postgresql 16
-    if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
+    elif [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
       package postgresql-16
       package postgresql-contrib
       package postgresql-client-16
