@@ -410,7 +410,8 @@ function prepare_deployment() {
   fi
 
   log "Installing required packages"
-  packages git sudo curl wget gcc make openssl tmux bc rsync yq
+  packages git sudo curl wget gcc make openssl tmux bc rsync
+  install_yq
   install_nvm
 
   # Install go 1.26.5 if not present
@@ -471,6 +472,9 @@ function install_yq() {
     __arch="amd64"
   elif [[ "$__arch" == "aarch64" ]]; then
     __arch="arm64"
+  # Default to x86_64
+  else
+    __arch="amd64"
   fi
   local __file="yq_linux_$__arch"
   local __url="https://github.com/mikefarah/yq/releases/latest/download/$__file"
