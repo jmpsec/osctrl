@@ -199,12 +199,12 @@ type YAMLConfigurationDB struct {
 
 // YAMLConfigurationRedis to hold all redis configuration values
 type YAMLConfigurationRedis struct {
-	Host             string `yaml:"host"`
-	Port             int    `yaml:"port"`
-	Password         string `yaml:"password"`
-	ConnectionString string `yaml:"connectionString"`
-	DB               int    `yaml:"db"`
-	ConnRetry        int    `yaml:"connRetry"`
+	Host             string `yaml:"host" mapstructure:"host"`
+	Port             int    `yaml:"port" mapstructure:"port"`
+	Password         string `yaml:"password" mapstructure:"password"`
+	ConnectionString string `yaml:"connectionString" mapstructure:"connectionString"`
+	DB               int    `yaml:"db" mapstructure:"db"`
+	ConnRetry        int    `yaml:"connRetry" mapstructure:"connRetry"`
 }
 
 // YAMLConfigurationOsquery to hold the osquery configuration values
