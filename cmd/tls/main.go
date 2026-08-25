@@ -94,14 +94,15 @@ var (
 // Function to load the configuration from a single YAML file
 func loadYAMLConfiguration(file string) (config.TLSConfiguration, error) {
 	var cfg config.TLSConfiguration
+	v := viper.New()
 	// Load file and read config
-	viper.SetConfigFile(file)
-	viper.SetConfigType(config.YAMLConfigType)
-	if err := viper.ReadInConfig(); err != nil {
+	v.SetConfigFile(file)
+	v.SetConfigType(config.YAMLConfigType)
+	if err := v.ReadInConfig(); err != nil {
 		return cfg, err
 	}
 	// Unmarshal into struct
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	if err := config.ValidateTLSConfigValues(cfg); err != nil {

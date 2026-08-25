@@ -2,6 +2,8 @@ package cache
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	redis "github.com/go-redis/redis/v8"
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -47,7 +49,20 @@ func CreateRedisManager(cfg config.YAMLConfigurationRedis) (*RedisManager, error
 	rm.Config = &cfg
 	rm.Client = rm.GetRedis()
 	if err := rm.Check(); err != nil {
-		return nil, err
+		return nil, redisConnectionError(cfg, err)
 	}
 	return rm, nil
+}
+
+func redisConnectionError(cfg config.YAMLConfigurationRedis, err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), "AUTH <password> called without any password configured") {
+		if cfg.ConnectionString != "" {
+			return fmt.Errorf("redis auth rejected: redis.connectionString includes credentials, but Redis has no password configured; remove credentials from redis.connectionString or configure a Redis password: %w", err)
+		}
+		return fmt.Errorf("redis auth rejected: redis.password is set, but Redis has no password configured; clear redis.password or configure a Redis password: %w", err)
+	}
+	return err
 }

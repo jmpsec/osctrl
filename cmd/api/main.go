@@ -161,21 +161,22 @@ var validAuth = map[string]bool{
 // Function to load the configuration from a single YAML file
 func loadYAMLConfiguration(file string) (config.APIConfiguration, error) {
 	var cfg config.APIConfiguration
+	v := viper.New()
 	// saml.forceAuthn defaults to true — same as the --saml-force-authn
 	// flag. Without this the YAML path would silently land on false for
 	// any config file that omits the key, which most operators read as
 	// "logout didn't work" (the IdP silently re-auths from its own SSO
 	// cookie). A zero-value bool can't distinguish "absent" from
 	// "explicitly false", so the default has to live here.
-	viper.SetDefault("saml.forceAuthn", true)
+	v.SetDefault("saml.forceAuthn", true)
 	// Load file and read config
-	viper.SetConfigFile(file)
-	viper.SetConfigType(config.YAMLConfigType)
-	if err := viper.ReadInConfig(); err != nil {
+	v.SetConfigFile(file)
+	v.SetConfigType(config.YAMLConfigType)
+	if err := v.ReadInConfig(); err != nil {
 		return cfg, err
 	}
 	// Unmarshal into struct
-	if err := viper.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
 	// Check if values are valid
