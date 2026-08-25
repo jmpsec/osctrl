@@ -423,7 +423,7 @@ function prepare_deployment() {
 # Install go 1.26.5 from tgz
 function install_go_26() {
   local __version="1.26.5"
-  local __arch="$(uname -i)"
+  local __arch="$(uname -m)"
   if [[ "$__arch" == "x86_64" ]]; then
     __arch="amd64"
   elif [[ "$__arch" == "aarch64" ]]; then
@@ -467,11 +467,14 @@ function install_go_26() {
 
 # Install yq from releases (https://github.com/mikefarah/yq)
 function install_yq() {
-  local __arch="$(uname -i)"
+  local __arch="$(uname -m)"
   if [[ "$__arch" == "x86_64" ]]; then
     __arch="amd64"
   elif [[ "$__arch" == "aarch64" ]]; then
     __arch="arm64"
+  # Default to x86_64
+  else
+    __arch="amd64"
   fi
   local __file="yq_linux_$__arch"
   local __url="https://github.com/mikefarah/yq/releases/latest/download/$__file"
@@ -553,8 +556,15 @@ function provision_postgresql() {
   local POSTGRES_PSQL="$__psql"
 
   if [[ "$__distro" == "ubuntu" ]]; then
+    # Ubuntu 26.04 uses postgresql 18
+    if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "26" ]]; then
+      package postgresql-18
+      package postgresql-contrib
+      package postgresql-client-18
+      POSTGRES_SERVICE="postgresql"
+      POSTGRES_PSQL="/usr/lib/postgresql/18/bin/psql"
     # Ubuntu 24.04 uses postgresql 16
-    if [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
+    elif [[ "$(lsb_release -r | cut -f2 | cut -d'.' -f1)" == "24" ]]; then
       package postgresql-16
       package postgresql-contrib
       package postgresql-client-16
@@ -608,4 +618,7 @@ function provision_redis() {
 
   # Configure Redis with password
   configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$__password"
+
+  # Restart Redis service to apply changes
+  sudo systemctl restart "$REDIS_SERVICE"
 }
