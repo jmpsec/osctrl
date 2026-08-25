@@ -423,7 +423,7 @@ function prepare_deployment() {
 # Install go 1.26.5 from tgz
 function install_go_26() {
   local __version="1.26.5"
-  local __arch="$(uname -i)"
+  local __arch="$(uname -m)"
   if [[ "$__arch" == "x86_64" ]]; then
     __arch="amd64"
   elif [[ "$__arch" == "aarch64" ]]; then
@@ -467,7 +467,7 @@ function install_go_26() {
 
 # Install yq from releases (https://github.com/mikefarah/yq)
 function install_yq() {
-  local __arch="$(uname -i)"
+  local __arch="$(uname -m)"
   if [[ "$__arch" == "x86_64" ]]; then
     __arch="amd64"
   elif [[ "$__arch" == "aarch64" ]]; then
