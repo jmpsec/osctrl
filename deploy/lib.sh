@@ -618,4 +618,7 @@ function provision_redis() {
 
   # Configure Redis with password
   configure_redis "$REDIS_CONF" "$REDIS_SERVICE" "$REDIS_ETC" "$__password"
+
+  # Restart Redis service to apply changes
+  sudo systemctl restart "$REDIS_SERVICE"
 }
