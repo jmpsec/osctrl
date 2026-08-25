@@ -212,14 +212,14 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
   const primingItems = useMemo(() => formatPrimingItems(primingMetadata), [primingMetadata]);
 
   return (
-    <section className="min-h-[360px] border border-[color:var(--border)] rounded-lg bg-[color:var(--bg-1)]">
+    <section className="min-h-[360px] border border-[color:var(--border)] rounded-lg bg-[color:var(--bg-2)]">
       <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] px-3 py-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-[color:var(--text-1)]">File Explorer</h2>
             {primingRequest && (
               <span
-                className="inline-flex items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-xs leading-none text-[color:var(--text-3)]"
+                className="inline-flex items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] px-1.5 py-0.5 text-xs leading-none text-[color:var(--text-3)]"
                 title="Warming file explorer metadata"
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -233,7 +233,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
               {primingItems.map((item) => (
                 <span
                   key={`${item.label}-${item.value}`}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-1.5 py-0.5 text-xs leading-none text-[color:var(--text-3)]"
+                  className="inline-flex max-w-full items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] px-1.5 py-0.5 text-xs leading-none text-[color:var(--text-3)]"
                 >
                   <span className="uppercase tracking-normal text-[color:var(--text-4)]">{item.label}</span>
                   <span className="truncate font-mono-tabular text-[color:var(--text-2)]">{item.value}</span>
@@ -249,7 +249,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
           disabled={!session || refreshLoading}
           className={cn(
             'inline-flex h-8 items-center justify-center gap-2 rounded border border-[color:var(--border)] px-2.5',
-            'text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+            'text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
           )}
@@ -314,9 +314,9 @@ function renderEntries(
           onClick={() => onEntryClick(entry)}
           className={cn(
             'grid w-full grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 text-left text-xs',
-            'text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+            'text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            isSelected && 'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+            isSelected && 'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
           )}
           style={{ paddingLeft: `${12 + depth * 18}px` }}
         >
@@ -396,7 +396,7 @@ function FileDetails({
       ) : (
         <div className="text-xs text-[color:var(--text-3)]">No selection</div>
       )}
-      <div className="mt-4 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-1)] p-3">
+      <div className="mt-4 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
         <h4 className="text-xs font-semibold text-[color:var(--text-1)]">Carve</h4>
         <p className="mt-1 break-all font-mono-tabular text-xs text-[color:var(--text-3)]">
           {entry?.path ?? 'No path selected'}

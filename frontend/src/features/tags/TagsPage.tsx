@@ -255,7 +255,7 @@ export function TagsPage() {
                 <tr
                   key={tag.id}
                   className={cn(
-                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors',
+                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors',
                     isSelected && 'bg-[color:var(--signal)]/5',
                   )}
                 >
@@ -289,14 +289,14 @@ export function TagsPage() {
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'edit', tag })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'delete', tag })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Delete
                     </button>
@@ -334,7 +334,7 @@ export function TagsPage() {
             type="button"
             disabled={bulkDeleteMut.isPending}
             aria-label="Delete selected tags"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={handleBulkDelete}
           >
             {bulkDeleteMut.isPending ? 'Deleting…' : 'Delete'}
@@ -344,7 +344,7 @@ export function TagsPage() {
             type="button"
             aria-label="Clear selection"
             onClick={() => setSelectedNames(new Set())}
-            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Clear
           </button>
@@ -484,7 +484,7 @@ function TagFormModal({
             placeholder="e.g. production"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -508,7 +508,7 @@ function TagFormModal({
             placeholder="What does this tag represent?"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -524,7 +524,7 @@ function TagFormModal({
               type="color"
               value={color}
               onChange={(e) => setColor(e.target.value)}
-              className="w-16 h-9 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] cursor-pointer"
+              className="w-16 h-9 rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] cursor-pointer"
             />
           </div>
           <div className="flex-1">
@@ -552,7 +552,7 @@ function TagFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -624,7 +624,7 @@ function DeleteTagModal({
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
         >
           Cancel
         </button>

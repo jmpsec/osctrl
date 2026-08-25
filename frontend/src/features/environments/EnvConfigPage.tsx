@@ -304,7 +304,7 @@ export function EnvConfigPage() {
             }}
             disabled={dirty.size === 0}
             className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+              'px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors',
               'disabled:opacity-40 disabled:cursor-not-allowed',
             )}
           >
@@ -418,7 +418,7 @@ export function EnvConfigPage() {
           return (
             <section
               key={key}
-              className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
+              className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-2)]"
               role="tabpanel"
               aria-labelledby={`tab-${key}`}
             >
@@ -439,7 +439,7 @@ export function EnvConfigPage() {
                     setDiffsOpen((s) => ({ ...s, [key]: !s[key] }))
                   }
                   className={cn(
-                    'text-xs px-2 py-0.5 rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
+                    'text-xs px-2 py-0.5 rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)]',
                     'disabled:opacity-40 disabled:cursor-not-allowed',
                   )}
                 >
@@ -520,13 +520,13 @@ export function EnvConfigPage() {
       </div>
       {showPosturePicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowPosturePicker(false)}>
-          <div className="bg-[color:var(--bg-1)] rounded-md border border-[color:var(--border)] max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[color:var(--bg-2)] rounded-md border border-[color:var(--border)] max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3 border-b border-[color:var(--border)]">
               <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">Posture check profiles</h2>
               <button type="button" onClick={() => setShowPosturePicker(false)} className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]">X</button>
             </div>
             <div className="p-4 space-y-4">
-              <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
+              <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-[color:var(--text-2)]">Check frequency</span>
                   <span className="text-xs font-medium text-[color:var(--signal)]">
@@ -697,7 +697,7 @@ function PostureScheduleEditor({
 
   return (
     <section
-      className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
+      className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-2)]"
       role="tabpanel"
       aria-labelledby="tab-posture"
     >
@@ -982,7 +982,7 @@ function IntervalsCard({
   });
 
   return (
-    <section className="border border-[color:var(--border)] rounded-md bg-[color:var(--bg-1)] p-4">
+    <section className="border border-[color:var(--border)] rounded-md bg-[color:var(--bg-2)] p-4">
       <h2 className="font-display text-sm font-semibold text-[color:var(--text-1)] mb-2">
         Pull intervals
       </h2>
@@ -1120,7 +1120,7 @@ function IntervalField({
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
           className={cn(
             'w-16 px-1.5 py-0.5 text-xs rounded',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)]',
             'text-[color:var(--text-1)] text-center tabular-nums',
             'focus:outline focus:outline-1 focus:outline-[color:var(--signal)]',
           )}
@@ -1170,7 +1170,7 @@ function ExpirationCard({
   ];
 
   return (
-    <section className="border border-[color:var(--border)] rounded-md bg-[color:var(--bg-1)] p-4">
+    <section className="border border-[color:var(--border)] rounded-md bg-[color:var(--bg-2)] p-4">
       <h2 className="font-display text-sm font-semibold text-[color:var(--text-1)] mb-2">
         Enrollment lifecycle
       </h2>
@@ -1185,7 +1185,7 @@ function ExpirationCard({
             disabled={mutation.isPending}
             onClick={() => mutation.mutate(a.value)}
             className={cn(
-              'text-left px-3 py-2 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+              'text-left px-3 py-2 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)]',
               'hover:border-[color:var(--signal)] hover:bg-[color:var(--bg-3)] transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -1277,7 +1277,7 @@ function AddOptionForm({
   }
 
   return (
-    <div className="px-3 py-2 border-b border-[color:var(--border)] bg-[color:var(--bg-1)]">
+    <div className="px-3 py-2 border-b border-[color:var(--border)] bg-[color:var(--bg-2)]">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)] mr-1">
           Add option
@@ -1289,7 +1289,7 @@ function AddOptionForm({
           placeholder="option_name"
           className={cn(
             'flex-1 min-w-[120px] px-2 py-1 rounded text-xs font-mono-tabular',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-1)]',
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
         />
@@ -1298,7 +1298,7 @@ function AddOptionForm({
           onChange={(e) => setType(e.target.value as typeof type)}
           className={cn(
             'px-2 py-1 rounded text-xs font-mono-tabular',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-2)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-2)]',
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
           aria-label="Option value type"
@@ -1314,7 +1314,7 @@ function AddOptionForm({
           placeholder={type === 'boolean' ? 'true | false' : type === 'integer' ? '0' : 'value'}
           className={cn(
             'flex-1 min-w-[120px] px-2 py-1 rounded text-xs font-mono-tabular',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-1)]',
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
         />
@@ -1403,7 +1403,7 @@ function AddScheduledQueryForm({
   }
 
   return (
-    <div className="px-3 py-2 border-b border-[color:var(--border)] bg-[color:var(--bg-1)] space-y-2">
+    <div className="px-3 py-2 border-b border-[color:var(--border)] bg-[color:var(--bg-2)] space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]">
           Add scheduled query
@@ -1417,7 +1417,7 @@ function AddScheduledQueryForm({
           placeholder="query_name"
           className={cn(
             'w-[180px] px-2 py-1 rounded text-xs',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-1)]',
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
         />
@@ -1428,7 +1428,7 @@ function AddScheduledQueryForm({
           placeholder="SELECT … FROM osquery_info;"
           className={cn(
             'flex-1 min-w-[220px] px-2 py-1 rounded text-xs font-mono-tabular',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-1)]',
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
         />
@@ -1441,7 +1441,7 @@ function AddScheduledQueryForm({
             onChange={(e) => setInterval(Number(e.target.value))}
             className={cn(
               'w-16 px-2 py-1 rounded text-xs text-center tabular-nums',
-              'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+              'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-1)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />

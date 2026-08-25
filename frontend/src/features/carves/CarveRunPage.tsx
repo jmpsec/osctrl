@@ -198,7 +198,7 @@ export function CarveRunPage() {
               placeholder="/etc/hosts  ·  C:\Windows\System32\config\SAM  ·  ~/Library/Keychains/login.keychain-db"
               className={cn(
                 'w-full px-3 py-2.5 text-sm rounded-lg border',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                'bg-[color:var(--bg-3)] text-[color:var(--text-1)] font-mono-tabular',
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                 pathValidation.kind === 'err' && path
                   ? 'border-[color:var(--danger)]/50'
@@ -227,7 +227,7 @@ export function CarveRunPage() {
           {/* ── Sample paths (platform-grouped) ──────────────────────── */}
           {samples.length > 0 && (
             <section
-              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] px-5 py-4"
+              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] px-5 py-4"
               aria-label="Sample forensic paths"
             >
               <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-2.5">
@@ -263,7 +263,7 @@ export function CarveRunPage() {
                                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                                 active
                                   ? 'bg-[color:var(--signal)]/15 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'
-                                  : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)]',
+                                  : 'bg-[color:var(--bg-3)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)]',
                               )}
                             >
                               {s.label}
@@ -280,7 +280,7 @@ export function CarveRunPage() {
 
           {/* ── Expiration ────────────────────────────────────────────── */}
           <section
-            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] px-5 py-4"
+            className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] px-5 py-4"
             aria-label="Expiration"
           >
             <label
@@ -303,7 +303,7 @@ export function CarveRunPage() {
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                       active
                         ? 'bg-[color:var(--signal)]/12 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'
-                        : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)]',
+                        : 'bg-[color:var(--bg-3)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)]',
                     )}
                   >
                     {opt.label}
@@ -319,7 +319,7 @@ export function CarveRunPage() {
             aria-label="Targeting"
             className="lg:col-span-1 space-y-4 lg:sticky lg:top-4 lg:self-start"
           >
-            <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4">
+            <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4">
               <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)] mb-3">
                 Target
               </h2>

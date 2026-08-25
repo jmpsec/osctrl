@@ -106,7 +106,7 @@ export function CertificateCard({ env }: { env: string }) {
 
   return (
     <section
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
       aria-label="Enrollment certificate"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -125,7 +125,7 @@ export function CertificateCard({ env }: { env: string }) {
       <pre
         className={cn(
           'text-xs font-mono-tabular',
-          'bg-[color:var(--bg-2)] border border-[color:var(--border)] rounded-md',
+          'bg-[color:var(--bg-3)] border border-[color:var(--border)] rounded-md',
           'p-2 min-h-[60px] overflow-hidden whitespace-pre-wrap break-all',
           'text-[color:var(--text-2)]',
         )}
@@ -194,7 +194,7 @@ export function CertificateCard({ env }: { env: string }) {
           placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
           className={cn(
             'w-full px-2.5 py-2 rounded-md text-xs font-mono-tabular',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)]',
             'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
             'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
             'min-h-[80px] resize-y',

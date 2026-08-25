@@ -200,7 +200,7 @@ export function ProfilePage() {
           <div
             className={cn(
               'flex items-center gap-4 flex-wrap p-4',
-              'rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)]',
+              'rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)]',
             )}
           >
             <Skeleton className="h-10 w-10 rounded-full" />
@@ -212,7 +212,7 @@ export function ProfilePage() {
           <div
             className={cn(
               'flex items-center gap-4 flex-wrap p-4',
-              'rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)]',
+              'rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)]',
             )}
           >
             {/* Avatar glyph */}
@@ -254,7 +254,7 @@ export function ProfilePage() {
               <div
                 className={cn(
                   'min-w-[10rem] px-3 py-2 rounded-lg border border-[color:var(--border)]',
-                  'bg-[color:var(--bg-2)]',
+                  'bg-[color:var(--bg-3)]',
                 )}
               >
                 <div className="text-xs tabular-nums uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1">
@@ -431,7 +431,7 @@ export function ProfilePage() {
               <div
                 className={cn(
                   'flex items-center justify-between gap-3 px-3 py-2',
-                  'rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+                  'rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)]',
                 )}
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -549,7 +549,7 @@ export function ProfilePage() {
                 aria-label="Toggle color theme"
                 className={cn(
                   'flex items-center gap-0.5 rounded-md p-0.5',
-                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+                  'bg-[color:var(--bg-3)] border border-[color:var(--border)]',
                 )}
               >
                 {(['dark', 'light'] as const).map((t) => (
@@ -670,7 +670,7 @@ function Panel({
   return (
     <section
       className={cn(
-        'rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden',
+        'rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden',
         className,
       )}
       aria-labelledby={id}
@@ -678,7 +678,7 @@ function Panel({
       <header
         className={cn(
           'px-4 py-3 border-b border-[color:var(--border)]',
-          'bg-[color:var(--bg-2)]',
+          'bg-[color:var(--bg-3)]',
         )}
       >
         <h2

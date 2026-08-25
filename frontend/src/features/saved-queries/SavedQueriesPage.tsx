@@ -130,7 +130,7 @@ export function SavedQueriesPage() {
             onChange={(e) => updateSearch({ page_size: Number(e.target.value), page: 1 })}
             className={cn(
               'text-xs px-2 py-1.5 rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-2)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-2)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           >
@@ -260,7 +260,7 @@ export function SavedQueriesPage() {
               items.map((item) => (
                 <tr
                   key={item.id}
-                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors"
                 >
                   <td className="px-4 py-3">
                     <span className="text-sm font-medium tabular-nums text-[color:var(--text-1)]">
@@ -295,7 +295,7 @@ export function SavedQueriesPage() {
                       search={{ sql: item.query, name: item.name }}
                       className={cn(
                         'px-2 py-1 text-xs font-medium rounded',
-                        'text-[color:var(--signal)] hover:bg-[color:var(--bg-2)]',
+                        'text-[color:var(--signal)] hover:bg-[color:var(--bg-3)]',
                         'transition-colors',
                         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                       )}
@@ -305,14 +305,14 @@ export function SavedQueriesPage() {
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'edit', query: item })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'delete', query: item })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Delete
                     </button>
@@ -438,7 +438,7 @@ function SavedQueryFormModal({
             placeholder="e.g. linux_processes_with_listening_ports"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -479,7 +479,7 @@ function SavedQueryFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -553,7 +553,7 @@ function DeleteConfirmModal({
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
         >
           Cancel
         </button>

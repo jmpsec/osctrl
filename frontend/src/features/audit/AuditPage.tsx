@@ -170,7 +170,7 @@ export function AuditPage() {
         )}
       </div>
 
-      <div className="px-4 py-3 border-b border-[color:var(--border)] grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end bg-[color:var(--bg-1)]">
+      <div className="px-4 py-3 border-b border-[color:var(--border)] grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end bg-[color:var(--bg-2)]">
         <FilterField id="f-service" label="Service">
           <select
             id="f-service"
@@ -259,7 +259,7 @@ export function AuditPage() {
           <button
             type="button"
             onClick={resetFilters}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Reset
           </button>
@@ -349,7 +349,7 @@ export function AuditPage() {
               items.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors align-top"
+                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors align-top"
                 >
                   <td className="px-4 py-2 tnum text-xs text-[color:var(--text-2)] whitespace-nowrap">
                     <span title={row.created_at}>{formatRelative(row.created_at)}</span>
@@ -358,7 +358,7 @@ export function AuditPage() {
                     {row.service}
                   </td>
                   <td className="px-4 py-2 text-xs">
-                    <span className="px-1.5 py-0.5 rounded text-xs font-medium text-[color:var(--text-3)] bg-[color:var(--bg-2)]">
+                    <span className="px-1.5 py-0.5 rounded text-xs font-medium text-[color:var(--text-3)] bg-[color:var(--bg-3)]">
                       {LOG_TYPE_LABELS[row.log_type] ?? row.log_type}
                     </span>
                   </td>
@@ -390,7 +390,7 @@ export function AuditPage() {
 
 const inputClass = cn(
   'w-full px-3 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
-  'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+  'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
   'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
 );
 

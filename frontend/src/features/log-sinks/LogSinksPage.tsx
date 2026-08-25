@@ -332,7 +332,7 @@ export function LogSinksPage() {
             onClick={() => setModal({ kind: 'clone' })}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-              'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
+              'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)]',
             )}
           >
             Clone from…
@@ -387,7 +387,7 @@ export function LogSinksPage() {
           aria-label="Select environment whose sinks to show"
           className={cn(
             'px-2 py-1 rounded tabular-nums',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-1)]',
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
         >
@@ -523,7 +523,7 @@ export function LogSinksPage() {
               sorted.map((s) => (
                 <tr
                   key={s.id}
-                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                  className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors"
                 >
                   <td className="px-4 py-3 text-xs tabular-nums text-[color:var(--text-3)]">
                     {s.order}
@@ -572,7 +572,7 @@ export function LogSinksPage() {
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'edit', sink: s })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Edit
                     </button>
@@ -586,7 +586,7 @@ export function LogSinksPage() {
                           }
                         }}
                         title="Reset this sink back to the service configuration values. Takes effect on the next Apply."
-                        className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+                        className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
                       >
                         Revert
                       </button>
@@ -599,7 +599,7 @@ export function LogSinksPage() {
                           deleteMutation.mutate(s.id);
                         }
                       }}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
                     >
                       Delete
                     </button>
@@ -708,7 +708,7 @@ function SinkTypePicker({
               onClick={() => onPick(t.type)}
               className={cn(
                 'flex items-start gap-3 px-3 py-2.5 rounded-md text-left',
-                'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+                'border border-[color:var(--border)] bg-[color:var(--bg-3)]',
                 'hover:border-[color:var(--signal)] hover:bg-[color:var(--bg-1)]',
                 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               )}
@@ -731,7 +731,7 @@ function SinkTypePicker({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -851,7 +851,7 @@ function SinkEditor({
 
   const inputClass = cn(
     'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+    'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
   );
 
@@ -896,7 +896,7 @@ function SinkEditor({
           <span className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
             Type
           </span>
-          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] text-sm tabular-nums text-[color:var(--text-1)]">
+          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[color:var(--bg-3)] border border-[color:var(--border)] text-sm tabular-nums text-[color:var(--text-1)]">
             <span className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]">
               {sinkTypeIcon(sinkType)}
             </span>
@@ -980,7 +980,7 @@ function SinkEditor({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -1082,7 +1082,7 @@ function SinkConfigFields({
             className={cn(
               'px-2.5 py-1 text-xs font-medium rounded',
               'border border-[color:var(--border)] text-[color:var(--text-2)]',
-              'hover:bg-[color:var(--bg-2)] transition-colors',
+              'hover:bg-[color:var(--bg-3)] transition-colors',
               'disabled:opacity-50',
             )}
           >
@@ -1335,7 +1335,7 @@ function CloneModal({
 
   const selectClass = cn(
     'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+    'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
   );
 
@@ -1433,7 +1433,7 @@ function CloneModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -1521,7 +1521,7 @@ function ApplyConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={isPending}
-            className="px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Cancel
           </button>

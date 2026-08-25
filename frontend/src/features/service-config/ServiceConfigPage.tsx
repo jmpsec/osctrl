@@ -954,7 +954,7 @@ function ConfigSectionCard({
 
   return (
     <FieldScope.Provider value={scope}><section
-      className="border border-[color:var(--border)] rounded-md bg-[color:var(--bg-1)]"
+      className="border border-[color:var(--border)] rounded-md bg-[color:var(--bg-2)]"
       aria-labelledby={`config-${section.Name}-heading`}
     >
       <header
@@ -975,7 +975,7 @@ function ConfigSectionCard({
             'px-1.5 py-0.5 rounded text-xs font-medium',
             section.Source === 'db'
               ? 'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]'
-              : 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
+              : 'bg-[color:var(--bg-3)] text-[color:var(--text-3)]',
           )}
           title={section.Source === 'db' ? 'Edited via database' : 'Seeded from YAML file'}
         >
@@ -1038,7 +1038,7 @@ function ConfigSectionCard({
 
       {!collapsed && <div>
         {sectionHelp && (
-          <p className="px-3.5 py-2.5 text-xs leading-relaxed text-[color:var(--text-2)] bg-[color:var(--bg-2)] border-b border-[color:var(--border)]">
+          <p className="px-3.5 py-2.5 text-xs leading-relaxed text-[color:var(--text-2)] bg-[color:var(--bg-3)] border-b border-[color:var(--border)]">
             {sectionHelp}
           </p>
         )}
@@ -1106,7 +1106,7 @@ function ConfigSectionCard({
                   placeholder="comma-separated values"
                   className={cn(
                     'w-full px-3 py-1.5 text-xs rounded-md border',
-                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+                    'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
                     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                     'placeholder:text-[color:var(--text-3)] placeholder:italic',
                     dirtyKeys.includes(key)
@@ -1151,7 +1151,7 @@ function ConfigSectionCard({
                   }}
                   className={cn(
                     'max-w-[120px] px-3 py-1.5 text-xs rounded-md border',
-                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                    'bg-[color:var(--bg-3)] text-[color:var(--text-1)] font-mono-tabular',
                     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                     dirtyKeys.includes(key)
                       ? 'border-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.5)]'
@@ -1177,7 +1177,7 @@ function ConfigSectionCard({
                   onChange={(e) => updateField(key, e.target.value)}
                   className={cn(
                     'px-3 py-1.5 text-xs rounded-md border',
-                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                    'bg-[color:var(--bg-3)] text-[color:var(--text-1)] font-mono-tabular',
                     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                     dirtyKeys.includes(key)
                       ? 'border-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.5)]'
@@ -1207,7 +1207,7 @@ function ConfigSectionCard({
                 placeholder={currentValue === '' ? 'not set' : undefined}
                 className={cn(
                   'w-full px-3 py-1.5 text-xs rounded-md border',
-                  'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                  'bg-[color:var(--bg-3)] text-[color:var(--text-1)] font-mono-tabular',
                   'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                   'placeholder:text-[color:var(--text-3)] placeholder:italic',
                   dirtyKeys.includes(key)
@@ -1236,7 +1236,7 @@ function ConfigSectionCard({
                   return (
                     <div
                       key={key}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] hover:border-[color:var(--border-strong)] transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[color:var(--bg-3)] border border-[color:var(--border)] hover:border-[color:var(--border-strong)] transition-colors"
                     >
                       <span className="text-xs font-medium text-[color:var(--text-1)] font-mono-tabular flex-1 flex items-center gap-1.5">
                         {key}
@@ -1471,7 +1471,7 @@ function RateLimitNumberInput({
         }}
         className={cn(
           'w-full px-2 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
-          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+          'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
           'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
         )}
       />
@@ -1517,7 +1517,7 @@ function RateLimitDurationInput({
         }}
         className={cn(
           'w-full px-2 py-1.5 text-xs rounded-md border',
-          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+          'bg-[color:var(--bg-3)] text-[color:var(--text-1)] font-mono-tabular',
           'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           invalid ? 'border-[color:var(--danger)]' : 'border-[color:var(--border)]',
         )}
@@ -1580,7 +1580,7 @@ function ReadOnlyFieldRow({
             arr.map((item, i) => (
               <span
                 key={i}
-                className="px-1.5 py-0.5 rounded text-xs font-mono-tabular bg-[color:var(--bg-2)] text-[color:var(--text-2)] border border-[color:var(--border)]"
+                className="px-1.5 py-0.5 rounded text-xs font-mono-tabular bg-[color:var(--bg-3)] text-[color:var(--text-2)] border border-[color:var(--border)]"
               >
                 {item}
               </span>
@@ -1624,7 +1624,7 @@ function ReadOnlyFieldRow({
             <button
               type="button"
               onClick={() => setRevealed((r) => !r)}
-              className="inline-flex items-center justify-center w-7 h-7 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)] transition-colors shrink-0"
+              className="inline-flex items-center justify-center w-7 h-7 rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)] transition-colors shrink-0"
               title={revealed ? 'Hide' : 'Reveal'}
             >
               {revealed ? (
@@ -1795,7 +1795,7 @@ function ApplyConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={isPending}
-            className="px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Cancel
           </button>

@@ -39,7 +39,7 @@ export function OptionsPanel({ expHours, onExpChange, hidden, onHiddenChange }: 
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   active
                     ? 'bg-[color:var(--signal)]/12 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'
-                    : 'bg-[color:var(--bg-2)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)]',
+                    : 'bg-[color:var(--bg-3)] text-[color:var(--text-2)] border-[color:var(--border)] hover:text-[color:var(--text-1)]',
                 )}
               >
                 {opt.label}

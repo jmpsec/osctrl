@@ -58,7 +58,7 @@ export function StatCard({
     <div
       className={cn(
         'relative flex flex-col',
-        'rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)]',
+        'rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)]',
         'px-4 py-3.5',
         'min-h-[120px]',
         'transition-colors duration-[100ms]',

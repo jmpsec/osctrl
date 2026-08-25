@@ -179,7 +179,7 @@ export function QueryDetailPage() {
         </div>
 
         {metaLoading ? (
-          <div className="h-6 w-64 bg-[color:var(--bg-2)] rounded animate-pulse" />
+          <div className="h-6 w-64 bg-[color:var(--bg-3)] rounded animate-pulse" />
         ) : query ? (
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
@@ -238,7 +238,7 @@ export function QueryDetailPage() {
 
         {query && (
           <div className="mt-3 rounded-md overflow-hidden border border-[color:var(--border)]">
-            <pre className="px-4 py-3 text-xs font-mono-tabular text-[color:var(--text-1)] bg-[color:var(--bg-2)] overflow-x-auto whitespace-pre-wrap break-all">
+            <pre className="px-4 py-3 text-xs font-mono-tabular text-[color:var(--text-1)] bg-[color:var(--bg-3)] overflow-x-auto whitespace-pre-wrap break-all">
               {query.query}
             </pre>
           </div>
@@ -265,7 +265,7 @@ export function QueryDetailPage() {
                     className={cn(
                       'inline-flex items-center gap-1 px-2 py-0.5 rounded-md',
                       'text-xs font-medium',
-                      'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+                      'border border-[color:var(--border)] bg-[color:var(--bg-3)]',
                       'text-[color:var(--text-2)]',
                     )}
                   >
@@ -304,7 +304,7 @@ export function QueryDetailPage() {
             className={cn(
               'px-3 py-1 text-xs font-medium rounded-md',
               'border border-[color:var(--border)] text-[color:var(--text-2)]',
-              'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+              'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
             )}
             aria-label="Refresh query results"
@@ -319,7 +319,7 @@ export function QueryDetailPage() {
               className={cn(
                 'px-3 py-1 text-xs font-medium rounded-md',
                 'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+                'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               )}
               aria-label={`Download CSV of ${name} results`}
@@ -411,7 +411,7 @@ export function QueryDetailPage() {
                 return (
                   <tr
                     key={row.id}
-                    className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors align-top"
+                    className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors align-top"
                   >
                     <td
                       className="px-4 py-2 tabular-nums text-xs text-[color:var(--text-2)] whitespace-nowrap"
@@ -504,10 +504,10 @@ function ResultPayload({
     }
   }
   return (
-    <div className="overflow-x-auto rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]">
+    <div className="overflow-x-auto rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)]">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-[color:var(--bg-1)] border-b border-[color:var(--border)]">
+          <tr className="bg-[color:var(--bg-2)] border-b border-[color:var(--border)]">
             {cols.map((c) => (
               <th
                 key={c}

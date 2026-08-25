@@ -258,7 +258,7 @@ export function UsersPage() {
                 <tr
                   key={u.id}
                   className={cn(
-                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors',
+                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors',
                     isSelected && 'bg-[color:var(--signal)]/5',
                   )}
                 >
@@ -314,21 +314,21 @@ export function UsersPage() {
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'permissions', user: u })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Permissions…
                     </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'token', user: u })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Token…
                     </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'reset-pw', user: u })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Reset password…
                     </button>
@@ -374,7 +374,7 @@ export function UsersPage() {
             type="button"
             disabled={bulkDeleteMut.isPending}
             aria-label="Delete selected users"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={handleBulkDelete}
           >
             {bulkDeleteMut.isPending ? 'Deleting…' : 'Delete'}
@@ -384,7 +384,7 @@ export function UsersPage() {
             type="button"
             aria-label="Clear selection"
             onClick={() => setSelectedUsernames(new Set())}
-            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Clear
           </button>
@@ -596,7 +596,7 @@ function PermissionsModal({
                 placeholder="00000000-0000-0000-0000-000000000000"
                 className={cn(
                   'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                  'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+                  'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
                   'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                 )}
               />
@@ -612,7 +612,7 @@ function PermissionsModal({
               disabled={envsLoading}
               className={cn(
                 'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+                'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                 'disabled:opacity-60',
               )}
@@ -695,7 +695,7 @@ function PermissionsModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -725,7 +725,7 @@ function PermissionsModal({
               type="button"
               disabled={!envs || envs.length === 0 || envsLoading}
               onClick={() => setBulkConfirm(true)}
-              className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Grant the selected access to every environment in the system"
             >
               Apply to all envs…
@@ -817,7 +817,7 @@ function TokenModal({
               value={token.token}
               className={cn(
                 'w-full h-24 px-3 py-2 text-xs rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+                'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
               )}
               onFocus={(e) => e.currentTarget.select()}
             />
@@ -840,7 +840,7 @@ function TokenModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Close
           </button>
@@ -875,7 +875,7 @@ function TokenModal({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors"
+              className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors"
             >
               Delete token…
             </button>
@@ -977,7 +977,7 @@ function CreateUserModal({
             autoFocus
             required
             placeholder="e.g. alice"
-            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
         <div>
@@ -991,7 +991,7 @@ function CreateUserModal({
             required
             minLength={8}
             placeholder="At least 8 characters"
-            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
         <div>
@@ -1001,7 +1001,7 @@ function CreateUserModal({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="optional"
-            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
         <div>
@@ -1013,7 +1013,7 @@ function CreateUserModal({
             value={fullname}
             onChange={(e) => setFullname(e.target.value)}
             placeholder="optional"
-            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
         <label className="flex items-center gap-2 text-xs text-[color:var(--text-1)] cursor-pointer">
@@ -1044,7 +1044,7 @@ function CreateUserModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -1127,7 +1127,7 @@ function DeleteUserModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -1219,7 +1219,7 @@ function ResetPasswordModal({
             required
             minLength={8}
             placeholder="At least 8 characters"
-            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
         <div>
@@ -1231,7 +1231,7 @@ function ResetPasswordModal({
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             required
-            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+            className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
 
@@ -1248,7 +1248,7 @@ function ResetPasswordModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>

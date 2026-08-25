@@ -178,7 +178,7 @@ export function MFAPanel() {
 
         {setup && (
           <form
-            className="space-y-3 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3"
+            className="space-y-3 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] p-3"
             onSubmit={(e) => {
               e.preventDefault();
               verifyMutation.mutate();
@@ -322,7 +322,7 @@ export function MFAPanel() {
       {/* ── Password confirmation ── */}
       {confirm && (
         <form
-          className="space-y-3 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3"
+          className="space-y-3 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] p-3"
           onSubmit={(e) => {
             e.preventDefault();
             confirmMutation.mutate();
@@ -368,7 +368,7 @@ export function MFAPanel() {
 
       {/* ── Freshly generated codes ── */}
       {codes && (
-        <div className={cn('space-y-2 rounded-md border p-3', 'border-[color:var(--signal)]/40 bg-[color:var(--bg-2)]')}>
+        <div className={cn('space-y-2 rounded-md border p-3', 'border-[color:var(--signal)]/40 bg-[color:var(--bg-3)]')}>
           <p className="text-xs text-[color:var(--text-1)] font-semibold">
             Save these recovery codes — they are shown only once
           </p>

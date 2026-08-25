@@ -277,7 +277,7 @@ function TablePickerOption({
       onClick={onSelect}
       className={cn(
         'flex w-full min-w-0 items-start gap-2 rounded-md p-2 text-left text-sm',
-        active ? 'bg-[color:var(--bg-3)] text-[color:var(--text-1)]' : 'text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)]',
+        active ? 'bg-[color:var(--bg-3)] text-[color:var(--text-1)]' : 'text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)]',
         focusClass,
       )}
     >
@@ -307,7 +307,7 @@ function ColumnPickerOption({
     <button
       type="button"
       onClick={onSelect}
-      className={cn('flex w-full min-w-0 items-start gap-2 rounded-md p-2 text-left text-sm hover:bg-[color:var(--bg-2)]', focusClass)}
+      className={cn('flex w-full min-w-0 items-start gap-2 rounded-md p-2 text-left text-sm hover:bg-[color:var(--bg-3)]', focusClass)}
       aria-pressed={checked}
     >
       <span className={cn(
@@ -339,7 +339,7 @@ function FilterFieldOption({
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex w-full min-w-0 items-start gap-2 rounded-md p-2 text-left text-sm text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+        'flex w-full min-w-0 items-start gap-2 rounded-md p-2 text-left text-sm text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
         focusClass,
       )}
     >
@@ -619,7 +619,7 @@ export function NoCodeQueryBuilder({
     <div className="min-w-0">
       <section className="px-4 py-4 sm:px-5" aria-label="No-code query builder">
         {isLoading && (
-          <div className="h-12 animate-pulse rounded-lg bg-[color:var(--bg-2)]" aria-label="Loading query builder" />
+          <div className="h-12 animate-pulse rounded-lg bg-[color:var(--bg-3)]" aria-label="Loading query builder" />
         )}
         {isError && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[color:var(--danger)]/5 p-3 text-sm text-[color:var(--danger)] ring-1 ring-inset ring-[color:var(--danger)]/20">
@@ -630,7 +630,7 @@ export function NoCodeQueryBuilder({
 
         {!isLoading && !isError && (
           <div
-            className="rounded-lg bg-[color:var(--bg-2)]/70 p-2 ring-1 ring-inset ring-[color:var(--border)]"
+            className="rounded-lg bg-[color:var(--bg-3)]/70 p-2 ring-1 ring-inset ring-[color:var(--border)]"
             aria-label="Query filters"
           >
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -707,7 +707,7 @@ export function NoCodeQueryBuilder({
                     <button
                       type="button"
                       onClick={() => setColumns([])}
-                      className={cn('flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-[color:var(--bg-2)]', focusClass)}
+                      className={cn('flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-[color:var(--bg-3)]', focusClass)}
                       aria-pressed={allColumnsSelected}
                     >
                       <span className={cn(
@@ -780,7 +780,7 @@ export function NoCodeQueryBuilder({
                         </select>
                         <ChevronDown size={16} strokeWidth={1.8} aria-hidden className="pointer-events-none col-start-2 row-start-1 place-self-center text-[color:var(--text-3)]" />
                       </div>
-                      <div className="grid min-w-28 max-w-40 grid-cols-[1fr_2rem] border-l border-[color:var(--border)] bg-[color:var(--bg-2)] max-sm:col-start-2 max-sm:row-start-1 max-sm:min-w-0 max-sm:max-w-none">
+                      <div className="grid min-w-28 max-w-40 grid-cols-[1fr_2rem] border-l border-[color:var(--border)] bg-[color:var(--bg-3)] max-sm:col-start-2 max-sm:row-start-1 max-sm:min-w-0 max-sm:max-w-none">
                         <select
                           name={`filter-${condition.id}-operator`}
                           aria-label={`Filter ${index + 1} operator`}
@@ -805,7 +805,7 @@ export function NoCodeQueryBuilder({
                           value={condition.value}
                           onChange={(event) => updateCondition(condition.id, { value: event.target.value })}
                           placeholder="Value"
-                          className="h-8 min-w-20 flex-1 border-l border-[color:var(--border)] bg-transparent px-2 text-base text-[color:var(--text-1)] outline-none [appearance:textfield] placeholder:text-[color:var(--text-3)] focus:bg-[color:var(--bg-2)] max-sm:col-span-2 max-sm:col-start-1 max-sm:row-start-2 max-sm:w-full max-sm:border-l-0 max-sm:border-t sm:w-32 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          className="h-8 min-w-20 flex-1 border-l border-[color:var(--border)] bg-transparent px-2 text-base text-[color:var(--text-1)] outline-none [appearance:textfield] placeholder:text-[color:var(--text-3)] focus:bg-[color:var(--bg-3)] max-sm:col-span-2 max-sm:col-start-1 max-sm:row-start-2 max-sm:w-full max-sm:border-l-0 max-sm:border-t sm:w-32 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                       )}
                       {operator?.needsValue && valueSuggestions.length > 0 && (
@@ -817,7 +817,7 @@ export function NoCodeQueryBuilder({
                         type="button"
                         onClick={() => setConditions((current) => current.filter((item) => item.id !== condition.id))}
                         className={cn(
-                          'relative inline-flex size-8 shrink-0 items-center justify-center border-l border-[color:var(--border)] text-[color:var(--text-3)] hover:bg-[color:var(--bg-2)] hover:text-[color:var(--danger)]',
+                          'relative inline-flex size-8 shrink-0 items-center justify-center border-l border-[color:var(--border)] text-[color:var(--text-3)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--danger)]',
                           'max-sm:col-start-3 max-sm:row-start-1 max-sm:h-full',
                           operator?.needsValue && 'max-sm:row-span-2',
                           focusClass,
@@ -941,7 +941,7 @@ export function NoCodeQueryBuilder({
               {availableColumns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}
             </CompactSelect>
             {orderBy && (
-              <CompactSelect value={orderDirection} onChange={(value) => setOrderDirection(value as 'ASC' | 'DESC')} name="query-builder-direction" ariaLabel="Sort direction" className="min-w-32 border-l border-[color:var(--border)] bg-[color:var(--bg-2)]">
+              <CompactSelect value={orderDirection} onChange={(value) => setOrderDirection(value as 'ASC' | 'DESC')} name="query-builder-direction" ariaLabel="Sort direction" className="min-w-32 border-l border-[color:var(--border)] bg-[color:var(--bg-3)]">
                 <option value="ASC">Ascending</option>
                 <option value="DESC">Descending</option>
               </CompactSelect>
@@ -954,7 +954,7 @@ export function NoCodeQueryBuilder({
                 setSortOpen(false);
               }}
               className={cn(
-                'relative inline-flex size-8 shrink-0 items-center justify-center border-l border-[color:var(--border)] text-[color:var(--text-3)] hover:bg-[color:var(--bg-2)] hover:text-[color:var(--danger)]',
+                'relative inline-flex size-8 shrink-0 items-center justify-center border-l border-[color:var(--border)] text-[color:var(--text-3)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--danger)]',
                 focusClass,
               )}
               aria-label="Remove sorting"
@@ -968,7 +968,7 @@ export function NoCodeQueryBuilder({
             type="button"
             onClick={() => setSortOpen(true)}
             className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-md py-1.5 pr-2.5 pl-1.5 text-sm font-medium text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+              'inline-flex h-8 items-center gap-1.5 rounded-md py-1.5 pr-2.5 pl-1.5 text-sm font-medium text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
               focusClass,
             )}
           >
@@ -987,7 +987,7 @@ export function NoCodeQueryBuilder({
             max={10_000}
             value={limit}
             onChange={(event) => setLimit(Number(event.target.value))}
-            className="h-8 w-24 border-l border-[color:var(--border)] bg-transparent px-2 text-base tabular-nums text-[color:var(--text-1)] outline-none [appearance:textfield] focus:bg-[color:var(--bg-2)] sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="h-8 w-24 border-l border-[color:var(--border)] bg-transparent px-2 text-base tabular-nums text-[color:var(--text-1)] outline-none [appearance:textfield] focus:bg-[color:var(--bg-3)] sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </label>
 
@@ -1002,7 +1002,7 @@ export function NoCodeQueryBuilder({
         )}
 
         {resetSnapshot && (
-          <div role="status" className="flex h-8 items-center gap-2 rounded-md bg-[color:var(--bg-2)] px-2 text-sm text-[color:var(--text-2)]">
+          <div role="status" className="flex h-8 items-center gap-2 rounded-md bg-[color:var(--bg-3)] px-2 text-sm text-[color:var(--text-2)]">
             Query reset.
             <button
               type="button"

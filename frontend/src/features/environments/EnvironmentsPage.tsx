@@ -255,7 +255,7 @@ export function EnvironmentsPage() {
                 <tr
                   key={env.id}
                   className={cn(
-                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors',
+                    'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors',
                     isSelected && 'bg-[color:var(--signal)]/5',
                   )}
                 >
@@ -307,21 +307,21 @@ export function EnvironmentsPage() {
                         to: '/_app/env/$env/config',
                         params: { env: env.uuid },
                       })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Config…
                     </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'edit', env })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'delete', env })}
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors"
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Delete
                     </button>
@@ -358,7 +358,7 @@ export function EnvironmentsPage() {
             type="button"
             disabled={bulkDeleteMut.isPending}
             aria-label="Delete selected environments"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={handleBulkDelete}
           >
             {bulkDeleteMut.isPending ? 'Deleting…' : 'Delete'}
@@ -368,7 +368,7 @@ export function EnvironmentsPage() {
             type="button"
             aria-label="Clear selection"
             onClick={() => setSelectedNames(new Set())}
-            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Clear
           </button>
@@ -485,7 +485,7 @@ function CreateEnvModal({
             placeholder="e.g. production"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -506,7 +506,7 @@ function CreateEnvModal({
             placeholder="osctrl.example.com"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -527,7 +527,7 @@ function CreateEnvModal({
             placeholder="osquery"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -556,7 +556,7 @@ function CreateEnvModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -648,7 +648,7 @@ function EditEnvModal({
               onChange={(e) => setName(e.target.value)}
               className={cn(
                 'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+                'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               )}
             />
@@ -664,7 +664,7 @@ function EditEnvModal({
               onChange={(e) => setType(e.target.value)}
               className={cn(
                 'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+                'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               )}
             />
@@ -682,7 +682,7 @@ function EditEnvModal({
             onChange={(e) => setHostname(e.target.value)}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -739,7 +739,7 @@ function EditEnvModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>
@@ -815,7 +815,7 @@ function DeleteEnvModal({
           autoComplete="off"
           className={cn(
             'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-            'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+            'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
             'focus:outline focus:outline-2 focus:outline-[color:var(--danger)]',
           )}
         />
@@ -834,7 +834,7 @@ function DeleteEnvModal({
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
         >
           Cancel
         </button>

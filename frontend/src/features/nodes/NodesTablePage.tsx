@@ -97,7 +97,7 @@ function QuickFiltersGroup({ filters }: { filters: QuickFilter[] }) {
     <div
       role="toolbar"
       aria-label="Quick filters"
-      className="flex items-center gap-1 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]"
+      className="flex items-center gap-1 rounded-md bg-[color:var(--bg-3)] p-0.5 border border-[color:var(--border)]"
     >
       {filters.map((f) => (
         <button
@@ -705,7 +705,7 @@ export function NodesTablePage() {
             onChange={(e) => updateSearch({ page_size: Number(e.target.value), page: 1 })}
             className={cn(
               'text-xs px-2 py-1.5 rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-2)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-2)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           >
@@ -896,8 +896,8 @@ export function NodesTablePage() {
                     key={node.uuid}
                     className={cn(
                       'border-b border-[color:var(--border)] transition-colors',
-                      'hover:bg-[color:var(--bg-2)]',
-                      isSelected && 'bg-[color:var(--bg-2)]',
+                      'hover:bg-[color:var(--bg-3)]',
+                      isSelected && 'bg-[color:var(--bg-3)]',
                     )}
                   >
                     <td className="px-4 py-2.5 align-middle">
@@ -1005,7 +1005,7 @@ export function NodesTablePage() {
           <button
             type="button"
             aria-label="Tag selected nodes"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
             onClick={() => setTagModalOpen(true)}
           >
             Tag…
@@ -1017,7 +1017,7 @@ export function NodesTablePage() {
               disabled={bulkArchiveMut.isPending}
               className={cn(
                 'px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)]',
-                'hover:bg-[color:var(--bg-2)] transition-colors',
+                'hover:bg-[color:var(--bg-3)] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
               onClick={handleBulkArchive}
@@ -1030,7 +1030,7 @@ export function NodesTablePage() {
             type="button"
             aria-label="Clear selection"
             onClick={() => setSelectedUuids(new Set())}
-            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Clear
           </button>
@@ -1156,7 +1156,7 @@ function TagSelectedNodesModal({
             disabled={tagsLoading || list.length === 0}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -1195,7 +1195,7 @@ function TagSelectedNodesModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Cancel
           </button>

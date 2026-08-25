@@ -219,7 +219,7 @@ export function AuthProvidersPage() {
               </td></tr>
             )}
             {!isLoading && !isError && rows.map((p) => (
-              <tr key={p.id} className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors">
+              <tr key={p.id} className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors">
                 <td className="px-4 py-3">
                   <span className="text-sm font-semibold text-[color:var(--text-1)] tabular-nums">{p.name}</span>
                   {p.info && <span className="ml-2 text-xs text-[color:var(--text-3)] truncate max-w-[240px]" title={p.info}>— {p.info}</span>}
@@ -249,16 +249,16 @@ export function AuthProvidersPage() {
                 </td>
                 <td className="px-2 py-3 text-right whitespace-nowrap">
                   <button type="button" onClick={() => setModal({ kind: 'edit', provider: p })}
-                    className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">Edit</button>
+                    className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors">Edit</button>
                   {p.source === 'db' && (
                     <button type="button" disabled={revertMutation.isPending}
                       onClick={() => { if (confirm(`Revert "${p.name}" to service config?`)) revertMutation.mutate(p.id); }}
                       title="Reset back to service configuration values. Takes effect on the next Apply."
-                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50">Revert</button>
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50">Revert</button>
                   )}
                   <button type="button" disabled={deleteMutation.isPending}
                     onClick={() => { if (confirm(`Delete provider "${p.name}"?`)) deleteMutation.mutate(p.id); }}
-                    className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50">Delete</button>
+                    className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50">Delete</button>
                 </td>
               </tr>
             ))}
@@ -294,7 +294,7 @@ function ProviderTypePicker({ types, onPick, onClose }: { types: AuthProviderTyp
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {types.map((t) => (
             <button key={t.type} type="button" onClick={() => onPick(t.type)}
-              className={cn('flex items-start gap-3 px-3 py-2.5 rounded-md text-left', 'border border-[color:var(--border)] bg-[color:var(--bg-2)]', 'hover:border-[color:var(--signal)] hover:bg-[color:var(--bg-1)]', 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]')}>
+              className={cn('flex items-start gap-3 px-3 py-2.5 rounded-md text-left', 'border border-[color:var(--border)] bg-[color:var(--bg-3)]', 'hover:border-[color:var(--signal)] hover:bg-[color:var(--bg-1)]', 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]')}>
               <span className="flex-shrink-0 w-5 h-5 text-[color:var(--text-3)] mt-0.5">{providerIcon(t.type)}</span>
               <span className="flex flex-col gap-0.5 min-w-0">
                 <span className="text-sm font-semibold text-[color:var(--text-1)] tabular-nums">{t.type}</span>
@@ -304,7 +304,7 @@ function ProviderTypePicker({ types, onPick, onClose }: { types: AuthProviderTyp
           ))}
         </div>
         <div className="flex justify-end pt-1">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">Cancel</button>
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors">Cancel</button>
         </div>
       </div>
     </ModalShell>
@@ -384,7 +384,7 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
     }
   }
 
-  const inputClass = cn('w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]', 'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums', 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]');
+  const inputClass = cn('w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]', 'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums', 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]');
 
   return (
     <ModalShell title={mode === 'create' ? `Add ${providerType} provider` : `Edit ${existing?.name}`} titleId="auth-provider-editor-title" onClose={onClose} bodyClassName="max-h-[70vh] overflow-y-auto">
@@ -396,7 +396,7 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
         </div>
         <div>
           <span className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">Type</span>
-          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] text-sm tabular-nums text-[color:var(--text-1)]">
+          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[color:var(--bg-3)] border border-[color:var(--border)] text-sm tabular-nums text-[color:var(--text-1)]">
             <span className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]">{providerIcon(providerType)}</span>
             {providerType}
           </span>
@@ -419,7 +419,7 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
 
         <div className="flex items-center gap-2">
           <button type="button" onClick={handleTest} disabled={testing}
-            className={cn('px-2.5 py-1 text-xs font-medium rounded', 'border border-[color:var(--border)] text-[color:var(--text-2)]', 'hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50')}>
+            className={cn('px-2.5 py-1 text-xs font-medium rounded', 'border border-[color:var(--border)] text-[color:var(--text-2)]', 'hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50')}>
             {testing ? 'Testing…' : 'Test connection'}
           </button>
           {testResult && (
@@ -435,7 +435,7 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
         </div>
         {err && <p role="alert" className="text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-2 rounded-md">{err}</p>}
         <div className="flex items-center justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">Cancel</button>
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors">Cancel</button>
           <button type="submit" disabled={mutation.isPending || !name.trim()}
             className={cn('px-3 py-1.5 text-xs font-medium rounded-md', 'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]', 'transition-colors disabled:opacity-50 disabled:cursor-not-allowed')}>
             {mutation.isPending ? 'Saving…' : mode === 'create' ? 'Add provider' : 'Save changes'}
@@ -456,7 +456,7 @@ function ApplyConfirmDialog({ isPending, onConfirm, onCancel }: { isPending: boo
         </p>
         <div className="flex items-center justify-end gap-2 pt-2">
           <button type="button" onClick={onCancel} disabled={isPending}
-            className="px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Cancel</button>
+            className="px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Cancel</button>
           <button type="button" onClick={onConfirm} disabled={isPending}
             className={cn('px-3 py-1.5 text-xs font-medium rounded transition-colors', 'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.16)] text-[color:var(--warning)]', 'hover:bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.24)]', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
             {isPending ? 'Reloading…' : 'Reload now'}
@@ -520,7 +520,7 @@ function ProviderConfigFields({ spec, values, onChange, inputClass }: {
                 className={cn(
                   'px-2.5 py-1 text-xs font-medium rounded',
                   'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                  'hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50',
+                  'hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50',
                 )}
               >
                 {fetching ? 'Fetching…' : 'Fetch metadata'}
@@ -600,7 +600,7 @@ function ProviderConfigField({ field, value, onChange, inputClass }: {
           {labelEl}
           <textarea id={id} aria-label={field.label} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder} spellCheck={false}
-            className={cn('w-full px-3 py-2 text-xs rounded-md border border-[color:var(--border)]', 'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums', 'min-h-[80px] focus:outline focus:outline-2 focus:outline-[color:var(--signal)]')} />
+            className={cn('w-full px-3 py-2 text-xs rounded-md border border-[color:var(--border)]', 'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums', 'min-h-[80px] focus:outline focus:outline-2 focus:outline-[color:var(--signal)]')} />
           {helpEl}
         </div>
       );

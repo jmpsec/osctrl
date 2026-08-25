@@ -194,7 +194,7 @@ export function CarveDetailPage() {
                     className={cn(
                       'inline-flex items-center gap-1 px-2 py-0.5 rounded-md',
                       'text-xs font-medium',
-                      'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+                      'border border-[color:var(--border)] bg-[color:var(--bg-3)]',
                       'text-[color:var(--text-2)]',
                     )}
                   >
@@ -234,7 +234,7 @@ export function CarveDetailPage() {
               className={cn(
                 'px-3 py-1 text-xs font-medium rounded-md',
                 'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+                'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
@@ -318,7 +318,7 @@ export function CarveDetailPage() {
                 return (
                   <tr
                     key={f.carve_id || f.session_id}
-                    className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
+                    className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors"
                   >
                     <td className="px-3 py-2 font-mono-tabular text-xs whitespace-nowrap">
                       <Link
