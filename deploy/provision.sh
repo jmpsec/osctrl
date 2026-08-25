@@ -643,7 +643,7 @@ else
   __osctrl_crt="/etc/nginx/certs/osctrl.crt"
 
   # Create admin user
-  if [[ "$ADMIN" == true ]]; then
+  if [[ -n "$_ADMIN_PASS" ]]; then
     log "Creating admin user"
     "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
   fi
@@ -695,7 +695,7 @@ fi
 if [[ "$UPGRADE" == false ]]; then
   echo
   log " -> https://$_A_HOST:$_A_PUB_PORT"
-  if [[ "$ADMIN" == true ]]; then
+  if [[ -n "$_ADMIN_PASS" ]]; then
     log " -> 🔐 Credentials: $_ADMIN_USER / $_ADMIN_PASS"
   fi
   echo
