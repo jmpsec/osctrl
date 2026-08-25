@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 import { cn } from '$/lib/cn';
 
 // ---------------------------------------------------------------------------
@@ -114,12 +115,12 @@ export function ModalShell({
       <div
         ref={ref}
         className={cn(
-          'relative w-full rounded-xl border border-[color:var(--border-strong)]',
-          'bg-[color:var(--bg-1)] shadow-[0_24px_64px_rgba(0,0,0,0.45)]',
+          'relative w-full rounded-lg border border-[color:var(--border)]',
+          'bg-[color:var(--bg-1)] shadow-[0_20px_48px_rgba(0,0,0,0.28)]',
           panelClassName ?? 'max-w-2xl',
         )}
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-[color:var(--border)]">
+        <div className="flex h-12 items-center justify-between px-4 border-b border-[color:var(--border)]">
           <h2
             id={titleId}
             className="font-display text-sm font-semibold text-[color:var(--text-1)]"
@@ -130,14 +131,12 @@ export function ModalShell({
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] rounded transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-[color:var(--text-3)] transition-colors hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
+            <X size={14} strokeWidth={2} />
           </button>
         </div>
-        <div className={cn('p-5', bodyClassName)}>{children}</div>
+        <div className={cn('p-4', bodyClassName)}>{children}</div>
       </div>
     </div>
   );

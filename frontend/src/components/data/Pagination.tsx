@@ -38,11 +38,11 @@ export function Pagination({
           disabled={page <= 1}
           aria-label="Previous page"
           className={cn(
-            'px-3 py-1.5 rounded text-xs font-medium transition-colors',
+            'h-7 px-2.5 rounded-md text-xs font-medium transition-colors',
             'border border-[color:var(--border)] bg-[color:var(--bg-1)]',
             'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
             'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[color:var(--bg-1)]',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--accent)]',
           )}
         >
           Prev
@@ -57,11 +57,11 @@ export function Pagination({
           disabled={page >= totalPages}
           aria-label="Next page"
           className={cn(
-            'px-3 py-1.5 rounded text-xs font-medium transition-colors',
+            'h-7 px-2.5 rounded-md text-xs font-medium transition-colors',
             'border border-[color:var(--border)] bg-[color:var(--bg-1)]',
             'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
             'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[color:var(--bg-1)]',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--accent)]',
           )}
         >
           Next

@@ -242,7 +242,7 @@ export function CommandPalette({
                 />
                 <span className="flex-1 truncate">{it.label}</span>
                 {it.hint && (
-                  <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)] truncate max-w-[180px]">
+                  <span className="text-xs tabular-nums text-[color:var(--text-3)] truncate max-w-[180px]">
                     {it.hint}
                   </span>
                 )}
@@ -251,7 +251,7 @@ export function CommandPalette({
           ))}
         </ul>
 
-        <p className="text-[10px] font-mono-tabular text-[color:var(--text-3)] text-right">
+        <p className="text-xs tabular-nums text-[color:var(--text-3)] text-right">
           ⌘K toggle · Esc close · ↑↓ navigate · ↵ activate
         </p>
       </div>

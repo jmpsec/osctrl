@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -20,50 +19,24 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { Pagination } from '$/components/data/Pagination';
 import { SearchInput } from '$/components/data/SearchInput';
 import { SortableHeader } from '$/components/data/SortableHeader';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { buttonClasses } from '$/components/atoms/Button';
 
 function CarveStatusBadge({
   q,
 }: {
   q: { active: boolean; completed: boolean; expired: boolean; deleted: boolean; carve_status?: string };
 }) {
-  if (q.carve_status === 'PENDING') return <ListBadge variant="warning" label="Pending" spin />;
-  if (q.carve_status === 'COMPLETED') return <ListBadge variant="success" label="Completed" />;
-  if (q.carve_status === 'EXPIRED') return <ListBadge variant="warning" label="Expired" />;
-  if (q.carve_status === 'DELETED') return <ListBadge variant="danger" label="Deleted" />;
-  if (q.carve_status === 'ACTIVE') return <ListBadge variant="info" label="Active" spin />;
-  if (q.deleted) return <ListBadge variant="danger" label="Deleted" />;
-  if (q.expired) return <ListBadge variant="warning" label="Expired" />;
-  if (q.completed) return <ListBadge variant="success" label="Completed" />;
-  if (q.active) return <ListBadge variant="info" label="Active" spin />;
-  return <ListBadge variant="dim" label="Unknown" />;
-}
-
-function ListBadge({
-  variant,
-  label,
-  spin,
-}: {
-  variant: 'success' | 'warning' | 'danger' | 'info' | 'dim';
-  label: string;
-  spin?: boolean;
-}) {
-  const cls = {
-    success:
-      'bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]',
-    warning:
-      'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]',
-    danger:
-      'bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.12)] text-[color:var(--danger)]',
-    info: 'bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]',
-    dim: 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
-  }[variant];
-
-  return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
-      {spin && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
-      {label}
-    </span>
-  );
+  if (q.carve_status === 'PENDING') return <StatusBadge variant="warning" label="Pending" live />;
+  if (q.carve_status === 'COMPLETED') return <StatusBadge variant="success" label="Completed" />;
+  if (q.carve_status === 'EXPIRED') return <StatusBadge variant="warning" label="Expired" />;
+  if (q.carve_status === 'DELETED') return <StatusBadge variant="danger" label="Deleted" />;
+  if (q.carve_status === 'ACTIVE') return <StatusBadge variant="info" label="Active" live />;
+  if (q.deleted) return <StatusBadge variant="danger" label="Deleted" />;
+  if (q.expired) return <StatusBadge variant="warning" label="Expired" />;
+  if (q.completed) return <StatusBadge variant="success" label="Completed" />;
+  if (q.active) return <StatusBadge variant="info" label="Active" live />;
+  return <StatusBadge variant="dim" label="Unknown" />;
 }
 
 const CARVE_STATUS_TABS: StatusTab<CarveTarget>[] = [
@@ -228,11 +201,7 @@ export function CarvesListPage() {
           <Link
             to="/_app/env/$env/carves/new"
             params={{ env }}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
-              'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            )}
+            className={buttonClasses()}
           >
             New carve
           </Link>
@@ -257,7 +226,7 @@ export function CarvesListPage() {
             <span
               aria-live="polite"
               aria-label="Refreshing data"
-              className="text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+              className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
             </span>
@@ -336,7 +305,7 @@ export function CarvesListPage() {
                       <button
                         type="button"
                         onClick={() => void refetch()}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Retry
                       </button>
@@ -361,7 +330,7 @@ export function CarvesListPage() {
                         <button
                           type="button"
                           onClick={() => updateSearch({ q: undefined, target: 'all', page: 1 })}
-                          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                         >
                           Clear filters
                         </button>
@@ -369,7 +338,7 @@ export function CarvesListPage() {
                         <Link
                           to="/_app/env/$env/carves/new"
                           params={{ env }}
-                          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                         >
                           Start first carve
                         </Link>
@@ -412,7 +381,7 @@ export function CarvesListPage() {
                         to="/_app/env/$env/carves/$name"
                         params={{ env, name: item.name }}
                         className={cn(
-                          'text-sm font-medium font-mono-tabular text-[color:var(--text-link)]',
+                          'text-sm font-medium tabular-nums text-[color:var(--text-link)]',
                           'hover:underline',
                         )}
                         title={item.path || item.name}
@@ -465,7 +434,7 @@ export function CarvesListPage() {
             'z-50',
           )}
         >
-          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+          <span className="text-[color:var(--text-2)] text-xs tabular-nums">
             {selectedNames.size} selected
           </span>
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />

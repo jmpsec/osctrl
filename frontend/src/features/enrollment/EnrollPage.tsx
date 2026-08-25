@@ -28,6 +28,8 @@ import { CertificateCard } from './CertificateCard';
 import { FlagsCard } from './FlagsCard';
 import { AssembledConfigCard } from './AssembledConfigCard';
 import { DocsLink } from '$/components/atoms/DocsLink';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 
 /**
  * EnrollPage (v3) — tabbed env-scoped enrollment portal.
@@ -175,7 +177,7 @@ export function EnrollPage() {
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="px-6 py-4 border-b border-[color:var(--border)] flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
+          <div className="text-xs font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
             enrollment
           </div>
           <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
@@ -188,22 +190,15 @@ export function EnrollPage() {
           )}
         </div>
         {e && (
-          <span
-            className={cn(
-              'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium',
-              e.accept_enrolls
-                ? 'bg-[color:var(--success)]/10 text-[color:var(--success)] border border-[color:var(--success)]/30'
-                : 'bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/30',
-            )}
+          <StatusBadge
+            variant={e.accept_enrolls ? 'success' : 'danger'}
+            label={e.accept_enrolls ? 'Accepting enrollments' : 'Enrollments closed'}
             title={
               e.accept_enrolls
                 ? 'New nodes can enroll right now.'
                 : 'Enrolls are closed. Use Lifecycle → Rotate to reopen.'
             }
-          >
-            <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-current" />
-            {e.accept_enrolls ? 'accepting enrolls' : 'not accepting enrolls'}
-          </span>
+          />
         )}
       </div>
 
@@ -449,7 +444,7 @@ function SecretField({
           Enroll secret
         </h2>
         <span
-          className="text-[10px] text-[color:var(--text-3)] cursor-help"
+          className="text-xs text-[color:var(--text-3)] cursor-help"
           title="The enroll secret authenticates osquery agents to osctrl-tls. Keep it secure — anyone with this secret can enroll nodes."
         >
           ⓘ
@@ -460,7 +455,7 @@ function SecretField({
 
       {isError && !isLoading && (
         <div className="flex items-center gap-2">
-          <p className="text-[11px] text-[color:var(--danger)] flex-1">
+          <p className="text-xs text-[color:var(--danger)] flex-1">
             {error instanceof Error ? error.message : 'Failed to load secret'}
           </p>
           <Button variant="ghost" size="sm" onClick={() => refetch()}>Retry</Button>
@@ -474,7 +469,7 @@ function SecretField({
             value={secret}
             readOnly
             className={cn(
-              'flex-1 min-w-0 px-2.5 py-1.5 rounded-md text-[11px] font-mono-tabular',
+              'flex-1 min-w-0 px-2.5 py-1.5 rounded-md text-xs font-mono-tabular',
               'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
               'text-[color:var(--text-1)]',
               'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
@@ -544,7 +539,7 @@ function NotAcceptingHint({ onJumpToLifecycle }: { onJumpToLifecycle: () => void
         type="button"
         onClick={onJumpToLifecycle}
         className={cn(
-          'px-2 py-1 rounded text-[11px] font-medium',
+          'px-2 py-1 rounded text-xs font-medium',
           'border border-[color:var(--danger)]/40 text-[color:var(--danger)]',
           'hover:bg-[color:var(--danger)] hover:text-white transition-colors',
         )}
@@ -602,7 +597,7 @@ function Collapsible({
           {title}
         </span>
         {subtitle && (
-          <span className="text-[10px] text-[color:var(--text-3)] font-mono-tabular">
+          <span className="text-xs text-[color:var(--text-3)] font-mono-tabular">
             · {subtitle}
           </span>
         )}
@@ -754,7 +749,7 @@ function ScriptPanel({
 
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+          <span className="text-xs font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
             {scriptView === 'install' ? 'one-liner enroll' : 'one-liner remove'}
             {' · '}
             {platform === 'sh' ? 'bash' : 'powershell'}
@@ -786,7 +781,7 @@ function ScriptPanel({
             activeQuery.data?.data
           )}
         </pre>
-        <p className="mt-2 text-[10px] text-[color:var(--text-3)]">
+        <p className="mt-2 text-xs text-[color:var(--text-3)]">
           The script embeds this environment's enroll secret — handle accordingly.
         </p>
       </div>
@@ -838,7 +833,7 @@ function LifecycleCard({
         <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)]">
           {label}
         </h2>
-        <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums">
+        <span className="text-xs font-mono-tabular text-[color:var(--text-3)] tabular-nums">
           · {expiresText}
         </span>
       </div>
@@ -922,7 +917,7 @@ function PackageListCard({ envName }: { envName: string }) {
           <span className="text-[color:var(--text-3)] font-normal">· per-arch URLs</span>
         </h2>
         <span
-          className="text-[10px] text-[color:var(--text-3)] cursor-help"
+          className="text-xs text-[color:var(--text-3)] cursor-help"
           title="Register multiple packages per type, each targeting a different architecture (amd64, arm64, etc.). The TLS service serves the correct package based on the requested architecture."
         >
           ⓘ
@@ -931,7 +926,7 @@ function PackageListCard({ envName }: { envName: string }) {
 
       {isLoading && <Skeleton className="h-16 w-full" />}
       {!isLoading && (packages ?? []).length === 0 && (
-        <p className="text-[11px] text-[color:var(--text-3)] italic mb-3">
+        <p className="text-xs text-[color:var(--text-3)] italic mb-3">
           No multi-architecture packages configured.
         </p>
       )}
@@ -942,7 +937,7 @@ function PackageListCard({ envName }: { envName: string }) {
             if (!items || items.length === 0) return null;
             return (
               <div key={value}>
-                <p className="text-[10px] font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.1em] mb-1">
+                <p className="text-xs font-mono-tabular text-[color:var(--text-3)] uppercase tracking-[0.1em] mb-1">
                   {label}
                 </p>
                 <div className="space-y-1">
@@ -965,7 +960,7 @@ function PackageListCard({ envName }: { envName: string }) {
         <select
           value={newType}
           onChange={(e) => setNewType(e.target.value)}
-          className="text-[11px] px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          className="text-xs px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
         >
           {PACKAGE_TYPES.map((t) => (
             <option key={t.value} value={t.value}>{t.value}</option>
@@ -974,7 +969,7 @@ function PackageListCard({ envName }: { envName: string }) {
         <select
           value={newArch}
           onChange={(e) => setNewArch(e.target.value)}
-          className="text-[11px] px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          className="text-xs px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
         >
           {ARCH_OPTIONS.map((a) => (
             <option key={a} value={a}>{a}</option>
@@ -986,7 +981,7 @@ function PackageListCard({ envName }: { envName: string }) {
           onChange={(e) => setNewUrl(e.target.value)}
           placeholder="https://… or local filename"
           className={cn(
-            'flex-1 min-w-[200px] px-2.5 py-1 rounded-md text-[11px] font-mono-tabular',
+            'flex-1 min-w-[200px] px-2.5 py-1 rounded-md text-xs font-mono-tabular',
             'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
             'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
             'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
@@ -1052,7 +1047,7 @@ function PackageRow({
   return (
     <div>
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-mono-tabular text-[color:var(--text-2)] w-16 flex-shrink-0">
+        <span className="text-xs font-mono-tabular text-[color:var(--text-2)] w-16 flex-shrink-0">
           {pkg.architecture || 'default'}
         </span>
         <input
@@ -1060,22 +1055,14 @@ function PackageRow({
           value={editUrl}
           onChange={(e) => setEditUrl(e.target.value)}
           className={cn(
-            'flex-1 min-w-0 px-2.5 py-1 rounded-md text-[11px] font-mono-tabular',
+            'flex-1 min-w-0 px-2.5 py-1 rounded-md text-xs font-mono-tabular',
             'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
             'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
             'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
           )}
         />
-        {pkg.is_default && (
-          <span className="text-[9px] px-1 rounded bg-[color:var(--bg-2)] text-[color:var(--text-3)] flex-shrink-0">
-            default
-          </span>
-        )}
-        {dirty && (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)] flex-shrink-0">
-            pending
-          </span>
-        )}
+        {pkg.is_default && <MetadataBadge className="shrink-0">Default</MetadataBadge>}
+        {dirty && <StatusBadge variant="warning" label="Pending" className="shrink-0" />}
         <Button
           variant="ghost"
           size="sm"
@@ -1088,13 +1075,13 @@ function PackageRow({
           type="button"
           onClick={() => removeMut.mutate()}
           disabled={removeMut.isPending}
-          className="text-[10px] text-[color:var(--danger)] hover:underline disabled:opacity-40 flex-shrink-0"
+          className="text-xs text-[color:var(--danger)] hover:underline disabled:opacity-40 flex-shrink-0"
         >
           remove
         </button>
       </div>
       {err && (
-        <p className="mt-1 ml-[72px] text-[10px] text-[color:var(--danger)]">{err}</p>
+        <p className="mt-1 ml-[72px] text-xs text-[color:var(--danger)]">{err}</p>
       )}
     </div>
   );

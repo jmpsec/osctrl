@@ -51,7 +51,7 @@ export function DocsLink({
       title={`Open ${label} (${href})`}
       className={cn(
         'inline-flex items-center gap-1 px-1.5 py-0.5 rounded cursor-pointer',
-        'text-[10px] font-mono-tabular text-[color:var(--text-3)]',
+        'text-xs tabular-nums text-[color:var(--text-3)]',
         'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
         'transition-colors',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',

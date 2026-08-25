@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -12,6 +12,11 @@ import {
 import { DashboardPage } from './DashboardPage';
 import userEvent from '@testing-library/user-event';
 import type { NodeTileSeries, StatsResponse, ErrorNodeRow } from '$/api/stats';
+import type {
+  CarvesPagedResponse,
+  DistributedQuery,
+  QueriesPagedResponse,
+} from '$/api/types';
 
 // ---------------------------------------------------------------------------
 // Mock the stats API module
@@ -19,6 +24,8 @@ import type { NodeTileSeries, StatsResponse, ErrorNodeRow } from '$/api/stats';
 const mockGetStats = vi.fn<() => Promise<StatsResponse>>();
 const mockGetEnvActivityTiles = vi.fn<(env: string, days?: number) => Promise<NodeTileSeries>>();
 const mockGetEnvErrorNodes = vi.fn<(env: string, days?: number) => Promise<ErrorNodeRow[]>>();
+const mockListQueries = vi.fn<() => Promise<QueriesPagedResponse>>();
+const mockListCarves = vi.fn<() => Promise<CarvesPagedResponse>>();
 
 vi.mock('$/api/stats', async () => {
   const actual = await vi.importActual<typeof import('$/api/stats')>('$/api/stats');
@@ -32,6 +39,14 @@ vi.mock('$/api/stats', async () => {
     getEnvErrorNodes: (env: string, days?: number) => mockGetEnvErrorNodes(env, days),
   };
 });
+
+vi.mock('$/api/queries', () => ({
+  listQueries: (...args: unknown[]) => mockListQueries(...(args as [])),
+}));
+
+vi.mock('$/api/carves', () => ({
+  listCarves: (...args: unknown[]) => mockListCarves(...(args as [])),
+}));
 
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
@@ -111,6 +126,37 @@ function makeTileSeries(overrides: Partial<NodeTileSeries> = {}): NodeTileSeries
   };
 }
 
+function makeWorkloadItem(overrides: Partial<DistributedQuery> = {}): DistributedQuery {
+  return {
+    id: 1,
+    created_at: new Date(Date.now() - 10 * 60_000).toISOString(),
+    updated_at: new Date().toISOString(),
+    name: 'incident-network-connections',
+    creator: 'admin',
+    query: 'SELECT * FROM process_open_sockets;',
+    expected: 12,
+    executions: 9,
+    errors: 0,
+    active: true,
+    hidden: false,
+    protected: false,
+    completed: false,
+    deleted: false,
+    expired: false,
+    type: 'query',
+    path: '',
+    environment_id: 1,
+    extra_data: '',
+    expiration: '',
+    target: 'all',
+    ...overrides,
+  };
+}
+
+function pagedWorkload(items: DistributedQuery[]) {
+  return { items, page: 1, page_size: items.length, total_items: items.length, total_pages: 1 };
+}
+
 // ---------------------------------------------------------------------------
 // Test harness: wrap DashboardPage in a minimal router + QueryClient
 // ---------------------------------------------------------------------------
@@ -175,6 +221,8 @@ describe('DashboardPage', () => {
     vi.clearAllMocks();
     mockGetEnvActivityTiles.mockResolvedValue(makeTileSeries());
     mockGetEnvErrorNodes.mockResolvedValue([]);
+    mockListQueries.mockResolvedValue(pagedWorkload([]));
+    mockListCarves.mockResolvedValue(pagedWorkload([]));
   });
 
   afterEach(() => {
@@ -211,7 +259,7 @@ describe('DashboardPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument(),
     );
-    expect(screen.getByText(/overview/)).toBeInTheDocument();
+    expect(screen.getByText(/prod · osquery activity within the last 24 hours/)).toBeInTheDocument();
   });
 
   it('renders KPI card labels from the stats response', async () => {
@@ -222,7 +270,39 @@ describe('DashboardPage', () => {
 
     expect(screen.getByText('Inactive ≥ 72h')).toBeInTheDocument();
     expect(screen.getByText('Active Queries')).toBeInTheDocument();
-    expect(screen.getByText('Forensic Carves')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Forensic Carves' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Operational workload' })).toBeInTheDocument();
+    expect(screen.getByText('Executing')).toBeInTheDocument();
+    expect(screen.getByText('In flight')).toBeInTheDocument();
+  });
+
+  it('uses the card whitespace for query progress and a recent carve shortcut', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    mockListQueries.mockResolvedValue(pagedWorkload([
+      makeWorkloadItem(),
+    ]));
+    mockListCarves.mockResolvedValue(pagedWorkload([
+      makeWorkloadItem({
+        id: 2,
+        name: 'collect-suspicious-binary',
+        query: '/tmp/update-agent',
+        path: '/tmp/update-agent',
+        expected: 2,
+        executions: 1,
+        type: 'carve',
+        carve_status: 'ACTIVE',
+      }),
+    ]));
+
+    renderWithProviders(makeTestRouter());
+
+    const workload = await screen.findByRole('group', { name: 'Operational workload' });
+    expect(within(workload).getByText('Query in progress')).toBeInTheDocument();
+    expect(within(workload).getByText('Latest carve')).toBeInTheDocument();
+    expect(await within(workload).findByRole('meter', { name: 'Query progress, 75% complete' })).toBeInTheDocument();
+    expect(await within(workload).findByRole('meter', { name: 'Carve progress, 50% complete' })).toBeInTheDocument();
+    expect(within(workload).getByRole('link', { name: /incident-network-connections/i })).toBeInTheDocument();
+    expect(within(workload).getByRole('link', { name: /collect-suspicious-binary/i })).toBeInTheDocument();
   });
 
   // The tile replaced a "Failed enrolls" counter that read the audit log.
@@ -289,34 +369,28 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(screen.getByText('Errors')).toBeInTheDocument());
   });
 
-  it('draws the errors line in the activity chart', async () => {
+  it('includes reported errors in the activity chart', async () => {
     mockGetStats.mockResolvedValue(makeStatsResponse());
     mockGetEnvActivityTiles.mockResolvedValue(
       makeTileSeries({ status_error: [0, 2, 0, 5] }),
     );
     renderWithProviders(makeTestRouter());
 
-    const chart = await screen.findByRole('img', {
-      name: /Node activity by category/i,
-    });
-
-    // The chart element exists before the tiles query resolves, so wait on
-    // the drawn data rather than on the element — every path is d="" until
-    // the series arrives.
-    await waitFor(() => {
-      const errorLine = chart.querySelector('path[stroke="#ff4d4f"]');
-      expect(errorLine?.getAttribute('d')).toBeTruthy();
-    });
-
-    // One line per category, errors included and styled like the rest.
-    const strokes = Array.from(chart.querySelectorAll('path')).map((p) =>
-      p.getAttribute('stroke'),
+    const chart = await screen.findByRole(
+      'img',
+      { name: /Node activity by category/i },
+      // ActivityLineChart is intentionally code-split. A busy CI worker can
+      // take longer than Testing Library's one-second default to resolve the
+      // lazy module even though the same import is effectively instant in a
+      // local run.
+      { timeout: 5_000 },
     );
-    expect(strokes).toContain('#ff4d4f');
-    expect(chart.querySelectorAll('circle')).toHaveLength(0);
 
-    // And it is recolourable like every other line.
-    expect(screen.getByLabelText('error color')).toBeInTheDocument();
+    // BKLiT's responsive plot intentionally does not lay out in jsdom, so
+    // verify the chart's accessible series contract through its legend.
+    expect(chart).toHaveAccessibleName(/including reported errors/i);
+    const errorColor = screen.getByLabelText('Change Reported errors color');
+    expect(errorColor).toHaveValue('#ff4d4f');
   });
 
   it('uses the backend stats threshold for inactive labeling', async () => {

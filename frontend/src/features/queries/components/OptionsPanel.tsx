@@ -21,7 +21,7 @@ export function OptionsPanel({ expHours, onExpChange, hidden, onHiddenChange }: 
       <div>
         <label
           htmlFor="exp-select"
-          className="block text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1.5"
+          className="block text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1.5"
         >
           Expiration
         </label>
@@ -35,7 +35,7 @@ export function OptionsPanel({ expHours, onExpChange, hidden, onHiddenChange }: 
                 onClick={() => onExpChange(opt.value)}
                 aria-pressed={active}
                 className={cn(
-                  'px-2 py-1 text-[11px] font-medium rounded-md border transition-colors duration-[120ms]',
+                  'px-2 py-1 text-xs font-medium rounded-md border transition-colors duration-[120ms]',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   active
                     ? 'bg-[color:var(--signal)]/12 text-[color:var(--signal-bright,var(--signal))] border-[color:var(--signal)]/40'
@@ -58,7 +58,7 @@ export function OptionsPanel({ expHours, onExpChange, hidden, onHiddenChange }: 
         />
         <div>
           <span className="text-xs text-[color:var(--text-1)]">Hidden query</span>
-          <p className="text-[10px] text-[color:var(--text-3)] leading-snug mt-0.5">
+          <p className="text-xs text-[color:var(--text-3)] leading-snug mt-0.5">
             Visible only in the hidden-active / hidden-completed tabs.
           </p>
         </div>

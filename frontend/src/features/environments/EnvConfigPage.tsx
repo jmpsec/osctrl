@@ -22,6 +22,8 @@ import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
 import { DocsLink } from '$/components/atoms/DocsLink';
 import { AssembledConfigCard } from '$/features/enrollment/AssembledConfigCard';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 
 type SectionKey = 'options' | 'schedule' | 'packs' | 'decorators' | 'atc' | 'flags';
 type PostureScheduleEntry = {
@@ -291,7 +293,7 @@ export function EnvConfigPage() {
         </span>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+          <span className="text-xs text-[color:var(--text-3)] tabular-nums">
             {dirty.size > 0 ? `${dirty.size} unsaved section${dirty.size === 1 ? '' : 's'}` : 'all sections saved'}
           </span>
           <button
@@ -314,7 +316,7 @@ export function EnvConfigPage() {
             onClick={() => saveAll.mutate()}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -428,12 +430,8 @@ export function EnvConfigPage() {
                   {label}
                 </h2>
                 <DocsLink href={docsUrl} label={`${label.toLowerCase()} docs`} />
-                <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">{help}</p>
-                {isDirty && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
-                    pending
-                  </span>
-                )}
+                <p className="text-xs text-[color:var(--text-3)] truncate flex-1">{help}</p>
+                {isDirty && <StatusBadge variant="warning" label="Pending" />}
                 <button
                   type="button"
                   disabled={!isDirty}
@@ -441,7 +439,7 @@ export function EnvConfigPage() {
                     setDiffsOpen((s) => ({ ...s, [key]: !s[key] }))
                   }
                   className={cn(
-                    'text-[10px] px-2 py-0.5 rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
+                    'text-xs px-2 py-0.5 rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
                     'disabled:opacity-40 disabled:cursor-not-allowed',
                   )}
                 >
@@ -452,8 +450,8 @@ export function EnvConfigPage() {
                   disabled={!isDirty || saveOne.isPending}
                   onClick={() => saveOne.mutate({ key, value: after })}
                   className={cn(
-                    'text-[10px] px-2 py-0.5 rounded font-medium',
-                    'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+                    'text-xs px-2 py-0.5 rounded font-medium',
+                    'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
                     'disabled:opacity-40 disabled:cursor-not-allowed',
                   )}
                 >
@@ -478,13 +476,13 @@ export function EnvConfigPage() {
               {key === 'schedule' && (
                 <>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">Quick add</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]">Quick add</span>
                     {postureEnabled && (
                       <button
                         type="button"
                         onClick={() => setShowPosturePicker(true)}
                         className={cn(
-                          'px-2.5 py-1 text-[11px] font-medium rounded',
+                          'px-2.5 py-1 text-xs font-medium rounded',
                           'text-[color:var(--signal)] border border-[color:var(--signal)]/30',
                           'hover:bg-[color:var(--signal)]/10 transition-colors',
                         )}
@@ -531,7 +529,7 @@ export function EnvConfigPage() {
               <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-[color:var(--text-2)]">Check frequency</span>
-                  <span className="text-[10px] font-mono-tabular text-[color:var(--signal)]">
+                  <span className="text-xs font-medium text-[color:var(--signal)]">
                     {POSTURE_INTERVALS[postureAggressiveness - 1]?.label ?? 'Daily'}
                   </span>
                 </div>
@@ -550,7 +548,7 @@ export function EnvConfigPage() {
                       type="button"
                       key={p.label}
                       className={cn(
-                        'text-[9px] font-mono-tabular cursor-pointer select-none',
+                        'text-xs font-medium cursor-pointer select-none',
                         postureAggressiveness === i + 1
                           ? 'text-[color:var(--signal)]'
                           : 'text-[color:var(--text-3)] hover:text-[color:var(--text-2)]',
@@ -561,7 +559,7 @@ export function EnvConfigPage() {
                     </button>
                   ))}
                 </div>
-                <p className="mt-1.5 text-[10px] text-[color:var(--text-3)] leading-relaxed">
+                <p className="mt-1.5 text-xs text-[color:var(--text-3)] leading-relaxed">
                   {POSTURE_INTERVALS[postureAggressiveness - 1]?.description}
                 </p>
               </div>
@@ -581,14 +579,18 @@ export function EnvConfigPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-[color:var(--text-1)]">{profile.name}</span>
-                        <span className="text-[9px] font-mono-tabular uppercase tracking-wider px-1.5 py-0.5 rounded bg-[color:var(--bg-2)] text-[color:var(--text-3)] border border-[color:var(--border)]">{profile.platform}</span>
+                        <MetadataBadge>
+                          {profile.platform === 'darwin'
+                            ? 'macOS'
+                            : profile.platform.charAt(0).toUpperCase() + profile.platform.slice(1)}
+                        </MetadataBadge>
                       </div>
-                      <button type="button" onClick={() => applyPostureProfile(profile)} className="px-2 py-1 text-[11px] font-medium rounded text-[color:var(--signal)] hover:bg-[color:var(--signal)]/10 transition-colors" aria-label={`Add ${profile.name} to schedule`}>Add to schedule</button>
+                      <button type="button" onClick={() => applyPostureProfile(profile)} className="px-2 py-1 text-xs font-medium rounded text-[color:var(--signal)] hover:bg-[color:var(--signal)]/10 transition-colors" aria-label={`Add ${profile.name} to schedule`}>Add to schedule</button>
                     </div>
                     <p className="text-xs text-[color:var(--text-3)] mb-2">{profile.description}</p>
                     <div className="flex flex-wrap gap-1">
                       {Object.keys(profile.queries).map((name) => (
-                        <span key={name} className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular bg-[color:var(--bg-2)] text-[color:var(--text-3)] border border-[color:var(--border)]">{name}</span>
+                        <MetadataBadge key={name}>{name}</MetadataBadge>
                       ))}
                     </div>
                   </div>
@@ -701,7 +703,7 @@ function PostureScheduleEditor({
     >
       <header className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)]">
         <h2 className="font-display text-sm font-semibold text-[color:var(--text-1)]">Posture</h2>
-        <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">
+        <p className="text-xs text-[color:var(--text-3)] truncate flex-1">
           Environment posture checks stored in this environment's schedule.
         </p>
         <button
@@ -719,7 +721,7 @@ function PostureScheduleEditor({
               },
             ])
           }
-          className="text-[10px] px-2 py-0.5 rounded text-[color:var(--signal)] hover:bg-[color:var(--signal)]/10"
+          className="text-xs px-2 py-0.5 rounded text-[color:var(--signal)] hover:bg-[color:var(--signal)]/10"
         >
           Add check
         </button>
@@ -728,8 +730,8 @@ function PostureScheduleEditor({
           disabled={saving}
           onClick={saveRows}
           className={cn(
-            'text-[10px] px-2 py-0.5 rounded font-medium',
-            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'text-xs px-2 py-0.5 rounded font-medium',
+            'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
             'disabled:opacity-40 disabled:cursor-not-allowed',
           )}
         >
@@ -752,7 +754,7 @@ function PostureScheduleEditor({
         {rows.map((row, index) => (
           <div key={index} className="p-3 grid gap-3 lg:grid-cols-[150px_minmax(180px,240px)_1fr_90px_110px_80px_auto] items-start">
             <label className="space-y-1">
-              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+              <span className="block text-xs font-medium uppercase tracking-[0.1em] text-[color:var(--text-3)]">
                 Profile
               </span>
               <select
@@ -773,7 +775,7 @@ function PostureScheduleEditor({
               </select>
             </label>
             <label className="space-y-1">
-              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+              <span className="block text-xs font-medium uppercase tracking-[0.1em] text-[color:var(--text-3)]">
                 Query name
               </span>
               <input
@@ -784,7 +786,7 @@ function PostureScheduleEditor({
               />
             </label>
             <label className="space-y-1">
-              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+              <span className="block text-xs font-medium uppercase tracking-[0.1em] text-[color:var(--text-3)]">
                 Query
               </span>
               <textarea
@@ -796,7 +798,7 @@ function PostureScheduleEditor({
               />
             </label>
             <label className="space-y-1">
-              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+              <span className="block text-xs font-medium uppercase tracking-[0.1em] text-[color:var(--text-3)]">
                 Interval
               </span>
               <input
@@ -809,7 +811,7 @@ function PostureScheduleEditor({
               />
             </label>
             <label className="space-y-1">
-              <span className="block text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)]">
+              <span className="block text-xs font-medium uppercase tracking-[0.1em] text-[color:var(--text-3)]">
                 Platform
               </span>
               <input
@@ -832,7 +834,7 @@ function PostureScheduleEditor({
             <button
               type="button"
               onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
-              className="mt-5 text-[10px] px-2 py-1 rounded text-[color:var(--danger)] hover:bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)]"
+              className="mt-5 text-xs px-2 py-1 rounded text-[color:var(--danger)] hover:bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)]"
             >
               Remove
             </button>
@@ -984,7 +986,7 @@ function IntervalsCard({
       <h2 className="font-display text-sm font-semibold text-[color:var(--text-1)] mb-2">
         Pull intervals
       </h2>
-      <p className="text-[10px] text-[color:var(--text-3)] mb-3">
+      <p className="text-xs text-[color:var(--text-3)] mb-3">
         How often each node should poll for config / log / query updates (seconds).
       </p>
       {/* Ranges match the legacy admin's conf.html sliders exactly:
@@ -1039,7 +1041,7 @@ function IntervalsCard({
           onClick={() => mutation.mutate()}
           className={cn(
             'px-3 py-1.5 text-xs font-medium rounded-md',
-            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
             'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
           )}
         >
@@ -1086,7 +1088,7 @@ function IntervalField({
         className="block text-xs font-medium text-[color:var(--text-2)] mb-1.5"
       >
         {label}:{' '}
-        <span className="font-mono-tabular font-semibold text-[color:var(--text-1)] tabular-nums">
+        <span className="font-semibold text-[color:var(--text-1)] tabular-nums">
           {value}
         </span>{' '}
         <span className="text-[color:var(--text-3)]">seconds</span>
@@ -1107,7 +1109,7 @@ function IntervalField({
         aria-valuemax={max}
         aria-valuenow={value}
       />
-      <div className="flex items-center justify-between mt-1 text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums">
+      <div className="flex items-center justify-between mt-1 text-xs text-[color:var(--text-3)] tabular-nums">
         <span>{min}</span>
         <input
           type="number"
@@ -1117,9 +1119,9 @@ function IntervalField({
           value={value}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
           className={cn(
-            'w-16 px-1.5 py-0.5 text-[10px] rounded',
+            'w-16 px-1.5 py-0.5 text-xs rounded',
             'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-            'text-[color:var(--text-1)] font-mono-tabular text-center tabular-nums',
+            'text-[color:var(--text-1)] text-center tabular-nums',
             'focus:outline focus:outline-1 focus:outline-[color:var(--signal)]',
           )}
           aria-label={`${label} numeric value`}
@@ -1172,7 +1174,7 @@ function ExpirationCard({
       <h2 className="font-display text-sm font-semibold text-[color:var(--text-1)] mb-2">
         Enrollment lifecycle
       </h2>
-      <p className="text-[10px] text-[color:var(--text-3)] mb-3">
+      <p className="text-xs text-[color:var(--text-3)] mb-3">
         Manage the enroll / remove link expiration for this environment.
       </p>
       <div className="grid grid-cols-2 gap-2">
@@ -1188,10 +1190,10 @@ function ExpirationCard({
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
-            <div className="text-xs font-semibold text-[color:var(--text-1)] font-mono-tabular">
+            <div className="text-xs font-semibold text-[color:var(--text-1)]">
               {pending === a.value ? `${a.label}…` : a.label}
             </div>
-            <div className="text-[10px] text-[color:var(--text-3)] mt-0.5">{a.description}</div>
+            <div className="text-xs text-[color:var(--text-3)] mt-0.5">{a.description}</div>
           </button>
         ))}
       </div>
@@ -1277,7 +1279,7 @@ function AddOptionForm({
   return (
     <div className="px-3 py-2 border-b border-[color:var(--border)] bg-[color:var(--bg-1)]">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mr-1">
+        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)] mr-1">
           Add option
         </span>
         <input
@@ -1321,7 +1323,7 @@ function AddOptionForm({
           onClick={handleAdd}
           className={cn(
             'text-xs px-3 py-1 rounded font-medium',
-            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
             'transition-colors',
           )}
         >
@@ -1329,7 +1331,7 @@ function AddOptionForm({
         </button>
       </div>
       {err && (
-        <p role="alert" className="mt-1.5 text-[11px] text-[color:var(--danger)]">
+        <p role="alert" className="mt-1.5 text-xs text-[color:var(--danger)]">
           {err}
         </p>
       )}
@@ -1403,7 +1405,7 @@ function AddScheduledQueryForm({
   return (
     <div className="px-3 py-2 border-b border-[color:var(--border)] bg-[color:var(--bg-1)] space-y-2">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]">
           Add scheduled query
         </span>
       </div>
@@ -1414,7 +1416,7 @@ function AddScheduledQueryForm({
           onChange={(e) => setName(e.target.value)}
           placeholder="query_name"
           className={cn(
-            'w-[180px] px-2 py-1 rounded text-xs font-mono-tabular',
+            'w-[180px] px-2 py-1 rounded text-xs',
             'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
@@ -1430,7 +1432,7 @@ function AddScheduledQueryForm({
             'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
           )}
         />
-        <label className="flex items-center gap-1 text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+        <label className="flex items-center gap-1 text-xs text-[color:var(--text-3)]">
           interval
           <input
             type="number"
@@ -1438,7 +1440,7 @@ function AddScheduledQueryForm({
             value={interval}
             onChange={(e) => setInterval(Number(e.target.value))}
             className={cn(
-              'w-16 px-2 py-1 rounded text-xs font-mono-tabular text-center tabular-nums',
+              'w-16 px-2 py-1 rounded text-xs text-center tabular-nums',
               'bg-[color:var(--bg-2)] border border-[color:var(--border)] text-[color:var(--text-1)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
@@ -1450,7 +1452,7 @@ function AddScheduledQueryForm({
           onClick={handleAdd}
           className={cn(
             'text-xs px-3 py-1 rounded font-medium',
-            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
             'transition-colors',
           )}
         >
@@ -1458,7 +1460,7 @@ function AddScheduledQueryForm({
         </button>
       </div>
       {err && (
-        <p role="alert" className="text-[11px] text-[color:var(--danger)]">
+        <p role="alert" className="text-xs text-[color:var(--danger)]">
           {err}
         </p>
       )}

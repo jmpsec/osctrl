@@ -145,7 +145,7 @@ export function MFAPanel() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="text-xs font-semibold text-[color:var(--text-1)]">Authenticator app</h3>
-            <p className="text-[11px] text-[color:var(--text-3)]">
+            <p className="text-xs text-[color:var(--text-3)]">
               {status.totp_enabled ? 'Enabled' : 'Not set up — codes from Google Authenticator, 1Password, Aegis…'}
             </p>
           </div>
@@ -193,10 +193,10 @@ export function MFAPanel() {
                 className="mx-auto"
               />
             )}
-            <p className="text-[11px] text-[color:var(--text-3)] text-center">
+            <p className="text-xs text-[color:var(--text-3)] text-center">
               Scan it, or enter this key by hand:
             </p>
-            <code className="block font-mono-tabular text-[11px] text-center break-all text-[color:var(--text-1)]">
+            <code className="block font-mono-tabular text-xs text-center break-all text-[color:var(--text-1)]">
               {setup.secret}
             </code>
             <div>
@@ -235,7 +235,7 @@ export function MFAPanel() {
       <div className="space-y-2">
         <div>
           <h3 className="text-xs font-semibold text-[color:var(--text-1)]">Security keys and passkeys</h3>
-          <p className="text-[11px] text-[color:var(--text-3)]">
+          <p className="text-xs text-[color:var(--text-3)]">
             {status.webauthn_available
               ? 'Hardware keys (YubiKey), Touch ID, Windows Hello or a passkey in your password manager.'
               : 'Unavailable — the server has no WebAuthn relying party configured.'}
@@ -248,7 +248,7 @@ export function MFAPanel() {
               <li key={cred.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-xs text-[color:var(--text-1)]">{cred.name}</p>
-                  <p className="text-[10px] text-[color:var(--text-3)] font-mono-tabular">
+                  <p className="text-xs text-[color:var(--text-3)] font-mono-tabular">
                     added {formatRelative(cred.created_at)}
                     {cred.last_used_at ? ` · last used ${formatRelative(cred.last_used_at)}` : ' · never used'}
                   </p>
@@ -299,7 +299,7 @@ export function MFAPanel() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-xs font-semibold text-[color:var(--text-1)]">Recovery codes</h3>
-          <p className="text-[11px] text-[color:var(--text-3)]">
+          <p className="text-xs text-[color:var(--text-3)]">
             {status.recovery_codes_left > 0
               ? `${status.recovery_codes_left} unused`
               : 'None — generate a set so a lost device does not lock you out.'}
@@ -374,7 +374,7 @@ export function MFAPanel() {
           </p>
           <ul className="grid grid-cols-2 gap-1">
             {codes.map((c) => (
-              <li key={c} className="font-mono-tabular text-[11px] text-[color:var(--text-1)]">
+              <li key={c} className="font-mono-tabular text-xs text-[color:var(--text-1)]">
                 {c}
               </li>
             ))}

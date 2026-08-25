@@ -6,10 +6,15 @@ import { z } from 'zod';
 import { useRouter } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '$/lib/cn';
+import { CircleAlert, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
+import { Logo } from '$/components/atoms/Logo';
+import { ThemeToggle } from '$/components/chrome/ThemeToggle';
 import { login, listAuthMethods } from '$/api/client';
+import { LoginIsometricScene } from './LoginIsometricScene';
+import './login-visual.css';
 import {
   submitMFACode,
   beginMFAEnrollment,
@@ -18,9 +23,6 @@ import {
   isWebAuthnAvailable,
   type MFATOTPSetup,
 } from '$/api/mfa';
-import { toggleTheme, getInitialTheme } from '$/lib/theme';
-import type { Theme } from '$/lib/design-tokens';
-import './login-cyber-grid.css';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -37,21 +39,76 @@ interface MFAState {
   setup?: MFATOTPSetup;
 }
 
+function AuthIntro({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h1 className="max-w-[15ch] text-balance font-display text-3xl font-semibold leading-[1.08] tracking-tight text-[color:var(--text-1)]">
+        {title}
+      </h1>
+      <p className="max-w-[42ch] text-pretty text-base leading-6 text-[color:var(--text-2)]">{description}</p>
+    </div>
+  );
+}
+
+function InlineError({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-2 rounded-lg bg-[color:var(--danger)]/8 p-3 text-base text-[color:var(--danger)] ring-1 ring-inset ring-[color:var(--danger)]/20 sm:text-sm"
+    >
+      <CircleAlert size={16} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
+      <p className="min-w-0 text-pretty">{children}</p>
+    </div>
+  );
+}
+
+function ProductVisualPanel() {
+  return (
+    <aside
+      className="login-visual-panel relative hidden min-w-0 overflow-hidden rounded-xl lg:flex lg:flex-col"
+      aria-label="osctrl fleet operations"
+    >
+      <div className="relative z-[2] flex items-center justify-between gap-4 py-6 pl-7 pr-20 text-sm text-[color:var(--login-scene-muted)] xl:py-8 xl:pl-9 xl:pr-24">
+        <div className="flex items-center gap-2 font-medium">
+          <ShieldCheck size={16} strokeWidth={1.8} aria-hidden />
+          Performant OSQuery Fleet Management
+        </div>
+        <div className="flex items-center gap-2 text-xs font-medium">
+          <span className="size-1.5 rounded-full bg-[color:var(--login-scene-success)]" aria-hidden />
+          Environment aware
+        </div>
+      </div>
+
+      <div className="absolute inset-0 flex items-center justify-center px-2 pb-14 pt-12 xl:px-8">
+        <LoginIsometricScene />
+      </div>
+
+      <div className="relative z-[2] mt-auto max-w-xl px-7 pb-7 text-[color:var(--login-scene-muted)] xl:px-9 xl:pb-9">
+        <p className="text-sm font-medium">osquery fleet operations</p>
+        <h2 className="mt-2 max-w-[20ch] text-balance font-display text-2xl font-semibold leading-tight tracking-tight xl:text-3xl">
+          See the whole environment. Act on one endpoint.
+        </h2>
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium opacity-80">
+          <span>Observe</span>
+          <span>Query</span>
+          <span>Investigate</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export function LoginPage() {
   usePageTitle('Login');
   const [serverError, setServerError] = useState<string | null>(null);
   const [mfa, setMfa] = useState<MFAState | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [mfaBusy, setMfaBusy] = useState(false);
   // Shown once, after a forced enrollment: the only time these exist.
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
-  const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
   const router = useRouter();
-
-  function onToggleTheme() {
-    setTheme(toggleTheme());
-  }
 
   const { data: authMethods } = useQuery({
     queryKey: ['auth-methods'],
@@ -143,347 +200,271 @@ export function LoginPage() {
   }
 
   return (
-    <div
-      className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden"
-      style={{ background: 'var(--bg-0)' }}
-    >
-      {/* ── Cyberpunk login background ──
-          1. Full-page circuit — the circuit-board SVG tiled across
-             the entire viewport as a static background texture. No
-             movement, just a quiet circuit wall behind everything.
-          2. Static grid floor — a perspective grid at the bottom of
-             the viewport for geometric depth. No scroll animation.
-          The login card floats above with a layered teal glow
-          (login-card-glow) for a 3D lit-from-below presence.
-          Only the glow pulse respects prefers-reduced-motion. */}
-      <div aria-hidden className="login-cyber-circuit" />
-      <div aria-hidden className="login-cyber-floor" />
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(900px 600px at 50% 45%, rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.10) 0%, transparent 55%)',
-          zIndex: 1,
-        }}
-      />
-
-      {/* Theme toggle — fixed top-right; available pre-auth so operators
-          who land on a system in the wrong theme can flip without
-          logging in. Hugs the same visual language as the rest of the
-          SPA (border + bg-2 hover + teal focus ring). */}
-      <button
-        type="button"
-        onClick={onToggleTheme}
-        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-        className={cn(
-          'absolute top-4 right-4 z-10',
-          'inline-flex items-center justify-center w-9 h-9 rounded-md',
-          'bg-[color:var(--bg-1)]/80 backdrop-blur border border-[color:var(--border)]',
-          'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
-          'hover:border-[color:var(--signal)] transition-colors duration-150',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-          'focus-visible:outline-[color:var(--signal)]',
-        )}
-      >
-        {theme === 'dark' ? (
-          // sun (switch to light)
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="12" cy="12" r="4" />
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-          </svg>
-        ) : (
-          // moon (switch to dark)
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-          </svg>
-        )}
-      </button>
-
-      <div className="login-card-glow w-full max-w-sm">
-        <div
-          className={cn(
-            'relative z-5',
-            'bg-[color:var(--bg-1)] border border-[color:var(--border)]',
-            'rounded-2xl p-8',
-            'shadow-[0_10px_28px_rgba(0,0,0,0.32)]'
-          )}
-        >
-        {/* Wordmark */}
-        <div className="flex flex-col items-center mb-8">
-          {/* Original osctrl tower mark — two PNG variants ship, light
-              and dark. .osctrl-logo + the inner show/hide rules in
-              base.css pick the right one per theme. Same pattern as
-              the Logo atom uses for the in-app SideNav. */}
-          <span
-            className="osctrl-logo"
-            role="img"
-            aria-label="osctrl logo"
-            style={{ display: 'inline-block', width: 48, height: 48 }}
-          >
-            <img
-              src="/img/osctrl-logo.png"
-              alt=""
-              className="osctrl-logo-light"
-              style={{ display: 'block', width: '100%', height: '100%' }}
-            />
-            <img
-              src="/img/osctrl-logo-dark.png"
-              alt=""
-              className="osctrl-logo-dark"
-              style={{ display: 'block', width: '100%', height: '100%' }}
-            />
-          </span>
-          <div className="mt-3 font-wordmark text-2xl font-bold tracking-tight text-[color:var(--text-1)]">
-            osctrl
-          </div>
-          <p className="mt-1 text-xs text-[color:var(--text-3)] font-mono-tabular uppercase tracking-[0.1em]">
-            Osquery Control
-          </p>
+    <div className="isolate min-h-dvh overflow-x-hidden bg-[color:var(--bg-2)] text-[color:var(--text-1)]">
+      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-6 py-5 sm:px-9 sm:py-7">
+        <div className="flex items-center gap-2.5">
+          <Logo size={28} decorative />
+          <div className="font-wordmark text-lg font-semibold text-[color:var(--text-1)]">osctrl</div>
         </div>
+        <div className="rounded-lg bg-[color:var(--bg-1)] ring-1 ring-inset ring-[color:var(--border)]">
+          <ThemeToggle />
+        </div>
+      </header>
 
-        {recoveryCodes ? (
-          /* Forced enrollment just completed. The codes exist nowhere else,
-             so the session waits behind an explicit acknowledgement. */
-          <div className="space-y-4">
-            <div>
-              <h1 className="text-sm font-semibold text-[color:var(--text-1)]">Save your recovery codes</h1>
-              <p className="mt-1 text-xs text-[color:var(--text-3)]">
-                Each code signs you in once if you lose your authenticator. They are shown only now.
-              </p>
-            </div>
-            <ul className="grid grid-cols-2 gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
-              {recoveryCodes.map((code) => (
-                <li key={code} className="font-mono-tabular text-xs text-[color:var(--text-1)]">
-                  {code}
-                </li>
-              ))}
-            </ul>
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              className="w-full"
-              onClick={() => void router.navigate({ to: '/_app' })}
-            >
-              I have saved them — continue
-            </Button>
-          </div>
-        ) : mfa ? (
-          <form onSubmit={onSubmitMFA} noValidate className="space-y-4">
-            <div>
-              <h1 className="text-sm font-semibold text-[color:var(--text-1)]">
-                {mfa.enrollment ? 'Set up two-factor authentication' : 'Two-factor authentication'}
-              </h1>
-              <p className="mt-1 text-xs text-[color:var(--text-3)]">
-                {mfa.enrollment
-                  ? 'This deployment requires a second factor. Scan the code with an authenticator app, then enter the code it shows.'
-                  : useRecoveryCode
-                    ? 'Enter one of the recovery codes you saved when you enrolled.'
-                    : 'Enter the code from your authenticator app.'}
-              </p>
-            </div>
-
-            {mfa.enrollment && mfa.setup && (
-              <div className="flex flex-col items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
-                {mfa.setup.qr && (
-                  <img src={mfa.setup.qr} alt="Authenticator enrollment QR code" width={176} height={176} />
-                )}
-                <p className="text-[0.65rem] text-[color:var(--text-3)] text-center">
-                  Can&apos;t scan? Enter this key manually:
-                </p>
-                <code className="font-mono-tabular text-[0.7rem] text-[color:var(--text-1)] break-all text-center">
-                  {mfa.setup.secret}
-                </code>
-              </div>
-            )}
-
-            <div>
-              <Label htmlFor="mfa-code">{useRecoveryCode ? 'Recovery code' : 'Authentication code'}</Label>
-              <Input
-                id="mfa-code"
-                name="mfa-code"
-                type="text"
-                inputMode={useRecoveryCode ? 'text' : 'numeric'}
-                autoComplete="one-time-code"
-                autoFocus
-                value={mfaCode}
-                onChange={(e) => setMfaCode(e.target.value)}
-              />
-            </div>
-
-            {serverError && (
-              <div className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 px-3 py-2.5 text-sm text-[color:var(--danger)]">
-                {serverError}
-              </div>
-            )}
-
-            <Button type="submit" variant="primary" size="lg" disabled={mfaBusy} className="w-full">
-              {mfaBusy ? 'Verifying…' : mfa.enrollment ? 'Confirm and sign in' : 'Verify'}
-            </Button>
-
-            {!mfa.enrollment && mfa.methods.includes('webauthn') && isWebAuthnAvailable() && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="lg"
-                disabled={mfaBusy}
-                className="w-full"
-                onClick={() => void onSecurityKey()}
-              >
-                Use a security key or passkey
-              </Button>
-            )}
-
-            <div className="flex items-center justify-between text-xs">
-              {!mfa.enrollment && mfa.methods.includes('recovery') ? (
-                <button
-                  type="button"
-                  className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)] underline"
-                  onClick={() => {
-                    setUseRecoveryCode((v) => !v);
-                    setMfaCode('');
-                    setServerError(null);
-                  }}
-                >
-                  {useRecoveryCode ? 'Use authenticator code' : 'Use a recovery code'}
-                </button>
+      <main className="grid min-h-dvh gap-3 p-3 lg:grid-cols-[minmax(420px,0.86fr)_minmax(560px,1.14fr)]">
+        <section className="flex min-w-0 items-center px-3 pb-12 pt-28 sm:px-9 lg:px-12 xl:px-16" aria-label="Sign in">
+            <div className="mx-auto flex w-full max-w-[420px] flex-col gap-8">
+              {recoveryCodes ? (
+                <AuthIntro
+                  title="Save your recovery codes"
+                  description="Each code signs you in once if you lose your authenticator. They are shown only now."
+                />
+              ) : mfa ? (
+                <AuthIntro
+                  title={mfa.enrollment ? 'Set up two-factor authentication' : 'Verify your identity'}
+                  description={
+                    mfa.enrollment
+                      ? 'Scan the code with an authenticator app, then enter the verification code it shows.'
+                      : useRecoveryCode
+                        ? 'Enter one of the recovery codes you saved when you enrolled.'
+                        : 'Enter the current code from your authenticator app.'
+                  }
+                />
               ) : (
-                <span />
+                <AuthIntro title="Welcome back" description="Sign in to continue to your osquery control workspace." />
               )}
-              <button
-                type="button"
-                className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)] underline"
-                onClick={restart}
-              >
-                Back to sign in
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-            {/* Username */}
-            <div>
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                autoComplete="username"
-                autoFocus
-                {...register('username')}
-                error={errors.username?.message}
-              />
-              {errors.username && (
-                <p className="mt-1 text-xs text-[color:var(--danger)] flex items-center gap-1">
-                  <svg aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {errors.username.message}
-                </p>
-              )}
-            </div>
 
-            {/* Password */}
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                {...register('password')}
-                error={errors.password?.message}
-              />
-              {errors.password && (
-                <p className="mt-1 text-xs text-[color:var(--danger)] flex items-center gap-1">
-                  <svg aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
+              {recoveryCodes ? (
+                /* Forced enrollment just completed. The codes exist nowhere else,
+                 so the session waits behind an explicit acknowledgement. */
+                <div className="flex flex-col gap-5">
+                  <ul
+                    role="list"
+                    className="grid grid-cols-2 gap-2 rounded-lg bg-[color:var(--bg-2)] p-4 ring-1 ring-inset ring-[color:var(--border)]"
+                  >
+                    {recoveryCodes.map((code) => (
+                      <li key={code} className="font-mono-tabular text-sm text-[color:var(--text-1)]">
+                        {code}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
+                    className="h-11 w-full sm:h-10"
+                    onClick={() => void router.navigate({ to: '/_app' })}
+                  >
+                    I have saved them — continue
+                  </Button>
+                </div>
+              ) : mfa ? (
+                <form onSubmit={onSubmitMFA} noValidate className="flex flex-col gap-5">
+                  {mfa.enrollment && mfa.setup && (
+                    <div className="flex flex-col items-center gap-3 rounded-lg bg-[color:var(--bg-2)] p-4 ring-1 ring-inset ring-[color:var(--border)]">
+                      {mfa.setup.qr && (
+                        <div className="rounded-lg bg-white p-2 ring-1 ring-black/5">
+                          <img src={mfa.setup.qr} alt="Authenticator enrollment QR code" width={176} height={176} />
+                        </div>
+                      )}
+                      <p className="text-center text-base text-[color:var(--text-2)] sm:text-sm">
+                        Can&apos;t scan? Enter this key manually.
+                      </p>
+                      <code className="break-all text-center font-mono-tabular text-sm text-[color:var(--text-1)]">
+                        {mfa.setup.secret}
+                      </code>
+                    </div>
+                  )}
 
-            {/* Server error */}
-            {serverError && (
-              <div className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 px-3 py-2.5 text-sm text-[color:var(--danger)] flex items-start gap-2">
-                <svg aria-hidden="true" className="w-4 h-4 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="15" y1="9" x2="9" y2="15" />
-                  <line x1="9" y1="9" x2="15" y2="15" />
-                </svg>
-                {serverError}
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="mfa-code" className="mb-0 text-base sm:text-sm">
+                      {useRecoveryCode ? 'Recovery code' : 'Authentication code'}
+                    </Label>
+                    <Input
+                      id="mfa-code"
+                      name="mfa-code"
+                      type="text"
+                      inputMode={useRecoveryCode ? 'text' : 'numeric'}
+                      autoComplete="one-time-code"
+                      autoFocus
+                      value={mfaCode}
+                      onChange={(event) => setMfaCode(event.target.value)}
+                      className={cn(
+                        'h-11 rounded-lg px-3 text-base sm:h-10 sm:text-sm',
+                        !useRecoveryCode && 'text-center tracking-[0.18em] tabular-nums',
+                      )}
+                    />
+                  </div>
+
+                  {serverError && <InlineError>{serverError}</InlineError>}
+
+                  <Button type="submit" variant="primary" size="lg" disabled={mfaBusy} className="h-11 w-full sm:h-10">
+                    {mfaBusy ? 'Verifying…' : mfa.enrollment ? 'Confirm and sign in' : 'Verify'}
+                  </Button>
+
+                  {!mfa.enrollment && mfa.methods.includes('webauthn') && isWebAuthnAvailable() && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="lg"
+                      disabled={mfaBusy}
+                      className="h-11 w-full sm:h-10"
+                      onClick={() => void onSecurityKey()}
+                    >
+                      <KeyRound size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
+                      Use a security key or passkey
+                    </Button>
+                  )}
+
+                  <div className="flex items-center justify-between gap-3 text-base sm:text-sm">
+                    {!mfa.enrollment && mfa.methods.includes('recovery') ? (
+                      <button
+                        type="button"
+                        className="rounded text-left font-medium text-[color:var(--text-link)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
+                        onClick={() => {
+                          setUseRecoveryCode((value) => !value);
+                          setMfaCode('');
+                          setServerError(null);
+                        }}
+                      >
+                        {useRecoveryCode ? 'Use authenticator code' : 'Use a recovery code'}
+                      </button>
+                    ) : (
+                      <div aria-hidden />
+                    )}
+                    <button
+                      type="button"
+                      className="shrink-0 rounded font-medium text-[color:var(--text-2)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
+                      onClick={restart}
+                    >
+                      Back to sign in
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="username" className="mb-0 text-base sm:text-sm">
+                        Username
+                      </Label>
+                      <Input
+                        id="username"
+                        type="text"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        autoFocus
+                        {...register('username')}
+                        error={errors.username?.message}
+                        className="h-11 rounded-lg px-3 text-base sm:h-10 sm:text-sm"
+                      />
+                      {errors.username && (
+                        <p className="flex items-start gap-1.5 text-base text-[color:var(--danger)] sm:text-sm">
+                          <CircleAlert size={16} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
+                          {errors.username.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="password" className="mb-0 text-base sm:text-sm">
+                        Password
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          autoComplete="current-password"
+                          {...register('password')}
+                          error={errors.password?.message}
+                          className="h-11 rounded-lg py-2 pr-11 pl-3 text-base sm:h-10 sm:text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((visible) => !visible)}
+                          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-[color:var(--text-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 -outline-offset-2 focus-visible:outline-[color:var(--signal)]"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? (
+                            <EyeOff size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
+                          ) : (
+                            <Eye size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
+                          )}
+                          <span
+                            className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-x-1/2 -translate-y-1/2 pointer-fine:hidden"
+                            aria-hidden
+                          />
+                        </button>
+                      </div>
+                      {errors.password && (
+                        <p className="flex items-start gap-1.5 text-base text-[color:var(--danger)] sm:text-sm">
+                          <CircleAlert size={16} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
+                          {errors.password.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {serverError && <InlineError>{serverError}</InlineError>}
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    disabled={isSubmitting}
+                    className="h-11 w-full sm:h-10"
+                  >
+                    {isSubmitting ? 'Signing in…' : 'Sign in'}
+                  </Button>
+
+                  {hasSSO && (
+                    <div className="flex items-center gap-3">
+                      <div className="h-px grow bg-[color:var(--border)]" />
+                      <p className="shrink-0 text-base text-[color:var(--text-2)] sm:text-sm">or continue with</p>
+                      <div className="h-px grow bg-[color:var(--border)]" />
+                    </div>
+                  )}
+                  {oidcMethod && (
+                    <a
+                      href={oidcMethod.loginUrl}
+                      className={cn(
+                        'inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg px-3 text-base font-medium sm:h-10 sm:text-sm',
+                        'bg-[color:var(--bg-1)] text-[color:var(--text-1)] ring-1 ring-inset ring-[color:var(--border)]',
+                        'hover:bg-[color:var(--bg-3)] hover:ring-[color:var(--border-strong)]',
+                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]',
+                      )}
+                    >
+                      <LockKeyhole aria-hidden size={16} strokeWidth={1.8} className="shrink-0" />
+                      Continue with OIDC
+                    </a>
+                  )}
+                  {samlMethod && (
+                    <a
+                      href={samlMethod.loginUrl}
+                      className={cn(
+                        'inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg px-3 text-base font-medium sm:h-10 sm:text-sm',
+                        'bg-[color:var(--bg-1)] text-[color:var(--text-1)] ring-1 ring-inset ring-[color:var(--border)]',
+                        'hover:bg-[color:var(--bg-3)] hover:ring-[color:var(--border-strong)]',
+                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]',
+                      )}
+                    >
+                      <LockKeyhole aria-hidden size={16} strokeWidth={1.8} className="shrink-0" />
+                      Continue with SAML
+                    </a>
+                  )}
+                </form>
+              )}
+
+              <div className="flex items-start gap-2 border-t border-[color:var(--border)] pt-5 text-base text-[color:var(--text-2)] sm:text-sm">
+                <ShieldCheck size={16} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
+                <p className="text-pretty">Protected by your deployment&apos;s authentication policy.</p>
               </div>
-            )}
+            </div>
+        </section>
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              disabled={isSubmitting}
-              className="w-full mt-2"
-            >
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
-            </Button>
-
-            {hasSSO && (
-              <div className="relative my-4 flex items-center">
-                <div className="flex-grow border-t border-[color:var(--border)]" />
-                <span className="mx-3 text-[0.65rem] uppercase tracking-[0.15em] font-mono-tabular text-[color:var(--text-3)]">
-                  or
-                </span>
-                <div className="flex-grow border-t border-[color:var(--border)]" />
-              </div>
-            )}
-            {oidcMethod && (
-              <a
-                href={oidcMethod.loginUrl}
-                className={cn(
-                  'inline-flex w-full items-center justify-center gap-2',
-                  'px-4 py-2.5 rounded-md text-sm font-medium',
-                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                  'text-[color:var(--text-1)]',
-                  'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
-                  'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
-                  'transition-colors duration-150',
-                )}
-              >
-                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                Continue with OIDC
-              </a>
-            )}
-            {samlMethod && (
-              <a
-                href={samlMethod.loginUrl}
-                className={cn(
-                  'inline-flex w-full items-center justify-center gap-2',
-                  'px-4 py-2.5 rounded-md text-sm font-medium',
-                  'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                  'text-[color:var(--text-1)]',
-                  'hover:bg-[color:var(--bg-1)] hover:border-[color:var(--signal)]',
-                  'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:ring-offset-2 focus:ring-offset-[color:var(--bg-1)]',
-                  'transition-colors duration-150',
-                  oidcMethod && 'mt-2',
-                )}
-              >
-                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                Continue with SAML
-              </a>
-            )}
-          </form>
-        )}
-        </div>
-      </div>
+        <ProductVisualPanel />
+      </main>
     </div>
   );
 }

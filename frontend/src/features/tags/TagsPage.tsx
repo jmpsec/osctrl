@@ -11,6 +11,8 @@ import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { IconPicker, resolveTagIcon } from '$/components/forms/IconPicker';
+import { TagChip } from '$/components/data/TagChip';
+import { Button } from '$/components/atoms/Button';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -142,23 +144,18 @@ export function TagsPage() {
         </p>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => setModal({ kind: 'create' })}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
-              'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            )}
           >
             New tag
-          </button>
+          </Button>
 
           {isFetching && !isLoading && (
             <span
               aria-live="polite"
               aria-label="Refreshing data"
-              className="text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+              className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
             </span>
@@ -216,7 +213,7 @@ export function TagsPage() {
                       <button
                         type="button"
                         onClick={() => void refetch()}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Retry
                       </button>
@@ -240,7 +237,7 @@ export function TagsPage() {
                       <button
                         type="button"
                         onClick={() => setModal({ kind: 'create' })}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Create your first tag
                       </button>
@@ -272,19 +269,12 @@ export function TagsPage() {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor: `${tag.color || DEFAULT_COLOR}22`,
-                        color: tag.color || DEFAULT_COLOR,
-                      }}
-                    >
-                      {(() => {
-                        const IconComp = resolveTagIcon(tag.icon || DEFAULT_ICON);
-                        return IconComp ? <IconComp className="w-3 h-3" aria-hidden /> : null;
-                      })()}
-                      <span className="font-mono-tabular">{tag.name}</span>
-                    </span>
+                    <TagChip
+                      label={tag.name}
+                      color={tag.color || DEFAULT_COLOR}
+                      Icon={resolveTagIcon(tag.icon || DEFAULT_ICON)}
+                      title={tag.description || tag.name}
+                    />
                   </td>
                   <td className="px-4 py-3 text-[color:var(--text-2)] text-xs">
                     {tag.description || <span className="text-[color:var(--text-3)]">—</span>}
@@ -333,7 +323,7 @@ export function TagsPage() {
             'z-50',
           )}
         >
-          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+          <span className="text-[color:var(--text-2)] text-xs tabular-nums">
             {selectedNames.size} selected
           </span>
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
@@ -494,13 +484,13 @@ function TagFormModal({
             placeholder="e.g. production"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           />
           {mode === 'edit' && (
-            <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+            <p className="mt-1 text-xs text-[color:var(--text-3)]">
               Names can't be changed after creation.
             </p>
           )}
@@ -571,7 +561,7 @@ function TagFormModal({
             disabled={mutation.isPending}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -617,7 +607,7 @@ function DeleteTagModal({
   return (
     <ModalShell title="Delete tag" titleId="tag-delete-modal-title" onClose={onClose}>
       <p className="text-sm text-[color:var(--text-1)]">
-        Delete <strong className="font-mono-tabular">{tag.name}</strong>? Any
+        Delete <strong className="tabular-nums">{tag.name}</strong>? Any
         nodes tagged with this will become untagged. This cannot be undone.
       </p>
 

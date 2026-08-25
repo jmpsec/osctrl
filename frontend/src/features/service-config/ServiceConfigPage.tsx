@@ -19,6 +19,8 @@ import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { formatRelative } from '$/lib/time';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 
 const SERVICES = ['api', 'tls'] as const;
 type Service = (typeof SERVICES)[number];
@@ -733,7 +735,7 @@ export function ServiceConfigPage() {
           <span
             aria-live="polite"
             aria-label="Refreshing data"
-            className="ml-auto text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+            className="ml-auto text-xs text-[color:var(--text-3)]"
           >
             refreshing…
           </span>
@@ -800,7 +802,7 @@ export function ServiceConfigPage() {
               <button
                 type="button"
                 onClick={() => void refetch()}
-                className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
               >
                 Retry
               </button>
@@ -963,14 +965,14 @@ function ConfigSectionCard({
           <SectionIcon name={section.Name} />
           <h2
             id={`config-${section.Name}-heading`}
-            className="font-display text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular"
+            className="font-display text-sm font-semibold text-[color:var(--text-1)]"
           >
             {section.Name}
           </h2>
         </div>
         <span
           className={cn(
-            'px-1.5 py-0.5 rounded text-[10px] font-mono-tabular',
+            'px-1.5 py-0.5 rounded text-xs font-medium',
             section.Source === 'db'
               ? 'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]'
               : 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
@@ -979,32 +981,24 @@ function ConfigSectionCard({
         >
           {section.Source}
         </span>
-        <span
-          className={cn(
-            'px-1.5 py-0.5 rounded text-[10px] font-mono-tabular',
-            section.Editable
-              ? 'bg-[rgba(var(--signal-r),var(--signal-g),var(--signal-b),0.12)] text-[color:var(--signal)]'
-              : 'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
-          )}
-        >
-          {section.Editable ? 'editable' : 'read-only'}
-        </span>
+        <MetadataBadge>{section.Editable ? 'Editable' : 'Read only'}</MetadataBadge>
         {dirty && (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
-            {dirtyKeys.length} {dirtyKeys.length === 1 ? 'change' : 'changes'}
-          </span>
+          <StatusBadge
+            variant="warning"
+            label={`${dirtyKeys.length} pending ${dirtyKeys.length === 1 ? 'change' : 'changes'}`}
+          />
         )}
         {/* Collapsed cards keep the one-line summary; expanded ones show the
             fuller section description in the body instead, so it is not said twice. */}
         {section.Info && collapsed ? (
-          <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">
+          <p className="text-xs text-[color:var(--text-3)] truncate flex-1">
             {section.Info}
           </p>
         ) : (
           <div className="flex-1" />
         )}
         <span
-          className="text-[10px] tnum text-[color:var(--text-3)] whitespace-nowrap"
+          className="text-xs tnum text-[color:var(--text-3)] whitespace-nowrap"
           title={section.UpdatedAt}
         >
           updated {formatRelative(section.UpdatedAt)}
@@ -1018,8 +1012,8 @@ function ConfigSectionCard({
               mutation.mutate();
             }}
             className={cn(
-              'text-[10px] px-2 py-0.5 rounded font-medium',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'text-xs px-2 py-0.5 rounded font-medium',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'disabled:opacity-40 disabled:cursor-not-allowed',
             )}
           >
@@ -1044,7 +1038,7 @@ function ConfigSectionCard({
 
       {!collapsed && <div>
         {sectionHelp && (
-          <p className="px-3.5 py-2.5 text-[11px] leading-relaxed text-[color:var(--text-2)] bg-[color:var(--bg-2)] border-b border-[color:var(--border)]">
+          <p className="px-3.5 py-2.5 text-xs leading-relaxed text-[color:var(--text-2)] bg-[color:var(--bg-2)] border-b border-[color:var(--border)]">
             {sectionHelp}
           </p>
         )}
@@ -1056,7 +1050,7 @@ function ConfigSectionCard({
             arrayItems.map((item, idx) => (
               <div key={idx} className="border-b border-[color:var(--border)] last:border-b-0">
                 <div className="px-3.5 py-1.5 bg-[color:var(--bg-0)]">
-                  <span className="text-[10px] font-semibold text-[color:var(--text-3)] uppercase tracking-[0.06em] font-mono-tabular">
+                  <span className="text-xs font-semibold text-[color:var(--text-3)] uppercase tracking-[0.06em] tabular-nums">
                     #{idx + 1}
                   </span>
                 </div>
@@ -1112,7 +1106,7 @@ function ConfigSectionCard({
                   placeholder="comma-separated values"
                   className={cn(
                     'w-full px-3 py-1.5 text-xs rounded-md border',
-                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
                     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                     'placeholder:text-[color:var(--text-3)] placeholder:italic',
                     dirtyKeys.includes(key)
@@ -1232,7 +1226,7 @@ function ConfigSectionCard({
           <>
             <div className="h-px bg-[color:var(--border)]" />
             <div className="px-3.5 py-3">
-              <p className="text-[11px] font-semibold text-[color:var(--text-3)] uppercase tracking-[0.06em] mb-2.5 font-mono-tabular">
+              <p className="text-xs font-semibold text-[color:var(--text-3)] uppercase tracking-[0.06em] mb-2.5">
                 Feature Toggles
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -1335,7 +1329,7 @@ function FieldHelpIcon({ fieldKey }: { fieldKey: string }) {
       {pos && createPortal(
         <span
           ref={tipRef}
-          className="fixed block px-3 py-2 text-[11px] leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg pointer-events-none overflow-hidden"
+          className="fixed block px-3 py-2 text-xs leading-relaxed text-[color:var(--text-1)] bg-[color:var(--bg-0)] border border-[color:var(--border)] rounded-md shadow-lg pointer-events-none overflow-hidden"
           style={{
             left: `${pos.x}px`,
             top: `${top}px`,
@@ -1400,12 +1394,12 @@ function RateLimitsEditor({
             )}
           >
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-xs font-semibold text-[color:var(--text-1)] font-mono-tabular flex items-center gap-1.5">
+              <h3 className="text-xs font-semibold text-[color:var(--text-1)] flex items-center gap-1.5">
                 {name}
                 <FieldHelpIcon fieldKey={name} />
               </h3>
               {dirty && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
+                <span className="px-1.5 py-0.5 rounded text-xs bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
                   changed
                 </span>
               )}
@@ -1462,7 +1456,7 @@ function RateLimitNumberInput({
 }) {
   return (
     <label className="flex flex-col gap-1 min-w-0">
-      <span className="text-[10px] font-semibold text-[color:var(--text-3)] uppercase tracking-[0.04em] flex items-center gap-1">
+      <span className="text-xs font-semibold text-[color:var(--text-3)] uppercase tracking-[0.04em] flex items-center gap-1">
         {fieldKey}
         <FieldHelpIcon fieldKey={fieldKey} />
       </span>
@@ -1477,7 +1471,7 @@ function RateLimitNumberInput({
         }}
         className={cn(
           'w-full px-2 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
-          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
           'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
         )}
       />
@@ -1507,7 +1501,7 @@ function RateLimitDurationInput({
 
   return (
     <label className="flex flex-col gap-1 min-w-0">
-      <span className="text-[10px] font-semibold text-[color:var(--text-3)] uppercase tracking-[0.04em] flex items-center gap-1">
+      <span className="text-xs font-semibold text-[color:var(--text-3)] uppercase tracking-[0.04em] flex items-center gap-1">
         {fieldKey}
         <FieldHelpIcon fieldKey={fieldKey} />
       </span>
@@ -1586,7 +1580,7 @@ function ReadOnlyFieldRow({
             arr.map((item, i) => (
               <span
                 key={i}
-                className="px-1.5 py-0.5 rounded text-[11px] font-mono-tabular bg-[color:var(--bg-2)] text-[color:var(--text-2)] border border-[color:var(--border)]"
+                className="px-1.5 py-0.5 rounded text-xs font-mono-tabular bg-[color:var(--bg-2)] text-[color:var(--text-2)] border border-[color:var(--border)]"
               >
                 {item}
               </span>
@@ -1694,7 +1688,7 @@ function ToggleSwitch({
       </button>
       <span
         className={cn(
-          'text-[11px]',
+          'text-xs',
           checked ? 'text-[color:var(--signal)]' : 'text-[color:var(--text-3)]',
         )}
       >
@@ -1769,7 +1763,7 @@ function ApplyConfirmDialog({
           configuration changes. The service will be briefly unavailable.
         </p>
         <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-0)] p-3">
-          <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-3)] mb-2">
+          <p className="text-xs uppercase tracking-[0.08em] text-[color:var(--text-3)] mb-2">
             Pending changes ({pendingSections.length})
           </p>
           {pendingSections.length === 0 && (
@@ -1784,7 +1778,7 @@ function ApplyConfirmDialog({
                 key={s.ID}
                 className="flex items-center gap-2 text-xs text-[color:var(--text-2)]"
               >
-                <span className="font-mono-tabular text-[color:var(--text-1)]">
+                <span className="font-medium text-[color:var(--text-1)]">
                   {s.Name}
                 </span>
                 {s.Info && (

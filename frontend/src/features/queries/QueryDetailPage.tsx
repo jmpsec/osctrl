@@ -1,5 +1,4 @@
 import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router';
-import { Loader2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getQuery, listQueryResults, getQueryResultsCSVUrl, actOnQuery } from '$/api/queries';
@@ -10,16 +9,17 @@ import { cn } from '$/lib/cn';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { Pagination } from '$/components/data/Pagination';
+import { StatusBadge } from '$/components/data/StatusBadge';
 
 // ---------------------------------------------------------------------------
 // Status badge
 // ---------------------------------------------------------------------------
 function QueryStatusBadge({ q }: { q: { active: boolean; completed: boolean; expired: boolean; deleted: boolean } }) {
-  if (q.deleted) return <Badge variant="danger" label="Deleted" />;
-  if (q.expired) return <Badge variant="warning" label="Expired" />;
-  if (q.completed) return <Badge variant="success" label="Completed" />;
-  if (q.active) return <Badge variant="info" label="Active" spin />;
-  return <Badge variant="dim" label="Unknown" />;
+  if (q.deleted) return <StatusBadge variant="danger" label="Deleted" />;
+  if (q.expired) return <StatusBadge variant="warning" label="Expired" />;
+  if (q.completed) return <StatusBadge variant="success" label="Completed" />;
+  if (q.active) return <StatusBadge variant="info" label="Active" live />;
+  return <StatusBadge variant="dim" label="Unknown" />;
 }
 
 // osquery distributed result `status` codes:
@@ -27,36 +27,11 @@ function QueryStatusBadge({ q }: { q: { active: boolean; completed: boolean; exp
 //   1 → error     (query failed on the agent — usually SQL syntax / table not present)
 //   2 → other     (osquery has used this for transient state in past versions)
 // Anything else gets a neutral "code N" rendering so we don't silently hide it.
-function StatusBadge({ code }: { code: number }) {
-  if (code === 0) return <Badge variant="success" label="ok" />;
-  if (code === 1) return <Badge variant="danger" label="error" />;
-  if (code === 2) return <Badge variant="warning" label="other" />;
-  return <Badge variant="dim" label={`code ${code}`} />;
-}
-
-function Badge({
-  variant,
-  label,
-  spin,
-}: {
-  variant: 'success' | 'warning' | 'danger' | 'info' | 'dim';
-  label: string;
-  spin?: boolean;
-}) {
-  const cls = {
-    success: 'bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]',
-    warning: 'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]',
-    danger:  'bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.12)] text-[color:var(--danger)]',
-    info:    'bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]',
-    dim:     'bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
-  }[variant];
-
-  return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', cls)}>
-      {spin && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
-      {label}
-    </span>
-  );
+function ResultStatusBadge({ code }: { code: number }) {
+  if (code === 0) return <StatusBadge variant="success" label="Ok" />;
+  if (code === 1) return <StatusBadge variant="danger" label="Error" />;
+  if (code === 2) return <StatusBadge variant="warning" label="Other" />;
+  return <StatusBadge variant="dim" label={`Code ${code}`} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,7 +182,7 @@ export function QueryDetailPage() {
           <div className="h-6 w-64 bg-[color:var(--bg-2)] rounded animate-pulse" />
         ) : query ? (
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] font-mono-tabular">
+            <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
               {query.name}
             </h1>
             <QueryStatusBadge q={query} />
@@ -219,7 +194,7 @@ export function QueryDetailPage() {
             <span>Creator: <strong className="text-[color:var(--text-1)]">{query.creator}</strong></span>
             <span>
               Progress:{' '}
-              <strong className="font-mono-tabular text-[color:var(--text-1)]">
+              <strong className="tabular-nums text-[color:var(--text-1)]">
                 {query.executions}/{query.expected}
               </strong>
               {query.errors > 0 && (
@@ -250,7 +225,7 @@ export function QueryDetailPage() {
               disabled={completeMutation.isPending}
               className={cn(
                 'px-3 py-1.5 text-xs font-medium rounded-md',
-                'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+                'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
                 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
@@ -275,7 +250,7 @@ export function QueryDetailPage() {
             X run this." Empty list rendered as a quiet hint. */}
         {query && query.targets !== undefined && (
           <div className="mt-3">
-            <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
+            <div className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
               Targets
             </div>
             {query.targets.length === 0 ? (
@@ -289,7 +264,7 @@ export function QueryDetailPage() {
                     key={`${t.type}-${t.value}-${i}`}
                     className={cn(
                       'inline-flex items-center gap-1 px-2 py-0.5 rounded-md',
-                      'text-[11px] font-mono-tabular',
+                      'text-xs font-medium',
                       'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
                       'text-[color:var(--text-2)]',
                     )}
@@ -309,7 +284,7 @@ export function QueryDetailPage() {
         <h2 className="text-sm font-semibold text-[color:var(--text-1)]">
           Results
           {totalItems > 0 && (
-            <span className="ml-2 font-mono-tabular text-xs text-[color:var(--text-3)]">
+            <span className="ml-2 tabular-nums text-xs text-[color:var(--text-3)]">
               ({totalItems} row{totalItems !== 1 ? 's' : ''})
             </span>
           )}
@@ -439,15 +414,15 @@ export function QueryDetailPage() {
                     className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors align-top"
                   >
                     <td
-                      className="px-4 py-2 font-mono-tabular text-xs text-[color:var(--text-2)] whitespace-nowrap"
+                      className="px-4 py-2 tabular-nums text-xs text-[color:var(--text-2)] whitespace-nowrap"
                       title={row.createdAt}
                     >
                       <div className="flex items-center gap-2">
                         <span>{formatRelative(row.createdAt)}</span>
-                        <StatusBadge code={row.status} />
+                        <ResultStatusBadge code={row.status} />
                       </div>
                     </td>
-                    <td className="px-4 py-2 font-mono-tabular text-xs">
+                    <td className="px-4 py-2 text-xs">
                       <Link
                         to="/_app/env/$env/nodes/$uuid"
                         params={{ env, uuid: row.uuid }}
@@ -505,7 +480,7 @@ function ResultPayload({
 }) {
   if (parseError) {
     return (
-      <div className="text-xs text-[color:var(--danger)] font-mono-tabular">
+      <div className="text-xs text-[color:var(--danger)]">
         parse error: {parseError}
       </div>
     );
@@ -530,7 +505,7 @@ function ResultPayload({
   }
   return (
     <div className="overflow-x-auto rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]">
-      <table className="w-full text-[11px] border-collapse">
+      <table className="w-full text-xs border-collapse">
         <thead>
           <tr className="bg-[color:var(--bg-1)] border-b border-[color:var(--border)]">
             {cols.map((c) => (

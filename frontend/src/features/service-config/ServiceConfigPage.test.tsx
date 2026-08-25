@@ -181,8 +181,8 @@ describe('ServiceConfigPage', () => {
     expect(screen.getByText('saml')).toBeInTheDocument();
     expect(screen.getByText('yaml')).toBeInTheDocument();
     expect(screen.getByText('db')).toBeInTheDocument();
-    expect(screen.getByText('read-only')).toBeInTheDocument();
-    expect(screen.getByText('editable')).toBeInTheDocument();
+    expect(screen.getByText('Read only')).toBeInTheDocument();
+    expect(screen.getByText('Editable')).toBeInTheDocument();
     expect(mockList).toHaveBeenCalledWith('api');
   });
 
@@ -776,7 +776,7 @@ describe('ServiceConfigPage', () => {
     await user.selectOptions(select, 'warn');
 
     expect(select).toHaveValue('warn');
-    expect(screen.getByText('1 change')).toBeInTheDocument();
+    expect(screen.getByText('1 pending change')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: 'Save' }));

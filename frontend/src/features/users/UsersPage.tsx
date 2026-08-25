@@ -23,6 +23,8 @@ import { cn } from '$/lib/cn';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { Button } from '$/components/atoms/Button';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -162,13 +164,12 @@ export function UsersPage() {
         <p className="text-xs text-[color:var(--text-3)] flex-1">
           Super-admin view. Per-env permissions and API token management.
         </p>
-        <button
+        <Button
           type="button"
           onClick={() => setModal({ kind: 'create' })}
-          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
         >
-          + Add user
-        </button>
+          Add user
+        </Button>
       </div>
 
       <div className="flex-1 overflow-auto min-h-0">
@@ -222,7 +223,7 @@ export function UsersPage() {
                       <button
                         type="button"
                         onClick={() => void refetch()}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
                         Retry
                       </button>
@@ -279,7 +280,7 @@ export function UsersPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-sm font-medium font-mono-tabular text-[color:var(--text-1)]">
+                    <span className="text-sm font-medium tabular-nums text-[color:var(--text-1)]">
                       {u.username}
                     </span>
                     {u.fullname && (
@@ -290,35 +291,21 @@ export function UsersPage() {
                     {u.email || '—'}
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {u.admin && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--signal-r),var(--signal-g),var(--signal-b),0.12)] text-[color:var(--signal)]">
-                        admin
-                      </span>
-                    )}
-                    {u.service && (
-                      <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]">
-                        service
-                      </span>
-                    )}
-                    {!u.admin && !u.service && (
-                      <span className="text-[color:var(--text-3)]">operator</span>
-                    )}
-                    {u.auth_source === 'oidc' && (
-                      <span
-                        className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.10)] text-[color:var(--info)] uppercase tracking-wider"
-                        title="JIT-provisioned via federated login (OIDC)"
-                      >
-                        OIDC
-                      </span>
-                    )}
-                    {u.auth_source === 'saml' && (
-                      <span
-                        className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.10)] text-[color:var(--info)] uppercase tracking-wider"
-                        title="JIT-provisioned via federated login (SAML)"
-                      >
-                        SAML
-                      </span>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {u.admin && <MetadataBadge>Admin</MetadataBadge>}
+                      {u.service && <MetadataBadge>Service</MetadataBadge>}
+                      {!u.admin && !u.service && <MetadataBadge>Operator</MetadataBadge>}
+                      {u.auth_source === 'oidc' && (
+                        <MetadataBadge className="cursor-help" title="JIT-provisioned via federated login (OIDC)">
+                          OIDC
+                        </MetadataBadge>
+                      )}
+                      {u.auth_source === 'saml' && (
+                        <MetadataBadge className="cursor-help" title="JIT-provisioned via federated login (SAML)">
+                          SAML
+                        </MetadataBadge>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 tnum text-xs text-[color:var(--text-2)] text-right">
                     <span title={u.last_access}>{formatRelative(u.last_access)}</span>
@@ -376,7 +363,7 @@ export function UsersPage() {
             'z-50',
           )}
         >
-          <span className="text-[color:var(--text-2)] text-xs font-mono-tabular">
+          <span className="text-[color:var(--text-2)] text-xs tabular-nums">
             {selectedUsernames.size} selected
           </span>
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
@@ -609,11 +596,11 @@ function PermissionsModal({
                 placeholder="00000000-0000-0000-0000-000000000000"
                 className={cn(
                   'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                  'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                  'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
                   'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                 )}
               />
-              <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+              <p className="mt-1 text-xs text-[color:var(--text-3)]">
                 Couldn't load environments — paste a UUID manually.
               </p>
             </>
@@ -625,7 +612,7 @@ function PermissionsModal({
               disabled={envsLoading}
               className={cn(
                 'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                 'disabled:opacity-60',
               )}
@@ -645,7 +632,7 @@ function PermissionsModal({
               ))}
             </select>
           )}
-          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">
             Permissions are env-scoped — repeat this form to grant access in
             multiple environments.
           </p>
@@ -663,7 +650,7 @@ function PermissionsModal({
                 onChange={(e) => setAccess((a) => ({ ...a, [k]: e.target.checked }))}
                 className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
               />
-              <span className="font-mono-tabular">{k}</span>
+              <span className="tabular-nums">{k}</span>
               <span className="text-[color:var(--text-3)]">
                 {k === 'user' && '— see this env in the SPA'}
                 {k === 'query' && '— run distributed queries'}
@@ -749,7 +736,7 @@ function PermissionsModal({
             disabled={mutation.isPending}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -830,11 +817,11 @@ function TokenModal({
               value={token.token}
               className={cn(
                 'w-full h-24 px-3 py-2 text-xs rounded-md border border-[color:var(--border)]',
-                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+                'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
               )}
               onFocus={(e) => e.currentTarget.select()}
             />
-            <p className="text-[10px] text-[color:var(--text-3)]">
+            <p className="text-xs text-[color:var(--text-3)]">
               Expires: {new Date(token.expires).toLocaleString()}
             </p>
           </div>
@@ -863,7 +850,7 @@ function TokenModal({
             onClick={() => refreshMutation.mutate()}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -1066,7 +1053,7 @@ function CreateUserModal({
             disabled={mutation.isPending || !username || !password}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
@@ -1270,7 +1257,7 @@ function ResetPasswordModal({
             disabled={mutation.isPending || !password || !confirm}
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
               'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >

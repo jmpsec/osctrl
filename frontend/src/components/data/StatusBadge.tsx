@@ -7,6 +7,8 @@ interface StatusBadgeProps {
   label: string;
   Icon?: LucideIcon;
   live?: boolean;
+  title?: string;
+  ariaLabel?: string;
   className?: string;
 }
 
@@ -19,11 +21,13 @@ const variantTextClasses: Record<PipVariant, string> = {
   dim: 'text-[color:var(--text-3)]',
 };
 
-export function StatusBadge({ variant, label, Icon, live, className }: StatusBadgeProps) {
+export function StatusBadge({ variant, label, Icon, live, title, ariaLabel, className }: StatusBadgeProps) {
   return (
     <span
+      title={title}
+      aria-label={ariaLabel}
       className={cn(
-        'inline-flex items-center gap-1.5 text-xs font-medium',
+        'inline-flex items-center gap-1.5 text-xs font-medium leading-4 normal-case tracking-normal',
         variantTextClasses[variant],
         className,
       )}

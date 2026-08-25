@@ -13,6 +13,8 @@ import { cn } from '$/lib/cn';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { formatRelative } from '$/lib/time';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 
 // Services are constant in the backend (pkg/settings.ValidServices = {tls, admin, api}).
 // The raw values are the strings the API accepts on /api/v1/settings/{service};
@@ -72,7 +74,7 @@ export function SettingsPage() {
           <span
             aria-live="polite"
             aria-label="Refreshing data"
-            className="ml-auto text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+            className="ml-auto text-xs text-[color:var(--text-3)] tabular-nums"
           >
             refreshing…
           </span>
@@ -132,7 +134,7 @@ export function SettingsPage() {
                 onClick={() => {
                   void refetch();
                 }}
-                className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
               >
                 Retry
               </button>
@@ -242,25 +244,19 @@ function SettingRow({
       <header className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)]">
         <h2
           id={`setting-${setting.Name}-label`}
-          className="font-display text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular"
+          className="font-display text-sm font-semibold text-[color:var(--text-1)] tabular-nums"
         >
           {setting.Name}
         </h2>
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-tabular text-[color:var(--text-3)] bg-[color:var(--bg-2)]">
-          {setting.Type}
-        </span>
+        <MetadataBadge>{setting.Type}</MetadataBadge>
         {setting.Info && (
-          <p className="text-[10px] text-[color:var(--text-3)] truncate flex-1">
+          <p className="text-xs text-[color:var(--text-3)] truncate flex-1">
             {setting.Info}
           </p>
         )}
         {!setting.Info && <div className="flex-1" />}
-        {dirty && (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">
-            pending
-          </span>
-        )}
-        <span className="text-[10px] tnum text-[color:var(--text-3)] whitespace-nowrap" title={setting.UpdatedAt}>
+        {dirty && <StatusBadge variant="warning" label="Pending" />}
+        <span className="text-xs tnum text-[color:var(--text-3)] whitespace-nowrap" title={setting.UpdatedAt}>
           updated {formatRelative(setting.UpdatedAt)}
         </span>
         <button
@@ -268,8 +264,8 @@ function SettingRow({
           disabled={!dirty || mutation.isPending}
           onClick={() => mutation.mutate()}
           className={cn(
-            'text-[10px] px-2 py-0.5 rounded font-medium',
-            'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
+            'text-xs px-2 py-0.5 rounded font-medium',
+            'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
             'disabled:opacity-40 disabled:cursor-not-allowed',
           )}
         >
@@ -336,7 +332,7 @@ function SettingInput({
           onChange={(e) => onBool(e.target.checked)}
           className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
         />
-        <span className="font-mono-tabular">{boolValue ? 'enabled' : 'disabled'}</span>
+        <span className="tabular-nums">{boolValue ? 'enabled' : 'disabled'}</span>
       </label>
     );
   }
@@ -353,7 +349,7 @@ function SettingInput({
         }}
         className={cn(
           'w-full px-3 py-1.5 text-sm rounded-md border border-[color:var(--border)]',
-          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
           'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
         )}
       />
@@ -368,7 +364,7 @@ function SettingInput({
       onChange={(e) => onString(e.target.value)}
       className={cn(
         'w-full px-3 py-1.5 text-sm rounded-md border border-[color:var(--border)]',
-        'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+        'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
         'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
       )}
     />

@@ -175,7 +175,7 @@ describe('QueriesListPage', () => {
     });
 
     expect(screen.getByText('admin')).toBeInTheDocument();
-    expect(screen.getByText('query')).toBeInTheDocument();
+    expect(screen.getByText('Query')).toBeInTheDocument();
     expect(screen.getAllByText('Active').length).toBeGreaterThan(1);
   });
 

@@ -9,8 +9,8 @@
  *                                                       config, query read/write)
  */
 
-import { useState } from 'react';
-import { RotateCw } from 'lucide-react';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
+import { FileSearch, FolderOpen, RotateCcw, RotateCw } from 'lucide-react';
 import { useParams } from '@tanstack/react-router';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -30,14 +30,17 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 import { listAuditLogs, LOG_TYPE_LABELS } from '$/api/audit';
 import { listNodes } from '$/api/nodes';
 import { listQueries } from '$/api/queries';
+import { listCarves } from '$/api/carves';
 import { listEnvironments } from '$/api/environments';
 import { AuthError } from '$/api/client';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { StatusPip } from '$/components/data/StatusPip';
+import { StatusBadge } from '$/components/data/StatusBadge';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
 import { DEFAULT_INACTIVE_HOURS } from '$/lib/node-status';
+import type { DistributedQuery } from '$/api/types';
 
 // ---------------------------------------------------------------------------
 // Node-activity series, derived from the Redis-backed env-tiles endpoint.
@@ -52,7 +55,7 @@ import { DEFAULT_INACTIVE_HOURS } from '$/lib/node-status';
 // ---------------------------------------------------------------------------
 export type ChartCategory = 'status' | 'result' | 'config' | 'query' | 'error';
 
-interface ActivitySeries {
+export interface ActivitySeries {
   status: number[];
   result: number[];
   config: number[];
@@ -93,29 +96,40 @@ function tileSeriesToActivity(tiles: NodeTileSeries | undefined): ActivitySeries
 // ---------------------------------------------------------------------------
 function LiveBadge() {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5',
-        'px-2 py-0.5 rounded-full',
-        'text-[10px] font-mono-tabular font-medium uppercase tracking-[0.1em]',
-        'border border-[color:var(--signal)]/30',
-        'bg-[color:var(--signal)]/10',
-        'text-[color:var(--signal-bright,var(--signal))]',
-        'select-none',
-      )}
-      aria-label="Live — auto-refreshing every 30 seconds"
-    >
-      <span
-        className="relative inline-block w-[7px] h-[7px] rounded-full bg-[color:var(--signal)] flex-shrink-0"
-        aria-hidden
-      >
+    <StatusBadge
+      variant="signal"
+      label="Live"
+      live
+      ariaLabel="Live — auto-refreshing every 30 seconds"
+      className="select-none"
+    />
+  );
+}
+
+function DashboardHeader({ envName }: { envName: string }) {
+  return (
+    <header className="flex items-start justify-between gap-4">
+      <div>
+        <h1 className="font-display text-xl/tight font-semibold text-(--text-1)">
+          Dashboard
+        </h1>
+        <p className="mt-1 text-[13px] text-(--text-3)">
+          {envName} · osquery activity within the last 24 hours
+        </p>
+      </div>
+      <div className="mt-1 flex shrink-0 items-center gap-2">
         <span
-          className="absolute inset-[-3px] rounded-full border border-[color:var(--signal)] motion-safe:animate-[osctrl-pulse_2s_ease-out_infinite]"
-          aria-hidden
-        />
-      </span>
-      LIVE
-    </span>
+          className="hidden items-center gap-1.5 rounded border border-(--border) bg-(--bg-1) px-2 py-0.5 text-xs font-medium text-(--text-3) tabular-nums sm:inline-flex"
+          title="Auto-refresh interval"
+        >
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+            <path d="M21 12a9 9 0 11-3-6.7l3 2.7" />
+          </svg>
+          30s
+        </span>
+        <LiveBadge />
+      </div>
+    </header>
   );
 }
 
@@ -193,7 +207,7 @@ function InlineSparkline({
 // Stored in localStorage per-browser so operators can re-map colors to match
 // their mental model (e.g. "Carve is always red for me").
 // ---------------------------------------------------------------------------
-type ChartPalette = Record<ChartCategory, string>;
+export type ChartPalette = Record<ChartCategory, string>;
 
 const DEFAULT_PALETTE: ChartPalette = {
   status:  '#67c0ff', // info blue — status logs
@@ -201,6 +215,14 @@ const DEFAULT_PALETTE: ChartPalette = {
   config:  '#a78bfa', // violet — config fetches (agent heartbeat)
   query:   '#4ade80', // green — distributed query reads
   error:   '#ff4d4f', // bright red — ERROR-severity status logs
+};
+
+const CHART_CATEGORY_LABELS: Record<ChartCategory, string> = {
+  status: 'Status logs',
+  result: 'Query results',
+  config: 'Config',
+  query: 'Queries',
+  error: 'Reported errors',
 };
 
 const PALETTE_STORAGE_KEY = 'osctrl.dashboard-chart-palette';
@@ -246,124 +268,73 @@ function useChartPalette(): [ChartPalette, (key: ChartCategory, hex: string) => 
   return [palette, update, reset];
 }
 
-// ---------------------------------------------------------------------------
-// Line chart — node activity by category (status, result, config, query
-// read/write). One line per category, drawn from the Redis-backed env-tiles
-// series. Replaces the old audit-log stacked area chart.
-// ---------------------------------------------------------------------------
-function LineChart({
-  series,
-  intervalLabel,
+function ChartLegend({
   palette,
+  onChange,
+  onReset,
 }: {
-  series: ActivitySeries;
-  intervalLabel: '12h' | '24h' | '7d';
   palette: ChartPalette;
+  onChange: (key: ChartCategory, hex: string) => void;
+  onReset: () => void;
 }) {
-  const W = 600;
-  const H = 200;
-  const padL = 40;
-  const padR = 10;
-  const padT = 10;
-  const padB = 30;
-  const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
-  const n = series.total.length;
-
-  const maxV = Math.max(1, ...series.total);
-  const stepX = n > 1 ? innerW / (n - 1) : innerW;
-
-  const yFor = (v: number) => padT + (1 - v / maxV) * innerH;
-  const xFor = (i: number) => padL + i * stepX;
-
-  const LINES: { key: ChartCategory; data: number[] }[] = [
-    { key: 'status', data: series.status },
-    { key: 'result', data: series.result },
-    { key: 'config', data: series.config },
-    { key: 'query', data: series.query },
-    // Drawn last so it sits on top of the traffic lines it is a subset of.
-    { key: 'error', data: series.statusError },
-  ];
-
-  function linePath(data: number[]): string {
-    if (data.length === 0) return '';
-    return data
-      .map((v, i) => `${i === 0 ? 'M' : 'L'}${xFor(i).toFixed(1)},${yFor(v).toFixed(1)}`)
-      .join(' ');
-  }
-
-  const xLabels =
-    intervalLabel === '7d'
-      ? ['-7d', '-6d', '-5d', '-4d', '-3d', '-2d', '-1d', 'now']
-      : intervalLabel === '12h'
-        ? ['-12h', '-10h', '-8h', '-6h', '-4h', '-2h', 'now']
-        : ['-24h', '-20h', '-16h', '-12h', '-8h', '-4h', 'now'];
+  const hasCustomColors = (Object.keys(DEFAULT_PALETTE) as ChartCategory[]).some(
+    (key) => palette[key] !== DEFAULT_PALETTE[key],
+  );
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Node activity by category, including reported errors">
-      {/* gridlines */}
-      <g stroke="var(--border)" strokeDasharray="2 4" strokeWidth="1">
-        {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-          <line key={t} x1={padL} y1={padT + t * innerH} x2={W - padR} y2={padT + t * innerH} />
-        ))}
-      </g>
-      {/* Y axis labels */}
-      <g className="font-mono-tabular" fill="var(--text-3)" fontSize="9">
-        {[1, 0.75, 0.5, 0.25, 0].map((t, i) => (
-          <text key={t} x={padL - 6} y={padT + (i * innerH) / 4 + 3} textAnchor="end">
-            {Math.round(maxV * t)}
-          </text>
-        ))}
-      </g>
-      {/* Lines — one per category, no fill, 1.5px stroke with round joins.
-          A single-bucket series (e.g. a deployment in its first hour) has no
-          line segment to draw, so render a dot instead of an invisible path. */}
-      {LINES.map(({ key, data }) =>
-        data.length === 1 ? (
-          <circle key={key} cx={xFor(0)} cy={yFor(data[0])} r="2.5" fill={palette[key]} />
-        ) : (
-          <path
-            key={key}
-            d={linePath(data)}
-            fill="none"
-            stroke={palette[key]}
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
+    <div
+      className="mb-2 flex min-h-7 flex-wrap items-center gap-x-1 gap-y-1"
+      aria-label="Chart series. Select a series to change its color."
+    >
+      {(Object.keys(CHART_CATEGORY_LABELS) as ChartCategory[]).map((key) => (
+        <label key={key} className="cursor-pointer">
+          <input
+            type="color"
+            value={palette[key]}
+            onChange={(event) => onChange(key, event.target.value)}
+            className="peer sr-only"
+            aria-label={`Change ${CHART_CATEGORY_LABELS[key]} color`}
           />
-        ),
+          <span
+            className={cn(
+              'inline-flex h-6 items-center gap-1.5 rounded px-1.5',
+              'text-xs font-medium text-[color:var(--text-2)]',
+              'transition-colors duration-[100ms] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
+              'peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-[color:var(--accent)]',
+            )}
+          >
+            <span
+              className="h-0.5 w-3.5 rounded-full"
+              style={{ backgroundColor: palette[key] }}
+              aria-hidden
+            />
+            {CHART_CATEGORY_LABELS[key]}
+          </span>
+        </label>
+      ))}
+      {hasCustomColors && (
+        <button
+          type="button"
+          onClick={onReset}
+          className="ml-0.5 flex h-6 w-6 items-center justify-center rounded text-[color:var(--text-3)] transition-colors duration-[100ms] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]"
+          aria-label="Reset chart colors"
+          title="Reset chart colors"
+        >
+          <RotateCcw size={12} strokeWidth={1.75} aria-hidden />
+        </button>
       )}
-      {/* X axis labels */}
-      <g className="font-mono-tabular" fill="var(--text-3)" fontSize="9">
-        {xLabels.map((lbl, i, arr) => {
-          const x = padL + (i / (arr.length - 1)) * innerW;
-          return (
-            <text
-              key={lbl}
-              x={x}
-              y={H - 8}
-              textAnchor={i === 0 ? 'start' : i === arr.length - 1 ? 'end' : 'middle'}
-            >
-              {lbl}
-            </text>
-          );
-        })}
-      </g>
-    </svg>
+    </div>
   );
 }
+
+// BKLiT and Visx stay in a dashboard-only chunk so other routes do not pay
+// the chart runtime cost during their initial load.
+const ActivityLineChart = lazy(() => import('./ActivityLineChart'));
 
 // ---------------------------------------------------------------------------
 // Mid 4-KPI card — large stat, %-delta-vs-prior chip, mini sparkline.
 // ---------------------------------------------------------------------------
 type Halo = 'signal' | 'success' | 'warning' | 'danger' | 'info';
-const haloRgba: Record<Halo, string> = {
-  signal:  'rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.15)',
-  success: 'rgba(var(--success-r), var(--success-g), var(--success-b), 0.14)',
-  warning: 'rgba(var(--warning-r), var(--warning-g), var(--warning-b), 0.14)',
-  danger:  'rgba(var(--danger-r), var(--danger-g), var(--danger-b), 0.14)',
-  info:    'rgba(var(--info-r), var(--info-g), var(--info-b), 0.14)',
-};
 const sparkColor: Record<Halo, string> = {
   signal:  'var(--signal)',
   success: 'var(--success)',
@@ -403,7 +374,16 @@ interface KpiCardProps {
   /** Accessible name for the action; required whenever onClick is set. */
   actionLabel?: string;
 }
-function KpiCard({ label, value, sparkline, halo, polarity = 'up-good', deltaLabel, onClick, actionLabel }: KpiCardProps) {
+function KpiCard({
+  label,
+  value,
+  sparkline,
+  halo,
+  polarity = 'up-good',
+  deltaLabel,
+  onClick,
+  actionLabel,
+}: KpiCardProps) {
   const pct = computeDeltaPct(sparkline);
   const tone = deltaTone(pct, polarity);
   const text =
@@ -413,9 +393,6 @@ function KpiCard({ label, value, sparkline, halo, polarity = 'up-good', deltaLab
       : pct === 0
         ? 'steady'
         : `${pct > 0 ? '+' : ''}${pct}% vs prior`);
-  const haloStyle: React.CSSProperties = {
-    background: `radial-gradient(ellipse at top right, ${haloRgba[halo]} 0%, transparent 70%), var(--bg-1)`,
-  };
   const interactive = !!onClick;
   const Tag = interactive ? 'button' : 'div';
   return (
@@ -424,29 +401,26 @@ function KpiCard({ label, value, sparkline, halo, polarity = 'up-good', deltaLab
       onClick={onClick}
       aria-label={interactive ? actionLabel : undefined}
       className={cn(
-        'relative rounded-xl border border-[color:var(--border)]',
-        'px-5 pt-4 pb-4 min-h-[136px]',
-        'transition-shadow duration-[120ms] hover:shadow-[0_0_0_1px_var(--signal)]',
-        'flex flex-col',
+        'relative flex min-h-[124px] flex-col bg-[color:var(--bg-1)] px-4 py-3.5',
+        'transition-colors duration-[100ms] hover:bg-[color:var(--bg-2)]',
         interactive && [
           'text-left cursor-pointer',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
           'focus-visible:outline-[color:var(--signal)]',
         ],
       )}
-      style={haloStyle}
     >
-      <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] select-none">
+      <div className="text-xs font-medium text-[color:var(--text-2)] select-none">
         {label}
       </div>
-      <div className="font-display text-[36px] font-bold tabular-nums text-[color:var(--text-1)] leading-none mt-2">
+      <div className="font-display text-[30px] font-semibold tabular-nums text-[color:var(--text-1)] leading-none mt-2">
         {value.toLocaleString()}
       </div>
       <div className="flex items-end justify-between mt-auto pt-3">
         <span
           className={cn(
-            'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full',
-            'text-[10px] font-mono-tabular',
+            'inline-flex items-center gap-1 px-1.5 py-0.5 rounded',
+            'text-xs font-medium tabular-nums leading-4',
             tone === 'success' && 'bg-[color:var(--success)]/10 text-[color:var(--success)] border border-[color:var(--success)]/25',
             tone === 'danger'  && 'bg-[color:var(--danger)]/10 text-[color:var(--danger)] border border-[color:var(--danger)]/25',
             tone === 'info'    && 'bg-[color:var(--info)]/10 text-[color:var(--info)] border border-[color:var(--info)]/25',
@@ -463,72 +437,305 @@ function KpiCard({ label, value, sparkline, halo, polarity = 'up-good', deltaLab
   );
 }
 
+interface DashboardKpiSetProps {
+  loading: boolean;
+  activeNodes: number;
+  totalNodes: number;
+  inactiveNodes: number;
+  inactiveHours: number;
+  reportedErrors: number;
+  onReportedErrorsClick?: () => void;
+  activeQueries: number;
+  chartSeries: ActivitySeries;
+}
+
+function DashboardKpiSet({
+  loading,
+  activeNodes,
+  totalNodes,
+  inactiveNodes,
+  inactiveHours,
+  reportedErrors,
+  onReportedErrorsClick,
+  activeQueries,
+  chartSeries,
+}: DashboardKpiSetProps) {
+  return (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--border)] lg:grid-cols-4">
+      {loading ? (
+        Array.from({ length: 4 }).map((_, index) => (
+          <KpiSkeletonCard key={index} />
+        ))
+      ) : (
+        <>
+          <KpiCard
+            label="Active Nodes"
+            value={activeNodes}
+            sparkline={chartSeries.config}
+            halo="success"
+            polarity="up-good"
+            deltaLabel={totalNodes > 0 ? `${Math.round((activeNodes / totalNodes) * 100)}% of fleet` : 'no nodes'}
+          />
+          <KpiCard
+            label={`Inactive ≥ ${inactiveHours}h`}
+            value={inactiveNodes}
+            sparkline={chartSeries.status}
+            halo="warning"
+            polarity="up-bad"
+            deltaLabel={totalNodes > 0 ? `${Math.round((inactiveNodes / totalNodes) * 100)}% of fleet` : 'no nodes'}
+          />
+          <KpiCard
+            label="Reported errors (24h)"
+            value={reportedErrors}
+            sparkline={chartSeries.statusError}
+            halo={reportedErrors > 0 ? 'danger' : 'success'}
+            polarity="up-bad"
+            deltaLabel={reportedErrors === 0 ? 'all clear' : `${reportedErrors} in 24h — see nodes`}
+            onClick={onReportedErrorsClick}
+            actionLabel="Show the nodes reporting errors"
+          />
+          <KpiCard
+            label="Active Queries"
+            value={activeQueries}
+            sparkline={chartSeries.query}
+            halo="signal"
+            polarity="up-good"
+            deltaLabel={`${activeQueries} executing`}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Hero KPI (large stat on the right of the time-series row).
+// Operational workload — the original two-card stack, with the unused right
+// side promoted into a quick-access lane for live work.
 // ---------------------------------------------------------------------------
-function HeroKpi({
-  label,
-  description,
-  value,
-  unit,
-  tone,
-  toneText,
-}: {
-  label: string;
+interface OperationalWorkloadCardsProps {
+  activeQueries: number;
+  activeCarves: number;
+  featuredQuery?: ActiveQueryRow;
+  recentCarve?: DistributedQuery;
+  env: string;
+}
+
+type WorkloadKind = 'query' | 'carve';
+
+interface WorkloadEntry {
+  kind: WorkloadKind;
+  title: string;
   description: string;
-  value: number | string;
-  unit?: string;
-  tone: 'success' | 'info' | 'warning' | 'danger';
-  toneText: string;
+  count: number;
+  statusVariant: 'success' | 'info' | 'dim';
+  statusLabel: string;
+  emptyLabel: string;
+  name?: string;
+  linkEnv: string;
+  progress: number;
+  progressMeta: string;
+  progressColor: string;
+}
+
+function WorkloadRouteLink({
+  entry,
+  className,
+  children,
+}: {
+  entry: WorkloadEntry;
+  className: string;
+  children: ReactNode;
 }) {
-  const toneStyles: Record<string, string> = {
-    success: 'bg-[color:var(--success)]/10 text-[color:var(--success)] border-[color:var(--success)]/25',
-    info: 'bg-[color:var(--info)]/10 text-[color:var(--info)] border-[color:var(--info)]/25',
-    warning: 'bg-[color:var(--warning)]/10 text-[color:var(--warning)] border-[color:var(--warning)]/25',
-    danger: 'bg-[color:var(--danger)]/10 text-[color:var(--danger)] border-[color:var(--danger)]/25',
-  };
-  // Diagonal-sweep gradient background — replaces the previous
-  // absolute-positioned halo blob. linear-gradient(225deg) pours from
-  // the top-right in the card's semantic tone, fading into the regular
-  // --bg-1 surface around 65% so the left half (label + description +
-  // value text) sits on a clean reading surface for contrast.
-  const toneGradient: Record<string, string> = {
-    success:
-      'linear-gradient(225deg, rgba(var(--success-r), var(--success-g), var(--success-b), 0.22) 0%, var(--bg-1) 65%)',
-    info:
-      'linear-gradient(225deg, rgba(var(--info-r), var(--info-g), var(--info-b), 0.22) 0%, var(--bg-1) 65%)',
-    warning:
-      'linear-gradient(225deg, rgba(var(--warning-r), var(--warning-g), var(--warning-b), 0.22) 0%, var(--bg-1) 65%)',
-    danger:
-      'linear-gradient(225deg, rgba(var(--danger-r), var(--danger-g), var(--danger-b), 0.22) 0%, var(--bg-1) 65%)',
-  };
+  if (entry.name && entry.kind === 'query') {
+    return (
+      <Link
+        to="/_app/env/$env/queries/$name"
+        params={{ env: entry.linkEnv, name: entry.name }}
+        className={className}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  if (entry.name) {
+    return (
+      <Link
+        to="/_app/env/$env/carves/$name"
+        params={{ env: entry.linkEnv, name: entry.name }}
+        className={className}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  return entry.kind === 'query' ? (
+    <Link to="/_app/env/$env/queries" params={{ env: entry.linkEnv }} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <Link to="/_app/env/$env/carves" params={{ env: entry.linkEnv }} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+function WorkloadItemIcon({ kind }: { kind: WorkloadKind }) {
+  return kind === 'query' ? (
+    <FileSearch size={16} strokeWidth={1.7} className="shrink-0 text-[color:var(--nav-violet)]" aria-hidden />
+  ) : (
+    <FolderOpen size={16} strokeWidth={1.7} className="shrink-0 text-[color:var(--nav-rose)]" aria-hidden />
+  );
+}
+
+function progressPercent(executions: number, expected: number): number {
+  if (expected <= 0) return 0;
+  return Math.min(100, Math.round((executions / expected) * 100));
+}
+
+function WorkloadProgress({
+  value,
+  color,
+  label,
+}: {
+  value: number;
+  color: string;
+  label: string;
+}) {
   return (
     <div
-      className={cn(
-        'relative overflow-hidden rounded-xl border border-[color:var(--border)]',
-        'px-5 py-4 flex flex-col h-full min-h-[120px]',
-        'transition-shadow duration-[120ms] hover:shadow-[0_0_0_1px_var(--signal)]',
-      )}
-      style={{ background: toneGradient[tone] }}
+      className="mt-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--bg-3)]"
+      role="meter"
+      aria-label={label}
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={100}
     >
-      <div className="text-sm font-display font-semibold text-[color:var(--text-1)]">{label}</div>
-      <div className="text-[11px] text-[color:var(--text-3)] mt-0.5">{description}</div>
-      <div className="font-display tabular-nums mt-3 flex items-baseline gap-2 text-[color:var(--text-1)]" style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1 }}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
-        {unit && <span className="text-sm text-[color:var(--text-3)] font-normal">{unit}</span>}
-      </div>
-      <div className="mt-3">
-        <span
+      <div
+        className="h-full w-full rounded-full transition-transform duration-300"
+        style={{
+          backgroundColor: color,
+          transformOrigin: 'left',
+          transform: `scaleX(${value / 100})`,
+        }}
+      />
+    </div>
+  );
+}
+
+function OperationalWorkloadCards({
+  activeQueries,
+  activeCarves,
+  featuredQuery,
+  recentCarve,
+  env,
+}: OperationalWorkloadCardsProps) {
+  const queryProgress = featuredQuery
+    ? progressPercent(featuredQuery.executions, featuredQuery.expected)
+    : 0;
+  const carveProgress = recentCarve
+    ? progressPercent(recentCarve.executions, recentCarve.expected)
+    : 0;
+  const carveReady = recentCarve?.completed || recentCarve?.carve_status === 'COMPLETED';
+
+  const workloads: WorkloadEntry[] = [
+    {
+      kind: 'query',
+      title: 'Queries',
+      description: 'Active fleet investigations',
+      count: activeQueries,
+      statusVariant: activeQueries > 0 ? 'success' : 'dim',
+      statusLabel: activeQueries > 0 ? 'Executing' : 'Idle',
+      emptyLabel: 'View query history',
+      name: featuredQuery?.name,
+      linkEnv: featuredQuery?.envUuid ?? env,
+      progress: queryProgress,
+      progressMeta: featuredQuery
+        ? `${featuredQuery.executions.toLocaleString()} of ${featuredQuery.expected.toLocaleString()} responses`
+        : '',
+      progressColor: featuredQuery?.errors ? 'var(--warning)' : 'var(--info)',
+    },
+    {
+      kind: 'carve',
+      title: 'Forensic Carves',
+      description: 'File collections in flight',
+      count: activeCarves,
+      statusVariant: activeCarves > 0 ? 'info' : 'dim',
+      statusLabel: activeCarves > 0 ? 'In flight' : 'Idle',
+      emptyLabel: 'View carve history',
+      name: recentCarve?.name,
+      linkEnv: env,
+      progress: carveReady ? 100 : carveProgress,
+      progressMeta: recentCarve
+        ? carveReady
+          ? 'Archive ready'
+          : `${recentCarve.executions.toLocaleString()} of ${recentCarve.expected.toLocaleString()} nodes`
+        : '',
+      progressColor: carveReady ? 'var(--success)' : 'var(--info)',
+    },
+  ];
+
+  return (
+    <div
+      role="group"
+      aria-label="Operational workload"
+      className="grid min-h-[240px] grid-rows-2 overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)]"
+    >
+      {workloads.map((entry, index) => (
+        <article
+          key={entry.kind}
           className={cn(
-            'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full',
-            'text-[10px] font-mono-tabular border',
-            toneStyles[tone],
+            '@container grid min-h-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-4 px-4 py-3.5',
+            index > 0 && 'border-t border-[color:var(--border)]',
           )}
         >
-          <span aria-hidden className="w-[6px] h-[6px] rounded-full bg-current" />
-          {toneText}
-        </span>
-      </div>
+          <div className="flex min-w-0 flex-col">
+            <h2 className="truncate font-display text-sm font-semibold text-[color:var(--text-1)]">
+              {entry.title}
+            </h2>
+            <p className="mt-1 text-[13px] text-[color:var(--text-3)]">{entry.description}</p>
+            <div className="mt-auto flex items-start gap-3 pt-3">
+              <span className="font-display text-[30px] font-semibold tabular-nums text-[color:var(--text-1)]">
+                {entry.count.toLocaleString()}
+              </span>
+              <span className="pt-1">
+                <StatusBadge variant={entry.statusVariant} label={entry.statusLabel} />
+              </span>
+            </div>
+          </div>
+
+          <div className="flex min-w-0 flex-col border-l border-[color:var(--border)] pl-4">
+            <div className="text-[13px] font-medium text-[color:var(--text-3)]">
+              {entry.kind === 'query' ? 'Query in progress' : 'Latest carve'}
+            </div>
+            <WorkloadRouteLink
+              entry={entry}
+              className="group mt-2 min-w-0 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                {entry.name && <WorkloadItemIcon kind={entry.kind} />}
+                <span className="truncate text-[13px] font-medium text-[color:var(--text-1)] group-hover:text-[color:var(--text-link)]">
+                  {entry.name ?? entry.emptyLabel}
+                </span>
+              </span>
+              {entry.name && (
+                <>
+                  <span className="mt-1.5 flex justify-between gap-2 text-[12px] tabular-nums text-[color:var(--text-3)]">
+                    <span>{entry.progressMeta}</span>
+                    <span>{entry.progress}%</span>
+                  </span>
+                  <WorkloadProgress
+                    value={entry.progress}
+                    color={entry.progressColor}
+                    label={`${entry.kind === 'query' ? 'Query' : 'Carve'} progress, ${entry.progress}% complete`}
+                  />
+                </>
+              )}
+            </WorkloadRouteLink>
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
@@ -555,13 +762,13 @@ function TopPlatformsPanel({ counts, total }: { counts: PlatformCounts; total: n
   return (
     <section
       aria-label="Hosts by platform"
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-5"
+      className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
     >
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
           Hosts by platform
         </h2>
-        <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums">
+        <span className="text-xs font-medium text-[color:var(--text-3)] tabular-nums">
           {total.toLocaleString()} total
         </span>
       </div>
@@ -585,15 +792,15 @@ function TopPlatformsPanel({ counts, total }: { counts: PlatformCounts; total: n
         {entries.map(({ key, count }) => {
           const pct = total > 0 ? Math.round((count / total) * 100) : 0;
           return (
-            <li key={key} className="flex items-center gap-2 text-[11px]">
+            <li key={key} className="flex items-center gap-2 text-xs">
               <span
                 aria-hidden
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ background: PLATFORM_COLOR[key] }}
               />
               <span className="text-[color:var(--text-2)] flex-1 truncate">{PLATFORM_LABEL[key]}</span>
-              <span className="font-mono-tabular text-[color:var(--text-1)] tabular-nums">{count}</span>
-              <span className="font-mono-tabular text-[color:var(--text-3)] tabular-nums w-9 text-right">
+              <span className="font-medium text-[color:var(--text-1)] tabular-nums">{count}</span>
+              <span className="text-[color:var(--text-3)] tabular-nums w-9 text-right">
                 {pct}%
               </span>
             </li>
@@ -633,7 +840,7 @@ function ActivityRow({
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-[color:var(--border)] last:border-0">
       <div
-        className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono-tabular font-semibold text-white"
+        className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-white"
         style={{ background: avatarGradient(username) }}
         aria-hidden
       >
@@ -645,19 +852,19 @@ function ActivityRow({
           {' '}
           <span className="text-[color:var(--text-2)]">{isAuth ? typeLabel : `${typeLabel} via`}</span>
           {!isAuth && (
-            <span className="font-mono-tabular text-[11px] text-[color:var(--signal)] ml-1 truncate">
+            <span className="text-xs font-medium text-[color:var(--signal)] ml-1 truncate">
               {service}
             </span>
           )}
         </div>
         {line && (
-          <div className="text-[11px] text-[color:var(--text-3)] truncate mt-0.5 font-mono-tabular">
+          <div className="text-xs text-[color:var(--text-3)] truncate mt-0.5">
             {line.length > 64 ? `${line.slice(0, 64)}…` : line}
           </div>
         )}
       </div>
       <time
-        className="flex-shrink-0 text-[10px] font-mono-tabular text-[color:var(--text-3)] mt-0.5 tabular-nums"
+        className="flex-shrink-0 text-xs text-[color:var(--text-3)] mt-0.5 tabular-nums"
         dateTime={createdAt}
         title={new Date(createdAt).toLocaleString()}
       >
@@ -777,13 +984,13 @@ function EndpointHealthPanel({
   const anyActivity = rows.some((row) => row.total > 0);
 
   return (
-    <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] flex flex-col overflow-hidden">
+    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
         <div>
           <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
             Endpoint health
           </span>
-          <div className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums">
+          <div className="text-xs font-medium text-[color:var(--text-3)] tabular-nums">
             {intervalLabel}
           </div>
         </div>
@@ -804,7 +1011,7 @@ function EndpointHealthPanel({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-0 h-8 items-center border-b border-[color:var(--border)] text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] select-none">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-0 h-8 items-center border-b border-[color:var(--border)] text-xs font-medium text-[color:var(--text-3)] select-none">
               <span>Endpoint</span>
               <span className="text-right">Events</span>
               <span className="text-right">Last seen</span>
@@ -841,7 +1048,7 @@ function EndpointHealthPanel({
                   </div>
                   <span
                     className={cn(
-                      'font-mono-tabular text-[12px] tabular-nums text-right',
+                      'text-xs font-medium tabular-nums text-right',
                       alarming && 'font-semibold',
                     )}
                     style={{ color: rowColor }}
@@ -850,14 +1057,14 @@ function EndpointHealthPanel({
                   </span>
                   {row.lastSeen ? (
                     <time
-                      className="font-mono-tabular text-[10px] text-[color:var(--text-3)] tabular-nums text-right"
+                      className="text-xs text-[color:var(--text-3)] tabular-nums text-right"
                       dateTime={row.lastSeen}
                       title={new Date(row.lastSeen).toLocaleString()}
                     >
                       {formatRelative(row.lastSeen)}
                     </time>
                   ) : (
-                    <span className="font-mono-tabular text-[10px] text-[color:var(--text-3)] tabular-nums text-right">
+                    <span className="text-xs text-[color:var(--text-3)] tabular-nums text-right">
                       none
                     </span>
                   )}
@@ -865,7 +1072,7 @@ function EndpointHealthPanel({
               );
             })}
             {!anyActivity && (
-              <div className="py-3 text-center text-[11px] text-[color:var(--text-3)]">
+              <div className="py-3 text-center text-xs text-[color:var(--text-3)]">
                 No endpoint activity in this window.
               </div>
             )}
@@ -881,7 +1088,7 @@ function EndpointHealthPanel({
 // ---------------------------------------------------------------------------
 function KpiSkeletonCard() {
   return (
-    <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] px-5 pt-4 pb-4 min-h-[136px] flex flex-col gap-3">
+    <div className="flex min-h-[124px] flex-col gap-3 bg-[color:var(--bg-1)] px-4 py-3.5">
       <Skeleton className="h-3 w-20" />
       <Skeleton className="h-8 w-16" />
       <Skeleton className="h-[22px] w-24 mt-auto" />
@@ -945,7 +1152,7 @@ function formatExpireRelative(iso?: string): string {
 function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
   return (
     <div
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden"
+      className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden"
       role="table"
       aria-label="Environments table"
     >
@@ -954,7 +1161,7 @@ function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
         className={cn(
           'grid grid-cols-[1.6fr_0.6fr_0.6fr_0.6fr_0.6fr_0.9fr_0.5fr] gap-3 px-4 h-9',
           'items-center border-b border-[color:var(--border)] bg-[color:var(--bg-2)]',
-          'text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] select-none',
+          'text-xs font-medium text-[color:var(--text-3)] select-none',
         )}
       >
         <span>Environment</span>
@@ -986,21 +1193,21 @@ function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
                 {env.name}
               </span>
             </div>
-            <span className="font-mono-tabular tabular-nums text-[color:var(--text-1)] text-right">
+            <span className="tabular-nums text-[color:var(--text-1)] text-right">
               {env.active.toLocaleString()}
             </span>
-            <span className="font-mono-tabular tabular-nums text-[color:var(--text-3)] text-right">
+            <span className="tabular-nums text-[color:var(--text-3)] text-right">
               {env.inactive.toLocaleString()}
             </span>
-            <span className="font-mono-tabular tabular-nums text-[color:var(--text-1)] text-right">
+            <span className="tabular-nums text-[color:var(--text-1)] text-right">
               {env.active_queries.toLocaleString()}
             </span>
-            <span className="font-mono-tabular tabular-nums text-[color:var(--text-1)] text-right">
+            <span className="tabular-nums text-[color:var(--text-1)] text-right">
               {env.active_carves.toLocaleString()}
             </span>
             <span
               className={cn(
-                'font-mono-tabular tabular-nums text-right',
+                'tabular-nums text-right',
                 tone === 'danger' && 'text-[color:var(--danger)]',
                 tone === 'warning' && 'text-[color:var(--warning)]',
                 tone === 'normal' && 'text-[color:var(--text-2)]',
@@ -1013,7 +1220,7 @@ function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
               to="/_app/env/$env/nodes"
               params={{ env: env.uuid }}
               className={cn(
-                'text-[11px] font-medium text-[color:var(--signal)] hover:underline text-right',
+                'text-xs font-medium text-[color:var(--signal)] hover:underline text-right',
                 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1',
                 'focus-visible:outline-[color:var(--signal)]',
               )}
@@ -1055,18 +1262,10 @@ function OsqueryVersionsPanel({
         <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)] flex items-center gap-2">
           osquery versions
           {showUpToDate && (
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full',
-                'text-[10px] font-mono-tabular uppercase tracking-[0.1em]',
-                'border border-[color:var(--success)]/25 bg-[color:var(--success)]/10 text-[color:var(--success)]',
-              )}
-            >
-              up-to-date
-            </span>
+            <StatusBadge variant="success" label="Up to date" />
           )}
         </h2>
-        <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums">
+        <span className="text-xs font-medium text-[color:var(--text-3)] tabular-nums">
           {total.toLocaleString()} hosts
         </span>
       </div>
@@ -1084,10 +1283,10 @@ function OsqueryVersionsPanel({
                   className="w-[2px] h-3.5 rounded-sm flex-shrink-0"
                   style={{ background: VERSION_BAR_COLORS[i % VERSION_BAR_COLORS.length] }}
                 />
-                <span className="font-mono-tabular text-[12px] text-[color:var(--text-1)] tabular-nums flex-1 truncate">
+                <span className="text-[12px] text-[color:var(--text-1)] tabular-nums flex-1 truncate">
                   {v.version || 'unknown'}
                 </span>
-                <span className="font-mono-tabular text-[12px] text-[color:var(--text-3)] tabular-nums">
+                <span className="text-[12px] text-[color:var(--text-3)] tabular-nums">
                   {v.count.toLocaleString()}
                 </span>
               </li>
@@ -1145,20 +1344,20 @@ function ActiveQueryRowItem({
     >
       <div className="col-span-5 flex items-center gap-2.5 min-w-0">
         <StatusPip variant={tone} />
-        <span className="font-mono-tabular font-medium text-[color:var(--text-1)] truncate">
+        <span className="font-medium text-[color:var(--text-1)] truncate">
           {row.name}
         </span>
       </div>
       <span
         className={cn(
-          'col-span-2 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full',
-          'text-[10px] font-mono-tabular border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+          'col-span-2 inline-flex items-center justify-center px-1.5 py-0.5 rounded',
+          'text-xs font-medium border border-[color:var(--border)] bg-[color:var(--bg-2)]',
           'text-[color:var(--text-2)] truncate',
         )}
       >
         {row.envName}
       </span>
-      <span className="col-span-2 font-mono-tabular text-[11px] tabular-nums text-[color:var(--text-3)] text-right">
+      <span className="col-span-2 text-xs tabular-nums text-[color:var(--text-3)] text-right">
         {row.executions.toLocaleString()} / {row.expected.toLocaleString()}
         {row.errors > 0 && (
           <>
@@ -1180,7 +1379,7 @@ function ActiveQueryRowItem({
           style={{ width: `${pct}%`, background: barColor }}
         />
       </div>
-      <span className="col-span-1 text-right text-[11px] font-mono-tabular text-[color:var(--text-3)] tabular-nums">
+      <span className="col-span-1 text-right text-xs text-[color:var(--text-3)] tabular-nums">
         {done ? 'done' : elapsed}
       </span>
     </Link>
@@ -1219,7 +1418,7 @@ function RecentlySeenNodesTable({
         className={cn(
           'grid grid-cols-[1.4fr_0.8fr_0.7fr_0.9fr_0.7fr_0.5fr] gap-3 px-4 h-9',
           'items-center border-b border-[color:var(--border)] bg-[color:var(--bg-2)]',
-          'text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] select-none',
+          'text-xs font-medium text-[color:var(--text-3)] select-none',
         )}
       >
         <span>Hostname</span>
@@ -1255,7 +1454,7 @@ function RecentlySeenNodesTable({
                 {display}
               </Link>
               <span
-                className="text-[10px] font-mono-tabular text-[color:var(--text-3)] leading-tight"
+                className="text-xs font-mono-tabular text-[color:var(--text-3)] leading-tight"
                 title={n.uuid}
               >
                 <span className="text-[color:var(--signal)]">{n.uuid.slice(0, 6)}</span>
@@ -1265,15 +1464,15 @@ function RecentlySeenNodesTable({
             <span className="text-[12px] text-[color:var(--text-2)] truncate uppercase tracking-[0.04em]">
               {n.platform || '—'}
             </span>
-            <span className="font-mono-tabular text-[11px] text-[color:var(--text-3)] tabular-nums truncate">
+            <span className="text-xs text-[color:var(--text-3)] tabular-nums truncate">
               {n.osquery_version || '—'}
             </span>
-            <span className="font-mono-tabular text-[11px] text-[color:var(--text-3)] tabular-nums truncate">
+            <span className="font-mono-tabular text-xs text-[color:var(--text-3)] tabular-nums truncate">
               {n.ip_address || '—'}
             </span>
-            <span className="text-[11px] text-[color:var(--text-3)] truncate">—</span>
+            <span className="text-xs text-[color:var(--text-3)] truncate">—</span>
             <time
-              className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tabular-nums text-right"
+                className="text-xs text-[color:var(--text-3)] tabular-nums text-right"
               dateTime={n.last_seen}
               title={n.last_seen ? new Date(n.last_seen).toLocaleString() : ''}
             >
@@ -1532,38 +1731,34 @@ export function DashboardPage() {
   const activeQueriesLoading =
     activeQueriesPerEnv.length > 0 &&
     activeQueriesPerEnv.some((r) => r.isLoading);
+  const featuredQuery =
+    activeQueriesFlat.find((query) => query.envUuid === effectiveEnv)
+    ?? activeQueriesFlat[0];
+
+  // The carve card uses the newest record, regardless of whether it is still
+  // active, so completed archives remain one click away after collection.
+  const { data: recentCarvesData } = useQuery({
+    queryKey: ['dashboard-recent-carves', effectiveEnv],
+    queryFn: () => listCarves({
+      env: effectiveEnv,
+      target: 'all',
+      sort: 'created',
+      dir: 'desc',
+      page: 1,
+      pageSize: 3,
+    }),
+    enabled: !!effectiveEnv,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    retry: 1,
+  });
+  const recentCarve = recentCarvesData?.items[0];
 
   return (
-    <div className="flex flex-col gap-5 px-6 py-6 max-w-[1400px] mx-auto w-full">
+    <div className="flex flex-col gap-4 px-4 py-4 md:px-5 md:py-5 max-w-[1440px] mx-auto w-full">
 
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
-            overview · {envName}
-          </div>
-          <h1 className="font-display text-2xl font-bold text-[color:var(--text-1)] leading-tight">
-            Dashboard
-          </h1>
-          <p className="text-sm text-[color:var(--text-2)] mt-1">
-            Showing osquery activity within the last 24 hours
-          </p>
-        </div>
-        <div className="flex items-center gap-2 mt-1 flex-shrink-0">
-          <span
-            className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full
-              text-[10px] font-mono-tabular text-[color:var(--text-3)]
-              border border-[color:var(--border)] bg-[color:var(--bg-1)]"
-            title="Auto-refresh interval"
-          >
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-              <path d="M21 12a9 9 0 11-3-6.7l3 2.7" />
-            </svg>
-            30s
-          </span>
-          <LiveBadge />
-        </div>
-      </header>
+      <DashboardHeader envName={envName} />
 
       {/* ── Top row: time-series chart (2 cols) + 2 hero KPIs stacked ───── */}
       <section
@@ -1571,29 +1766,29 @@ export function DashboardPage() {
         aria-busy={isLoading}
         className="grid grid-cols-1 lg:grid-cols-3 gap-4"
       >
-        <div className="lg:col-span-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
-          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[color:var(--border)]">
+        <div className="lg:col-span-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--border)]">
             <div>
               <div className="text-sm font-display font-semibold text-[color:var(--text-1)]">
                 Node activity
               </div>
-              <div className="text-[11px] font-mono-tabular text-[color:var(--text-3)] mt-0.5 tabular-nums">
+              <div className="mt-0.5 text-xs font-medium tabular-nums text-[color:var(--text-3)]">
                 {activityWindowLabel} · per environment
               </div>
             </div>
             <div className="flex items-center gap-2">
               <RefreshButton onClick={() => void refetchActivityTiles()} isPending={activityQueries.some((q) => q.isFetching)} />
-              <div className="flex items-center gap-1 text-[12px]" role="tablist" aria-label="Time range">
+              <div className="flex items-center gap-0.5 rounded-md bg-[color:var(--bg-3)] p-0.5 text-[12px]" role="tablist" aria-label="Time range">
                 <button
                   type="button"
                   role="tab"
                   aria-selected={activityInterval === '12h'}
                   onClick={() => setActivityInterval('12h')}
                   className={cn(
-                    'px-2 py-1 rounded transition-colors duration-[120ms]',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    'h-7 px-2 rounded transition-colors duration-[100ms]',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',
                     activityInterval === '12h'
-                      ? 'font-semibold text-[color:var(--signal)] border-b-2 border-[color:var(--signal)]'
+                      ? 'font-semibold bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-[0_0_0_1px_var(--border)]'
                       : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
                   )}
                 >
@@ -1605,10 +1800,10 @@ export function DashboardPage() {
                   aria-selected={activityInterval === '1d'}
                   onClick={() => setActivityInterval('1d')}
                   className={cn(
-                    'px-2 py-1 rounded transition-colors duration-[120ms]',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    'h-7 px-2 rounded transition-colors duration-[100ms]',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',
                     activityInterval === '1d'
-                      ? 'font-semibold text-[color:var(--signal)] border-b-2 border-[color:var(--signal)]'
+                      ? 'font-semibold bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-[0_0_0_1px_var(--border)]'
                       : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
                   )}
                 >
@@ -1620,10 +1815,10 @@ export function DashboardPage() {
                   aria-selected={activityInterval === '7d'}
                   onClick={() => setActivityInterval('7d')}
                   className={cn(
-                    'px-2 py-1 rounded transition-colors duration-[120ms]',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                    'h-7 px-2 rounded transition-colors duration-[100ms]',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',
                     activityInterval === '7d'
-                      ? 'font-semibold text-[color:var(--signal)] border-b-2 border-[color:var(--signal)]'
+                      ? 'font-semibold bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-[0_0_0_1px_var(--border)]'
                       : 'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
                   )}
                 >
@@ -1632,155 +1827,66 @@ export function DashboardPage() {
               </div>
             </div>
           </div>
-          {/* Palette row — always visible. Doubles as the chart's
-              legend (swatch + label per category) and as the per-user
-              color picker. Each swatch is a native <input type="color">
-              bound to localStorage; a Reset link returns to defaults. */}
-          <div className="px-5 pb-2">
-            <div
-              className={cn(
-                'flex items-center gap-3 flex-wrap p-2.5 rounded-md',
-                'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
-                'text-xs text-[color:var(--text-2)]',
+          <div className="p-4">
+            <ChartLegend
+              palette={palette}
+              onChange={setPaletteEntry}
+              onReset={resetPalette}
+            />
+            <Suspense
+              fallback={(
+                <div className="mt-2 min-h-[200px] animate-pulse rounded-md bg-[color:var(--bg-2)]" aria-label="Loading node activity chart" />
               )}
             >
-              {(['status', 'result', 'config', 'query', 'error'] as ChartCategory[]).map((key) => (
-                <label key={key} className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="color"
-                    value={palette[key]}
-                    onChange={(e) => setPaletteEntry(key, e.target.value)}
-                    className="w-5 h-5 rounded border border-[color:var(--border)] cursor-pointer p-0"
-                    aria-label={`${key} color`}
-                  />
-                  <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                </label>
-              ))}
-              <button
-                type="button"
-                onClick={resetPalette}
-                className={cn(
-                  'ml-auto px-2 py-0.5 text-[10px] rounded',
-                  'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
-                  'hover:bg-[color:var(--bg-1)]',
-                )}
-              >
-                Reset to defaults
-              </button>
-            </div>
-          </div>
-          <div className="p-5">
-            <LineChart
-              series={chartSeries}
-              intervalLabel={activityInterval === '7d' ? '7d' : activityInterval === '12h' ? '12h' : '24h'}
-              palette={palette}
-            />
+              <ActivityLineChart
+                series={chartSeries}
+                intervalLabel={activityInterval === '7d' ? '7d' : activityInterval === '12h' ? '12h' : '24h'}
+                palette={palette}
+              />
+            </Suspense>
           </div>
         </div>
 
-        <div className="grid grid-rows-2 gap-4">
-          <HeroKpi
-            label="Queries"
-            description="queries ran in the last 24 hours"
-            value={data?.total_active_queries ?? 0}
-            tone="success"
-            toneText={`${data?.total_active_queries ?? 0} active`}
-          />
-          <HeroKpi
-            label="Forensic Carves"
-            description="active carve operations in flight"
-            value={data?.total_active_carves ?? 0}
-            tone="info"
-            toneText={`${data?.total_active_carves ?? 0} in flight`}
-          />
-        </div>
+        <OperationalWorkloadCards
+          activeQueries={data?.total_active_queries ?? 0}
+          activeCarves={data?.total_active_carves ?? 0}
+          featuredQuery={featuredQuery}
+          recentCarve={recentCarve}
+          env={envParam}
+        />
       </section>
 
       {/* ── Mid 4-KPI row ────────────────────────────────────────────────── */}
       <section aria-label="Environment KPIs" aria-busy={isLoading}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {isLoading || (isError && !is401) ? (
-            Array.from({ length: 4 }).map((_, i) => <KpiSkeletonCard key={i} />)
-          ) : (
-            <>
-              <KpiCard
-                label="Active Nodes"
-                value={data?.active_nodes ?? 0}
-                sparkline={chartSeries.config}
-                halo="success"
-                polarity="up-good"
-                deltaLabel={
-                  (data?.total_nodes ?? 0) > 0
-                    ? `${Math.round(((data?.active_nodes ?? 0) / data!.total_nodes) * 100)}% of fleet`
-                    : 'no nodes'
-                }
-              />
-              <KpiCard
-                label={`Inactive ≥ ${inactiveHours}h`}
-                value={data?.inactive_nodes ?? 0}
-                sparkline={chartSeries.status}
-                halo="warning"
-                polarity="up-bad"
-                deltaLabel={
-                  (data?.total_nodes ?? 0) > 0
-                    ? `${Math.round(((data?.inactive_nodes ?? 0) / data!.total_nodes) * 100)}% of fleet`
-                    : 'no nodes'
-                }
-              />
-              {/* Reported errors (24h) — ERROR-severity status logs from the
-                  fleet, danger-tinted when >0. Warnings are excluded on
-                  purpose: they are routine enough that counting them would
-                  keep this tile permanently lit. */}
-              <KpiCard
-                label="Reported errors (24h)"
-                value={reportedErrors}
-                sparkline={chartSeries.statusError}
-                halo={reportedErrors > 0 ? 'danger' : 'success'}
-                polarity="up-bad"
-                deltaLabel={
-                  reportedErrors === 0
-                    ? 'all clear'
-                    : `${reportedErrors} in 24h — see nodes`
-                }
-                // Only actionable when there is something to drill into, and
-                // only once an environment is resolved to scope the query.
-                onClick={
-                  reportedErrors > 0 && effectiveEnv
-                    ? () => setShowErrorNodes(true)
-                    : undefined
-                }
-                actionLabel="Show the nodes reporting errors"
-              />
-              <KpiCard
-                label="Active Queries"
-                value={data?.total_active_queries ?? 0}
-                sparkline={chartSeries.query}
-                halo="signal"
-                polarity="up-good"
-                deltaLabel={`${data?.total_active_queries ?? 0} executing`}
-              />
-            </>
-          )}
-        </div>
+        <DashboardKpiSet
+          loading={isLoading || (isError && !is401)}
+          activeNodes={data?.active_nodes ?? 0}
+          totalNodes={data?.total_nodes ?? 0}
+          inactiveNodes={data?.inactive_nodes ?? 0}
+          inactiveHours={inactiveHours}
+          reportedErrors={reportedErrors}
+          onReportedErrorsClick={
+            reportedErrors > 0 && effectiveEnv
+              ? () => setShowErrorNodes(true)
+              : undefined
+          }
+          activeQueries={data?.total_active_queries ?? 0}
+          chartSeries={chartSeries}
+        />
       </section>
 
       {/* ── Active queries with live progress ────────────────────────────── */}
       <section aria-label="Active queries" aria-busy={activeQueriesLoading}>
-        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+        <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
           <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)]">
             <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)] flex items-center gap-2">
               Active queries
               {activeQueriesFlat.length > 0 && (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full',
-                    'text-[10px] font-mono-tabular uppercase tracking-[0.1em]',
-                    'border border-[color:var(--signal)]/30 bg-[color:var(--signal)]/10',
-                    'text-[color:var(--signal-bright,var(--signal))]',
-                  )}
-                >
-                  <StatusPip variant="signal" live />
-                  {activeQueriesFlat.length} live
+                <span className="inline-flex items-center gap-2">
+                  <StatusBadge variant="signal" label="Live" live />
+                  <span className="text-xs font-medium tabular-nums text-[color:var(--text-3)]">
+                    {activeQueriesFlat.length}
+                  </span>
                 </span>
               )}
             </h2>
@@ -1790,7 +1896,7 @@ export function DashboardPage() {
                 <Link
                   to="/_app/env/$env/queries"
                   params={{ env: effectiveEnv }}
-                  className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
+              className="text-xs font-medium text-[color:var(--text-link)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--accent)]"
                 >
                   View all →
                 </Link>
@@ -1838,7 +1944,7 @@ export function DashboardPage() {
             </h2>
             <div className="flex items-center gap-2">
               {data && (
-                <span className="text-xs text-[color:var(--text-3)] font-mono-tabular tabular-nums">
+                <span className="text-xs text-[color:var(--text-3)] tabular-nums">
                   {data.environments.length} env{data.environments.length !== 1 ? 's' : ''}
                 </span>
               )}
@@ -1951,7 +2057,7 @@ export function DashboardPage() {
               <RefreshButton onClick={() => void refetchAudit()} isPending={auditLoading} />
               <Link
                 to="/_app/audit"
-                className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
+                className="text-xs font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
               >
                 View all →
               </Link>
@@ -2001,7 +2107,7 @@ export function DashboardPage() {
               <Link
                 to="/_app/env/$env/nodes"
                 params={{ env: effectiveEnv }}
-                className="text-[11px] font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
+                className="text-xs font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
               >
                 View all →
               </Link>

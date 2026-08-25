@@ -88,7 +88,7 @@ export function QuickTemplates({ onPick }: QuickTemplatesProps) {
   if (isLoading) {
     return (
       <div className="space-y-2">
-        <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+        <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)]">
           Quick templates
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -121,13 +121,13 @@ export function QuickTemplates({ onPick }: QuickTemplatesProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
-        <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+        <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)]">
           Quick templates
         </div>
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="text-[11px] text-[color:var(--text-link)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)] rounded"
+          className="text-xs text-[color:var(--text-link)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)] rounded"
         >
           {expanded ? 'Collapse' : `Show all (${samples.length})`}
         </button>
@@ -146,7 +146,7 @@ export function QuickTemplates({ onPick }: QuickTemplatesProps) {
               <span
                 className={cn(
                   'flex-shrink-0 inline-flex items-center gap-1.5',
-                  'px-1.5 py-0.5 rounded text-[10px] font-mono-tabular uppercase tracking-[0.1em]',
+                  'px-1.5 py-0.5 rounded text-xs font-medium',
                   'bg-[color:var(--bg-3)] text-[color:var(--text-2)] border border-[color:var(--border)]',
                   'w-[110px] justify-start mt-0.5',
                 )}
@@ -176,8 +176,8 @@ function TemplateChip({ sample, onPick }: { sample: QuerySample; onPick: (s: Que
       title={`${sample.description}${sample.platforms.length ? `\nPlatforms: ${sample.platforms.join(', ')}` : ''}`}
       onClick={() => onPick(sample)}
       className={cn(
-        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full',
-        'text-[11px] font-medium transition-colors duration-[120ms]',
+        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded',
+        'text-xs font-medium transition-colors duration-[120ms]',
         'border border-[color:var(--border)]',
         'bg-[color:var(--bg-2)] text-[color:var(--text-2)]',
         'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)]',

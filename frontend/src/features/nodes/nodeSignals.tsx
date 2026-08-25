@@ -1,21 +1,23 @@
 import type { AdminTag, NodeHealth, NodeHealthStatus } from '$/api/types';
-import { cn } from '$/lib/cn';
 import { resolveTagIcon } from '$/components/forms/IconPicker';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { TagChip } from '$/components/data/TagChip';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 
 const HEALTH_LABELS: Record<NodeHealthStatus, string> = {
-  healthy: 'healthy',
-  attention: 'attention',
-  at_risk: 'at risk',
-  offline: 'offline',
-  unknown: 'unknown',
+  healthy: 'Healthy',
+  attention: 'Attention',
+  at_risk: 'At risk',
+  offline: 'Offline',
+  unknown: 'Unknown',
 };
 
-const HEALTH_CLASSES: Record<NodeHealthStatus, string> = {
-  healthy: 'border-[color:var(--success)]/25 bg-[color:var(--success)]/10 text-[color:var(--success)]',
-  attention: 'border-[color:var(--warning)]/25 bg-[color:var(--warning)]/10 text-[color:var(--warning)]',
-  at_risk: 'border-[color:var(--danger)]/25 bg-[color:var(--danger)]/10 text-[color:var(--danger)]',
-  offline: 'border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
-  unknown: 'border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-3)]',
+const HEALTH_VARIANTS: Record<NodeHealthStatus, 'success' | 'warning' | 'danger' | 'dim'> = {
+  healthy: 'success',
+  attention: 'warning',
+  at_risk: 'danger',
+  offline: 'dim',
+  unknown: 'dim',
 };
 
 function normalizeHealthStatus(status?: string): NodeHealthStatus {
@@ -28,16 +30,11 @@ function normalizeHealthStatus(status?: string): NodeHealthStatus {
 export function HealthBadge({ health }: { health?: NodeHealth }) {
   const status = normalizeHealthStatus(health?.status);
   return (
-    <span
+    <StatusBadge
+      variant={HEALTH_VARIANTS[status]}
+      label={HEALTH_LABELS[status]}
       title={health?.reason}
-      className={cn(
-        'inline-flex w-fit items-center rounded-full border px-2 py-0.5',
-        'text-[10px] font-mono-tabular uppercase tracking-[0.08em]',
-        HEALTH_CLASSES[status],
-      )}
-    >
-      {HEALTH_LABELS[status]}
-    </span>
+    />
   );
 }
 
@@ -61,26 +58,17 @@ export function TagChips({
       {visible.map((tag) => {
         const IconComp = resolveTagIcon(tag.icon);
         return (
-          <span
+          <TagChip
             key={`${tag.id}-${tag.name}`}
-            className="inline-flex max-w-[120px] items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10.5px] font-mono-tabular leading-tight"
-            style={{
-              borderColor: `${tag.color || '#64748b'}55`,
-              backgroundColor: `${tag.color || '#64748b'}18`,
-              color: tag.color || 'var(--text-2)',
-            }}
+            label={tag.name}
+            color={tag.color}
+            Icon={IconComp}
             title={tag.description || tag.name}
-          >
-            {IconComp && <IconComp className="w-2.5 h-2.5 flex-shrink-0" aria-hidden />}
-            <span className="truncate">{tag.name}</span>
-          </span>
+            className="max-w-[120px]"
+          />
         );
       })}
-      {overflow > 0 && (
-        <span className="text-[10.5px] font-mono-tabular text-[color:var(--text-3)]">
-          +{overflow}
-        </span>
-      )}
+      {overflow > 0 && <MetadataBadge className="tabular-nums">+{overflow}</MetadataBadge>}
     </div>
   );
 }

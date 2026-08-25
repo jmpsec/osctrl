@@ -1,12 +1,8 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-/* Bai Jamjuree — wordmark font, self-hosted from /fonts/.
- * Originally loaded from Google Fonts, but Google's font CDN is
- * blocked by some ad blockers and corporate proxies. Self-hosting
- * makes the font part of the SPA's own asset bundle so it always
- * loads. Only the Latin subset at weights 500/600/700 ships —
- * everything we need for the wordmark, ~36KB total. */
+@custom-variant dark (&:is(.dark *));
+
 @font-face {
   font-family: 'Bai Jamjuree';
   font-style: normal;
@@ -14,6 +10,7 @@
   font-display: swap;
   src: url('/fonts/bai-jamjuree-500.woff2') format('woff2');
 }
+
 @font-face {
   font-family: 'Bai Jamjuree';
   font-style: normal;
@@ -21,6 +18,7 @@
   font-display: swap;
   src: url('/fonts/bai-jamjuree-600.woff2') format('woff2');
 }
+
 @font-face {
   font-family: 'Bai Jamjuree';
   font-style: normal;
@@ -29,25 +27,59 @@
   src: url('/fonts/bai-jamjuree-700.woff2') format('woff2');
 }
 
-html,
-body {
+html {
   background: var(--bg-0);
-  color: var(--text-1);
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-feature-settings: "cv11", "ss01";
+  font-size: 16px;
   min-height: 100dvh;
 }
 
-.font-display {
-  font-family: 'Space Grotesk', sans-serif;
-  letter-spacing: -0.015em;
+body {
+  background: var(--bg-0);
+  color: var(--text-1);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Wordmark font — Bai Jamjuree at 700, loaded from Google Fonts in
- * index.html. The wordmark is the only surface that uses it; the rest
- * of the SPA stays on Inter + Space Grotesk + IBM Plex Mono. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+* {
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.font-display {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -0.018em;
+}
+
 .font-wordmark {
-  font-family: 'Bai Jamjuree', 'Space Grotesk', sans-serif;
+  font-family: 'Bai Jamjuree', 'Inter', sans-serif;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
@@ -62,97 +94,87 @@ body {
 }
 
 .topbar-glass {
-  background: color-mix(in srgb, var(--bg-0) 72%, transparent);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: var(--bg-1);
 }
 
-/* Original osctrl PNG mark — two variants ship as separate PNGs:
- *
- *   osctrl-logo.png      — original, dark outline + light-blue cabin
- *                          windows. Used on the light theme where the
- *                          dark outline reads naturally on white.
- *   osctrl-logo-dark.png — manually recolored, light outline + bright
- *                          brand-info cabin windows. Used on the dark
- *                          theme.
- *
- * The Logo component renders both <img>s; CSS picks which one shows
- * based on data-theme. We avoid CSS filter recoloring because
- * Tailwind v4's optimizer silently broke our filter:invert() chain
- * by dropping the argument, and this two-PNG approach gives pixel-
- * perfect control over both variants. */
+.side-nav-circuit {
+  isolation: isolate;
+}
+
+.side-nav-circuit::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 42%,
+    color-mix(in srgb, var(--accent) 42%, var(--text-2)) 64%,
+    color-mix(in srgb, var(--accent) 58%, var(--text-2)) 100%
+  );
+  content: "";
+  opacity: 0.055;
+  pointer-events: none;
+  -webkit-mask-image: url('/img/circuit.svg');
+  mask-image: url('/img/circuit.svg');
+  -webkit-mask-position: center top;
+  mask-position: center top;
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 240px 240px;
+  mask-size: 240px 240px;
+}
+
+.side-nav-circuit > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Dense data views keep their structure without shouty all-caps headers. */
+thead th {
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
 .osctrl-logo-light,
 .osctrl-logo-dark {
   display: none !important;
 }
+
 [data-theme="light"] .osctrl-logo .osctrl-logo-light {
   display: block !important;
 }
+
 [data-theme="dark"] .osctrl-logo .osctrl-logo-dark {
   display: block !important;
 }
-/* No data-theme set yet (first paint before theme-bootstrap.js runs) —
- * default to the light variant so the page isn't logo-less briefly. */
+
 :root:not([data-theme="dark"]) .osctrl-logo .osctrl-logo-light {
   display: block !important;
 }
 
-/* SideNav circuit background — the legacy login screen's circuit-trace
- * SVG, tiled at low alpha behind the rail. Layered with the previous
- * subtle teal sheen at the top so the rail still feels lit-from-above.
- *
- * Uses background-image with the brand color baked into the inline SVG
- * URL (rather than mask-image) for the widest browser compatibility.
- * Two per-theme rules tune the alpha so dark and light read at similar
- * perceived density. Pattern is intentionally static — operators stare
- * at the rail constantly and motion would be a distraction. */
-.sidenav-circuit {
-  background-color: var(--bg-0);
-}
-[data-theme="dark"] .sidenav-circuit {
-  background-image:
-    linear-gradient(180deg, rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.04) 0%, transparent 280px),
-    url("data:image/svg+xml;utf8,<svg width='304' height='304' viewBox='0 0 304 304' fill='%232bc4be' fill-opacity='0.08' xmlns='http://www.w3.org/2000/svg'><path d='M44.1 224c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H0v-2h44.1zm160 48c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H82v-2h122.1zm57.8-46c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H304v2h-42.1zm0 16c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H304v2h-42.1zm6.2-114c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4h-86.2c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4h86.2zm-256-48c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H0v-2h12.1zm185.8 34c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4h86.2c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4h-86.2zM258 12.1c2.282.463 4 2.48 4 4.9 0 2.76-2.24 5-5 5s-5-2.24-5-5c0-2.42 1.718-4.437 4-4.9V0h2v12.1zm-64 208c2.282.463 4 2.48 4 4.9 0 2.76-2.24 5-5 5s-5-2.24-5-5c0-2.42 1.718-4.437 4-4.9v-54.2c-2.282-.463-4-2.48-4-4.9 0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.42-1.718 4.437-4 4.9v54.2zm48-198.2c2.282-.463 4-2.48 4-4.9 0-2.76-2.24-5-5-5s-5 2.24-5 5c0 2.42 1.718 4.437 4 4.9V82h64v-2h-62V21.9zm16 16c2.282-.463 4-2.48 4-4.9 0-2.76-2.24-5-5-5s-5 2.24-5 5c0 2.42 1.718 4.437 4 4.9V66h48v-2h-46V37.9zm-128 96c2.282-.463 4-2.48 4-4.9 0-2.76-2.24-5-5-5s-5 2.24-5 5c0 2.42 1.718 4.437 4 4.9V210h16v10.1c-2.282.463-4 2.48-4 4.9 0 2.76 2.24 5 5 5s5-2.24 5-5c0-2.42-1.718-4.437-4-4.9V208h-16v-74.1zm-5.9-21.9c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H114v48H85.9c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H112v-48h12.1zm-6.2 130c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H176v-74.1c-2.282-.463-4-2.48-4-4.9 0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.42-1.718 4.437-4 4.9V242h-60.1zm-16-64c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H114v48h10.1c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H112v-48h-10.1zM97 100c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm0-16c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm16 16c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm16 16c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm0 16c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z' fill-rule='evenodd'/></svg>");
-  background-size: auto, 200px 200px;
-  background-repeat: no-repeat, repeat;
-}
-[data-theme="light"] .sidenav-circuit {
-  background-image:
-    linear-gradient(180deg, rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.06) 0%, transparent 280px),
-    url("data:image/svg+xml;utf8,<svg width='304' height='304' viewBox='0 0 304 304' fill='%230a8a85' fill-opacity='0.10' xmlns='http://www.w3.org/2000/svg'><path d='M44.1 224c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H0v-2h44.1zm160 48c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H82v-2h122.1zm57.8-46c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H304v2h-42.1zm0 16c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H304v2h-42.1zm6.2-114c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4h-86.2c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4h86.2zm-256-48c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H0v-2h12.1zm185.8 34c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4h86.2c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4h-86.2zM258 12.1c2.282.463 4 2.48 4 4.9 0 2.76-2.24 5-5 5s-5-2.24-5-5c0-2.42 1.718-4.437 4-4.9V0h2v12.1zm-64 208c2.282.463 4 2.48 4 4.9 0 2.76-2.24 5-5 5s-5-2.24-5-5c0-2.42 1.718-4.437 4-4.9v-54.2c-2.282-.463-4-2.48-4-4.9 0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.42-1.718 4.437-4 4.9v54.2zm48-198.2c2.282-.463 4-2.48 4-4.9 0-2.76-2.24-5-5-5s-5 2.24-5 5c0 2.42 1.718 4.437 4 4.9V82h64v-2h-62V21.9zm16 16c2.282-.463 4-2.48 4-4.9 0-2.76-2.24-5-5-5s-5 2.24-5 5c0 2.42 1.718 4.437 4 4.9V66h48v-2h-46V37.9zm-128 96c2.282-.463 4-2.48 4-4.9 0-2.76-2.24-5-5-5s-5 2.24-5 5c0 2.42 1.718 4.437 4 4.9V210h16v10.1c-2.282.463-4 2.48-4 4.9 0 2.76 2.24 5 5 5s5-2.24 5-5c0-2.42-1.718-4.437-4-4.9V208h-16v-74.1zm-5.9-21.9c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H114v48H85.9c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H112v-48h12.1zm-6.2 130c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H176v-74.1c-2.282-.463-4-2.48-4-4.9 0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.42-1.718 4.437-4 4.9V242h-60.1zm-16-64c-.463 2.282-2.48 4-4.9 4-2.76 0-5-2.24-5-5s2.24-5 5-5c2.42 0 4.437 1.718 4.9 4H114v48h10.1c.463-2.282 2.48-4 4.9-4 2.76 0 5 2.24 5 5s-2.24 5-5 5c-2.42 0-4.437-1.718-4.9-4H112v-48h-10.1zM97 100c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm0-16c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm16 16c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm16 16c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm0 16c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z' fill-rule='evenodd'/></svg>");
-  background-size: auto, 200px 200px;
-  background-repeat: no-repeat, repeat;
-}
-
-/* --- Status pip pulse (live indicator) --- */
 @keyframes pip-pulse {
-  0%   { transform: scale(0.8); opacity: 0.7; }
-  100% { transform: scale(2.2); opacity: 0; }
+  0% { transform: scale(0.8); opacity: 0.65; }
+  100% { transform: scale(2); opacity: 0; }
 }
 
-/* osctrl-pulse: same shape as pip-pulse, named so the LiveBadge component
- * can reference it via Tailwind's arbitrary animation syntax
- * `animate-[osctrl-pulse_2s_ease-out_infinite]`. */
 @keyframes osctrl-pulse {
-  0%   { transform: scale(0.8); opacity: 0.7; }
+  0% { transform: scale(0.8); opacity: 0.7; }
   100% { transform: scale(2.2); opacity: 0; }
 }
 
 .pip-live-ring {
   position: absolute;
-  inset: -3px;
+  width: 7px;
+  height: 7px;
   border-radius: 9999px;
-  background: inherit;
-  opacity: 0;
   animation: pip-pulse 1.8s ease-out infinite;
   pointer-events: none;
 }
 
-/* --- Stale-data shimmer (background refetch in flight) --- */
 @keyframes stale-shimmer {
-  0%   { opacity: 1; }
-  50%  { opacity: 0.65; }
-  100% { opacity: 1; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
 }
 
 tbody[data-stale="true"] {
@@ -164,4 +186,70 @@ tbody[data-stale="true"] {
   tbody[data-stale="true"] {
     animation: none;
   }
+}
+
+:root,
+[data-theme="light"] {
+  --foreground: var(--text-1);
+  --muted-foreground: var(--text-3);
+  --chart-1: var(--signal);
+  --chart-2: var(--success);
+  --chart-3: var(--warning);
+  --chart-4: var(--info);
+  --chart-5: var(--text-3);
+  --chart-background: var(--bg-1);
+  --chart-foreground: var(--text-1);
+  --chart-foreground-muted: var(--text-3);
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-crosshair: color-mix(in srgb, var(--text-2) 58%, transparent);
+  --chart-grid: color-mix(in srgb, var(--border) 82%, transparent);
+  --chart-brush-border: var(--chart-grid);
+  --chart-tooltip-background: rgba(28, 28, 30, 0.88);
+  --chart-tooltip-foreground: #ffffff;
+  --chart-tooltip-muted: rgba(255, 255, 255, 0.64);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.12);
+  --chart-tooltip-shadow: 0 14px 40px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.12);
+  --chart-marker-background: var(--bg-1);
+  --chart-marker-border: var(--border-strong);
+  --chart-marker-foreground: var(--text-1);
+  --chart-label: var(--text-3);
+  --chart-scale-01: color-mix(in srgb, var(--signal) 8%, var(--bg-1));
+  --chart-scale-02: color-mix(in srgb, var(--signal) 18%, var(--bg-1));
+  --chart-scale-03: color-mix(in srgb, var(--signal) 32%, var(--bg-1));
+  --chart-scale-04: color-mix(in srgb, var(--signal) 52%, var(--bg-1));
+  --chart-scale-05: color-mix(in srgb, var(--signal) 72%, var(--bg-1));
+  --chart-scale-pattern-color: var(--bg-2);
+}
+
+[data-theme="dark"] {
+  --chart-tooltip-background: rgba(38, 38, 40, 0.88);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.1);
+  --chart-tooltip-shadow: 0 18px 48px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+@theme inline {
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-background: var(--chart-background);
+  --color-chart-foreground: var(--chart-foreground);
+  --color-chart-foreground-muted: var(--chart-foreground-muted);
+  --color-chart-crosshair: var(--chart-crosshair);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-marker-background: var(--chart-marker-background);
+  --color-chart-marker-border: var(--chart-marker-border);
+  --color-chart-marker-foreground: var(--chart-marker-foreground);
+  --color-chart-label: var(--chart-label);
+  --color-chart-scale-01: var(--chart-scale-01);
+  --color-chart-scale-02: var(--chart-scale-02);
+  --color-chart-scale-03: var(--chart-scale-03);
+  --color-chart-scale-04: var(--chart-scale-04);
+  --color-chart-scale-05: var(--chart-scale-05);
+  --color-chart-scale-pattern-color: var(--chart-scale-pattern-color);
 }

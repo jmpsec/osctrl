@@ -1,0 +1,53 @@
+.login-visual-panel {
+  --login-scene-bg: #263469;
+  --login-scene-grid-fill: rgb(151 169 255 / 0.055);
+  --login-scene-circuit: rgb(224 229 255 / 0.68);
+  --login-scene-success: #4ade80;
+  --login-scene-muted: #dfe4ff;
+
+  background-color: var(--login-scene-bg);
+  container-type: inline-size;
+}
+
+[data-theme="light"] .login-visual-panel,
+:root:not([data-theme="dark"]) .login-visual-panel {
+  --login-scene-bg: #3450a6;
+  --login-scene-grid-fill: rgb(180 194 255 / 0.06);
+  --login-scene-circuit: rgb(239 242 255 / 0.7);
+  --login-scene-muted: #edf0ff;
+}
+
+.login-visual-panel::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.login-isometric-scene {
+  display: block;
+  inline-size: min(116%, 920px);
+  max-inline-size: none;
+  max-block-size: min(82vh, 820px);
+  overflow: visible;
+}
+
+.login-scene-circuit-plane {
+  opacity: 0.54;
+}
+
+.login-scene-control-tower {
+  filter: drop-shadow(0 18px 22px rgb(17 25 57 / 0.2));
+}
+
+@container (max-width: 620px) {
+  .login-isometric-scene {
+    inline-size: 124%;
+  }
+
+  .login-scene-circuit-plane {
+    opacity: 0.46;
+  }
+}

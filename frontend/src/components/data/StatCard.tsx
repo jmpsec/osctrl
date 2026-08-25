@@ -9,15 +9,6 @@ import { Sparkline } from './Sparkline';
 export type HaloVariant = 'signal' | 'success' | 'warning' | 'danger' | 'info';
 export type TrendDirection = 'up' | 'down' | 'flat';
 
-// CSS variable references for each semantic color pair (RGB components for halo).
-const haloVars: Record<HaloVariant, string> = {
-  signal:  'rgba(var(--halo-r), var(--halo-g), var(--halo-b), 0.15)',
-  success: 'rgba(var(--success-r), var(--success-g), var(--success-b), 0.14)',
-  warning: 'rgba(var(--warning-r), var(--warning-g), var(--warning-b), 0.14)',
-  danger:  'rgba(var(--danger-r), var(--danger-g), var(--danger-b), 0.14)',
-  info:    'rgba(var(--info-r), var(--info-g), var(--info-b), 0.14)',
-};
-
 const sparklineColors: Record<HaloVariant, string> = {
   signal:  'var(--signal)',
   success: 'var(--success)',
@@ -63,30 +54,25 @@ export function StatCard({
   className,
   visualization,
 }: StatCardProps) {
-  const halosStyle: React.CSSProperties = {
-    background: `radial-gradient(ellipse at top left, ${haloVars[halo]} 0%, transparent 70%), var(--bg-1)`,
-  };
-
   return (
     <div
       className={cn(
-        'relative flex flex-col justify-between',
-        'rounded-lg border border-[color:var(--border)]',
-        'px-5 pt-4 pb-4',
-        'min-h-[130px]',
-        'transition-shadow duration-[120ms]',
-        'hover:shadow-[0_0_0_1px_var(--signal)]',
+        'relative flex flex-col',
+        'rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)]',
+        'px-4 py-3.5',
+        'min-h-[120px]',
+        'transition-colors duration-[100ms]',
+        'hover:border-[color:var(--border-strong)]',
         className,
       )}
-      style={halosStyle}
     >
       {/* Label */}
-      <div className="text-[10px] font-mono-tabular uppercase tracking-[0.12em] text-[color:var(--text-3)] select-none mb-1">
+      <div className="text-xs font-medium text-[color:var(--text-2)] select-none mb-1">
         {label}
       </div>
 
       {/* Value */}
-      <div className="font-display text-3xl font-bold tabular-nums text-[color:var(--text-1)] leading-none">
+      <div className="font-display text-2xl font-semibold tabular-nums text-[color:var(--text-1)] leading-none">
         {typeof value === 'number' ? value.toLocaleString() : value}
       </div>
 
@@ -111,7 +97,7 @@ export function StatCard({
 
       {/* Sparkline or custom visualization */}
       {(sparkline || visualization) && (
-        <div className="mt-3">
+        <div className="mt-auto pt-3">
           {visualization ?? (
             sparkline && (
               <Sparkline

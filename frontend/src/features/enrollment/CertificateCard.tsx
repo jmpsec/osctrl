@@ -114,7 +114,7 @@ export function CertificateCard({ env }: { env: string }) {
           Certificate
         </h2>
         <span
-          className="text-[10px] text-[color:var(--text-3)] cursor-help"
+          className="text-xs text-[color:var(--text-3)] cursor-help"
           title="The PEM-encoded TLS certificate agents pin to when they enroll. Replace this when rotating CAs or after a compromise."
         >
           ⓘ
@@ -124,7 +124,7 @@ export function CertificateCard({ env }: { env: string }) {
       {/* Preview */}
       <pre
         className={cn(
-          'text-[10px] font-mono-tabular',
+          'text-xs font-mono-tabular',
           'bg-[color:var(--bg-2)] border border-[color:var(--border)] rounded-md',
           'p-2 min-h-[60px] overflow-hidden whitespace-pre-wrap break-all',
           'text-[color:var(--text-2)]',
@@ -163,7 +163,7 @@ export function CertificateCard({ env }: { env: string }) {
       {/* Replace */}
       <div className="mt-4 pt-3 border-t border-[color:var(--border)]">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+          <span className="text-xs font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
             Replace certificate
           </span>
           <input
@@ -193,7 +193,7 @@ export function CertificateCard({ env }: { env: string }) {
           }}
           placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
           className={cn(
-            'w-full px-2.5 py-2 rounded-md text-[10px] font-mono-tabular',
+            'w-full px-2.5 py-2 rounded-md text-xs font-mono-tabular',
             'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
             'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
             'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
@@ -204,7 +204,7 @@ export function CertificateCard({ env }: { env: string }) {
         {feedback && (
           <p
             className={cn(
-              'mt-1.5 text-[10px]',
+              'mt-1.5 text-xs',
               feedback.kind === 'success'
                 ? 'text-[color:var(--success)]'
                 : 'text-[color:var(--danger)]',

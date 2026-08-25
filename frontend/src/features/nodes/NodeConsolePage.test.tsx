@@ -129,7 +129,7 @@ describe('NodeConsolePanel', () => {
 
     const input = await screen.findByLabelText(/console input/i);
     await waitFor(() => expect(input).not.toBeDisabled());
-    expect(screen.getByTestId('node-console-page')).toHaveClass('h-[calc(100dvh-3.5rem)]');
+    expect(screen.getByTestId('node-console-page')).toHaveClass('h-full');
     expect(input.closest('form')).toHaveAttribute('data-console-command-bar', 'true');
     expect(input.closest('form')).toHaveClass('sticky', 'bottom-0');
   });

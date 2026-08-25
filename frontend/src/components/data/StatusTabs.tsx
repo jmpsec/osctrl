@@ -36,7 +36,7 @@ export function StatusTabs<T extends string>({
   return (
     <div
       className={cn(
-        'flex items-center gap-1 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]',
+        'flex items-center gap-0.5 rounded-md bg-[color:var(--bg-3)] p-0.5',
         className,
       )}
       role="tablist"
@@ -52,10 +52,10 @@ export function StatusTabs<T extends string>({
           onClick={() => onChange(tab.value)}
           onKeyDown={handleKeyDown}
           className={cn(
-            'px-3 py-1 text-xs font-medium rounded transition-colors',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+            'h-7 px-2.5 text-xs font-medium rounded transition-colors',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',
             value === tab.value
-              ? 'bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-sm'
+              ? 'bg-[color:var(--bg-1)] text-[color:var(--text-1)] shadow-[0_0_0_1px_var(--border)]'
               : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
           )}
         >

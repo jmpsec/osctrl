@@ -24,6 +24,7 @@ import { SearchInput } from '$/components/data/SearchInput';
 import { SortableHeader } from '$/components/data/SortableHeader';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { Button } from '$/components/atoms/Button';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
@@ -114,17 +115,13 @@ export function SavedQueriesPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            size="md"
             onClick={() => setModal({ kind: 'create' })}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
-              'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-            )}
           >
             New saved query
-          </button>
+          </Button>
 
           <label htmlFor="sq-page-size" className="sr-only">Rows per page</label>
           <select
@@ -146,7 +143,7 @@ export function SavedQueriesPage() {
             <span
               aria-live="polite"
               aria-label="Refreshing data"
-              className="text-[10px] text-[color:var(--text-3)] font-mono-tabular"
+              className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
             </span>
@@ -207,13 +204,14 @@ export function SavedQueriesPage() {
                     }
                     title={error instanceof Error ? error.message : 'Failed to load saved queries'}
                     action={
-                      <button
+                      <Button
                         type="button"
+                        size="md"
                         onClick={() => void refetch()}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                        className="text-xs"
                       >
                         Retry
-                      </button>
+                      </Button>
                     }
                   />
                 </td>
@@ -232,21 +230,24 @@ export function SavedQueriesPage() {
                     title={q ? 'No saved queries match your search.' : 'No saved queries yet.'}
                     action={
                       q ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="md"
                           onClick={() => updateSearch({ q: undefined, page: 1 })}
-                          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                          className="text-xs"
                         >
                           Clear search
-                        </button>
+                        </Button>
                       ) : (
-                        <button
+                        <Button
                           type="button"
+                          size="md"
                           onClick={() => setModal({ kind: 'create' })}
-                          className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors"
+                          className="text-xs"
                         >
                           Save your first query
-                        </button>
+                        </Button>
                       )
                     }
                   />
@@ -262,7 +263,7 @@ export function SavedQueriesPage() {
                   className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <span className="text-sm font-medium font-mono-tabular text-[color:var(--text-1)]">
+                    <span className="text-sm font-medium tabular-nums text-[color:var(--text-1)]">
                       {item.name}
                     </span>
                   </td>
@@ -437,13 +438,13 @@ function SavedQueryFormModal({
             placeholder="e.g. linux_processes_with_listening_ports"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           />
           {mode === 'edit' && (
-            <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+            <p className="mt-1 text-xs text-[color:var(--text-3)]">
               Names can't be changed after creation.
             </p>
           )}
@@ -482,18 +483,14 @@ function SavedQueryFormModal({
           >
             Cancel
           </button>
-          <button
+          <Button
             type="submit"
+            size="md"
             disabled={mutation.isPending}
-            className={cn(
-              'px-3 py-1.5 text-xs font-medium rounded-md',
-              'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]',
-              'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-            )}
+            className="text-xs"
           >
             {mutation.isPending ? 'Saving…' : mode === 'create' ? 'Save query' : 'Save changes'}
-          </button>
+          </Button>
         </div>
       </form>
     </ModalShell>
@@ -539,7 +536,7 @@ function DeleteConfirmModal({
     >
       <p className="text-sm text-[color:var(--text-1)]">
         Delete{' '}
-        <strong className="font-mono-tabular text-[color:var(--text-1)]">{query.name}</strong>
+        <strong className="tabular-nums text-[color:var(--text-1)]">{query.name}</strong>
         ? This cannot be undone.
       </p>
 

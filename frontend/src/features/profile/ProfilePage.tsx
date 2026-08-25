@@ -20,6 +20,8 @@ import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { Skeleton } from '$/components/data/Skeleton';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
 import type { EnvAccess } from '$/api/types';
 import { MFAPanel } from './MFAPanel';
 
@@ -184,7 +186,7 @@ export function ProfilePage() {
           token · theme) so it's redundant; the kicker plus the cards'
           own titles carry the same information without the noise. */}
       <div className="px-6 py-4 border-b border-[color:var(--border)]">
-        <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
+        <div className="text-xs tabular-nums uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-0.5 select-none">
           account · profile
         </div>
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
@@ -228,7 +230,7 @@ export function ProfilePage() {
 
             {/* Identity */}
             <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <span className="font-mono-tabular text-sm font-medium text-[color:var(--text-1)] truncate">
+              <span className="tabular-nums text-sm font-medium text-[color:var(--text-1)] truncate">
                 {me.username}
               </span>
               {me.fullname && (
@@ -255,7 +257,7 @@ export function ProfilePage() {
                   'bg-[color:var(--bg-2)]',
                 )}
               >
-                <div className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1">
+                <div className="text-xs tabular-nums uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1">
                   Last access
                 </div>
                 <div
@@ -377,7 +379,7 @@ export function ProfilePage() {
                   autoComplete="new-password"
                   minLength={8}
                 />
-                <p className="mt-1 text-[10px] text-[color:var(--text-3)]">
+                <p className="mt-1 text-xs text-[color:var(--text-3)]">
                   Minimum 8 characters.
                 </p>
               </div>
@@ -485,14 +487,14 @@ export function ProfilePage() {
                   )}
                 </div>
                 <span
-                  className="text-[10px] font-mono-tabular text-[color:var(--text-3)] tnum whitespace-nowrap"
+                  className="text-xs tabular-nums text-[color:var(--text-3)] tnum whitespace-nowrap"
                   title={me.token_expire}
                 >
                   expires {formatRelative(me.token_expire)}
                 </span>
               </div>
 
-              <p className="text-[10px] text-[color:var(--text-3)] leading-relaxed">
+              <p className="text-xs text-[color:var(--text-3)] leading-relaxed">
                 {rawToken
                   ? 'Use the eye button to reveal the token. Copy it now — it will not be shown after you leave this page.'
                   : 'No token in memory. Rotate to mint a new one — the previous token will stop working immediately.'}
@@ -537,7 +539,7 @@ export function ProfilePage() {
                 <div className="text-xs text-[color:var(--text-1)] font-medium">
                   Color theme
                 </div>
-                <div className="text-[10px] text-[color:var(--text-3)]">
+                <div className="text-xs text-[color:var(--text-3)]">
                   Persists across reloads.
                 </div>
               </div>
@@ -546,7 +548,7 @@ export function ProfilePage() {
                 role="group"
                 aria-label="Toggle color theme"
                 className={cn(
-                  'flex items-center gap-0.5 p-1 rounded-full',
+                  'flex items-center gap-0.5 rounded-md p-0.5',
                   'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
                 )}
               >
@@ -557,7 +559,7 @@ export function ProfilePage() {
                     onClick={() => handleThemeSwitch(t)}
                     aria-pressed={theme === t}
                     className={cn(
-                      'px-2.5 py-1 rounded-full text-[11px] font-medium font-mono-tabular uppercase tracking-[0.04em]',
+                      'rounded px-2.5 py-1 text-xs font-medium',
                       'transition-colors duration-[120ms] ease-out',
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]',
                       theme === t
@@ -565,7 +567,7 @@ export function ProfilePage() {
                         : 'text-[color:var(--text-2)] hover:text-[color:var(--text-1)]',
                     )}
                   >
-                    {t.toUpperCase()}
+                    {t === 'dark' ? 'Dark' : 'Light'}
                   </button>
                 ))}
               </div>
@@ -612,7 +614,7 @@ function FieldLabel({
   return (
     <Label
       htmlFor={htmlFor}
-      className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1.5"
+      className="text-xs tabular-nums uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1.5"
     >
       {children}
     </Label>
@@ -693,42 +695,12 @@ function Panel({
 
 function RoleBadge({ admin, service }: { admin: boolean; service: boolean }) {
   if (admin) {
-    return (
-      <span
-        className={cn(
-          'px-2 py-0.5 rounded-full text-[10px] font-medium font-mono-tabular uppercase tracking-[0.06em]',
-          'bg-[rgba(var(--signal-r),var(--signal-g),var(--signal-b),0.12)] text-[color:var(--signal)]',
-          'border border-[color:var(--signal)]/30',
-        )}
-      >
-        super-admin
-      </span>
-    );
+    return <MetadataBadge>Super admin</MetadataBadge>;
   }
   if (service) {
-    return (
-      <span
-        className={cn(
-          'px-2 py-0.5 rounded-full text-[10px] font-medium font-mono-tabular uppercase tracking-[0.06em]',
-          'bg-[rgba(var(--info-r),var(--info-g),var(--info-b),0.12)] text-[color:var(--info)]',
-          'border border-[color:var(--info)]/30',
-        )}
-      >
-        service
-      </span>
-    );
+    return <MetadataBadge>Service</MetadataBadge>;
   }
-  return (
-    <span
-      className={cn(
-        'px-2 py-0.5 rounded-full text-[10px] font-medium font-mono-tabular uppercase tracking-[0.06em]',
-        'bg-[color:var(--bg-3)] text-[color:var(--text-2)]',
-        'border border-[color:var(--border)]',
-      )}
-    >
-      operator
-    </span>
-  );
+  return <MetadataBadge>Operator</MetadataBadge>;
 }
 
 function PermissionsTable({
@@ -762,13 +734,13 @@ function PermissionsTable({
       <table className="w-full min-w-[30rem] text-sm border-collapse">
         <thead>
           <tr className="border-b border-[color:var(--border)]">
-            <th className="px-3 py-2 text-left text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+            <th className="px-3 py-2 text-left text-xs tabular-nums uppercase tracking-[0.14em] text-[color:var(--text-3)]">
               Environment
             </th>
             {PERMISSION_ORDER.map((key) => (
               <th
                 key={key}
-                className="px-3 py-2 text-center text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]"
+                className="px-3 py-2 text-center text-xs tabular-nums uppercase tracking-[0.14em] text-[color:var(--text-3)]"
               >
                 {key}
               </th>
@@ -783,7 +755,7 @@ function PermissionsTable({
             >
               <td className="px-3 py-2">
                 <div className="text-xs text-[color:var(--text-1)]">{row.name}</div>
-                <div className="text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+                <div className="text-xs font-mono-tabular text-[color:var(--text-3)]">
                   {row.uuid}
                 </div>
               </td>
@@ -801,19 +773,9 @@ function PermissionsTable({
 }
 
 function PermissionCell({ enabled }: { enabled: boolean }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex min-w-12 items-center justify-center rounded-full border px-2 py-0.5',
-        'text-[10px] font-medium font-mono-tabular uppercase tracking-[0.06em]',
-        enabled
-          ? 'border-[color:var(--signal)]/30 bg-[rgba(var(--signal-r),var(--signal-g),var(--signal-b),0.12)] text-[color:var(--signal)]'
-          : 'border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-3)]',
-      )}
-    >
-      {enabled ? 'yes' : '—'}
-    </span>
-  );
+  return enabled
+    ? <StatusBadge variant="signal" label="Yes" />
+    : <StatusBadge variant="dim" label="None" />;
 }
 
 // ---------------------------------------------------------------------------

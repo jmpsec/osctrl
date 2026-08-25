@@ -3,6 +3,8 @@
  * Extended in with typed apiFetch<T>, AuthError, and ApiError.
  */
 
+import { isMockDataEnabled, resolveMockApiRequest } from './mock-data';
+
 let csrfTokenInMemory: string | null = null;
 
 export function setCsrfToken(t: string | null) {
@@ -14,6 +16,10 @@ export function getCsrfToken(): string | null {
 }
 
 export function isAuthenticated(): boolean {
+  // Fixture-backed development previews do not need a live login session.
+  // Production, tests, and VITE_USE_MOCK_DATA=false retain the real cookie gate.
+  if (isMockDataEnabled()) return true;
+
   // Mirror the apiFetch fallback: if memory is empty but the browser
   // still holds the osctrl_csrf cookie, prime from it before answering
   // false. Without this, every soft navigation through a route with a
@@ -114,6 +120,11 @@ export async function apiFetch<T>(
     if (csrf) {
       headers.set('X-CSRF-Token', csrf);
     }
+  }
+
+  const mockResponse = resolveMockApiRequest(path, { ...init, method, headers });
+  if (mockResponse.matched) {
+    return mockResponse.data as T;
   }
 
   const res = await fetch(path, {

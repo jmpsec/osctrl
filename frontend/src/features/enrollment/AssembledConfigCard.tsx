@@ -74,13 +74,13 @@ export function AssembledConfigCard({ env }: { env: string }) {
             Assembled configuration
           </h2>
           <span
-            className="text-[10px] text-[color:var(--text-3)] cursor-help"
+            className="text-xs text-[color:var(--text-3)] cursor-help"
             title="The env's options + schedule + packs + decorators + ATC composed into the canonical osquery configuration JSON. Same bytes the TLS endpoint serves to agents on /config refresh — useful for previewing fleet-wide changes before they propagate."
           >
             ⓘ
           </span>
           {sizeKb && (
-            <span className="text-[10px] font-mono-tabular text-[color:var(--text-3)]">
+            <span className="text-xs font-mono-tabular text-[color:var(--text-3)]">
               {sizeKb} KB
             </span>
           )}
@@ -91,7 +91,7 @@ export function AssembledConfigCard({ env }: { env: string }) {
       </div>
 
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+        <span className="text-xs font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
           read-only · agents pull this
         </span>
         <div className="flex items-center gap-1.5">
@@ -134,7 +134,7 @@ export function AssembledConfigCard({ env }: { env: string }) {
       )}
 
       {copyErr && (
-        <p className="mt-1.5 text-[10px] text-[color:var(--danger)]">{copyErr}</p>
+        <p className="mt-1.5 text-xs text-[color:var(--danger)]">{copyErr}</p>
       )}
     </section>
   );

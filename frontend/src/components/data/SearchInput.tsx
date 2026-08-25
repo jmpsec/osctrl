@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Search, X } from 'lucide-react';
 import { cn } from '$/lib/cn';
 
 interface SearchInputProps {
@@ -48,15 +49,11 @@ export function SearchInput({
       <label htmlFor={id} className="sr-only">
         Search nodes
       </label>
-      {/* Magnifying glass */}
       <span
         aria-hidden
         className="pointer-events-none absolute left-2.5 text-[color:var(--text-3)] w-4 h-4"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <circle cx="11" cy="11" r="8" />
-          <path d="M21 21l-4.35-4.35" />
-        </svg>
+        <Search size={16} strokeWidth={1.8} />
       </span>
       <input
         id={id}
@@ -66,10 +63,10 @@ export function SearchInput({
         onChange={handleChange}
         placeholder={placeholder}
         className={cn(
-          'w-full pl-8 pr-8 py-1.5 text-sm rounded-md',
-          'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+          'w-full h-8 pl-8 pr-8 text-sm rounded-md',
+          'bg-[color:var(--bg-1)] border border-[color:var(--border-strong)]',
           'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
-          'focus:outline focus:outline-2 focus:outline-offset-0 focus:outline-[color:var(--signal)]',
+          'outline-none focus:border-[color:var(--accent)] focus:shadow-[0_0_0_2px_var(--accent-soft)]',
           'transition-colors',
         )}
       />
@@ -81,13 +78,11 @@ export function SearchInput({
           aria-label="Clear search"
           className={cn(
             'absolute right-2 text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',
             'rounded transition-colors',
           )}
         >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
+          <X size={14} strokeWidth={2} />
         </button>
       )}
     </div>

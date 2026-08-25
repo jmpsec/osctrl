@@ -26,6 +26,9 @@ import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { cn } from '$/lib/cn';
+import { StatusBadge } from '$/components/data/StatusBadge';
+import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { Button } from '$/components/atoms/Button';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -164,12 +167,11 @@ export function AuthProvidersPage() {
         <p className="text-xs text-[color:var(--text-3)]">OIDC and SAML federated login. One button per enabled provider on the login page.</p>
         <div className="ml-auto flex items-center gap-2">
           {isFetching && !isLoading && (
-            <span className="text-[10px] text-[color:var(--text-3)] font-mono-tabular">refreshing…</span>
+            <span className="text-xs text-[color:var(--text-3)] tabular-nums">refreshing…</span>
           )}
-          <button type="button" onClick={() => setModal({ kind: 'create' })}
-            className={cn('px-3 py-1.5 text-xs font-medium rounded-md', 'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]', 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]')}>
+          <Button type="button" onClick={() => setModal({ kind: 'create' })}>
             New provider
-          </button>
+          </Button>
           <button type="button" disabled={reloading}
             onClick={() => { setApplyErr(null); setModal({ kind: 'apply' }); }}
             className={cn('px-3 py-1 text-xs font-medium rounded transition-colors',
@@ -206,43 +208,43 @@ export function AuthProvidersPage() {
               <tr><td colSpan={6}>
                 <EmptyState icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>}
                   title={error instanceof Error ? error.message : 'Failed to load auth providers'}
-                  action={<button type="button" onClick={() => void refetch()} className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors">Retry</button>} />
+                  action={<button type="button" onClick={() => void refetch()} className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors">Retry</button>} />
               </td></tr>
             )}
             {!isLoading && !isError && rows.length === 0 && (
               <tr><td colSpan={6}>
                 <EmptyState icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z" /></svg>}
                   title="No auth providers configured." description="Add an OIDC or SAML provider to enable federated login."
-                  action={<button type="button" onClick={() => setModal({ kind: 'create' })} className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)] transition-colors">Add a provider</button>} />
+                  action={<button type="button" onClick={() => setModal({ kind: 'create' })} className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors">Add a provider</button>} />
               </td></tr>
             )}
             {!isLoading && !isError && rows.map((p) => (
               <tr key={p.id} className="border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors">
                 <td className="px-4 py-3">
-                  <span className="text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">{p.name}</span>
-                  {p.info && <span className="ml-2 text-[10px] text-[color:var(--text-3)] truncate max-w-[240px]" title={p.info}>— {p.info}</span>}
+                  <span className="text-sm font-semibold text-[color:var(--text-1)] tabular-nums">{p.name}</span>
+                  {p.info && <span className="ml-2 text-xs text-[color:var(--text-3)] truncate max-w-[240px]" title={p.info}>— {p.info}</span>}
                 </td>
                 <td className="px-4 py-3 text-xs">
                   <span className="flex items-center gap-1.5">
                     <span className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]">{providerIcon(p.type)}</span>
-                    <span className="font-mono-tabular">{p.type}</span>
+                    <span className="tabular-nums">{p.type}</span>
                   </span>
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {p.enabled ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--success-r),var(--success-g),var(--success-b),0.12)] text-[color:var(--success)]">on</span>
+                    <StatusBadge variant="success" label="Enabled" />
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[color:var(--bg-2)] text-[color:var(--text-3)]">off</span>
+                    <StatusBadge variant="dim" label="Disabled" />
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {p.source === 'db' ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]">edited</span>
+                    <MetadataBadge>Edited</MetadataBadge>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[color:var(--bg-2)] text-[color:var(--text-3)]" title={`Seeded from service config (source: ${p.source})`}>seed</span>
+                    <MetadataBadge className="cursor-help" title={`Seeded from service config (source: ${p.source})`}>Seeded</MetadataBadge>
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right font-mono-tabular">
+                <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right tabular-nums">
                   <span title={p.updated_at}>{formatRelative(p.updated_at)}</span>
                 </td>
                 <td className="px-2 py-3 text-right whitespace-nowrap">
@@ -295,8 +297,8 @@ function ProviderTypePicker({ types, onPick, onClose }: { types: AuthProviderTyp
               className={cn('flex items-start gap-3 px-3 py-2.5 rounded-md text-left', 'border border-[color:var(--border)] bg-[color:var(--bg-2)]', 'hover:border-[color:var(--signal)] hover:bg-[color:var(--bg-1)]', 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]')}>
               <span className="flex-shrink-0 w-5 h-5 text-[color:var(--text-3)] mt-0.5">{providerIcon(t.type)}</span>
               <span className="flex flex-col gap-0.5 min-w-0">
-                <span className="text-sm font-semibold text-[color:var(--text-1)] font-mono-tabular">{t.type}</span>
-                <span className="text-[10px] text-[color:var(--text-3)]">{t.description}</span>
+                <span className="text-sm font-semibold text-[color:var(--text-1)] tabular-nums">{t.type}</span>
+                <span className="text-xs text-[color:var(--text-3)]">{t.description}</span>
               </span>
             </button>
           ))}
@@ -382,7 +384,7 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
     }
   }
 
-  const inputClass = cn('w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]', 'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular', 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]');
+  const inputClass = cn('w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]', 'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums', 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]');
 
   return (
     <ModalShell title={mode === 'create' ? `Add ${providerType} provider` : `Edit ${existing?.name}`} titleId="auth-provider-editor-title" onClose={onClose} bodyClassName="max-h-[70vh] overflow-y-auto">
@@ -390,20 +392,20 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
         <div>
           <label htmlFor="provider-name" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">Name</label>
           <input id="provider-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. github-oidc" className={inputClass} />
-          <p className="mt-1 text-[10px] text-[color:var(--text-3)]">Unique label shown on the login page button.</p>
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">Unique label shown on the login page button.</p>
         </div>
         <div>
           <span className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">Type</span>
-          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] text-sm font-mono-tabular text-[color:var(--text-1)]">
+          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] text-sm tabular-nums text-[color:var(--text-1)]">
             <span className="w-4 h-4 flex-shrink-0 text-[color:var(--text-3)]">{providerIcon(providerType)}</span>
             {providerType}
           </span>
-          {spec?.has_secret && <p className="mt-1 text-[10px] text-[color:var(--text-3)]">This provider stores credentials ({spec.secret_fields?.join(', ')}). Secret fields are revealed for editing.</p>}
+          {spec?.has_secret && <p className="mt-1 text-xs text-[color:var(--text-3)]">This provider stores credentials ({spec.secret_fields?.join(', ')}). Secret fields are revealed for editing.</p>}
         </div>
         <fieldset className="flex items-end gap-2 pb-2">
           <label className="flex items-center gap-2 text-xs text-[color:var(--text-1)]">
             <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="rounded border-[color:var(--border)] accent-[color:var(--signal)]" />
-            <span className="font-mono-tabular">enabled</span>
+            <span className="tabular-nums">enabled</span>
           </label>
         </fieldset>
 
@@ -417,11 +419,11 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
 
         <div className="flex items-center gap-2">
           <button type="button" onClick={handleTest} disabled={testing}
-            className={cn('px-2.5 py-1 text-[11px] font-medium rounded', 'border border-[color:var(--border)] text-[color:var(--text-2)]', 'hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50')}>
+            className={cn('px-2.5 py-1 text-xs font-medium rounded', 'border border-[color:var(--border)] text-[color:var(--text-2)]', 'hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50')}>
             {testing ? 'Testing…' : 'Test connection'}
           </button>
           {testResult && (
-            <span className={cn('text-[10px]', testResult.ok ? 'text-[color:var(--success)]' : 'text-[color:var(--danger)]')}>
+            <span className={cn('text-xs', testResult.ok ? 'text-[color:var(--success)]' : 'text-[color:var(--danger)]')}>
               {testResult.ok ? '✓ Connection successful' : `✕ ${testResult.error ?? 'Failed'}`}
             </span>
           )}
@@ -435,7 +437,7 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
         <div className="flex items-center justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">Cancel</button>
           <button type="submit" disabled={mutation.isPending || !name.trim()}
-            className={cn('px-3 py-1.5 text-xs font-medium rounded-md', 'bg-[color:var(--signal)] text-black hover:bg-[color:var(--signal-bright)]', 'transition-colors disabled:opacity-50 disabled:cursor-not-allowed')}>
+            className={cn('px-3 py-1.5 text-xs font-medium rounded-md', 'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]', 'transition-colors disabled:opacity-50 disabled:cursor-not-allowed')}>
             {mutation.isPending ? 'Saving…' : mode === 'create' ? 'Add provider' : 'Save changes'}
           </button>
         </div>
@@ -479,7 +481,7 @@ function ProviderConfigFields({ spec, values, onChange, inputClass }: {
   const [fetchErr, setFetchErr] = useState<string | null>(null);
 
   if (!spec || !spec.fields || spec.fields.length === 0) {
-    return <p className="text-[10px] text-[color:var(--text-3)] italic">This provider type has no configurable fields.</p>;
+    return <p className="text-xs text-[color:var(--text-3)] italic">This provider type has no configurable fields.</p>;
   }
 
   function setField(name: string, v: unknown) { onChange({ ...values, [name]: v }); }
@@ -516,18 +518,18 @@ function ProviderConfigFields({ spec, values, onChange, inputClass }: {
                 onClick={handleFetchMetadata}
                 disabled={fetching || !metadataURL}
                 className={cn(
-                  'px-2.5 py-1 text-[11px] font-medium rounded',
+                  'px-2.5 py-1 text-xs font-medium rounded',
                   'border border-[color:var(--border)] text-[color:var(--text-2)]',
                   'hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50',
                 )}
               >
                 {fetching ? 'Fetching…' : 'Fetch metadata'}
               </button>
-              <span className="text-[10px] text-[color:var(--text-3)]">
+              <span className="text-xs text-[color:var(--text-3)]">
                 Fetches the XML from the URL above and fills the IdP metadata XML field below.
               </span>
               {fetchErr && (
-                <span className="text-[10px] text-[color:var(--danger)]">{fetchErr}</span>
+                <span className="text-xs text-[color:var(--danger)]">{fetchErr}</span>
               )}
             </div>
           )}
@@ -550,7 +552,7 @@ function ProviderConfigField({ field, value, onChange, inputClass }: {
       {field.required && <span className="text-[color:var(--danger)]" aria-hidden="true"> *</span>}
     </label>
   );
-  const helpEl = field.help && <p className="mt-1 text-[10px] text-[color:var(--text-3)]">{field.help}</p>;
+  const helpEl = field.help && <p className="mt-1 text-xs text-[color:var(--text-3)]">{field.help}</p>;
 
   switch (field.type) {
     case 'boolean':
@@ -558,7 +560,7 @@ function ProviderConfigField({ field, value, onChange, inputClass }: {
         <div>
           <label className="flex items-center gap-2 text-xs text-[color:var(--text-1)]">
             <input id={id} type="checkbox" aria-label={field.label} checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} className="rounded border-[color:var(--border)] accent-[color:var(--signal)]" />
-            <span className="font-mono-tabular">{field.label}</span>
+            <span className="tabular-nums">{field.label}</span>
           </label>
           {helpEl}
         </div>
@@ -598,7 +600,7 @@ function ProviderConfigField({ field, value, onChange, inputClass }: {
           {labelEl}
           <textarea id={id} aria-label={field.label} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder} spellCheck={false}
-            className={cn('w-full px-3 py-2 text-xs rounded-md border border-[color:var(--border)]', 'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular', 'min-h-[80px] focus:outline focus:outline-2 focus:outline-[color:var(--signal)]')} />
+            className={cn('w-full px-3 py-2 text-xs rounded-md border border-[color:var(--border)]', 'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums', 'min-h-[80px] focus:outline focus:outline-2 focus:outline-[color:var(--signal)]')} />
           {helpEl}
         </div>
       );

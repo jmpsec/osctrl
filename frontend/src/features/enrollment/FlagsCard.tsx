@@ -110,7 +110,7 @@ export function FlagsCard({ env }: { env: string }) {
             osquery flags
           </h2>
           <span
-            className="text-[10px] text-[color:var(--text-3)] cursor-help"
+            className="text-xs text-[color:var(--text-3)] cursor-help"
             title="The flag template with __SECRET_FILE__ / __CERT_FILE__ substituted for the canonical install path of the selected OS. Drop this at /etc/osquery/osctrl-<env>.flags (or platform equivalent)."
           >
             ⓘ
@@ -147,7 +147,7 @@ export function FlagsCard({ env }: { env: string }) {
       </div>
 
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
+        <span className="text-xs font-mono-tabular uppercase tracking-[0.14em] text-[color:var(--text-3)]">
           flag file · {activeTab.label.toLowerCase()}
         </span>
         <div className="flex items-center gap-1.5">
@@ -188,9 +188,9 @@ export function FlagsCard({ env }: { env: string }) {
         )}
       </pre>
       {copyErr && (
-        <p className="mt-1.5 text-[10px] text-[color:var(--danger)]">{copyErr}</p>
+        <p className="mt-1.5 text-xs text-[color:var(--danger)]">{copyErr}</p>
       )}
-      <p className="mt-2 text-[10px] text-[color:var(--text-3)]">
+      <p className="mt-2 text-xs text-[color:var(--text-3)]">
         Save as <span className="font-mono-tabular text-[color:var(--text-2)]">{activeTab.filename}</span> next to the secret + cert files this environment expects.
       </p>
     </section>

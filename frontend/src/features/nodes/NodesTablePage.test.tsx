@@ -418,7 +418,7 @@ describe('NodesTablePage', () => {
       expect(screen.getByText('web-server-01')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('active')).toBeInTheDocument();
+    expect(screen.getAllByText('Active').length).toBeGreaterThan(1);
   });
 
   it('shows uptime and posture risk badge when posture is enabled', async () => {
@@ -452,9 +452,8 @@ describe('NodesTablePage', () => {
 
     expect(screen.getByRole('columnheader', { name: 'Posture' })).toBeInTheDocument();
     expect(screen.getByText('Uptime 7d 3h')).toBeInTheDocument();
-    const badge = screen.getByText('high');
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveAttribute('aria-label', 'Posture risk high');
+    const badge = screen.getByLabelText('Posture risk high');
+    expect(badge).toHaveTextContent('High');
     expect(screen.queryByText('42')).not.toBeInTheDocument();
 
     const row = screen.getByText('web-server-01').closest('tr') as HTMLTableRowElement | null;
@@ -521,13 +520,13 @@ describe('NodesTablePage', () => {
 
     expect(screen.getByRole('columnheader', { name: 'Health' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Tags' })).toBeInTheDocument();
-    expect(screen.getByText('at risk')).toHaveAttribute('title', 'Posture risk high');
+    expect(screen.getByTitle('Posture risk high')).toHaveTextContent('At risk');
     expect(screen.getByText('prod')).toBeInTheDocument();
     expect(screen.getByText('critical')).toBeInTheDocument();
 
     const row = screen.getByText('web-server-01').closest('tr') as HTMLTableRowElement | null;
     expect(row).not.toBeNull();
-    expect(row!.cells[2]).toHaveTextContent('at risk');
+    expect(row!.cells[2]).toHaveTextContent('At risk');
     expect(row!.cells[4]).toHaveTextContent('prod');
     expect(row!.cells[4]).toHaveTextContent('critical');
   });
