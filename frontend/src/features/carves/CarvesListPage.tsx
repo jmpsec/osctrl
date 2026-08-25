@@ -189,7 +189,7 @@ export function CarvesListPage() {
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
               'border border-[color:var(--border)] text-[color:var(--text-2)]',
-              'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+              'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -213,7 +213,7 @@ export function CarvesListPage() {
             onChange={(e) => updateSearch({ page_size: Number(e.target.value), page: 1 })}
             className={cn(
               'text-xs px-2 py-1.5 rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-2)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-2)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           >
@@ -363,7 +363,7 @@ export function CarvesListPage() {
                   <tr
                     key={item.name}
                     className={cn(
-                      'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-2)] transition-colors',
+                      'border-b border-[color:var(--border)] hover:bg-[color:var(--bg-3)] transition-colors',
                       selectedNames.has(item.name) && 'bg-[color:var(--signal)]/5',
                     )}
                   >
@@ -447,7 +447,7 @@ export function CarvesListPage() {
             type="button"
             disabled={bulkMutation.isPending}
             aria-label="Complete selected carves"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
                 names: Array.from(selectedNames),
@@ -461,7 +461,7 @@ export function CarvesListPage() {
             type="button"
             disabled={bulkMutation.isPending}
             aria-label="Expire selected carves"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--warning)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--warning)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
                 names: Array.from(selectedNames),
@@ -475,7 +475,7 @@ export function CarvesListPage() {
             type="button"
             disabled={bulkMutation.isPending}
             aria-label="Delete selected carves"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
                 names: Array.from(selectedNames),
@@ -490,7 +490,7 @@ export function CarvesListPage() {
             type="button"
             aria-label="Clear selection"
             onClick={() => setSelectedNames(new Set())}
-            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Clear
           </button>

@@ -179,7 +179,7 @@ function TemplateChip({ sample, onPick }: { sample: QuerySample; onPick: (s: Que
         'inline-flex items-center gap-1.5 px-2 py-0.5 rounded',
         'text-xs font-medium transition-colors duration-[120ms]',
         'border border-[color:var(--border)]',
-        'bg-[color:var(--bg-2)] text-[color:var(--text-2)]',
+        'bg-[color:var(--bg-3)] text-[color:var(--text-2)]',
         'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] hover:border-[color:var(--border-strong)]',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
       )}

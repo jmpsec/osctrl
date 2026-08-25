@@ -238,7 +238,7 @@ function SettingRow({
 
   return (
     <section
-      className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-1)]"
+      className="border border-[color:var(--border)] rounded-md overflow-hidden bg-[color:var(--bg-2)]"
       aria-labelledby={`setting-${setting.Name}-label`}
     >
       <header className="flex items-center gap-3 px-3 py-2 bg-[color:var(--bg-0)] border-b border-[color:var(--border)]">
@@ -349,7 +349,7 @@ function SettingInput({
         }}
         className={cn(
           'w-full px-3 py-1.5 text-sm rounded-md border border-[color:var(--border)]',
-          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+          'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
           'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
         )}
       />
@@ -364,7 +364,7 @@ function SettingInput({
       onChange={(e) => onString(e.target.value)}
       className={cn(
         'w-full px-3 py-1.5 text-sm rounded-md border border-[color:var(--border)]',
-        'bg-[color:var(--bg-2)] text-[color:var(--text-1)] tabular-nums',
+        'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
         'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
       )}
     />

@@ -290,7 +290,7 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3 border-b border-[color:var(--border)] pb-3">
         <div className="min-w-0 space-y-2">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--signal)]">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--signal)]">
               <Terminal className="h-4 w-4" aria-hidden="true" />
             </span>
             <div className="min-w-0">
@@ -299,7 +299,7 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
             </div>
             {primingCommand && (
               <span
-                className="inline-flex shrink-0 items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-2 py-1 text-xs leading-none text-[color:var(--text-3)]"
+                className="inline-flex shrink-0 items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] px-2 py-1 text-xs leading-none text-[color:var(--text-3)]"
                 title="Warming console metadata"
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -312,7 +312,7 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
               {nodeInfoItems.map((item) => (
                 <span
                   key={`${item.label}-${item.value}`}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-2 py-1 text-xs leading-none text-[color:var(--text-3)]"
+                  className="inline-flex max-w-full items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] px-2 py-1 text-xs leading-none text-[color:var(--text-3)]"
                 >
                   <span className="uppercase tracking-normal text-[color:var(--text-4)]">{item.label}</span>
                   <span className="truncate font-mono-tabular text-[color:var(--text-2)]">{item.value}</span>
@@ -324,7 +324,7 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
         <Link
           to="/_app/env/$env/nodes/$uuid"
           params={{ env, uuid }}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-1)] px-3 py-1.5 text-xs font-medium text-[color:var(--text-2)] transition-colors hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-3 py-1.5 text-xs font-medium text-[color:var(--text-2)] transition-colors hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Back

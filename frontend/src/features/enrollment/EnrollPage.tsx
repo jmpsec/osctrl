@@ -436,7 +436,7 @@ function SecretField({
 
   return (
     <section
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
       aria-label="Enroll secret"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -470,7 +470,7 @@ function SecretField({
             readOnly
             className={cn(
               'flex-1 min-w-0 px-2.5 py-1.5 rounded-md text-xs font-mono-tabular',
-              'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+              'bg-[color:var(--bg-3)] border border-[color:var(--border)]',
               'text-[color:var(--text-1)]',
               'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
             )}
@@ -569,14 +569,14 @@ function Collapsible({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+    <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
         className={cn(
           'w-full flex items-center gap-2 px-4 py-3 text-left',
-          'hover:bg-[color:var(--bg-2)] transition-colors',
+          'hover:bg-[color:var(--bg-3)] transition-colors',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
         )}
       >
@@ -630,7 +630,7 @@ function ScriptViewToggle({
     <div
       role="radiogroup"
       aria-label="Script direction"
-      className="grid grid-cols-2 gap-0.5 rounded-md bg-[color:var(--bg-2)] border border-[color:var(--border)] p-0.5"
+      className="grid grid-cols-2 gap-0.5 rounded-md bg-[color:var(--bg-3)] border border-[color:var(--border)] p-0.5"
     >
       {options.map((opt) => {
         const active = value === opt.id;
@@ -739,7 +739,7 @@ function ScriptPanel({
 
   return (
     <section
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
       aria-label="Install / remove scripts"
     >
       <div className="px-4 pt-4 pb-3 space-y-3 border-b border-[color:var(--border)]">
@@ -766,7 +766,7 @@ function ScriptPanel({
         <pre
           className={cn(
             'text-xs font-mono-tabular',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)] rounded-md',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)] rounded-md',
             'p-3 overflow-x-auto whitespace-pre-wrap break-all',
             'text-[color:var(--text-1)] min-h-[140px]',
           )}
@@ -826,7 +826,7 @@ function LifecycleCard({
 
   return (
     <section
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
       aria-label={label}
     >
       <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
@@ -908,7 +908,7 @@ function PackageListCard({ envName }: { envName: string }) {
 
   return (
     <section
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4 mt-3"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4 mt-3"
       aria-label="Multi-architecture packages"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -960,7 +960,7 @@ function PackageListCard({ envName }: { envName: string }) {
         <select
           value={newType}
           onChange={(e) => setNewType(e.target.value)}
-          className="text-xs px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          className="text-xs px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
         >
           {PACKAGE_TYPES.map((t) => (
             <option key={t.value} value={t.value}>{t.value}</option>
@@ -969,7 +969,7 @@ function PackageListCard({ envName }: { envName: string }) {
         <select
           value={newArch}
           onChange={(e) => setNewArch(e.target.value)}
-          className="text-xs px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] text-[color:var(--text-1)]"
+          className="text-xs px-2 py-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
         >
           {ARCH_OPTIONS.map((a) => (
             <option key={a} value={a}>{a}</option>
@@ -982,7 +982,7 @@ function PackageListCard({ envName }: { envName: string }) {
           placeholder="https://… or local filename"
           className={cn(
             'flex-1 min-w-[200px] px-2.5 py-1 rounded-md text-xs font-mono-tabular',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)]',
             'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
             'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
           )}
@@ -1056,7 +1056,7 @@ function PackageRow({
           onChange={(e) => setEditUrl(e.target.value)}
           className={cn(
             'flex-1 min-w-0 px-2.5 py-1 rounded-md text-xs font-mono-tabular',
-            'bg-[color:var(--bg-2)] border border-[color:var(--border)]',
+            'bg-[color:var(--bg-3)] border border-[color:var(--border)]',
             'text-[color:var(--text-1)] placeholder:text-[color:var(--text-3)]',
             'focus:outline-none focus:ring-2 focus:ring-[color:var(--signal)] focus:border-transparent',
           )}

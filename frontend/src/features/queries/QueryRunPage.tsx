@@ -54,7 +54,7 @@ function GeneratedSqlReview({ sql, onEditSql }: { sql: string; onEditSql: () => 
           <button
             type="button"
             onClick={() => void copySql()}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-[color:var(--text-3)] hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-[color:var(--text-3)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
           >
             {copied ? <Check size={16} strokeWidth={2} aria-hidden /> : <Copy size={16} strokeWidth={1.8} aria-hidden />}
             {copied ? 'Copied' : 'Copy'}
@@ -62,7 +62,7 @@ function GeneratedSqlReview({ sql, onEditSql }: { sql: string; onEditSql: () => 
           <button
             type="button"
             onClick={onEditSql}
-            className="h-8 rounded-md bg-[color:var(--bg-2)] px-2.5 text-sm font-medium text-[color:var(--text-2)] ring-1 ring-inset ring-[color:var(--border)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
+            className="h-8 rounded-md bg-[color:var(--bg-3)] px-2.5 text-sm font-medium text-[color:var(--text-2)] ring-1 ring-inset ring-[color:var(--border)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
           >
             Edit SQL
           </button>
@@ -224,7 +224,7 @@ export function QueryRunPage() {
           <div className="lg:col-span-2 space-y-4">
             {/* Quick templates */}
             <section
-              className="empty:hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+              className="empty:hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
               aria-label="Query templates"
             >
               <QuickTemplates
@@ -238,7 +238,7 @@ export function QueryRunPage() {
 
             {/* Query composer */}
             <section
-              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden"
+              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
               aria-label="Query composer"
             >
               <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border)] px-4 py-2">
@@ -253,7 +253,7 @@ export function QueryRunPage() {
                 <div
                   role="tablist"
                   aria-label="Query composer mode"
-                  className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-0.5"
+                  className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] p-0.5"
                 >
                   <button
                     type="button"
@@ -294,7 +294,7 @@ export function QueryRunPage() {
                 />
               ) : (
                 <div>
-                  <div className="flex items-center justify-end border-b border-[color:var(--border)] bg-[color:var(--bg-2)]/50 px-4 py-1.5 text-xs font-medium text-[color:var(--text-3)]">
+                  <div className="flex items-center justify-end border-b border-[color:var(--border)] bg-[color:var(--bg-3)]/50 px-4 py-1.5 text-xs font-medium text-[color:var(--text-3)]">
                     osquery · SELECT only
                   </div>
                   <CodeEditor
@@ -315,14 +315,14 @@ export function QueryRunPage() {
             aria-label="Targeting"
             className="lg:col-span-1 space-y-4 lg:sticky lg:top-4 lg:self-start"
           >
-            <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4">
+            <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4">
               <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)] mb-3">
                 Target
               </h2>
               <TargetingPanel value={target} onChange={setTarget} env={env} />
             </section>
             <section
-              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
               aria-label="Options"
             >
               <OptionsPanel
@@ -397,7 +397,7 @@ export function QueryRunPage() {
                   placeholder="Name for the saved query"
                   className={cn(
                     'px-2 py-1 text-xs rounded border border-[color:var(--border)]',
-                    'bg-[color:var(--bg-2)] text-[color:var(--text-1)] w-60',
+                    'bg-[color:var(--bg-3)] text-[color:var(--text-1)] w-60',
                     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
                   )}
                 />

@@ -402,7 +402,7 @@ function KpiCard({
       aria-label={interactive ? actionLabel : undefined}
       className={cn(
         'relative flex min-h-[124px] flex-col bg-[color:var(--bg-1)] px-4 py-3.5',
-        'transition-colors duration-[100ms] hover:bg-[color:var(--bg-2)]',
+        'transition-colors duration-[100ms] hover:bg-[color:var(--bg-3)]',
         interactive && [
           'text-left cursor-pointer',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
@@ -680,7 +680,7 @@ function OperationalWorkloadCards({
     <div
       role="group"
       aria-label="Operational workload"
-      className="grid min-h-[240px] grid-rows-2 overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)]"
+      className="grid min-h-[240px] grid-rows-2 overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)]"
     >
       {workloads.map((entry, index) => (
         <article
@@ -762,7 +762,7 @@ function TopPlatformsPanel({ counts, total }: { counts: PlatformCounts; total: n
   return (
     <section
       aria-label="Hosts by platform"
-      className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+      className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
     >
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
@@ -984,7 +984,7 @@ function EndpointHealthPanel({
   const anyActivity = rows.some((row) => row.total > 0);
 
   return (
-    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] flex flex-col overflow-hidden">
+    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
         <div>
           <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
@@ -1152,7 +1152,7 @@ function formatExpireRelative(iso?: string): string {
 function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
   return (
     <div
-      className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden"
+      className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
       role="table"
       aria-label="Environments table"
     >
@@ -1160,7 +1160,7 @@ function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
         role="row"
         className={cn(
           'grid grid-cols-[1.6fr_0.6fr_0.6fr_0.6fr_0.6fr_0.9fr_0.5fr] gap-3 px-4 h-9',
-          'items-center border-b border-[color:var(--border)] bg-[color:var(--bg-2)]',
+          'items-center border-b border-[color:var(--border)] bg-[color:var(--bg-3)]',
           'text-xs font-medium text-[color:var(--text-3)] select-none',
         )}
       >
@@ -1183,7 +1183,7 @@ function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
             className={cn(
               'grid grid-cols-[1.6fr_0.6fr_0.6fr_0.6fr_0.6fr_0.9fr_0.5fr] gap-3 px-4 h-11',
               'items-center border-b border-[color:var(--border)] last:border-0',
-              'text-[13px] hover:bg-[color:var(--bg-2)]',
+              'text-[13px] hover:bg-[color:var(--bg-3)]',
               'transition-colors duration-[120ms]',
             )}
           >
@@ -1256,7 +1256,7 @@ function OsqueryVersionsPanel({
   return (
     <section
       aria-label="osquery agent versions"
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden flex flex-col"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden flex flex-col"
     >
       <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
         <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)] flex items-center gap-2">
@@ -1337,7 +1337,7 @@ function ActiveQueryRowItem({
       params={{ env: row.envUuid, name: row.name }}
       className={cn(
         'grid grid-cols-12 gap-3 items-center px-4 h-11 border-b border-[color:var(--border)] last:border-0',
-        'text-[13px] hover:bg-[color:var(--bg-2)] transition-colors duration-[120ms]',
+        'text-[13px] hover:bg-[color:var(--bg-3)] transition-colors duration-[120ms]',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]',
         'focus-visible:outline-[color:var(--signal)]',
       )}
@@ -1351,7 +1351,7 @@ function ActiveQueryRowItem({
       <span
         className={cn(
           'col-span-2 inline-flex items-center justify-center px-1.5 py-0.5 rounded',
-          'text-xs font-medium border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+          'text-xs font-medium border border-[color:var(--border)] bg-[color:var(--bg-3)]',
           'text-[color:var(--text-2)] truncate',
         )}
       >
@@ -1409,7 +1409,7 @@ function RecentlySeenNodesTable({
 }) {
   return (
     <div
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
       role="table"
       aria-label="Recently seen nodes"
     >
@@ -1417,7 +1417,7 @@ function RecentlySeenNodesTable({
         role="row"
         className={cn(
           'grid grid-cols-[1.4fr_0.8fr_0.7fr_0.9fr_0.7fr_0.5fr] gap-3 px-4 h-9',
-          'items-center border-b border-[color:var(--border)] bg-[color:var(--bg-2)]',
+          'items-center border-b border-[color:var(--border)] bg-[color:var(--bg-3)]',
           'text-xs font-medium text-[color:var(--text-3)] select-none',
         )}
       >
@@ -1437,7 +1437,7 @@ function RecentlySeenNodesTable({
             className={cn(
               'grid grid-cols-[1.4fr_0.8fr_0.7fr_0.9fr_0.7fr_0.5fr] gap-3 px-4 h-11',
               'items-center border-b border-[color:var(--border)] last:border-0',
-              'text-[13px] hover:bg-[color:var(--bg-2)] transition-colors duration-[120ms]',
+              'text-[13px] hover:bg-[color:var(--bg-3)] transition-colors duration-[120ms]',
             )}
           >
             <div className="flex flex-col gap-0.5 min-w-0">
@@ -1501,7 +1501,7 @@ function RefreshButton({ onClick, isPending }: { onClick: () => void; isPending:
       className={cn(
         'flex-shrink-0 p-1 rounded transition-colors duration-[120ms]',
         'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
-        'hover:bg-[color:var(--bg-2)]',
+        'hover:bg-[color:var(--bg-3)]',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
         isPending && 'animate-spin',
       )}
@@ -1766,7 +1766,7 @@ export function DashboardPage() {
         aria-busy={isLoading}
         className="grid grid-cols-1 lg:grid-cols-3 gap-4"
       >
-        <div className="lg:col-span-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+        <div className="lg:col-span-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--border)]">
             <div>
               <div className="text-sm font-display font-semibold text-[color:var(--text-1)]">
@@ -1835,7 +1835,7 @@ export function DashboardPage() {
             />
             <Suspense
               fallback={(
-                <div className="mt-2 min-h-[200px] animate-pulse rounded-md bg-[color:var(--bg-2)]" aria-label="Loading node activity chart" />
+                <div className="mt-2 min-h-[200px] animate-pulse rounded-md bg-[color:var(--bg-3)]" aria-label="Loading node activity chart" />
               )}
             >
               <ActivityLineChart
@@ -1877,7 +1877,7 @@ export function DashboardPage() {
 
       {/* ── Active queries with live progress ────────────────────────────── */}
       <section aria-label="Active queries" aria-busy={activeQueriesLoading}>
-        <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+        <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden">
           <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)]">
             <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)] flex items-center gap-2">
               Active queries
@@ -1953,7 +1953,7 @@ export function DashboardPage() {
           </div>
 
           {isLoading ? (
-            <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+            <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
@@ -2008,7 +2008,7 @@ export function DashboardPage() {
         {/* Top platforms — right column */}
         <div>
           {isLoading || isError ? (
-            <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-5 min-h-[160px]">
+            <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-5 min-h-[160px]">
               <Skeleton className="h-4 w-32 mb-3" />
               <Skeleton className="h-2 w-full rounded-full mb-3" />
               <div className="space-y-1.5">
@@ -2032,7 +2032,7 @@ export function DashboardPage() {
           <RefreshButton onClick={() => void refetchVersions()} isPending={versionsLoading} />
         </div>
         {versionsLoading ? (
-          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-5 min-h-[160px]">
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-5 min-h-[160px]">
             <Skeleton className="h-4 w-32 mb-3" />
             <div className="space-y-1.5">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -2048,7 +2048,7 @@ export function DashboardPage() {
       {/* ── Activity feed + Endpoint health ────────────────────────────── */}
       <section aria-label="Recent activity and endpoint health" className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Activity feed — 2/3 width on md+ */}
-        <div className="md:col-span-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] flex flex-col overflow-hidden">
+        <div className="md:col-span-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
             <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
               Recent activity
@@ -2125,7 +2125,7 @@ export function DashboardPage() {
             description="Recently seen nodes appear once you have at least one environment."
           />
         ) : recentlySeenLoading || isLoading ? (
-          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
@@ -2141,7 +2141,7 @@ export function DashboardPage() {
             ))}
           </div>
         ) : !recentlySeenNodes?.items.length ? (
-          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] py-8 text-center text-sm text-[color:var(--text-3)]">
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] py-8 text-center text-sm text-[color:var(--text-3)]">
             No nodes have reported in yet.
           </div>
         ) : (

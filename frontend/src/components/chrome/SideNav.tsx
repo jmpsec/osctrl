@@ -339,16 +339,21 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
   return (
     <aside
       className={cn(
-        'side-nav-circuit relative shrink-0 flex min-h-0 flex-col overflow-y-auto bg-[color:var(--bg-0)] px-2 py-2',
+        'sidenav-circuit relative shrink-0 flex min-h-0 flex-col overflow-y-auto bg-[color:var(--bg-0)] px-2 py-2',
         'transition-[width] duration-200 ease-out',
         collapsed ? 'w-14' : 'w-60',
         className,
       )}
     >
-      <div className={cn('mb-2 flex h-9 items-center gap-2 px-1.5', collapsed && 'justify-center px-0')}>
-        <Logo size={24} decorative />
+      <div
+        className={cn(
+          'mb-3 flex flex-col items-center justify-center gap-1.5',
+          collapsed ? 'px-0 py-1' : 'px-1.5 py-2',
+        )}
+      >
+        <Logo size={collapsed ? 28 : 44} decorative />
         {!collapsed && (
-          <div className="font-wordmark text-[15px] font-semibold text-[color:var(--text-1)]">
+          <div className="font-wordmark text-[20px] font-semibold leading-none text-[color:var(--text-1)]">
             osctrl
           </div>
         )}

@@ -205,7 +205,7 @@ export function QueriesListPage() {
             className={cn(
               'px-3 py-1.5 text-xs font-medium rounded-md',
               'border border-[color:var(--border)] text-[color:var(--text-2)]',
-              'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors',
+              'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -231,7 +231,7 @@ export function QueriesListPage() {
             onChange={(e) => updateSearch({ page_size: Number(e.target.value), page: 1 })}
             className={cn(
               'text-xs px-2 py-1.5 rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-2)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-2)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           >
@@ -396,8 +396,8 @@ export function QueriesListPage() {
                     key={item.name}
                     className={cn(
                       'border-b border-[color:var(--border)] transition-colors',
-                      'hover:bg-[color:var(--bg-2)]',
-                      isSelected && 'bg-[color:var(--bg-2)]',
+                      'hover:bg-[color:var(--bg-3)]',
+                      isSelected && 'bg-[color:var(--bg-3)]',
                     )}
                   >
                     {/* Checkbox */}
@@ -445,7 +445,7 @@ export function QueriesListPage() {
                     {/* Progress */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 rounded-full bg-[color:var(--bg-2)] overflow-hidden">
+                        <div className="w-20 h-1.5 rounded-full bg-[color:var(--bg-3)] overflow-hidden">
                           <div
                             className="h-full rounded-full bg-[color:var(--signal)] transition-[width]"
                             style={{ width: `${progressPct}%` }}
@@ -511,7 +511,7 @@ export function QueriesListPage() {
             type="button"
             disabled={bulkMutation.isPending}
             aria-label="Complete selected queries"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
                 names: Array.from(selectedNames),
@@ -525,7 +525,7 @@ export function QueriesListPage() {
             type="button"
             disabled={bulkMutation.isPending}
             aria-label="Expire selected queries"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--warning)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--warning)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
                 names: Array.from(selectedNames),
@@ -539,7 +539,7 @@ export function QueriesListPage() {
             type="button"
             disabled={bulkMutation.isPending}
             aria-label="Delete selected queries"
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-2)] transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
                 names: Array.from(selectedNames),
@@ -554,7 +554,7 @@ export function QueriesListPage() {
             type="button"
             aria-label="Clear selection"
             onClick={() => setSelectedNames(new Set())}
-            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors"
+            className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
             Clear
           </button>

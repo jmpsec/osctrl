@@ -101,7 +101,7 @@ export function FlagsCard({ env }: { env: string }) {
 
   return (
     <section
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
       aria-label="osquery flags"
     >
       <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
@@ -172,7 +172,7 @@ export function FlagsCard({ env }: { env: string }) {
       <pre
         className={cn(
           'text-xs font-mono-tabular',
-          'bg-[color:var(--bg-2)] border border-[color:var(--border)] rounded-md',
+          'bg-[color:var(--bg-3)] border border-[color:var(--border)] rounded-md',
           'p-3 overflow-auto whitespace-pre-wrap break-all',
           'text-[color:var(--text-1)] min-h-[180px] max-h-[420px]',
         )}

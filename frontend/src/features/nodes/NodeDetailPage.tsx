@@ -556,7 +556,7 @@ function LogsTab({
             onChange={(e) => setSeverity(e.target.value)}
             className={cn(
               'px-2 py-1.5 text-xs rounded-md border shrink-0',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               'border-[color:var(--border)]',
             )}
@@ -868,7 +868,7 @@ export function NodeDetailPage() {
                   className={cn(
                     'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   )}
@@ -885,7 +885,7 @@ export function NodeDetailPage() {
                   className={cn(
                     'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   )}
@@ -902,7 +902,7 @@ export function NodeDetailPage() {
                   className={cn(
                     'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   )}
@@ -918,7 +918,7 @@ export function NodeDetailPage() {
                   className={cn(
                     'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   )}
@@ -935,7 +935,7 @@ export function NodeDetailPage() {
                   className={cn(
                     'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                     'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
                     'transition-colors',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                   )}
@@ -951,7 +951,7 @@ export function NodeDetailPage() {
                 className={cn(
                   'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
                   'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                  'hover:bg-[color:var(--bg-2)] hover:text-[color:var(--text-1)]',
+                  'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
                   'transition-colors',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                 )}
@@ -1433,7 +1433,7 @@ function RunNodeQueryModal({
             disabled={isLoading || list.length === 0}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -1464,7 +1464,7 @@ function RunNodeQueryModal({
             placeholder="select * from os_version;"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)] font-mono-tabular',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -1473,7 +1473,7 @@ function RunNodeQueryModal({
         {err && <p role="alert" className="text-xs text-[color:var(--danger)]">{err}</p>}
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors">
             Cancel
           </button>
           <button
@@ -1541,7 +1541,7 @@ function CarveNodeFileModal({
             placeholder="/etc/hosts"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)] font-mono-tabular',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)] font-mono-tabular',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -1550,7 +1550,7 @@ function CarveNodeFileModal({
         {err && <p role="alert" className="text-xs text-[color:var(--danger)]">{err}</p>}
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors">
             Cancel
           </button>
           <button
@@ -1627,7 +1627,7 @@ function TagNodeModal({
             disabled={isLoading || list.length === 0}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -1659,7 +1659,7 @@ function TagNodeModal({
             placeholder="incident-response"
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
-              'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
+              'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
               'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
             )}
           />
@@ -1668,7 +1668,7 @@ function TagNodeModal({
         {err && <p role="alert" className="text-xs text-[color:var(--danger)]">{err}</p>}
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)] transition-colors">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors">
             Cancel
           </button>
           <button
@@ -1899,7 +1899,7 @@ function NodeActivityHeatmap({
   return (
     <section
       aria-label="Node activity heatmap"
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
     >
       {/* Header: title + interval picker */}
       <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[color:var(--border)]">
@@ -1925,7 +1925,7 @@ function NodeActivityHeatmap({
         <div
           role="tablist"
           aria-label="Activity interval"
-          className="flex items-center gap-0.5 rounded-md bg-[color:var(--bg-2)] p-0.5 border border-[color:var(--border)]"
+          className="flex items-center gap-0.5 rounded-md bg-[color:var(--bg-3)] p-0.5 border border-[color:var(--border)]"
         >
           {NODE_INTERVALS.map((iv) => {
             const active = iv === interval;
@@ -2270,7 +2270,7 @@ function PostureScorePanel({
   const allExcluded = controls.length > 0 && included.size === 0;
 
   return (
-    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden">
       {/* Score header */}
       <div className="flex items-center gap-4 px-4 py-3 border-b border-[color:var(--border)]">
         {/* Score gauge */}
@@ -2330,7 +2330,7 @@ function PostureScorePanel({
             <label
               key={key}
               className={cn(
-                'px-4 py-2 flex items-start gap-3 cursor-pointer hover:bg-[color:var(--bg-2)] transition-colors',
+                'px-4 py-2 flex items-start gap-3 cursor-pointer hover:bg-[color:var(--bg-3)] transition-colors',
                 !checked && 'opacity-50',
               )}
             >
@@ -2348,7 +2348,7 @@ function PostureScorePanel({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-[color:var(--text-1)]">{ctrl.title}</span>
-                  <span className="text-xs font-mono-tabular text-[color:var(--text-3)] px-1 rounded bg-[color:var(--bg-2)]">{ctrl.control_id}</span>
+                  <span className="text-xs font-mono-tabular text-[color:var(--text-3)] px-1 rounded bg-[color:var(--bg-3)]">{ctrl.control_id}</span>
                   <span className="text-xs text-[color:var(--text-3)]">{ctrl.framework}</span>
                 </div>
                 <p className="text-xs text-[color:var(--text-3)] mt-0.5">{ctrl.detail}</p>
@@ -2377,11 +2377,11 @@ function PostureCard({ item }: { item: NodePosture }) {
   })();
 
   return (
-    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] overflow-hidden">
+    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[color:var(--bg-2)] transition-colors"
+        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[color:var(--bg-3)] transition-colors"
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-display font-semibold text-[color:var(--text-1)]">

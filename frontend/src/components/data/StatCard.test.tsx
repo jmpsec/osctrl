@@ -80,7 +80,9 @@ describe('StatCard', () => {
   it('uses a flat surface without a decorative gradient', () => {
     const { container } = render(<StatCard label="Active" value={7} halo="warning" />);
     const card = container.firstElementChild as HTMLElement;
-    expect(card.className).toContain('bg-[color:var(--bg-1)]');
+    // Data surfaces sit one tone above the page (which is --bg-1) so the
+    // card reads as a distinct box rather than a bordered region of the page.
+    expect(card.className).toContain('bg-[color:var(--bg-2)]');
     expect(card.style.background).toBe('');
   });
 });

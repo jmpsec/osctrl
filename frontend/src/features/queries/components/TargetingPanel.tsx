@@ -262,7 +262,7 @@ function TypeaheadInput({
         placeholder={placeholder}
         className={cn(
           'w-full px-2.5 py-1.5 text-xs rounded-md border border-[color:var(--border)]',
-          'bg-[color:var(--bg-2)] text-[color:var(--text-1)] placeholder-[color:var(--text-3)]',
+          'bg-[color:var(--bg-3)] text-[color:var(--text-1)] placeholder-[color:var(--text-3)]',
           'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
         )}
         autoComplete="off"
@@ -272,7 +272,7 @@ function TypeaheadInput({
           role="listbox"
           className={cn(
             'absolute z-10 mt-1 w-full max-h-48 overflow-auto rounded-md',
-            'border border-[color:var(--border)] bg-[color:var(--bg-2)]',
+            'border border-[color:var(--border)] bg-[color:var(--bg-3)]',
             'shadow-lg',
           )}
         >
@@ -400,7 +400,7 @@ function TargetPreview({ value, total }: TargetPreviewProps) {
         'border border-[color:var(--border)]',
         total === 0
           ? 'bg-[color:var(--warning)]/8 border-[color:var(--warning)]/30'
-          : 'bg-[color:var(--bg-2)]',
+          : 'bg-[color:var(--bg-3)]',
       )}
     >
       <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">

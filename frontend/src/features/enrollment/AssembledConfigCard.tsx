@@ -65,7 +65,7 @@ export function AssembledConfigCard({ env }: { env: string }) {
 
   return (
     <section
-      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4"
+      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
       aria-label="Assembled osquery configuration"
     >
       <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
