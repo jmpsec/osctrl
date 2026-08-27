@@ -25,6 +25,8 @@ export interface LogSink {
   info: string;
   bytes_sent: number;
   exports_count: number;
+  /** Data categories this sink receives. null/empty = all categories. */
+  categories: string[] | null;
 }
 
 /** One field in a sink type's config schema. Drives the dynamic form. */
@@ -50,6 +52,8 @@ export interface LogSinkTypeSpec {
   /** Typed field schema the SPA renders as a dynamic form. Absent for
    * sink types with no config (none, stdout). */
   fields?: LogSinkFieldSpec[];
+  /** All valid category strings the SPA can offer as checkboxes. */
+  categories: string[];
 }
 
 /** GET /api/v1/log-sinks?env={id}&reveal={0|1}. */
@@ -84,6 +88,8 @@ export interface LogSinkCreateRequest {
   config: unknown;
   environment_id: number;
   info?: string;
+  /** Data categories. Empty/omitted = all categories. */
+  categories?: string[];
 }
 
 /** POST /api/v1/log-sinks. */
@@ -103,6 +109,8 @@ export interface LogSinkUpdateRequest {
   order: number;
   config: unknown;
   info?: string;
+  /** Data categories. Empty/omitted = all categories. */
+  categories?: string[];
 }
 
 /** PUT /api/v1/log-sinks/{id}. */

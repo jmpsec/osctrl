@@ -78,10 +78,13 @@ func (c *CountedExporter) Stats() *SinkStats { return c.stats }
 // exporters from receiving the same payload. It also holds per-exporter
 // SinkStats counters so the background stats writer can snapshot them
 // and persist bytes/count to the log_sinks table without touching the
-// hot path.
+// hot path. Each exporter carries an optional category list; an exporter
+// whose categories don't match the incoming logType is skipped.
 type MultiExporter struct {
 	exporters []DataExporter
 	stats     []*SinkStats
+	// categories parallels exporters; nil/empty means "all categories".
+	categories [][]string
 }
 
 // NewMultiExporter creates a composite exporter from the provided
@@ -94,22 +97,29 @@ func NewMultiExporter(exporters ...DataExporter) *MultiExporter {
 // NewMultiExporterWithStats creates a composite exporter where each
 // exporter is wrapped in a CountedExporter linked to its SinkStats.
 // The returned stats slice can be snapshotted by a background writer.
+// Each entry's Categories are carried through so Export can skip
+// exporters that don't match the incoming logType.
 func NewMultiExporterWithStats(entries []ExporterEntry) *MultiExporter {
 	exporters := make([]DataExporter, 0, len(entries))
 	stats := make([]*SinkStats, 0, len(entries))
+	categories := make([][]string, 0, len(entries))
 	for _, e := range entries {
 		s := &SinkStats{SinkID: e.SinkID}
 		ce := NewCountedExporter(e.Exporter, s)
 		exporters = append(exporters, ce)
 		stats = append(stats, s)
+		categories = append(categories, e.Categories)
 	}
-	return &MultiExporter{exporters: exporters, stats: stats}
+	return &MultiExporter{exporters: exporters, stats: stats, categories: categories}
 }
 
-// ExporterEntry pairs a sink DB row ID with its built DataExporter.
+// ExporterEntry pairs a sink DB row ID with its built DataExporter
+// and the categories it should receive. Empty Categories means "all
+// categories" (backwards-compatible default).
 type ExporterEntry struct {
-	SinkID   uint
-	Exporter DataExporter
+	SinkID     uint
+	Exporter   DataExporter
+	Categories []string
 }
 
 // Stats returns the per-exporter SinkStats slice, or nil if the
@@ -164,14 +174,23 @@ func (m *MultiExporter) IsEnabled() bool {
 	return false
 }
 
-// Export sends data to every enabled destination.
+// Export sends data to every enabled destination whose categories
+// match the incoming logType. An exporter with empty categories
+// receives all logTypes (backwards-compatible default).
 func (m *MultiExporter) Export(logType string, data []byte, params ExportParams) error {
 	if m == nil {
 		return nil
 	}
 	var errs []error
-	for _, exporter := range m.exporters {
+	for i, exporter := range m.exporters {
 		if exporter == nil || !exporter.IsEnabled() {
+			continue
+		}
+		var cats []string
+		if i < len(m.categories) {
+			cats = m.categories[i]
+		}
+		if !matchesCategory(cats, logType) {
 			continue
 		}
 		if err := exporter.Export(logType, data, params); err != nil {
@@ -180,6 +199,20 @@ func (m *MultiExporter) Export(logType string, data []byte, params ExportParams)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// matchesCategory returns true if the category list is empty (all
+// categories) or contains the given logType.
+func matchesCategory(categories []string, logType string) bool {
+	if len(categories) == 0 {
+		return true
+	}
+	for _, c := range categories {
+		if c == logType {
+			return true
+		}
+	}
+	return false
 }
 
 // Close closes every contained exporter. Errors are collected and

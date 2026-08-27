@@ -51,7 +51,9 @@ const NoEnvironmentID uint = 0
 // LogSink stores one osquery log destination for one environment (or
 // global when EnvironmentID is NoEnvironmentID). The Config field is a
 // JSON-encoded blob whose shape is determined by Type and validated
-// against the Registry.
+// against the Registry. Categories is a JSON-encoded array of data
+// category strings (status, result, query, carve.meta, carve.data);
+// empty/null means "all categories" (backwards-compatible default).
 type LogSink struct {
 	gorm.Model
 	Name          string `gorm:"uniqueIndex:idx_log_sinks_unique"`
@@ -62,6 +64,10 @@ type LogSink struct {
 	Config        string `gorm:"type:text"`
 	Source        string // "service" (seeded) or "db" (operator-edited)
 	Info          string
+	// Categories is a JSON-encoded array of data category strings. Empty
+	// string means "all categories" — the backwards-compatible default.
+	// See pkg/logsinks/categories.go for the valid set.
+	Categories string `gorm:"type:text"`
 	// BytesSent and ExportsCount are maintained by the background stats
 	// writer (SinkStatsWriter), which snapshots the in-process atomic
 	// counters from the live MultiExporter and flushes them here
@@ -487,11 +493,17 @@ func ValidateSink(name, typ, cfgJSON string) error {
 	return nil
 }
 
-// Create inserts a new sink row.
-func (m *LogSinksManager) Create(name, typ string, enabled bool, order int, cfgJSON string, envID uint, info string) (LogSink, error) {
+// Create inserts a new sink row. categories is a list of data category
+// strings; empty/nil means "all categories". Unknown entries return an
+// error.
+func (m *LogSinksManager) Create(name, typ string, enabled bool, order int, cfgJSON string, envID uint, info string, categories []string) (LogSink, error) {
 	name = normalizeName(name)
 	typ = normalizeType(typ)
 	if err := ValidateSink(name, typ, cfgJSON); err != nil {
+		return LogSink{}, err
+	}
+	normalized, err := NormalizeCategories(categories)
+	if err != nil {
 		return LogSink{}, err
 	}
 	row := LogSink{
@@ -503,6 +515,7 @@ func (m *LogSinksManager) Create(name, typ string, enabled bool, order int, cfgJ
 		Config:        cfgJSON,
 		Source:        SourceDB,
 		Info:          info,
+		Categories:    encodeCategories(normalized),
 	}
 	if err := m.DB.Create(&row).Error; err != nil {
 		return LogSink{}, fmt.Errorf("create log sink: %w", err)
@@ -513,10 +526,16 @@ func (m *LogSinksManager) Create(name, typ string, enabled bool, order int, cfgJ
 // Update replaces an existing sink row's mutable fields. Config is
 // re-validated against the existing Type (Type can be changed in the
 // same call as long as the new Config decodes against the new Type).
-func (m *LogSinksManager) Update(id uint, name, typ string, enabled bool, order int, cfgJSON string, info string) (LogSink, error) {
+// categories is a list of data category strings; empty/nil means "all
+// categories". Unknown entries return an error.
+func (m *LogSinksManager) Update(id uint, name, typ string, enabled bool, order int, cfgJSON string, info string, categories []string) (LogSink, error) {
 	name = normalizeName(name)
 	typ = normalizeType(typ)
 	if err := ValidateSink(name, typ, cfgJSON); err != nil {
+		return LogSink{}, err
+	}
+	normalized, err := NormalizeCategories(categories)
+	if err != nil {
 		return LogSink{}, err
 	}
 	row, err := m.Get(id)
@@ -524,13 +543,14 @@ func (m *LogSinksManager) Update(id uint, name, typ string, enabled bool, order 
 		return LogSink{}, err
 	}
 	if err := m.DB.Model(&row).Updates(map[string]any{
-		"name":    name,
-		"type":    typ,
-		"enabled": enabled,
-		"order":   order,
-		"config":  cfgJSON,
-		"info":    info,
-		"source":  SourceDB,
+		"name":       name,
+		"type":       typ,
+		"enabled":    enabled,
+		"order":      order,
+		"config":     cfgJSON,
+		"info":       info,
+		"source":     SourceDB,
+		"categories": encodeCategories(normalized),
 	}).Error; err != nil {
 		return LogSink{}, fmt.Errorf("update log sink: %w", err)
 	}
@@ -688,6 +708,7 @@ func (m *LogSinksManager) CloneEnvironment(sourceEnvID, targetEnvID uint, overwr
 				Config:        r.Config,
 				Source:        SourceDB,
 				Info:          r.Info,
+				Categories:    r.Categories,
 			}
 			if err := tx.Create(&newRow).Error; err != nil {
 				return fmt.Errorf("create cloned sink %q: %w", newRow.Name, err)
@@ -953,6 +974,33 @@ func RedactedConfig(typ, cfgJSON string) string {
 	return string(out)
 }
 
+// encodeCategories serializes a category list to the JSON string stored
+// in the Categories column. nil/empty produces "" (empty string), which
+// means "all categories" — the backwards-compatible default.
+func encodeCategories(cats []string) string {
+	if len(cats) == 0 {
+		return ""
+	}
+	raw, err := json.Marshal(cats)
+	if err != nil {
+		return ""
+	}
+	return string(raw)
+}
+
+// DecodeCategories parses the stored Categories string back into a
+// slice. An empty string returns nil (meaning "all categories").
+func DecodeCategories(stored string) []string {
+	if stored == "" {
+		return nil
+	}
+	var cats []string
+	if err := json.Unmarshal([]byte(stored), &cats); err != nil {
+		return nil
+	}
+	return cats
+}
+
 // MergeSecrets replaces any "***" placeholder values in newCfgJSON with
 // the corresponding values from prevCfgJSON. Used by the API Update
 // handler so an edit that did not touch a secret field preserves the
@@ -1023,7 +1071,11 @@ func BuildExporters(rows []LogSink, smgr *settings.Settings) *logging.MultiExpor
 			log.Error().Err(err).Str("sink", row.Name).Msg("build sink exporter, skipping")
 			continue
 		}
-		entries = append(entries, logging.ExporterEntry{SinkID: row.ID, Exporter: exp})
+		entries = append(entries, logging.ExporterEntry{
+			SinkID:     row.ID,
+			Exporter:   exp,
+			Categories: DecodeCategories(row.Categories),
+		})
 	}
 	return logging.NewMultiExporterWithStats(entries)
 }

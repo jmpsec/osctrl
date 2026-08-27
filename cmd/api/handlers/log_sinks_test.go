@@ -57,7 +57,7 @@ func TestLogSinksListRejectsNonAdmin(t *testing.T) {
 
 func TestLogSinksListRedactsSecretsByDefault(t *testing.T) {
 	h := setupLogSinksHandler(t)
-	_, err := h.LogSinks.Create("prod-splunk", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"supersecret","host":"h","index":"i"}`, 0, "")
+	_, err := h.LogSinks.Create("prod-splunk", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"supersecret","host":"h","index":"i"}`, 0, "", nil)
 	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/log-sinks", nil).WithContext(logSinksCtx("alice"))
@@ -76,7 +76,7 @@ func TestLogSinksListRedactsSecretsByDefault(t *testing.T) {
 
 func TestLogSinksListRevealsSecretsWithRevealFlag(t *testing.T) {
 	h := setupLogSinksHandler(t)
-	_, err := h.LogSinks.Create("prod-splunk", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"supersecret","host":"h","index":"i"}`, 0, "")
+	_, err := h.LogSinks.Create("prod-splunk", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"supersecret","host":"h","index":"i"}`, 0, "", nil)
 	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/log-sinks?reveal=1", nil).WithContext(logSinksCtx("alice"))
@@ -121,7 +121,7 @@ func TestLogSinksCreateRejectsInvalidType(t *testing.T) {
 
 func TestLogSinksUpdateMergesSecretPlaceholder(t *testing.T) {
 	h := setupLogSinksHandler(t)
-	row, err := h.LogSinks.Create("s", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"real-secret","host":"h","index":"i"}`, 0, "")
+	row, err := h.LogSinks.Create("s", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"real-secret","host":"h","index":"i"}`, 0, "", nil)
 	require.NoError(t, err)
 
 	body, _ := json.Marshal(types.LogSinkUpdateRequest{
@@ -145,7 +145,7 @@ func TestLogSinksUpdateMergesSecretPlaceholder(t *testing.T) {
 
 func TestLogSinksDelete(t *testing.T) {
 	h := setupLogSinksHandler(t)
-	row, err := h.LogSinks.Create("s", config.LoggingNone, true, 0, `{}`, 0, "")
+	row, err := h.LogSinks.Create("s", config.LoggingNone, true, 0, `{}`, 0, "", nil)
 	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/log-sinks/"+itoa(row.ID), nil).WithContext(logSinksCtx("alice"))
@@ -164,7 +164,7 @@ func TestLogSinksDelete(t *testing.T) {
 
 func TestLogSinksClone(t *testing.T) {
 	h := setupLogSinksHandler(t)
-	_, err := h.LogSinks.Create("g", config.LoggingNone, true, 0, `{}`, 0, "")
+	_, err := h.LogSinks.Create("g", config.LoggingNone, true, 0, `{}`, 0, "", nil)
 	require.NoError(t, err)
 
 	body, _ := json.Marshal(types.LogSinkCloneRequest{SourceEnvironmentID: 0, TargetEnvironmentID: 5, Overwrite: false})
