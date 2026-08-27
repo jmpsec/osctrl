@@ -81,9 +81,12 @@ function makeSink(overrides: Partial<LogSink> = {}): LogSink {
     info: '',
     bytes_sent: 0,
     exports_count: 0,
+    categories: null,
     ...overrides,
   };
 }
+
+const ALL_CATS = ['status', 'result', 'query', 'carve.meta', 'carve.data'];
 
 const splunkType: LogSinkTypeSpec = {
   type: 'splunk',
@@ -96,11 +99,13 @@ const splunkType: LogSinkTypeSpec = {
     { name: 'host', label: 'Host', type: 'string', required: false, secret: false, placeholder: 'osctrl' },
     { name: 'index', label: 'Index', type: 'string', required: false, secret: false, placeholder: 'main' },
   ],
+  categories: ALL_CATS,
 };
 const noneType: LogSinkTypeSpec = {
   type: 'none',
   description: 'Discard',
   has_secret: false,
+  categories: ALL_CATS,
 };
 const kafkaType: LogSinkTypeSpec = {
   type: 'kafka',
@@ -116,6 +121,7 @@ const kafkaType: LogSinkTypeSpec = {
     { name: 'sasl.username', label: 'SASL username', type: 'string', required: false, secret: false, placeholder: '' },
     { name: 'sasl.password', label: 'SASL password', type: 'password', required: false, secret: true, placeholder: '' },
   ],
+  categories: ALL_CATS,
 };
 
 function renderPage() {

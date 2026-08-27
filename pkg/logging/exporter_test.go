@@ -152,3 +152,53 @@ func TestCreateExportersDoesNotDuplicateAlwaysLogDB(t *testing.T) {
 		t.Fatalf("exporter names: got %#v want %#v", got, want)
 	}
 }
+
+func TestMultiExporterCategoryFiltering(t *testing.T) {
+	statusOnly := &recordingExporter{name: "status-only", enabled: true}
+	allSink := &recordingExporter{name: "all-sink", enabled: true}
+	queryAndResult := &recordingExporter{name: "query-result", enabled: true}
+
+	entries := []ExporterEntry{
+		{SinkID: 1, Exporter: statusOnly, Categories: []string{"status"}},
+		{SinkID: 2, Exporter: allSink, Categories: nil}, // nil = all
+		{SinkID: 3, Exporter: queryAndResult, Categories: []string{"query", "result"}},
+	}
+	multi := NewMultiExporterWithStats(entries)
+	params := ExportParams{Environment: "env", UUID: "node-1"}
+
+	// Send a status log — statusOnly and allSink should receive it.
+	_ = multi.Export("status", []byte(`{"msg":"info"}`), params)
+	if len(statusOnly.calls) != 1 {
+		t.Fatalf("status-only should receive status, got %d calls", len(statusOnly.calls))
+	}
+	if len(allSink.calls) != 1 {
+		t.Fatalf("all-sink should receive status, got %d calls", len(allSink.calls))
+	}
+	if len(queryAndResult.calls) != 0 {
+		t.Fatalf("query-result should NOT receive status, got %d calls", len(queryAndResult.calls))
+	}
+
+	// Send a query log — allSink and queryAndResult should receive it.
+	_ = multi.Export("query", []byte(`{"msg":"result"}`), params)
+	if len(statusOnly.calls) != 1 {
+		t.Fatalf("status-only should NOT receive query, got %d calls", len(statusOnly.calls))
+	}
+	if len(allSink.calls) != 2 {
+		t.Fatalf("all-sink should receive query, got %d calls", len(allSink.calls))
+	}
+	if len(queryAndResult.calls) != 1 {
+		t.Fatalf("query-result should receive query, got %d calls", len(queryAndResult.calls))
+	}
+
+	// Send a carve.meta event — only allSink should receive it.
+	_ = multi.Export("carve.meta", []byte(`{"event":"scheduled"}`), params)
+	if len(statusOnly.calls) != 1 {
+		t.Fatalf("status-only should NOT receive carve.meta, got %d calls", len(statusOnly.calls))
+	}
+	if len(allSink.calls) != 3 {
+		t.Fatalf("all-sink should receive carve.meta, got %d calls", len(allSink.calls))
+	}
+	if len(queryAndResult.calls) != 1 {
+		t.Fatalf("query-result should NOT receive carve.meta, got %d calls", len(queryAndResult.calls))
+	}
+}

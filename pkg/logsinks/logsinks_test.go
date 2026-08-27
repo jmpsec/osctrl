@@ -70,7 +70,7 @@ func TestValidateTypeIsStrictCase(t *testing.T) {
 
 func TestCreateNormalizesTypeCase(t *testing.T) {
 	m := newTestManager(t)
-	row, err := m.Create("ci", "SPLUNK", true, 0, `{"url":"","token":"","host":"","index":""}`, 0, "")
+	row, err := m.Create("ci", "SPLUNK", true, 0, `{"url":"","token":"","host":"","index":""}`, 0, "", nil)
 	if err != nil {
 		t.Fatalf("create with upper-case type: %v", err)
 	}
@@ -82,26 +82,26 @@ func TestCreateNormalizesTypeCase(t *testing.T) {
 func TestCreateValidatesTypeAndConfig(t *testing.T) {
 	m := newTestManager(t)
 
-	if _, err := m.Create("good", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"t","host":"h","index":"i"}`, 0, ""); err != nil {
+	if _, err := m.Create("good", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"t","host":"h","index":"i"}`, 0, "", nil); err != nil {
 		t.Fatalf("valid create: %v", err)
 	}
 
-	if _, err := m.Create("bad-type", "nope", true, 0, `{}`, 0, ""); !errors.Is(err, ErrInvalidSinkType) {
+	if _, err := m.Create("bad-type", "nope", true, 0, `{}`, 0, "", nil); !errors.Is(err, ErrInvalidSinkType) {
 		t.Fatalf("bad type: got %v, want ErrInvalidSinkType", err)
 	}
 
-	if _, err := m.Create("bad-config", config.LoggingSplunk, true, 0, `{not json}`, 0, ""); !errors.Is(err, ErrInvalidSinkConfig) {
+	if _, err := m.Create("bad-config", config.LoggingSplunk, true, 0, `{not json}`, 0, "", nil); !errors.Is(err, ErrInvalidSinkConfig) {
 		t.Fatalf("bad config: got %v, want ErrInvalidSinkConfig", err)
 	}
 
-	if _, err := m.Create("", config.LoggingNone, true, 0, `{}`, 0, ""); err == nil {
+	if _, err := m.Create("", config.LoggingNone, true, 0, `{}`, 0, "", nil); err == nil {
 		t.Fatalf("empty name should error")
 	}
 }
 
 func TestCreateAndRoundTrip(t *testing.T) {
 	m := newTestManager(t)
-	row, err := m.Create("prod-splunk", config.LoggingSplunk, true, 1, `{"url":"http://x","token":"t","host":"h","index":"i"}`, 0, "prod")
+	row, err := m.Create("prod-splunk", config.LoggingSplunk, true, 1, `{"url":"http://x","token":"t","host":"h","index":"i"}`, 0, "prod", nil)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -124,11 +124,11 @@ func TestCreateAndRoundTrip(t *testing.T) {
 
 func TestUpdatePreservesAndMerges(t *testing.T) {
 	m := newTestManager(t)
-	row, err := m.Create("s", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"secret","host":"h","index":"i"}`, 0, "")
+	row, err := m.Create("s", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"secret","host":"h","index":"i"}`, 0, "", nil)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	updated, err := m.Update(row.ID, "s2", config.LoggingSplunk, false, 5, `{"url":"http://y","token":"***","host":"h2","index":"j"}`, "note")
+	updated, err := m.Update(row.ID, "s2", config.LoggingSplunk, false, 5, `{"url":"http://y","token":"***","host":"h2","index":"j"}`, "note", nil)
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
@@ -145,9 +145,74 @@ func TestUpdatePreservesAndMerges(t *testing.T) {
 	}
 }
 
+func TestCreateWithCategories(t *testing.T) {
+	m := newTestManager(t)
+	cats := []string{CatStatus, CatQuery}
+	row, err := m.Create("cat-sink", config.LoggingNone, true, 0, `{}`, 0, "", cats)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	decoded := DecodeCategories(row.Categories)
+	if len(decoded) != 2 || decoded[0] != CatStatus || decoded[1] != CatQuery {
+		t.Fatalf("categories not stored correctly: got %v", decoded)
+	}
+
+	// All categories collapses to empty
+	rowAll, err := m.Create("all-sink", config.LoggingNone, true, 1, `{}`, 0, "", AllCategories)
+	if err != nil {
+		t.Fatalf("create all: %v", err)
+	}
+	if rowAll.Categories != "" {
+		t.Fatalf("all categories should collapse to empty, got %q", rowAll.Categories)
+	}
+}
+
+func TestUpdateWithCategories(t *testing.T) {
+	m := newTestManager(t)
+	row, err := m.Create("s", config.LoggingNone, true, 0, `{}`, 0, "", nil)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	updated, err := m.Update(row.ID, "s", config.LoggingNone, true, 0, `{}`, "", []string{CatResult})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	decoded := DecodeCategories(updated.Categories)
+	if len(decoded) != 1 || decoded[0] != CatResult {
+		t.Fatalf("categories not updated: got %v", decoded)
+	}
+}
+
+func TestCreateRejectsInvalidCategory(t *testing.T) {
+	m := newTestManager(t)
+	_, err := m.Create("bad", config.LoggingNone, true, 0, `{}`, 0, "", []string{"bogus"})
+	if err == nil {
+		t.Fatal("expected error for invalid category")
+	}
+}
+
+func TestClonePreservesCategories(t *testing.T) {
+	m := newTestManager(t)
+	_, err := m.Create("g-splunk", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"t","host":"h","index":"i"}`, 0, "", []string{CatStatus, CatResult})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	cloned, err := m.CloneEnvironment(0, 5, false)
+	if err != nil {
+		t.Fatalf("clone: %v", err)
+	}
+	if len(cloned) != 1 {
+		t.Fatalf("expected 1 cloned sink, got %d", len(cloned))
+	}
+	decoded := DecodeCategories(cloned[0].Categories)
+	if len(decoded) != 2 || decoded[0] != CatStatus || decoded[1] != CatResult {
+		t.Fatalf("cloned categories not preserved: got %v", decoded)
+	}
+}
+
 func TestDelete(t *testing.T) {
 	m := newTestManager(t)
-	row, err := m.Create("s", config.LoggingNone, true, 0, `{}`, 0, "")
+	row, err := m.Create("s", config.LoggingNone, true, 0, `{}`, 0, "", nil)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -162,7 +227,7 @@ func TestDelete(t *testing.T) {
 func TestRevertToService(t *testing.T) {
 	m := newTestManager(t)
 	// Create a sink (Source defaults to "db").
-	row, err := m.Create("s", config.LoggingNone, true, 0, `{}`, 0, "")
+	row, err := m.Create("s", config.LoggingNone, true, 0, `{}`, 0, "", nil)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -192,13 +257,13 @@ func TestRevertToService(t *testing.T) {
 
 func TestListByEnvironmentAndEffectiveFor(t *testing.T) {
 	m := newTestManager(t)
-	if _, err := m.Create("g-none", config.LoggingNone, true, 0, `{}`, 0, ""); err != nil {
+	if _, err := m.Create("g-none", config.LoggingNone, true, 0, `{}`, 0, "", nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.Create("g-splunk", config.LoggingSplunk, false, 1, `{"url":"","token":"","host":"","index":""}`, 0, ""); err != nil {
+	if _, err := m.Create("g-splunk", config.LoggingSplunk, false, 1, `{"url":"","token":"","host":"","index":""}`, 0, "", nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.Create("env5-stdout", config.LoggingStdout, true, 0, `{}`, 5, ""); err != nil {
+	if _, err := m.Create("env5-stdout", config.LoggingStdout, true, 0, `{}`, 5, "", nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -227,10 +292,10 @@ func TestListByEnvironmentAndEffectiveFor(t *testing.T) {
 
 func TestCloneEnvironment(t *testing.T) {
 	m := newTestManager(t)
-	if _, err := m.Create("g-splunk", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"t","host":"h","index":"i"}`, 0, ""); err != nil {
+	if _, err := m.Create("g-splunk", config.LoggingSplunk, true, 0, `{"url":"http://x","token":"t","host":"h","index":"i"}`, 0, "", nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.Create("g-none", config.LoggingNone, true, 1, `{}`, 0, ""); err != nil {
+	if _, err := m.Create("g-none", config.LoggingNone, true, 1, `{}`, 0, "", nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -297,7 +362,7 @@ func TestSeedIdempotent(t *testing.T) {
 
 	// Re-seed: must NOT create duplicates or overwrite existing rows.
 	// Mutate one row to source=db first to prove it survives.
-	if _, err := m.Update(rows[0].ID, rows[0].Name, rows[0].Type, rows[0].Enabled, rows[0].Order, rows[0].Config, rows[0].Info); err != nil {
+	if _, err := m.Update(rows[0].ID, rows[0].Name, rows[0].Type, rows[0].Enabled, rows[0].Order, rows[0].Config, rows[0].Info, nil); err != nil {
 		t.Fatalf("mark row as db: %v", err)
 	}
 	gotUpdated, _ := m.Get(rows[0].ID)
@@ -636,7 +701,7 @@ func TestMergeSecretsAcceptsNewSecretValue(t *testing.T) {
 
 func TestBuildExportersSkipsDisabledAndUnknown(t *testing.T) {
 	m := newTestManager(t)
-	if _, err := m.Create("off", config.LoggingNone, false, 0, `{}`, 0, ""); err != nil {
+	if _, err := m.Create("off", config.LoggingNone, false, 0, `{}`, 0, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	// Build directly from a row slice with an unknown type and a disabled row.
@@ -656,10 +721,10 @@ func TestBuildExportersSkipsDisabledAndUnknown(t *testing.T) {
 
 func TestBuildExportersForEnvironmentsGroupsByEnv(t *testing.T) {
 	m := newTestManager(t)
-	if _, err := m.Create("g", config.LoggingNone, true, 0, `{}`, 0, ""); err != nil {
+	if _, err := m.Create("g", config.LoggingNone, true, 0, `{}`, 0, "", nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.Create("e5", config.LoggingStdout, true, 0, `{}`, 5, ""); err != nil {
+	if _, err := m.Create("e5", config.LoggingStdout, true, 0, `{}`, 5, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	got, err := m.BuildExportersForEnvironments(nil)
@@ -679,8 +744,8 @@ func TestBuildExportersForEnvironmentsGroupsByEnv(t *testing.T) {
 
 func TestBuildExportersTracksStatsPerSink(t *testing.T) {
 	m := newTestManager(t)
-	row1, _ := m.Create("s1", config.LoggingNone, true, 0, `{}`, 0, "")
-	row2, _ := m.Create("s2", config.LoggingStdout, true, 1, `{}`, 0, "")
+	row1, _ := m.Create("s1", config.LoggingNone, true, 0, `{}`, 0, "", nil)
+	row2, _ := m.Create("s2", config.LoggingStdout, true, 1, `{}`, 0, "", nil)
 
 	multi := BuildExporters([]LogSink{row1, row2}, nil)
 	stats := multi.Stats()

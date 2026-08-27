@@ -41,6 +41,7 @@ type logSinkDTO struct {
 	Info          string          `json:"info"`
 	BytesSent     int64           `json:"bytes_sent"`
 	ExportsCount  int64           `json:"exports_count"`
+	Categories    []string        `json:"categories"`
 }
 
 func toLogSinkDTO(s logsinks.LogSink, reveal bool) logSinkDTO {
@@ -62,6 +63,7 @@ func toLogSinkDTO(s logsinks.LogSink, reveal bool) logSinkDTO {
 		Info:          s.Info,
 		BytesSent:     s.BytesSent,
 		ExportsCount:  s.ExportsCount,
+		Categories:    logsinks.DecodeCategories(s.Categories),
 	}
 }
 
@@ -177,6 +179,7 @@ func (h *HandlersApi) LogSinksTypesHandler(w http.ResponseWriter, r *http.Reques
 			HasSecret:    spec.HasSecret,
 			SecretFields: spec.SecretFields,
 			Fields:       fields,
+			Categories:   logsinks.AllCategories,
 		})
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, specs)
@@ -260,7 +263,7 @@ func (h *HandlersApi) LogSinksCreateHandler(w http.ResponseWriter, r *http.Reque
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
 		return
 	}
-	row, err := h.LogSinks.Create(body.Name, body.Type, body.Enabled, body.Order, string(body.Config), body.EnvironmentID, body.Info)
+	row, err := h.LogSinks.Create(body.Name, body.Type, body.Enabled, body.Order, string(body.Config), body.EnvironmentID, body.Info, body.Categories)
 	if err != nil {
 		respondLogSinksErr(w, err)
 		return
@@ -322,7 +325,7 @@ func (h *HandlersApi) LogSinksUpdateHandler(w http.ResponseWriter, r *http.Reque
 		apiErrorResponse(w, "error merging sink secrets", http.StatusBadRequest, err)
 		return
 	}
-	row, err := h.LogSinks.Update(id, body.Name, body.Type, body.Enabled, body.Order, merged, body.Info)
+	row, err := h.LogSinks.Update(id, body.Name, body.Type, body.Enabled, body.Order, merged, body.Info, body.Categories)
 	if err != nil {
 		respondLogSinksErr(w, err)
 		return

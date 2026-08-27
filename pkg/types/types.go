@@ -681,6 +681,7 @@ type LogSinkTypeSpec struct {
 	HasSecret    bool               `json:"has_secret"`
 	SecretFields []string           `json:"secret_fields,omitempty"`
 	Fields       []LogSinkFieldSpec `json:"fields,omitempty"`
+	Categories   []string           `json:"categories"`
 }
 
 // LogSinkCreateRequest is the body for POST /api/v1/log-sinks.
@@ -692,6 +693,7 @@ type LogSinkCreateRequest struct {
 	Config        json.RawMessage `json:"config"`
 	EnvironmentID uint            `json:"environment_id"`
 	Info          string          `json:"info,omitempty"`
+	Categories    []string        `json:"categories,omitempty"`
 }
 
 // LogSinkUpdateRequest is the body for PUT /api/v1/log-sinks/{id}. All
@@ -699,12 +701,13 @@ type LogSinkCreateRequest struct {
 // previously stored value by the handler so the SPA can submit a form
 // without re-entering every secret.
 type LogSinkUpdateRequest struct {
-	Name    string          `json:"name"`
-	Type    string          `json:"type"`
-	Enabled bool            `json:"enabled"`
-	Order   int             `json:"order"`
-	Config  json.RawMessage `json:"config"`
-	Info    string          `json:"info,omitempty"`
+	Name       string          `json:"name"`
+	Type       string          `json:"type"`
+	Enabled    bool            `json:"enabled"`
+	Order      int             `json:"order"`
+	Config     json.RawMessage `json:"config"`
+	Info       string          `json:"info,omitempty"`
+	Categories []string        `json:"categories,omitempty"`
 }
 
 // LogSinkCloneRequest is the body for POST /api/v1/log-sinks/clone.

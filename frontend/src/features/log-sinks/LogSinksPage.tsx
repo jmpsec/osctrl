@@ -121,6 +121,23 @@ function sinkTypeIcon(type: string): ReactNode {
   return SINK_TYPE_ICONS[type] ?? SINK_TYPE_ICONS.file;
 }
 
+function categoryColor(cat: string): string {
+  switch (cat) {
+    case 'status':
+      return 'text-[color:var(--info)] border-[color:var(--info)]/30 bg-[color:var(--info)]/10';
+    case 'result':
+      return 'text-[color:var(--signal)] border-[color:var(--signal)]/30 bg-[color:var(--signal)]/10';
+    case 'query':
+      return 'text-[color:var(--warning)] border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10';
+    case 'carve.meta':
+      return 'text-[color:var(--text-2)] border-[color:var(--border)] bg-[color:var(--bg-3)]';
+    case 'carve.data':
+      return 'text-[color:var(--danger)] border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10';
+    default:
+      return 'text-[color:var(--text-3)] border-[color:var(--border)] bg-[color:var(--bg-3)]';
+  }
+}
+
 type ModalMode =
   | { kind: 'closed' }
   | { kind: 'create' } // step 1: type picker
@@ -440,6 +457,9 @@ export function LogSinksPage() {
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
                 Type
               </th>
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
+                Destination
+              </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide w-24">
                 Enabled
               </th>
@@ -457,11 +477,11 @@ export function LogSinksPage() {
           </thead>
           <tbody>
             {isLoading &&
-              Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cells={8} />)}
+              Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cells={9} />)}
 
             {isError && !isLoading && (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -486,7 +506,7 @@ export function LogSinksPage() {
 
             {!isLoading && !isError && sorted.length === 0 && (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <EmptyState
                     icon={
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -547,6 +567,27 @@ export function LogSinksPage() {
                       </span>
                       <span className="tabular-nums">{s.type}</span>
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {s.categories === null || s.categories.length === 0 ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono-tabular font-medium bg-[color:var(--bg-3)] text-[color:var(--text-2)] border border-[color:var(--border)]">
+                        all
+                      </span>
+                    ) : (
+                      <span className="flex flex-wrap gap-1">
+                        {s.categories.map((cat) => (
+                          <span
+                            key={cat}
+                            className={cn(
+                              'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono-tabular font-medium border',
+                              categoryColor(cat),
+                            )}
+                          >
+                            {cat}
+                          </span>
+                        ))}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {s.enabled ? (
@@ -771,6 +812,11 @@ function SinkEditor({
   const [info, setInfo] = useState(existing?.info ?? '');
   const [err, setErr] = useState<string | null>(null);
 
+  // Categories: null/empty means "all". When editing, pre-fill from the
+  // existing sink. When creating, default to all (null).
+  const allCats = types[0]?.categories ?? ['status', 'result', 'query', 'carve.meta', 'carve.data'];
+  const [categories, setCategories] = useState<string[] | null>(existing?.categories ?? null);
+
   const spec = useMemo(
     () => types.find((t) => t.type === sinkType),
     [types, sinkType],
@@ -814,6 +860,11 @@ function SinkEditor({
       const trimmedName = name.trim();
       if (!trimmedName) throw new Error('Name is required.');
       const config = buildConfig(spec, fieldValues);
+      // Normalize: when all categories are selected, send empty array
+      // (meaning "all") so the stored value stays clean.
+      const cats = categories && categories.length > 0 && categories.length < allCats.length
+        ? categories
+        : [];
       if (mode === 'create') {
         const body: LogSinkCreateRequest = {
           name: trimmedName,
@@ -823,6 +874,7 @@ function SinkEditor({
           config,
           environment_id: envID,
           info: info.trim() || undefined,
+          categories: cats,
         };
         return createLogSink(body);
       }
@@ -833,6 +885,7 @@ function SinkEditor({
         order,
         config,
         info: info.trim() || undefined,
+        categories: cats,
       });
     },
     onSuccess: () => {
@@ -950,6 +1003,63 @@ function SinkEditor({
           onChange={setFieldValues}
           inputClass={inputClass}
         />
+
+        {/* Categories — which data classes this sink receives. All
+            checked (default) means "all categories" and the form
+            submits an empty array so the stored value stays clean. */}
+        <fieldset>
+          <legend className="block text-xs font-semibold text-[color:var(--text-2)] mb-1.5">
+            Categories
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-[color:var(--text-1)]">
+              <input
+                type="checkbox"
+                checked={categories === null || categories.length === allCats.length}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setCategories(null);
+                  } else {
+                    setCategories([]);
+                  }
+                }}
+                className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
+              />
+              <span className="font-medium">All</span>
+            </label>
+            {allCats.map((cat) => {
+              const isAll = categories === null || categories.length === allCats.length;
+              const checked = isAll || (categories?.includes(cat) ?? false);
+              return (
+                <label
+                  key={cat}
+                  className="flex items-center gap-1.5 text-xs text-[color:var(--text-1)]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={isAll}
+                    onChange={(e) => {
+                      if (isAll) return;
+                      if (e.target.checked) {
+                        setCategories([...(categories ?? []), cat]);
+                      } else {
+                        setCategories((categories ?? []).filter((c) => c !== cat));
+                      }
+                    }}
+                    className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
+                  />
+                  <span className="tabular-nums">{cat}</span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">
+            {categories === null || categories.length === allCats.length
+              ? 'This sink receives all data categories (status, result, query, carve metadata, carve data).'
+              : 'This sink receives only the selected categories. Uncheck "All" to customize.'}
+          </p>
+        </fieldset>
 
         <div>
           <label
