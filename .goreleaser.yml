@@ -150,6 +150,43 @@ dockers:
     extra_files:
       - dist/osctrl-api-linux-arm64
 
+  # osctrl-frontend — amd64
+  # No Go binary: the image ships the pre-built Vite bundle (frontend/dist/)
+  # produced before GoReleaser runs. ids is intentionally empty so GoReleaser
+  # does not try to stage a binary into the context; extra_files pulls in the
+  # bundle, nginx configs, and entrypoint the Dockerfile copies.
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-amd64"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-frontend
+    use: buildx
+    goos: linux
+    goarch: amd64
+    ids: []
+    skip_push: false
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    extra_files:
+      - frontend/dist
+      - deploy/cicd/nginx/frontend.conf
+      - deploy/cicd/nginx/frontend-tls.conf
+      - deploy/cicd/nginx/docker-entrypoint-frontend.sh
+  # osctrl-frontend — arm64
+  - image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-arm64"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-frontend
+    use: buildx
+    goos: linux
+    goarch: arm64
+    ids: []
+    skip_push: false
+    build_flag_templates:
+      - "--platform=linux/arm64"
+    extra_files:
+      - frontend/dist
+      - deploy/cicd/nginx/frontend.conf
+      - deploy/cicd/nginx/frontend-tls.conf
+      - deploy/cicd/nginx/docker-entrypoint-frontend.sh
+
   # osctrl-cli — amd64
   - image_templates:
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-amd64"
@@ -217,6 +254,17 @@ docker_manifests:
     image_templates:
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-amd64"
       - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-arm64"
+    skip_push: '{{ .IsSnapshot }}'
+  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:latest"
+    image_templates:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-amd64"
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-arm64"
     skip_push: '{{ .IsSnapshot }}'
 
 docker_signs:
