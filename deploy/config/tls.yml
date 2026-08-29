@@ -2,6 +2,12 @@
 # This service implements the osquery remote API: enroll, config, logs,
 # distributed queries, and file carving.
 
+# Version of the configuration schema this file targets. osctrl warns at
+# startup when this differs from the version the binary supports: a lower
+# number means fields were added since this file was written, a higher
+# number means the binary is older than this file. See pkg/config/version.go.
+version: 1
+
 # Main HTTP service behavior and shared service-level features.
 service:
   # Address to bind. Use 0.0.0.0 inside containers or behind a proxy.

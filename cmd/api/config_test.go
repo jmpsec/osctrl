@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/jmpsec/osctrl/pkg/config"
 )
 
 // osctrl-api reads its config either from flags/env vars or from a YAML
@@ -235,6 +237,9 @@ func TestSampleAPIConfigLoads(t *testing.T) {
 	}
 	params := loadedYAMLToServiceParams(cfg, "api.yml")
 
+	if cfg.Version != config.ConfigVersion {
+		t.Fatalf("sample api.yml version = %d, want %d — bump the file when the schema changes", cfg.Version, config.ConfigVersion)
+	}
 	if params.Osquery == nil {
 		t.Fatal("sample api.yml did not load osquery")
 	}
@@ -246,5 +251,24 @@ func TestSampleAPIConfigLoads(t *testing.T) {
 	}
 	if params.Carver == nil {
 		t.Fatal("sample api.yml did not load carver")
+	}
+}
+
+func TestConfigVersionMismatchDoesNotFailLoad(t *testing.T) {
+	// Version skew is a warning, not an error: a file from a newer
+	// osctrl release must still load so the service can start (the
+	// unknown fields are simply ignored), and a file with no version at
+	// all is every pre-existing deployment.
+	const body = `
+version: 999
+service:
+  auth: jwt
+`
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration with newer version: %v", err)
+	}
+	if cfg.Version != 999 {
+		t.Fatalf("cfg.Version = %d, want 999", cfg.Version)
 	}
 }

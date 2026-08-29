@@ -69,6 +69,9 @@ const (
 // minimal YAML file can omit them and the service falls back to DB-stored or
 // zero-valued defaults.
 type TLSConfiguration struct {
+	// Version of the configuration schema this file was written for.
+	// Checked against ConfigVersion at load time; see version.go.
+	Version int                      `mapstructure:"version"`
 	Service YAMLConfigurationService `mapstructure:"service"`
 	DB      YAMLConfigurationDB      `mapstructure:"db"`
 	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
@@ -89,6 +92,9 @@ type TLSConfiguration struct {
 // APIConfiguration to hold osctrl-api configuration values. Required sections
 // (service, db, redis) are value types; optional sections are pointers.
 type APIConfiguration struct {
+	// Version of the configuration schema this file was written for.
+	// Checked against ConfigVersion at load time; see version.go.
+	Version int                      `mapstructure:"version"`
 	Service YAMLConfigurationService `mapstructure:"service"`
 	DB      YAMLConfigurationDB      `mapstructure:"db"`
 	Redis   YAMLConfigurationRedis   `mapstructure:"redis"`
