@@ -179,6 +179,12 @@ func loadYAMLConfiguration(file string) (config.APIConfiguration, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
+	// Warn when the file predates (or postdates) the schema this binary
+	// understands — usually new fields were added since the file was
+	// written and are silently missing from it.
+	if msg := config.ConfigVersionWarning(cfg.Version); msg != "" {
+		log.Warn().Msg(msg)
+	}
 	// Check if values are valid
 	if !validAuth[cfg.Service.Auth] {
 		return cfg, fmt.Errorf("invalid auth method: '%s'", cfg.Service.Auth)

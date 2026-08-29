@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/jmpsec/osctrl/pkg/config"
 )
 
 func writeTempTLSConfig(t *testing.T, body string) string {
@@ -101,6 +103,9 @@ func TestSampleTLSConfigLoads(t *testing.T) {
 	}
 	params := loadedYAMLToServiceParams(cfg, "tls.yml")
 
+	if cfg.Version != config.ConfigVersion {
+		t.Fatalf("sample tls.yml version = %d, want %d — bump the file when the schema changes", cfg.Version, config.ConfigVersion)
+	}
 	if params.BatchWriter == nil {
 		t.Fatal("sample tls.yml did not load batchWriter")
 	}
@@ -109,5 +114,28 @@ func TestSampleTLSConfigLoads(t *testing.T) {
 	}
 	if params.Osquery == nil {
 		t.Fatal("sample tls.yml did not load osquery")
+	}
+}
+
+func TestConfigVersionMismatchDoesNotFailLoad(t *testing.T) {
+	// Version skew is a warning, not an error: a file from a newer
+	// osctrl release must still load so the service can start (the
+	// unknown fields are simply ignored), and a file with no version at
+	// all is every pre-existing deployment.
+	const body = `
+version: 999
+service:
+  auth: none
+db:
+  type: postgres
+redis:
+  host: 127.0.0.1
+`
+	cfg, err := loadYAMLConfiguration(writeTempTLSConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration with newer version: %v", err)
+	}
+	if cfg.Version != 999 {
+		t.Fatalf("cfg.Version = %d, want 999", cfg.Version)
 	}
 }

@@ -105,6 +105,12 @@ func loadYAMLConfiguration(file string) (config.TLSConfiguration, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return cfg, err
 	}
+	// Warn when the file predates (or postdates) the schema this binary
+	// understands — usually new fields were added since the file was
+	// written and are silently missing from it.
+	if msg := config.ConfigVersionWarning(cfg.Version); msg != "" {
+		log.Warn().Msg(msg)
+	}
 	if err := config.ValidateTLSConfigValues(cfg); err != nil {
 		return cfg, err
 	}

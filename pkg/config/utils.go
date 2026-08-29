@@ -23,6 +23,7 @@ func (p *ServiceParameters) ConfigFilePath() string {
 // Helper to generate an example TLS configuration file
 func GenerateTLSConfigFile(path string, cfg *ServiceParameters, overwrite bool) error {
 	cfgTLS := TLSConfiguration{
+		Version:         ConfigVersion,
 		Service:         *cfg.Service,
 		DB:              *cfg.DB,
 		Redis:           *cfg.Redis,
@@ -43,15 +44,16 @@ func GenerateTLSConfigFile(path string, cfg *ServiceParameters, overwrite bool) 
 // Helper to generate an example API configuration file
 func GenerateAPIConfigFile(path string, cfg *ServiceParameters, overwrite bool) error {
 	cfgAPI := APIConfiguration{
-		Service: *cfg.Service,
-		DB:      *cfg.DB,
-		Redis:   *cfg.Redis,
-		Osquery: cfg.Osquery,
-		SAML:    cfg.SAML,
-		OIDC:    cfg.OIDC,
-		JWT:     cfg.JWT,
-		TLS:     cfg.TLS,
-		Logger:  cfg.Logger,
+		Version:    ConfigVersion,
+		Service:    *cfg.Service,
+		DB:         *cfg.DB,
+		Redis:      *cfg.Redis,
+		Osquery:    cfg.Osquery,
+		SAML:       cfg.SAML,
+		OIDC:       cfg.OIDC,
+		JWT:        cfg.JWT,
+		TLS:        cfg.TLS,
+		Logger:     cfg.Logger,
 		Carver:     cfg.Carver,
 		Debug:      cfg.Debug,
 		RateLimits: cfg.RateLimits,
