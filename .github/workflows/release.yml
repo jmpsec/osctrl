@@ -16,6 +16,7 @@ concurrency:
 
 env:
   GOLANG_VERSION: 1.26.5
+  NODE_VERSION: "22"
 
 jobs:
   release:
@@ -41,10 +42,28 @@ jobs:
           fi
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@b7ad1dad31e06c5925efd2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
           cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend bundle
+        shell: bash
+        run: make frontend
+
+      - name: Verify frontend bundle exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f frontend/dist/index.html
+          test -d frontend/dist/assets
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -105,7 +124,7 @@ jobs:
 
           image_tag="${RELEASE_TAG#v}"
 
-          for component in tls api cli; do
+          for component in tls api cli frontend; do
             image="${DOCKER_HUB_ORG}/osctrl-${component}"
             for tag in "${image_tag}" latest; do
               digest="$(retry 6 resolve_digest "${image}:${tag}")"

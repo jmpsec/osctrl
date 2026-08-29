@@ -1,0 +1,49 @@
+# Release Docker image for osctrl-frontend.
+#
+# Serves the Vite-built React SPA through nginx and reverse-proxies /api/*
+# to osctrl-api on :9002 over the container network. The frontend bundle
+# is produced in CI before GoReleaser runs and dropped at frontend/dist/
+# in the build context — this Dockerfile does NOT run npm itself, so the
+# image stays small (nginx + ~5 MB of hashed assets) and the release
+# pipeline reuses the same artifact the frontend-build workflow validates.
+#
+# TLS is opt-in via OSCTRL_FRONTEND_TLS=1. When set, the entrypoint swaps
+# in frontend-tls.conf (HTTPS on :443 + HTTP→HTTPS redirect on :80) and
+# expects certificates mounted at /etc/ssl/osctrl/tls.crt and tls.key.
+# Default (unset/0) serves plain HTTP on :80 for use behind a TLS
+# terminator (ingress, load balancer, the osctrl-nginx pattern).
+#
+# Build context must contain:
+#   - frontend/dist/                           (the production bundle)
+#   - deploy/cicd/nginx/frontend.conf          (HTTP server block)
+#   - deploy/cicd/nginx/frontend-tls.conf      (HTTPS server block)
+#   - deploy/cicd/nginx/docker-entrypoint-frontend.sh
+
+FROM nginx:1.27-alpine
+
+RUN rm -f /etc/nginx/conf.d/default.conf && \
+    mkdir -p /usr/share/nginx/osctrl-frontend \
+             /etc/nginx/conf.d-available \
+             /etc/ssl/osctrl \
+             /run/nginx
+
+# Stage both server blocks outside conf.d so only the selected one is
+# symlinked into the active config directory at runtime.
+COPY deploy/cicd/nginx/frontend.conf     /etc/nginx/conf.d-available/osctrl-frontend.conf
+COPY deploy/cicd/nginx/frontend-tls.conf /etc/nginx/conf.d-available/osctrl-frontend-tls.conf
+COPY deploy/cicd/nginx/docker-entrypoint-frontend.sh /docker-entrypoint-frontend.sh
+
+COPY frontend/dist/ /usr/share/nginx/osctrl-frontend/
+
+RUN chmod +x /docker-entrypoint-frontend.sh && \
+    chown -R nginx:nginx /usr/share/nginx/osctrl-frontend /run/nginx
+
+# Default to HTTP; entrypoint flips the active config when TLS is enabled.
+ENV OSCTRL_FRONTEND_TLS=0
+
+USER nginx
+
+EXPOSE 80/tcp
+EXPOSE 443/tcp
+
+ENTRYPOINT ["/docker-entrypoint-frontend.sh"]
