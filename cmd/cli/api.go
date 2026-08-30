@@ -169,8 +169,9 @@ func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]
 	if err != nil {
 		return []byte{}, fmt.Errorf("can not read response - %w", err)
 	}
-	// Check response code
-	if resp.StatusCode != http.StatusOK {
+	// Check response code: any 2xx is success (201 Created, 204 No
+	// Content, etc.). Redirects are followed by the http client itself.
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return bodyBytes, fmt.Errorf("HTTP Code %d", resp.StatusCode)
 	}
 	return bodyBytes, nil

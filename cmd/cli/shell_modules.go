@@ -20,6 +20,7 @@ func nodesCommands() []shellCmd {
 		{name: "list", aliases: "ls", args: "[active|inactive|all]", help: "list nodes in the active env (default: all)", fn: shNodesList},
 		{name: "search", args: "<query>", help: "search nodes by hostname/uuid/ip/user", min: 1, fn: shNodesSearch},
 		{name: "show", args: "<uuid|hostname>", help: "show node detail", min: 1, fn: shNodesShow},
+		{name: "logs", args: "<uuid|hostname> [result|status]", help: "show recent logs for a node (api mode)", min: 1, fn: shNodeLogs},
 		{name: "delete", aliases: "rm", args: "<uuid>", help: "delete (archive) a node", min: 1, fn: shNodesDelete},
 		{name: "tag", args: "<uuid> <tag>", help: "apply a tag to a node", min: 2, fn: shNodesTag},
 	}
