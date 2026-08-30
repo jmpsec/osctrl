@@ -16,6 +16,7 @@ concurrency:
 
 env:
   GOLANG_VERSION: 1.26.5
+  NODE_VERSION: "22"
 
 jobs:
   validate:
@@ -71,6 +72,24 @@ jobs:
         with:
           go-version: ${{ env.GOLANG_VERSION }}
           cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend bundle
+        shell: bash
+        run: make frontend
+
+      - name: Verify frontend bundle exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f frontend/dist/index.html
+          test -d frontend/dist/assets
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
