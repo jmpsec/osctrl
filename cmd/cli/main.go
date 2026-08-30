@@ -250,6 +250,12 @@ func init() {
 			Action:  cliWrapper(runShell),
 		},
 		{
+			Name:    "tui",
+			Aliases: []string{"dashboard"},
+			Usage:   "Full-screen TUI dashboard — fleet health, platforms, environments, queries, audit",
+			Action:  cliWrapper(runTUIDashboard),
+		},
+		{
 			Name:   "audit-logs",
 			Usage:  "Get all audit logs for actions performed in osctrl",
 			Action: cliWrapper(auditLogs),

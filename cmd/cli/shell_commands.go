@@ -27,7 +27,11 @@ func (s *shellState) buildModules() {
 	}
 	add(&shellModule{name: "nodes", label: "nodes", desc: "enrolled osquery nodes", cmds: nodesCommands()})
 	add(&shellModule{name: "queries", label: "queries", desc: "on-demand distributed queries", cmds: queriesCommands()})
+	add(&shellModule{name: "saved", label: "saved", desc: "saved queries + template library", cmds: savedCommands()})
 	add(&shellModule{name: "carves", label: "carves", desc: "file carves", cmds: carvesCommands()})
+	add(&shellModule{name: "console", label: "console", desc: "live interactive node console", cmds: consoleCommands()})
+	add(&shellModule{name: "file-explorer", label: "fex", desc: "live remote file explorer", cmds: fileExplorerCommands()})
+	add(&shellModule{name: "posture", label: "posture", desc: "node posture + compliance scoring", cmds: postureCommands()})
 	add(&shellModule{name: "environments", label: "env", desc: "TLS environments", cmds: envCommands()})
 	add(&shellModule{name: "tags", label: "tags", desc: "node tags", cmds: tagsCommands()})
 	add(&shellModule{name: "users", label: "users", desc: "users and permissions", cmds: usersCommands()})
@@ -214,13 +218,18 @@ func (s *shellState) argCandidates(tokens []string, line string, cursor int) ([]
 	// resource-name completion for the active module's primary key
 	switch s.ctx {
 	case "nodes":
-		if cmd == "show" || cmd == "delete" || cmd == "tag" {
+		if cmd == "show" || cmd == "delete" || cmd == "tag" || cmd == "logs" {
 			c := filterPrefix(s.nodeKeys, currentWord(line, cursor))
 			return c, longestCommonPrefix(c)
 		}
 	case "queries":
 		if cmd == "show" || cmd == "results" || cmd == "complete" || cmd == "expire" || cmd == "delete" {
 			c := filterPrefix(s.queryNames, currentWord(line, cursor))
+			return c, longestCommonPrefix(c)
+		}
+	case "console", "file-explorer", "posture":
+		if cmd == "open" || cmd == "show" || cmd == "score" {
+			c := filterPrefix(s.nodeKeys, currentWord(line, cursor))
 			return c, longestCommonPrefix(c)
 		}
 	}

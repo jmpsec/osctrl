@@ -135,8 +135,16 @@ func moduleIcon(name string) string {
 		return "🖥️"
 	case "queries":
 		return "🔍"
+	case "saved":
+		return "💾"
 	case "carves":
 		return "📦"
+	case "console":
+		return "⌨️"
+	case "file-explorer":
+		return "🗂️"
+	case "posture":
+		return "🛡️"
 	case "environments":
 		return "🌐"
 	case "tags":
