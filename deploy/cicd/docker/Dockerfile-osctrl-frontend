@@ -19,7 +19,7 @@
 #   - deploy/cicd/nginx/frontend-tls.conf      (HTTPS server block)
 #   - deploy/cicd/nginx/docker-entrypoint-frontend.sh
 
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 
 RUN rm -f /etc/nginx/conf.d/default.conf && \
     mkdir -p /usr/share/nginx/osctrl-frontend \
