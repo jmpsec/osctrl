@@ -265,11 +265,12 @@ func osctrlService() {
 	// Alerting subsystem (disabled by default). The nil matcher means
 	// the ingest path never evaluates rules — zero cost when the
 	// feature is off. When enabled: manager + rule snapshot + Redis
-	// cooldown gate + async dispatch worker.
+	// cooldown gate + channel dispatcher + async dispatch worker.
 	var alertsMgr *alerts.Manager
 	var alertsStore *alerts.Store
 	var alertsState *alerts.State
 	var alertsWorker *alerts.Worker
+	var alertsDispatcher *alerts.Dispatcher
 	if flagParams.Service.AlertsEnabled {
 		alertsMgr = alerts.NewManager(db.Conn)
 		alertsStore = alerts.NewStore()
@@ -277,9 +278,8 @@ func osctrlService() {
 			log.Fatal().Msgf("Error loading alert rules - %v", err)
 		}
 		alertsState = alerts.NewState(redis.Client)
-		// Channels arrive in Stage 3; a nil sink still runs the
-		// claim + history pipeline so matches are observable.
-		alertsWorker = alerts.NewWorker(alertsStore, alertsState, alertsMgr, nil, 0, 0)
+		alertsDispatcher = alerts.NewDispatcher(alertsMgr)
+		alertsWorker = alerts.NewWorker(alertsStore, alertsState, alertsMgr, alertsDispatcher, 0, 0)
 		log.Info().Msg("Alerting system enabled")
 	} else {
 		log.Info().Msg("Alerting system disabled (enable with --alerts-enabled)")
@@ -376,11 +376,12 @@ func osctrlService() {
 		log.Info().Msg("Alert matcher attached to log ingest")
 	}
 	// Periodic alert-rule snapshot refresh so rule edits (Stage 4 API
-	// or direct DB changes) propagate without a restart.
+	// or direct DB changes) propagate without a restart. Channel
+	// sender caches reset alongside so channel edits are picked up.
 	var alertsRefreshStop chan struct{}
 	if alertsStore != nil {
 		alertsRefreshStop = make(chan struct{})
-		go watchAlertRules(alertsRefreshStop, alertsMgr, alertsStore)
+		go watchAlertRules(alertsRefreshStop, alertsMgr, alertsStore, alertsDispatcher)
 	}
 	// Start the background sink-stats writer. It snapshots per-sink
 	// atomic counters (bytes sent, export count) from the live exporter
@@ -581,9 +582,10 @@ func stopAlerts(refreshStop chan struct{}, worker *alerts.Worker) {
 
 // watchAlertRules periodically reloads the rule snapshot so edits made
 // through the Stage 4 API (or directly in the DB) take effect without a
-// restart. The interval is a fallback; Stage 4's service-command
+// restart, and resets the channel sender cache so channel config edits
+// rebuild senders. The interval is a fallback; Stage 4's service-command
 // refresh will trigger it immediately.
-func watchAlertRules(stop <-chan struct{}, mgr *alerts.Manager, store *alerts.Store) {
+func watchAlertRules(stop <-chan struct{}, mgr *alerts.Manager, store *alerts.Store, dispatcher *alerts.Dispatcher) {
 	const interval = 5 * time.Minute
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -594,6 +596,9 @@ func watchAlertRules(stop <-chan struct{}, mgr *alerts.Manager, store *alerts.St
 		case <-ticker.C:
 			if err := mgr.LoadSnapshot(store); err != nil {
 				log.Err(err).Msg("error refreshing alert rule snapshot")
+			}
+			if dispatcher != nil {
+				dispatcher.Reset()
 			}
 		}
 	}

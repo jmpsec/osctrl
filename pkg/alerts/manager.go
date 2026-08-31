@@ -147,11 +147,15 @@ func normalizeChannelIDs(raw string) string {
 
 // ─────────────────────────────── channels ───────────────────────────────
 
-// CreateChannel inserts a new notification channel.
+// CreateChannel inserts a new notification channel. Type and config are
+// validated against the channel registry.
 func (m *Manager) CreateChannel(ch AlertChannel) (AlertChannel, error) {
 	ch.Name = strings.TrimSpace(ch.Name)
 	if ch.Name == "" {
 		return AlertChannel{}, errors.New("channel name is required")
+	}
+	if err := ValidateChannelConfig(ch.Type, ch.Config); err != nil {
+		return AlertChannel{}, err
 	}
 	if ch.Config == "" {
 		ch.Config = "{}"
@@ -167,7 +171,8 @@ func (m *Manager) CreateChannel(ch AlertChannel) (AlertChannel, error) {
 	return row, nil
 }
 
-// UpdateChannel replaces the mutable fields of a channel.
+// UpdateChannel replaces the mutable fields of a channel. Type and
+// config are re-validated.
 func (m *Manager) UpdateChannel(id uint, ch AlertChannel) (AlertChannel, error) {
 	row, err := m.GetChannel(id)
 	if err != nil {
@@ -177,12 +182,15 @@ func (m *Manager) UpdateChannel(id uint, ch AlertChannel) (AlertChannel, error) 
 	if ch.Name == "" {
 		return AlertChannel{}, errors.New("channel name is required")
 	}
+	if err := ValidateChannelConfig(ch.Type, ch.Config); err != nil {
+		return AlertChannel{}, err
+	}
 	if ch.Config == "" {
 		ch.Config = "{}"
 	}
 	if err := m.DB.Model(&row).Updates(map[string]any{
 		"name":    ch.Name,
-		"type":    ch.Type,
+		"type":    normalizeChannelType(ch.Type),
 		"config":  ch.Config,
 		"enabled": ch.Enabled,
 		"info":    ch.Info,

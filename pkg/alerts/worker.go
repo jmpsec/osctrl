@@ -66,6 +66,10 @@ type Worker struct {
 	workers int
 	wg      sync.WaitGroup
 	stop    chan struct{}
+	// sinkSelfRecords marks sinks that write their own alert_history
+	// rows (the channel dispatcher does, so history attributes per
+	// channel). When false, the worker writes a catch-all row.
+	sinkSelfRecords bool
 	// syncFlush, when true, dispatches synchronously in Enqueue (test
 	// mode) so integration tests can assert outcomes without sleeps.
 	syncFlush bool
@@ -82,6 +86,7 @@ const (
 // NewWorker builds and starts the dispatch worker pool. store is the
 // rule snapshot (for future per-rule lookups); state may be nil (claims
 // pass through); sink may be nil (hits are only claimed + recorded).
+// Set selfRecording when the sink writes its own history rows.
 func NewWorker(store *Store, state claimGate, manager *Manager, sink DispatchSink, queueSize, workers int) *Worker {
 	if queueSize <= 0 {
 		queueSize = defaultQueueSize
@@ -90,19 +95,27 @@ func NewWorker(store *Store, state claimGate, manager *Manager, sink DispatchSin
 		workers = defaultWorkers
 	}
 	w := &Worker{
-		store:   store,
-		state:   state,
-		manager: manager,
-		sink:    sink,
-		queue:   make(chan Hit, queueSize),
-		workers: workers,
-		stop:    make(chan struct{}),
+		store:           store,
+		state:           state,
+		manager:         manager,
+		sink:            sink,
+		queue:           make(chan Hit, queueSize),
+		workers:         workers,
+		stop:            make(chan struct{}),
+		sinkSelfRecords: sink != nil && isSelfRecordingSink(sink),
 	}
 	for i := 0; i < workers; i++ {
 		w.wg.Add(1)
 		go w.run()
 	}
 	return w
+}
+
+// isSelfRecordingSink reports whether the sink writes alert history
+// itself (the channel dispatcher does, for per-channel attribution).
+func isSelfRecordingSink(sink DispatchSink) bool {
+	_, ok := sink.(*Dispatcher)
+	return ok
 }
 
 // NewSyncWorker builds a worker that dispatches inline (tests only).
@@ -208,8 +221,12 @@ func (w *Worker) dispatch(ctx context.Context, h Hit) {
 		}
 	}
 	w.metrics.Dispatched.Add(1)
-	// History is written only for successfully dispatched alerts.
-	if w.manager != nil {
+	// History is written only for successfully dispatched alerts. The
+	// dispatcher (channel fan-out) records per-channel rows itself
+	// through the same manager when it is the sink; this catch-all
+	// write only runs when the sink does not self-record (tests, or
+	// the no-channel bootstrap path in cmd/tls).
+	if w.manager != nil && !w.sinkSelfRecords {
 		if err := w.manager.RecordHistory(AlertHistory{
 			RuleID:      h.RuleID,
 			RuleName:    h.RuleName,
