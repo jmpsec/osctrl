@@ -540,7 +540,7 @@ func osctrlService() {
 		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
 	}
 	watchCtx, stopCommandWatcher := context.WithCancel(context.Background())
-	go watchServiceCommands(watchCtx, serviceCommandMgr, serviceConfigMgr, logSinksMgr, loggerTLS, settingsmgr, auditLog, restartCh)
+	go watchServiceCommands(watchCtx, serviceCommandMgr, serviceConfigMgr, logSinksMgr, loggerTLS, settingsmgr, auditLog, alertsReloadFn(alertsMgr, alertsStore, alertsDispatcher), restartCh)
 	serverErr := make(chan error, 1)
 	go func() {
 		log.Info().Msgf("%s v%s - HTTP%s listening %s", serviceName, buildVersion, map[bool]string{true: "S", false: ""}[flagParams.TLS.Termination], serviceListener)
@@ -604,7 +604,24 @@ func watchAlertRules(stop <-chan struct{}, mgr *alerts.Manager, store *alerts.St
 	}
 }
 
-func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfgMgr *serviceconfig.ServiceConfigManager, sinksMgr *logsinks.LogSinksManager, logTLS *logging.LoggerTLS, settingsMgr *settings.Settings, auditLog *auditlog.AuditLogManager, restartCh chan<- struct{}) {
+// alertsReloadFn returns a no-arg reload closure for the alerting
+// subsystem, or nil when alerts are disabled (the service-command
+// watcher then ignores reload-alerts commands).
+func alertsReloadFn(mgr *alerts.Manager, store *alerts.Store, dispatcher *alerts.Dispatcher) func() {
+	if mgr == nil || store == nil {
+		return nil
+	}
+	return func() {
+		if err := mgr.LoadSnapshot(store); err != nil {
+			log.Err(err).Msg("error reloading alert rule snapshot")
+		}
+		if dispatcher != nil {
+			dispatcher.Reset()
+		}
+	}
+}
+
+func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfgMgr *serviceconfig.ServiceConfigManager, sinksMgr *logsinks.LogSinksManager, logTLS *logging.LoggerTLS, settingsMgr *settings.Settings, auditLog *auditlog.AuditLogManager, reloadAlerts func(), restartCh chan<- struct{}) {
 	ticker := time.NewTicker(serviceCommandPollInterval)
 	defer ticker.Stop()
 	for {
@@ -658,6 +675,17 @@ func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfg
 				logTLS.ReplaceExporters(newExporters)
 				auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls reload-log-sinks command %s consumed", cmd.CommandID), "local")
 				log.Info().Str("command", cmd.CommandID).Msg("Hot-reloaded log sinks")
+			case servicecommands.ActionReloadAlerts:
+				// Hot-reload alert rules + channel sender cache. The
+				// snapshot swap is atomic; in-flight matches finish
+				// against the old ruleset.
+				if reloadAlerts == nil {
+					log.Warn().Str("command", cmd.CommandID).Msg("reload-alerts ignored — alerting is disabled")
+					continue
+				}
+				reloadAlerts()
+				auditLog.SettingsAction(cmd.RequestedBy, fmt.Sprintf("tls reload-alerts command %s consumed", cmd.CommandID), "local")
+				log.Info().Str("command", cmd.CommandID).Msg("Hot-reloaded alert rules")
 			default:
 				log.Warn().Str("command", cmd.CommandID).Msgf("Ignoring unknown TLS service command action %q", cmd.Action)
 			}

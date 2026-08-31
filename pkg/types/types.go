@@ -718,3 +718,54 @@ type LogSinkCloneRequest struct {
 	TargetEnvironmentID uint `json:"target_environment_id"`
 	Overwrite           bool `json:"overwrite"`
 }
+
+// ─────────────────────────────── alerts ───────────────────────────────
+
+// AlertRuleCreateRequest is the body for POST /api/v1/alerts/rules and
+// PUT /api/v1/alerts/rules/{id}. All fields are required on update.
+type AlertRuleCreateRequest struct {
+	Name            string `json:"name"`
+	EnvironmentID   uint   `json:"environment_id"`
+	Source          string `json:"source"`
+	MatchType       string `json:"match_type"`
+	MatchField      string `json:"match_field,omitempty"`
+	MatchValue      string `json:"match_value"`
+	StatusSeverity  string `json:"status_severity,omitempty"`
+	CooldownMinutes int    `json:"cooldown_minutes,omitempty"`
+	ChannelIDs      []uint `json:"channel_ids,omitempty"`
+	Enabled         bool   `json:"enabled"`
+	Info            string `json:"info,omitempty"`
+}
+
+// AlertChannelCreateRequest is the body for POST /api/v1/alerts/channels
+// and PUT /api/v1/alerts/channels/{id}. A secret field set to "***" on
+// update is merged from the previously stored value by the handler.
+type AlertChannelCreateRequest struct {
+	Name          string          `json:"name"`
+	EnvironmentID uint            `json:"environment_id"`
+	Type          string          `json:"type"`
+	Enabled       bool            `json:"enabled"`
+	Config        json.RawMessage `json:"config"`
+	Info          string          `json:"info,omitempty"`
+}
+
+// AlertFieldSpec is one field in an alert channel type's config schema.
+type AlertFieldSpec struct {
+	Name        string `json:"name"`
+	Label       string `json:"label"`
+	Type        string `json:"type"`
+	Required    bool   `json:"required"`
+	Placeholder string `json:"placeholder,omitempty"`
+	Help        string `json:"help,omitempty"`
+	Default     any    `json:"default,omitempty"`
+}
+
+// AlertChannelTypeSpec is one entry in the GET /api/v1/alerts/channels/types
+// response.
+type AlertChannelTypeSpec struct {
+	Type         string           `json:"type"`
+	Description  string           `json:"description"`
+	HasSecret    bool             `json:"has_secret"`
+	SecretFields []string         `json:"secret_fields,omitempty"`
+	Fields       []AlertFieldSpec `json:"fields,omitempty"`
+}

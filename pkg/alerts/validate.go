@@ -59,6 +59,28 @@ func ValidateRule(rule AlertRule) error {
 	return nil
 }
 
+// DecodeChannelIDs parses the JSON channel-ID array. Empty string /
+// null decodes to nil.
+func DecodeChannelIDs(raw string) ([]uint, error) {
+	return decodeChannels(raw)
+}
+
+// EncodeChannelIDs serializes channel IDs for storage.
+func EncodeChannelIDs(ids []uint) string {
+	return encodeChannels(ids)
+}
+
+// DecodeChannelIDsOrEmpty parses the channel-ID array and returns an
+// empty slice on any error — a convenience for API clients that only
+// need display values.
+func DecodeChannelIDsOrEmpty(raw string) []uint {
+	ids, err := decodeChannels(raw)
+	if err != nil || ids == nil {
+		return []uint{}
+	}
+	return ids
+}
+
 // decodeChannels parses the JSON channel-ID array. Empty string / null
 // decodes to nil.
 func decodeChannels(raw string) ([]uint, error) {

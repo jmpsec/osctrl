@@ -261,6 +261,75 @@ func init() {
 			Action: cliWrapper(auditLogs),
 		},
 		{
+			Name:  "alert",
+			Usage: "Commands for the alerting system",
+			Commands: []*cli.Command{
+				{
+					Name:    "rules",
+					Aliases: []string{"r"},
+					Usage:   "List alert rules",
+					Action:  cliWrapper(alertRulesList),
+				},
+				{
+					Name:    "rule-create",
+					Aliases: []string{"rc"},
+					Usage:   "Create an alert rule",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "Rule name"},
+						&cli.StringFlag{Name: "source", Aliases: []string{"s"}, Usage: "Source: result_log | status_log | query_log | node_inactive | node_recovered"},
+						&cli.StringFlag{Name: "match-type", Aliases: []string{"m"}, Value: "substring", Usage: "Match type: substring | regex"},
+						&cli.StringFlag{Name: "match-field", Usage: "Field to match (empty = any field)"},
+						&cli.StringFlag{Name: "match-value", Aliases: []string{"v"}, Usage: "Pattern to match"},
+						&cli.IntFlag{Name: "cooldown", Value: 0, Usage: "Cooldown minutes between repeat alerts"},
+						&cli.StringFlag{Name: "channels", Usage: "Comma-separated channel IDs"},
+						&cli.BoolFlag{Name: "enabled", Value: true, Usage: "Create the rule enabled"},
+					},
+					Action: cliWrapper(alertRuleCreate),
+				},
+				{
+					Name:    "rule-delete",
+					Aliases: []string{"rd"},
+					Usage:   "Delete an alert rule by ID",
+					Flags: []cli.Flag{
+						&cli.UintFlag{Name: "id", Usage: "Rule ID"},
+					},
+					Action: cliWrapper(alertRuleDelete),
+				},
+				{
+					Name:    "channels",
+					Aliases: []string{"c"},
+					Usage:   "List alert channels",
+					Action:  cliWrapper(alertChannelsList),
+				},
+				{
+					Name:    "channel-create",
+					Aliases: []string{"cc"},
+					Usage:   "Create an alert channel",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "Channel name"},
+						&cli.StringFlag{Name: "type", Aliases: []string{"t"}, Usage: "Channel type: webhook | email"},
+						&cli.StringFlag{Name: "config", Usage: "Channel config as JSON"},
+						&cli.BoolFlag{Name: "enabled", Value: true, Usage: "Create the channel enabled"},
+					},
+					Action: cliWrapper(alertChannelCreate),
+				},
+				{
+					Name:    "channel-delete",
+					Aliases: []string{"cd"},
+					Usage:   "Delete an alert channel by ID",
+					Flags: []cli.Flag{
+						&cli.UintFlag{Name: "id", Usage: "Channel ID"},
+					},
+					Action: cliWrapper(alertChannelDelete),
+				},
+				{
+					Name:   "apply",
+					Usage:  "Apply alert changes (hot-reload rules and channels in osctrl-tls)",
+					Action: cliWrapper(alertsApply),
+				},
+			},
+		},
+		{
 			Name:  "carve",
 			Usage: "Commands for file carves",
 			Commands: []*cli.Command{

@@ -31,6 +31,11 @@ const (
 	// it in without restarting. Users mid-login may see a transient
 	// error and can retry.
 	ActionReloadAuthProviders = "reload-auth-providers"
+	// ActionReloadAlerts asks osctrl-tls to reload its alert rule
+	// snapshot and reset the channel sender cache without restarting.
+	// The swap is atomic (copy-on-write snapshot), so in-flight matches
+	// finish against the old ruleset while new logs pick up the new one.
+	ActionReloadAlerts = "reload-alerts"
 
 	StatusPending   = "pending"
 	StatusConsumed  = "consumed"
@@ -51,6 +56,7 @@ var validActions = map[string]struct{}{
 	ActionPersistConfig:       {},
 	ActionReloadLogSinks:      {},
 	ActionReloadAuthProviders: {},
+	ActionReloadAlerts:        {},
 }
 
 // ServiceCommand is a one-shot control request for another osctrl service.
