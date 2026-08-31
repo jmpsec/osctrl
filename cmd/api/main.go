@@ -14,6 +14,7 @@ import (
 
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
 	"github.com/jmpsec/osctrl/pkg/activity"
+	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/authproviders"
 	"github.com/jmpsec/osctrl/pkg/backend"
@@ -364,6 +365,16 @@ func osctrlAPIService() {
 		log.Info().Msg("Posture system enabled")
 	} else {
 		log.Info().Msg("Posture system disabled (enable with --posture-enabled)")
+	}
+	// Alerting subsystem (disabled by default). When disabled the
+	// alert tables are not created and the alert API routes are not
+	// registered. Stage 4 wires the rule/channel CRUD handlers here.
+	if flagParams.Service.AlertsEnabled {
+		alertsMgr := alerts.NewManager(db.Conn)
+		_ = alertsMgr // consumed by the alert routes in Stage 4
+		log.Info().Msg("Alerting system enabled")
+	} else {
+		log.Info().Msg("Alerting system disabled (enable with --alerts-enabled)")
 	}
 	// Initialize settings
 	// Multi-factor authentication for password logins. The manager owns its

@@ -49,6 +49,7 @@ services:
       - LOGGER_DB_SAME=true
       - SERVICE_LOG_FORMAT=console
       - SERVICE_POSTURE_ENABLED=true
+      - SERVICE_ALERTS_ENABLED=true
       - SERVICE_CONFIG_ENABLED=true
       #### Database settings ####
       - DB_HOST=osctrl-postgres
@@ -104,6 +105,7 @@ services:
       - SERVICE_LOGGER=db
       - SERVICE_LOG_FORMAT=console
       - SERVICE_POSTURE_ENABLED=true
+      - SERVICE_ALERTS_ENABLED=true
       - SERVICE_CONFIG_ENABLED=true
       #### osquery settings ####
       - OSQUERY_TABLES=/usr/src/app/deploy/osquery/data/${OSQUERY_VERSION}.json

@@ -14,6 +14,7 @@ import (
 
 	"github.com/jmpsec/osctrl/cmd/tls/handlers"
 	"github.com/jmpsec/osctrl/pkg/activity"
+	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
@@ -260,6 +261,21 @@ func osctrlService() {
 	} else {
 		posture.SetPrefix("")
 		log.Info().Msg("Posture system disabled (enable with --posture-enabled)")
+	}
+	// Alerting subsystem (disabled by default). The nil manager means
+	// the ingest path never registers a matcher — zero cost when the
+	// feature is off. Stage 2 wires the rule snapshot + worker here.
+	var alertsMgr *alerts.Manager
+	var alertsStore *alerts.Store
+	if flagParams.Service.AlertsEnabled {
+		alertsMgr = alerts.NewManager(db.Conn)
+		alertsStore = alerts.NewStore()
+		if err := alertsMgr.LoadSnapshot(alertsStore); err != nil {
+			log.Fatal().Msgf("Error loading alert rules - %v", err)
+		}
+		log.Info().Msg("Alerting system enabled")
+	} else {
+		log.Info().Msg("Alerting system disabled (enable with --alerts-enabled)")
 	}
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)

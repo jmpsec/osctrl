@@ -59,6 +59,32 @@ func TestServiceConfigEnabledFlagDefaultsOff(t *testing.T) {
 	}
 }
 
+func TestServiceAlertsEnabledFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Service: &YAMLConfigurationService{}}
+	flags := initServiceFlags(params)
+
+	if params.Service.AlertsEnabled {
+		t.Fatalf("alerts enabled default: got true want false")
+	}
+
+	var found *cli.BoolFlag
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.BoolFlag); ok && f.Name == "alerts-enabled" {
+			found = f
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("missing alerts-enabled service flag")
+	}
+	if found.Value {
+		t.Fatalf("alerts-enabled flag default: got true want false")
+	}
+	if found.Destination != &params.Service.AlertsEnabled {
+		t.Fatalf("alerts-enabled flag destination does not wire Service.AlertsEnabled")
+	}
+}
+
 func TestOsqueryAcceleratedFlagDefaultsOff(t *testing.T) {
 	params := &ServiceParameters{Osquery: &YAMLConfigurationOsquery{}}
 	flags := initOsqueryFlags(params)

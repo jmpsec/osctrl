@@ -79,6 +79,12 @@ service:
   # Only used by osctrl-tls for ingestion; kept here so the service
   # configuration shape is complete and can round-trip through the API.
   postureQueryPrefix: "osctrl:posture:"
+  # Enable the alerting subsystem. When false (default), the alert API
+  # routes are not registered and the alert tables are not created.
+  # When true, the API serves alert rule/channel management and
+  # history from the shared database (evaluated by osctrl-tls).
+  # Requires a service restart to change.
+  alertsEnabled: false
   # DB health monitor. When enabled, osctrl-api pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache switches to stale-serve mode:

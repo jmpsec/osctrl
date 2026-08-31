@@ -277,6 +277,13 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Service.PostureEnabled,
 		},
 		&cli.BoolFlag{
+			Name:        "alerts-enabled",
+			Value:       false,
+			Usage:       "Enable the alerting subsystem: rule matching on ingested logs and dispatch through configured channels. Disabled by default; when enabled osctrl-tls evaluates alert rules on the log ingest path. Requires a service restart to change.",
+			Sources:     cli.EnvVars("SERVICE_ALERTS_ENABLED"),
+			Destination: &params.Service.AlertsEnabled,
+		},
+		&cli.BoolFlag{
 			Name:        "service-config-enabled",
 			Value:       false,
 			Usage:       "Serve the service-config API and show the matching section in the SPA. Disabled by default: the YAML sections are still seeded into the database at every boot and resolved back at startup, but none of the /api/v1/service-config routes are registered — change the rows or the YAML file directly instead.",

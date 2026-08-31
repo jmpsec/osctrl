@@ -508,7 +508,7 @@ func TestResolve_ServiceSection_OverridesYAML(t *testing.T) {
 	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
 
 	// Edit the service section via the API.
-	newService := `{"listener":"127.0.0.1","port":9999,"host":"db.example.com","logLevel":"debug","logFormat":"json","auth":"none","auditLog":true,"postureEnabled":false,"postureQueryPrefix":"","trustedProxies":"","dbHealthCheck":false,"dbHealthInterval":0,"dbHealthThreshold":0,"geoipDBPath":""}`
+	newService := `{"listener":"127.0.0.1","port":9999,"host":"db.example.com","logLevel":"debug","logFormat":"json","auth":"none","auditLog":true,"postureEnabled":false,"postureQueryPrefix":"","alertsEnabled":false,"trustedProxies":"","dbHealthCheck":false,"dbHealthInterval":0,"dbHealthThreshold":0,"geoipDBPath":""}`
 	_, err := m.UpdateSection(config.ServiceTLS, "service", newService, 0)
 	require.NoError(t, err)
 

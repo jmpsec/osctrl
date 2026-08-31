@@ -130,6 +130,12 @@ type YAMLConfigurationService struct {
 	// whose result logs are ingested as node posture data. Only used
 	// when PostureEnabled is true.
 	PostureQueryPrefix string `yaml:"postureQueryPrefix"`
+	// AlertsEnabled controls whether the alerting subsystem is active.
+	// When false (default), osctrl-tls does not evaluate alert rules on
+	// the log ingest path, does not load rule snapshots, and the
+	// alert tables are not created. The feature is fully inert —
+	// enabling requires a service restart (same as PostureEnabled).
+	AlertsEnabled bool `yaml:"alertsEnabled"`
 	// ServiceConfigEnabled controls whether the service-config API and the
 	// matching SPA section exist. It does not change how configuration is
 	// loaded: every boot seeds the YAML sections into the database and
