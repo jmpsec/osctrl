@@ -72,7 +72,7 @@ func BenchmarkMatchResultLogs20x500(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = rs.MatchResultLogs(logs)
+		_ = rs.MatchResultLogs(NoEnvironmentID, "dev", logs)
 	}
 }
 
@@ -82,7 +82,7 @@ func BenchmarkMatchResultLogs50x1000(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = rs.MatchResultLogs(logs)
+		_ = rs.MatchResultLogs(NoEnvironmentID, "dev", logs)
 	}
 }
 
@@ -92,6 +92,6 @@ func BenchmarkMatchResultLogsEmptyRules(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = rs.MatchResultLogs(logs)
+		_ = rs.MatchResultLogs(NoEnvironmentID, "dev", logs)
 	}
 }

@@ -1,14 +1,29 @@
 package logging
 
 import (
+	"encoding/json"
 	"sync"
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 )
+
+// AlertMatcher is the ingest-path hook into the alerting subsystem.
+// Implemented by the alerts worker in osctrl-tls; the nil case is the
+// feature-off state (nil interface + nil receiver = zero cost).
+type AlertMatcher interface {
+	// MatchResultLogs is called with the decoded result-log batch
+	// after parse, before dispatch. It must not block.
+	MatchResultLogs(envID uint, environment string, logs []types.LogResultData)
+	// MatchStatusLogs is the status-log counterpart.
+	MatchStatusLogs(envID uint, environment string, logs []types.LogStatusData)
+	// MatchQueryResult is called per query in ProcessLogQueryResult.
+	MatchQueryResult(envID uint, environment, queryName string, result json.RawMessage, status int, message string)
+}
 
 // LoggerTLS will be used to handle logging for the TLS endpoint.
 //
@@ -27,6 +42,10 @@ type LoggerTLS struct {
 	Logging string
 	Nodes   *nodes.NodeManager
 	Queries *queries.Queries
+	// Alerts is the ingest-path alert matcher. nil (or a nil interface
+	// value stored here) disables alert evaluation entirely — every
+	// hook site is a nil-check that returns immediately.
+	Alerts AlertMatcher
 }
 
 // CreateLoggerTLS to instantiate a new logger for the TLS endpoint from

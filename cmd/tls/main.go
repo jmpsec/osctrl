@@ -262,17 +262,24 @@ func osctrlService() {
 		posture.SetPrefix("")
 		log.Info().Msg("Posture system disabled (enable with --posture-enabled)")
 	}
-	// Alerting subsystem (disabled by default). The nil manager means
-	// the ingest path never registers a matcher — zero cost when the
-	// feature is off. Stage 2 wires the rule snapshot + worker here.
+	// Alerting subsystem (disabled by default). The nil matcher means
+	// the ingest path never evaluates rules — zero cost when the
+	// feature is off. When enabled: manager + rule snapshot + Redis
+	// cooldown gate + async dispatch worker.
 	var alertsMgr *alerts.Manager
 	var alertsStore *alerts.Store
+	var alertsState *alerts.State
+	var alertsWorker *alerts.Worker
 	if flagParams.Service.AlertsEnabled {
 		alertsMgr = alerts.NewManager(db.Conn)
 		alertsStore = alerts.NewStore()
 		if err := alertsMgr.LoadSnapshot(alertsStore); err != nil {
 			log.Fatal().Msgf("Error loading alert rules - %v", err)
 		}
+		alertsState = alerts.NewState(redis.Client)
+		// Channels arrive in Stage 3; a nil sink still runs the
+		// claim + history pipeline so matches are observable.
+		alertsWorker = alerts.NewWorker(alertsStore, alertsState, alertsMgr, nil, 0, 0)
 		log.Info().Msg("Alerting system enabled")
 	} else {
 		log.Info().Msg("Alerting system disabled (enable with --alerts-enabled)")
@@ -362,6 +369,19 @@ func osctrlService() {
 	} else {
 		loggerTLS = logging.CreateLoggerTLSWith(sinksExporters, nodesmgr, queriesmgr)
 	}
+	// Attach the alert matcher to the ingest path. When alerts are
+	// disabled the matcher stays nil and every hook site is a no-op.
+	if alertsWorker != nil {
+		loggerTLS.Alerts = alerts.NewIngestMatcher(alertsStore, alertsWorker)
+		log.Info().Msg("Alert matcher attached to log ingest")
+	}
+	// Periodic alert-rule snapshot refresh so rule edits (Stage 4 API
+	// or direct DB changes) propagate without a restart.
+	var alertsRefreshStop chan struct{}
+	if alertsStore != nil {
+		alertsRefreshStop = make(chan struct{})
+		go watchAlertRules(alertsRefreshStop, alertsMgr, alertsStore)
+	}
 	// Start the background sink-stats writer. It snapshots per-sink
 	// atomic counters (bytes sent, export count) from the live exporter
 	// map every 30s and writes them to log_sinks. The hot path never
@@ -373,6 +393,9 @@ func osctrlService() {
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
 		cache.RegisterMetrics(prometheus.DefaultRegisterer)
+		if alertsWorker != nil {
+			alerts.RegisterWorkerMetrics(prometheus.DefaultRegisterer, alertsWorker)
+		}
 		// Creating a new prometheus service
 		prometheusServer := http.NewServeMux()
 		prometheusServer.Handle("/metrics", promhttp.Handler())
@@ -531,14 +554,48 @@ func osctrlService() {
 	case err := <-serverErr:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
+		stopAlerts(alertsRefreshStop, alertsWorker)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-restartCh:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
+		stopAlerts(alertsRefreshStop, alertsWorker)
 		log.Info().Msg("TLS service command consumed — exiting for restart")
 		os.Exit(1)
+	}
+}
+
+// stopAlerts tears the alerting subsystem down on shutdown: stop the
+// snapshot refresher first (no new rules mid-drain), then drain the
+// dispatch queue. Both nil-safe for the feature-off path.
+func stopAlerts(refreshStop chan struct{}, worker *alerts.Worker) {
+	if refreshStop != nil {
+		close(refreshStop)
+	}
+	if worker != nil {
+		worker.Close()
+	}
+}
+
+// watchAlertRules periodically reloads the rule snapshot so edits made
+// through the Stage 4 API (or directly in the DB) take effect without a
+// restart. The interval is a fallback; Stage 4's service-command
+// refresh will trigger it immediately.
+func watchAlertRules(stop <-chan struct{}, mgr *alerts.Manager, store *alerts.Store) {
+	const interval = 5 * time.Minute
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			if err := mgr.LoadSnapshot(store); err != nil {
+				log.Err(err).Msg("error refreshing alert rule snapshot")
+			}
+		}
 	}
 }
 

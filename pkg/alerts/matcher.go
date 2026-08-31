@@ -18,9 +18,12 @@ import (
 
 // Hit is one rule × one entity match, ready for the dispatch worker.
 type Hit struct {
-	RuleID          uint
-	RuleName        string
-	EnvironmentID   uint
+	RuleID        uint
+	RuleName      string
+	EnvironmentID uint
+	// Environment is the env name captured at match time, used for the
+	// history row and rendered payloads.
+	Environment     string
 	NodeUUID        string
 	Entity          string
 	Detail          string
@@ -32,10 +35,17 @@ type Hit struct {
 // cannot balloon alert history rows or channel payloads.
 const detailMax = 1024
 
-// MatchResultLogs evaluates result-log entries. The columns of each
-// entry (or its snapshot rows) are matched field-scoped or across all
-// fields depending on the rule.
-func (rs *RuleSet) MatchResultLogs(logs []types.LogResultData) []Hit {
+// ruleApplies reports whether a compiled rule matches the given env:
+// global rules (EnvironmentID 0) apply everywhere, scoped rules only to
+// their own env.
+func (r *compiledRule) ruleApplies(envID uint) bool {
+	return r.env == NoEnvironmentID || r.env == envID
+}
+
+// MatchResultLogs evaluates result-log entries against rules scoped to
+// envID. The columns of each entry (or its snapshot rows) are matched
+// field-scoped or across all fields depending on the rule.
+func (rs *RuleSet) MatchResultLogs(envID uint, environment string, logs []types.LogResultData) []Hit {
 	if len(rs.result) == 0 || len(logs) == 0 {
 		return nil
 	}
@@ -47,11 +57,15 @@ func (rs *RuleSet) MatchResultLogs(logs []types.LogResultData) []Hit {
 		lowered := make(map[string]string, len(fields))
 		for j := range rs.result {
 			r := &rs.result[j]
+			if !r.ruleApplies(envID) {
+				continue
+			}
 			if matched, detail := matchFields(r, fields, lowered); matched {
 				hits = append(hits, Hit{
 					RuleID:          r.id,
 					RuleName:        r.name,
-					EnvironmentID:   r.env,
+					EnvironmentID:   envID,
+					Environment:     environment,
 					NodeUUID:        uuid,
 					Entity:          entityOf(uuid, entry.Name),
 					Detail:          truncateDetail(detail),
@@ -64,9 +78,10 @@ func (rs *RuleSet) MatchResultLogs(logs []types.LogResultData) []Hit {
 	return hits
 }
 
-// MatchStatusLogs evaluates status-log entries. Entries below the rule's
-// severity floor are skipped before any pattern work happens.
-func (rs *RuleSet) MatchStatusLogs(logs []types.LogStatusData) []Hit {
+// MatchStatusLogs evaluates status-log entries against rules scoped to
+// envID. Entries below the rule's severity floor are skipped before any
+// pattern work happens.
+func (rs *RuleSet) MatchStatusLogs(envID uint, environment string, logs []types.LogStatusData) []Hit {
 	if len(rs.status) == 0 || len(logs) == 0 {
 		return nil
 	}
@@ -77,6 +92,9 @@ func (rs *RuleSet) MatchStatusLogs(logs []types.LogStatusData) []Hit {
 		lowered := make(map[string]string, 3)
 		for j := range rs.status {
 			r := &rs.status[j]
+			if !r.ruleApplies(envID) {
+				continue
+			}
 			if int(entry.Severity) < r.minSeverity {
 				continue
 			}
@@ -87,7 +105,8 @@ func (rs *RuleSet) MatchStatusLogs(logs []types.LogStatusData) []Hit {
 				hits = append(hits, Hit{
 					RuleID:          r.id,
 					RuleName:        r.name,
-					EnvironmentID:   r.env,
+					EnvironmentID:   envID,
+					Environment:     environment,
 					NodeUUID:        uuid,
 					Entity:          entityOf(uuid, "status"),
 					Detail:          truncateDetail(detail),
@@ -101,9 +120,9 @@ func (rs *RuleSet) MatchStatusLogs(logs []types.LogStatusData) []Hit {
 }
 
 // MatchQueryResult evaluates one on-demand query result (the
-// ProcessLogQueryResult tap). queryName scopes the hit to the query;
-// rows is the decoded result payload.
-func (rs *RuleSet) MatchQueryResult(queryName string, result json.RawMessage, status int, message string) []Hit {
+// ProcessLogQueryResult tap) against rules scoped to envID. queryName
+// scopes the hit to the query; rows is the decoded result payload.
+func (rs *RuleSet) MatchQueryResult(envID uint, environment, queryName string, result json.RawMessage, status int, message string) []Hit {
 	if len(rs.query) == 0 {
 		return nil
 	}
@@ -115,11 +134,15 @@ func (rs *RuleSet) MatchQueryResult(queryName string, result json.RawMessage, st
 	var hits []Hit
 	for j := range rs.query {
 		r := &rs.query[j]
+		if !r.ruleApplies(envID) {
+			continue
+		}
 		if matched, detail := matchFields(r, fields, lowered); matched {
 			hits = append(hits, Hit{
 				RuleID:          r.id,
 				RuleName:        r.name,
-				EnvironmentID:   r.env,
+				EnvironmentID:   envID,
+				Environment:     environment,
 				NodeUUID:        "",
 				Entity:          queryName,
 				Detail:          truncateDetail(detail),
