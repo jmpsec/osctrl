@@ -17,7 +17,11 @@ type FeaturesResponse struct {
 	// alongside the service-config routes.
 	LogSinks      bool `json:"log_sinks"`
 	AuthProviders bool `json:"auth_providers"`
-	Accelerated   bool `json:"accelerated"`
+	// Alerts gates the Alerts section in the SPA. Tied to
+	// --alerts-enabled — when false the /api/v1/alerts routes are not
+	// registered and the alert tables are not created.
+	Alerts       bool `json:"alerts"`
+	Accelerated  bool `json:"accelerated"`
 	Console      bool `json:"console"`
 	FileExplorer bool `json:"file_explorer"`
 }
@@ -32,6 +36,7 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 		ServiceConfig: h.ServiceConfigEnabled,
 		LogSinks:      h.LogSinksEnabled,
 		AuthProviders: h.AuthProvidersEnabled,
+		Alerts:        h.Alerts != nil,
 		Accelerated:   h.OsqueryValues.Accelerated,
 		Console:       h.OsqueryValues.Query && h.OsqueryValues.Console,
 		FileExplorer:  h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,
