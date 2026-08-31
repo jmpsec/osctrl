@@ -109,6 +109,7 @@ const (
 	apiServiceConfigPath = "/service-config"
 	// API log sinks path
 	apiLogSinksPath      = "/log-sinks"
+	apiAlertsPath        = "/alerts"
 	apiAuthProvidersPath = "/auth-providers"
 	// API features path
 	apiFeaturesPath = "/features"
@@ -368,10 +369,10 @@ func osctrlAPIService() {
 	}
 	// Alerting subsystem (disabled by default). When disabled the
 	// alert tables are not created and the alert API routes are not
-	// registered. Stage 4 wires the rule/channel CRUD handlers here.
+	// registered.
+	var alertsMgr *alerts.Manager
 	if flagParams.Service.AlertsEnabled {
-		alertsMgr := alerts.NewManager(db.Conn)
-		_ = alertsMgr // consumed by the alert routes in Stage 4
+		alertsMgr = alerts.NewManager(db.Conn)
 		log.Info().Msg("Alerting system enabled")
 	} else {
 		log.Info().Msg("Alerting system disabled (enable with --alerts-enabled)")
@@ -578,6 +579,7 @@ func osctrlAPIService() {
 		handlers.WithSettings(settingsmgr),
 		handlers.WithServiceConfig(serviceConfigMgr),
 		handlers.WithLogSinks(logSinksMgr),
+		handlers.WithAlerts(alertsMgr),
 		handlers.WithAuthProviders(authProviderRegistry, authProvidersMgr),
 		handlers.WithServiceConfigEnabled(flagParams.Service.ServiceConfigEnabled),
 		handlers.WithLogSinksEnabled(logSinksEnabled),
@@ -1120,6 +1122,52 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"POST "+_apiPath(apiLogSinksPath)+"/apply",
 			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.LogSinksApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
+	}
+
+	// API: alerting. Gated by --alerts-enabled; when the flag is off the
+	// routes are absent and the tables were never created. The apply
+	// endpoint reuses the restart rate limiter — an alerts reload is the
+	// same class of privileged service-command operation.
+	if alertsMgr != nil {
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAlertsPath)+"/rules",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertRulesListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAlertsPath)+"/rules/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertRuleGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiAlertsPath)+"/rules",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertRulesCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"PUT "+_apiPath(apiAlertsPath)+"/rules/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertRulesUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath(apiAlertsPath)+"/rules/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertRulesDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAlertsPath)+"/channels",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAlertsPath)+"/channels/types",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsTypesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAlertsPath)+"/channels/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiAlertsPath)+"/channels",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"PUT "+_apiPath(apiAlertsPath)+"/channels/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath(apiAlertsPath)+"/channels/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiAlertsPath)+"/history",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertHistoryHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiAlertsPath)+"/apply",
+			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.AlertsApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
 	}
 
 	// API: auth providers. Independently gated by

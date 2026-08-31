@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/authproviders"
 	"github.com/jmpsec/osctrl/pkg/backend"
@@ -54,6 +55,10 @@ type HandlersApi struct {
 	// enabled. nil when ServiceConfigEnabled is false — the routes are
 	// not registered in that case.
 	LogSinks *logsinks.LogSinksManager
+	// Alerts manages the alert_rules / alert_channels / alert_history
+	// tables when --alerts-enabled is set. nil otherwise — the alert
+	// routes are not registered in that case.
+	Alerts *alerts.Manager
 	// AuthProviders holds the live multi-provider registry (OIDC + SAML).
 	AuthProviders        *AuthProviderRegistry
 	AuthProviderMgr      *authproviders.AuthProviderManager
@@ -204,6 +209,15 @@ func WithServiceConfig(mgr *serviceconfig.ServiceConfigManager) HandlersOption {
 func WithLogSinks(mgr *logsinks.LogSinksManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.LogSinks = mgr
+	}
+}
+
+// WithAlerts wires the alerts manager. Only meaningful when
+// AlertsEnabled is also true; the routes are gated on that flag in
+// cmd/api/main.go.
+func WithAlerts(mgr *alerts.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Alerts = mgr
 	}
 }
 

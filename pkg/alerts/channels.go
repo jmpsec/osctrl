@@ -121,19 +121,23 @@ func ValidateChannelType(typ string) bool {
 func ValidateChannelConfig(typ, cfgJSON string) error {
 	spec, ok := ChannelRegistry[normalizeChannelType(typ)]
 	if !ok {
-		return ErrInvalidChannelType
+		return fmt.Errorf("%w: %q", ErrInvalidChannelType, typ)
 	}
 	if cfgJSON == "" {
 		cfgJSON = "{}"
 	}
 	if _, err := spec.Decode(json.RawMessage(cfgJSON)); err != nil {
-		return err
+		return fmt.Errorf("%w: %w", ErrInvalidChannelConfig, err)
 	}
 	return nil
 }
 
 // ErrInvalidChannelType is returned for unregistered channel types.
 var ErrInvalidChannelType = fmt.Errorf("invalid channel type")
+
+// ErrInvalidChannelConfig is returned when the config JSON fails to
+// decode against the registered type.
+var ErrInvalidChannelConfig = fmt.Errorf("invalid channel configuration")
 
 func normalizeChannelType(typ string) string {
 	return strings.ToLower(strings.TrimSpace(typ))
@@ -152,4 +156,69 @@ func decodeTyped[T any]() func(json.RawMessage) (any, error) {
 		}
 		return &cfg, nil
 	}
+}
+
+// secretPlaceholder is what redacted secret fields read back as.
+const secretPlaceholder = "***"
+
+// RedactedChannelConfig returns the Config JSON with secret fields
+// replaced by "***" for the channel Type. Non-secret types return the
+// raw config unchanged. Best-effort: undecodable configs pass through.
+func RedactedChannelConfig(typ, cfgJSON string) string {
+	spec, ok := ChannelRegistry[normalizeChannelType(typ)]
+	if !ok || !spec.HasSecret || len(spec.SecretFields) == 0 {
+		return cfgJSON
+	}
+	var obj map[string]any
+	if err := json.Unmarshal([]byte(cfgJSON), &obj); err != nil {
+		return cfgJSON
+	}
+	for _, key := range spec.SecretFields {
+		if _, present := obj[key]; present {
+			obj[key] = secretPlaceholder
+		}
+	}
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return cfgJSON
+	}
+	return string(out)
+}
+
+// MergeChannelSecrets replaces "***" placeholder values in newCfg with
+// the corresponding values from prevCfg, so an API update that did not
+// touch a secret preserves the stored one instead of writing the
+// placeholder.
+func MergeChannelSecrets(typ, prevCfgJSON, newCfgJSON string) (string, error) {
+	spec, ok := ChannelRegistry[normalizeChannelType(typ)]
+	if !ok || !spec.HasSecret || len(spec.SecretFields) == 0 {
+		return newCfgJSON, nil
+	}
+	var prev, next map[string]any
+	if err := json.Unmarshal([]byte(prevCfgJSON), &prev); err != nil {
+		return "", fmt.Errorf("decode prev config: %w", err)
+	}
+	if err := json.Unmarshal([]byte(newCfgJSON), &next); err != nil {
+		return "", fmt.Errorf("decode new config: %w", err)
+	}
+	for _, key := range spec.SecretFields {
+		v, ok := next[key]
+		if !ok {
+			continue
+		}
+		s, isStr := v.(string)
+		if !isStr {
+			continue
+		}
+		if s == secretPlaceholder || s == "" {
+			if pv, pok := prev[key]; pok {
+				next[key] = pv
+			}
+		}
+	}
+	out, err := json.Marshal(next)
+	if err != nil {
+		return "", fmt.Errorf("encode merged config: %w", err)
+	}
+	return string(out), nil
 }
