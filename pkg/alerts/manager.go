@@ -300,9 +300,10 @@ func (m *Manager) LoadSnapshot(store *Store) error {
 			rs.status = append(rs.status, cr)
 		case SourceQueryLog:
 			rs.query = append(rs.query, cr)
-		default:
-			// node_inactive / node_recovered rules are evaluated by the
-			// sweep, not the log matcher; nothing to compile.
+		case SourceNodeInactive:
+			rs.nodeInactive = append(rs.nodeInactive, cr)
+		case SourceNodeRecovered:
+			rs.nodeRecovered = append(rs.nodeRecovered, cr)
 		}
 	}
 	store.Publish(rs)

@@ -265,12 +265,14 @@ func osctrlService() {
 	// Alerting subsystem (disabled by default). The nil matcher means
 	// the ingest path never evaluates rules — zero cost when the
 	// feature is off. When enabled: manager + rule snapshot + Redis
-	// cooldown gate + channel dispatcher + async dispatch worker.
+	// cooldown gate + channel dispatcher + async dispatch worker +
+	// the node-inactive watcher.
 	var alertsMgr *alerts.Manager
 	var alertsStore *alerts.Store
 	var alertsState *alerts.State
 	var alertsWorker *alerts.Worker
 	var alertsDispatcher *alerts.Dispatcher
+	var alertsInactiveWatcher *alerts.InactiveWatcher
 	if flagParams.Service.AlertsEnabled {
 		alertsMgr = alerts.NewManager(db.Conn)
 		alertsStore = alerts.NewStore()
@@ -379,9 +381,21 @@ func osctrlService() {
 	// or direct DB changes) propagate without a restart. Channel
 	// sender caches reset alongside so channel edits are picked up.
 	var alertsRefreshStop chan struct{}
+	var alertsInactiveStop chan struct{}
 	if alertsStore != nil {
 		alertsRefreshStop = make(chan struct{})
 		go watchAlertRules(alertsRefreshStop, alertsMgr, alertsStore, alertsDispatcher)
+	}
+	// Node-inactive watcher: sweeps node liveness on a ticker and fires
+	// node_inactive / node_recovered rules on state transitions. State
+	// is tracked in Redis so restarts do not re-alert the fleet.
+	if alertsWorker != nil {
+		alertsInactiveStop = make(chan struct{})
+		alertsInactiveWatcher = alerts.NewInactiveWatcher(
+			newTLSNodeSource(nodesmgr, settingsmgr, envs),
+			alertsStore, alertsWorker, redis.Client)
+		go alertsInactiveWatcher.Run(alertsInactiveStop, alertsInactiveInterval)
+		log.Info().Msg("Alert node-inactive watcher started")
 	}
 	// Start the background sink-stats writer. It snapshots per-sink
 	// atomic counters (bytes sent, export count) from the live exporter
@@ -555,25 +569,33 @@ func osctrlService() {
 	case err := <-serverErr:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
-		stopAlerts(alertsRefreshStop, alertsWorker)
+		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsWorker)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-restartCh:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
-		stopAlerts(alertsRefreshStop, alertsWorker)
+		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsWorker)
 		log.Info().Msg("TLS service command consumed — exiting for restart")
 		os.Exit(1)
 	}
 }
 
+// alertsInactiveInterval is the node-inactive sweep cadence. Inactivity
+// is only observable on a clock, so this trades detection latency
+// against query load; 5 minutes matches the rule-refresh fallback.
+const alertsInactiveInterval = 5 * time.Minute
+
 // stopAlerts tears the alerting subsystem down on shutdown: stop the
-// snapshot refresher first (no new rules mid-drain), then drain the
-// dispatch queue. Both nil-safe for the feature-off path.
-func stopAlerts(refreshStop chan struct{}, worker *alerts.Worker) {
+// background loops first (no new rules mid-drain), then drain the
+// dispatch queue. All nil-safe for the feature-off path.
+func stopAlerts(refreshStop, inactiveStop chan struct{}, worker *alerts.Worker) {
 	if refreshStop != nil {
 		close(refreshStop)
+	}
+	if inactiveStop != nil {
+		close(inactiveStop)
 	}
 	if worker != nil {
 		worker.Close()

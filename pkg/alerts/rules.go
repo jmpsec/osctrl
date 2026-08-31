@@ -52,6 +52,11 @@ type RuleSet struct {
 	result []compiledRule
 	status []compiledRule
 	query  []compiledRule
+	// nodeInactive / nodeRecovered are evaluated by the inactive-node
+	// sweep (Stage 5), not the log matcher. They carry only identity +
+	// cooldown + channels — no pattern.
+	nodeInactive  []compiledRule
+	nodeRecovered []compiledRule
 }
 
 // counts returns the number of compiled rules per bucket (test helper).
@@ -61,7 +66,8 @@ func (rs *RuleSet) counts() (result, status, query int) {
 
 // empty reports whether the snapshot has no rules at all.
 func (rs *RuleSet) empty() bool {
-	return len(rs.result) == 0 && len(rs.status) == 0 && len(rs.query) == 0
+	return len(rs.result) == 0 && len(rs.status) == 0 && len(rs.query) == 0 &&
+		len(rs.nodeInactive) == 0 && len(rs.nodeRecovered) == 0
 }
 
 // Store publishes rule snapshots. Safe for concurrent use; readers pull
