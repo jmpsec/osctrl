@@ -61,6 +61,12 @@ service:
   postureEnabled: false
   # Only used when postureEnabled is true.
   postureQueryPrefix: "osctrl:posture:"
+  # Enable the alerting subsystem. When false (default), alert rules
+  # are not evaluated on the log ingest path and the alert tables are
+  # not created. When true, osctrl-tls loads alert rules at boot and
+  # matches ingested logs against them. Requires a service restart to
+  # change.
+  alertsEnabled: false
   # DB health monitor. When enabled, osctrl-tls pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache and SettingsCache switch to
