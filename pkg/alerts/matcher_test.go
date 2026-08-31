@@ -62,7 +62,7 @@ func TestMatchResultLogs(t *testing.T) {
 		resultEntry("UUID2", "file_events", map[string]string{"path": "/etc/shadow"}),
 		resultEntry("UUID3", "file_events", map[string]string{"path": "/etc/hostname"}),
 	}
-	hits := rs.MatchResultLogs(logs)
+	hits := rs.MatchResultLogs(NoEnvironmentID, "dev", logs)
 	if len(hits) != 2 {
 		t.Fatalf("expected 2 hits, got %d: %+v", len(hits), hits)
 	}
@@ -86,7 +86,7 @@ func TestMatchResultLogsScopedFieldMissing(t *testing.T) {
 	// Entry has no "path" column — scoped rule must not fall back to
 	// other fields.
 	logs := []types.LogResultData{resultEntry("U", "processes", map[string]string{"name": "/etc value in wrong field"})}
-	if hits := rs.MatchResultLogs(logs); len(hits) != 0 {
+	if hits := rs.MatchResultLogs(NoEnvironmentID, "dev", logs); len(hits) != 0 {
 		t.Fatalf("scoped rule matched absent field: %+v", hits)
 	}
 }
@@ -98,7 +98,7 @@ func TestMatchResultLogsSnapshot(t *testing.T) {
 	snap := []map[string]string{{"username": "root", "host": "box"}}
 	raw, _ := json.Marshal(snap)
 	logs := []types.LogResultData{{HostIdentifier: "U", Name: "logged_in_users", Snapshot: raw}}
-	hits := rs.MatchResultLogs(logs)
+	hits := rs.MatchResultLogs(NoEnvironmentID, "dev", logs)
 	if len(hits) != 1 {
 		t.Fatalf("expected snapshot match, got %+v", hits)
 	}
@@ -116,13 +116,36 @@ func TestMatchStatusLogs(t *testing.T) {
 		statusEntry("U3", 1, "warning: scheduler backoff"),        // matches warn-or-worse + info-ok
 		statusEntry("U4", 2, "error: different message entirely"), // matches any-error + info? no line... any-error yes
 	}
-	hits := rs.MatchStatusLogs(logs)
+	hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", logs)
 	// U1: info-ok (1). U2: any-error + warn-or-worse + info-ok? "line" not
 	// in message... info-ok pattern is "line" and message has no "line":
 	// so U2 matches any-error + warn-or-worse (2). U3: warn-or-worse (1).
 	// U4: any-error (1). Total 5.
 	if len(hits) != 5 {
 		t.Fatalf("expected 5 hits, got %d: %+v", len(hits), hits)
+	}
+}
+
+func TestMatchResultLogsEnvScoping(t *testing.T) {
+	// One global rule (env 0) + one rule scoped to env 7.
+	rs := compileForTest(t,
+		AlertRule{Model: ruleWithID(1), Name: "global", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "match"},
+		AlertRule{Model: ruleWithID(2), Name: "scoped", EnvironmentID: 7, Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "match"},
+	)
+	logs := []types.LogResultData{resultEntry("U", "t", map[string]string{"f": "match-me"})}
+
+	// env 7: both rules apply.
+	hits := rs.MatchResultLogs(7, "prod", logs)
+	if len(hits) != 2 {
+		t.Fatalf("env 7 expected 2 hits, got %d", len(hits))
+	}
+	// other envs: only the global rule.
+	hits = rs.MatchResultLogs(9, "other", logs)
+	if len(hits) != 1 || hits[0].RuleName != "global" {
+		t.Fatalf("env 9 expected global-only hit, got %+v", hits)
+	}
+	if hits[0].Environment != "other" || hits[0].EnvironmentID != 9 {
+		t.Fatalf("hit env not captured: %+v", hits[0])
 	}
 }
 
@@ -135,7 +158,7 @@ func TestMatchStatusLogsSeverityFloor(t *testing.T) {
 		statusEntry("U2", 1, "match at warn"), // below floor — skipped
 		statusEntry("U3", 2, "match at error"),
 	}
-	hits := rs.MatchStatusLogs(logs)
+	hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", logs)
 	if len(hits) != 1 || hits[0].NodeUUID != "U3" {
 		t.Fatalf("severity floor not enforced: %+v", hits)
 	}
@@ -147,7 +170,7 @@ func TestMatchQueryResult(t *testing.T) {
 		AlertRule{Model: ruleWithID(2), Name: "q-status", Source: SourceQueryLog, MatchType: MatchTypeSubstring, MatchValue: "nonzero", MatchField: "status"},
 	)
 	result, _ := json.Marshal(map[string]string{"username": "root", "host": "box"})
-	hits := rs.MatchQueryResult("query-42", result, 0, "")
+	hits := rs.MatchQueryResult(NoEnvironmentID, "dev", "query-42", result, 0, "")
 	if len(hits) != 1 || hits[0].RuleName != "q" {
 		t.Fatalf("expected username hit only, got %+v", hits)
 	}
@@ -158,7 +181,7 @@ func TestMatchQueryResultFailedQuery(t *testing.T) {
 	rs := compileForTest(t,
 		AlertRule{Model: ruleWithID(1), Name: "failed", Source: SourceQueryLog, MatchType: MatchTypeSubstring, MatchValue: "1", MatchField: "status"},
 	)
-	hits := rs.MatchQueryResult("q-fail", nil, 1, "query failed")
+	hits := rs.MatchQueryResult(NoEnvironmentID, "dev", "q-fail", nil, 1, "query failed")
 	if len(hits) != 1 {
 		t.Fatalf("failed-query hit expected: %+v", hits)
 	}
@@ -169,13 +192,13 @@ func TestMatchQueryResultFailedQuery(t *testing.T) {
 
 func TestMatchNoRulesNoWork(t *testing.T) {
 	rs := NewStore().Snapshot()
-	if hits := rs.MatchResultLogs([]types.LogResultData{resultEntry("U", "t", map[string]string{"a": "b"})}); hits != nil {
+	if hits := rs.MatchResultLogs(NoEnvironmentID, "dev", []types.LogResultData{resultEntry("U", "t", map[string]string{"a": "b"})}); hits != nil {
 		t.Fatalf("empty snapshot must not hit: %+v", hits)
 	}
-	if hits := rs.MatchStatusLogs(nil); hits != nil {
+	if hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", nil); hits != nil {
 		t.Fatalf("empty snapshot must not hit: %+v", hits)
 	}
-	if hits := rs.MatchQueryResult("q", nil, 0, ""); hits != nil {
+	if hits := rs.MatchQueryResult(NoEnvironmentID, "dev", "q", nil, 0, ""); hits != nil {
 		t.Fatalf("empty snapshot must not hit: %+v", hits)
 	}
 }

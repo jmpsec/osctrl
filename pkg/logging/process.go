@@ -48,6 +48,18 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 	if debug {
 		log.Debug().Msgf("parsing logs for metadata in %s:%s", logType, environment)
 	}
+	// Alert evaluation. Off the metadata path: result batches are
+	// already decoded; status batches get a dedicated decode inside the
+	// hook. The nil-check keeps the feature-off cost at a single
+	// comparison.
+	if l.Alerts != nil {
+		switch logType {
+		case types.ResultLog:
+			l.Alerts.MatchResultLogs(envID, environment, resultLogs)
+		case types.StatusLog:
+			l.Alerts.MatchStatusLogs(envID, environment, parseStatusLogs(data))
+		}
+	}
 	// Iterate through received messages to extract metadata
 	var uuid, hostname, localname, username, osqueryuser, confighash, daemonhash, osqueryversion string
 	for _, l := range logs {
@@ -79,6 +91,17 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 	return resultLogs
 }
 
+// parseStatusLogs decodes a status-log batch for consumers that need
+// the full schema (the alert matcher). Malformed payloads yield nil —
+// the caller's matcher no-ops on them.
+func parseStatusLogs(data json.RawMessage) []types.LogStatusData {
+	var statusLogs []types.LogStatusData
+	if err := json.Unmarshal(data, &statusLogs); err != nil {
+		return nil
+	}
+	return statusLogs
+}
+
 // ProcessLogQueryResult - Helper to process on-demand query result logs
 func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, envid uint, debug bool) {
 	// Retrieve node
@@ -104,6 +127,11 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 	for q := range queryNames {
 		status := queriesWrite.Statuses[q]
 		if r, ok := queriesWrite.Queries[q]; ok {
+			// Alert evaluation for distributed query results. Nil
+			// matcher (feature off) costs one comparison.
+			if l.Alerts != nil {
+				l.Alerts.MatchQueryResult(envid, node.Environment, q, r, status, queriesWrite.Messages[q])
+			}
 			// Dispatch query name, result and status
 			d := types.QueryWriteData{
 				Name:    q,
