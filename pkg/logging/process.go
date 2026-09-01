@@ -28,8 +28,10 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 	// Parse log to extract metadata
 	var logs []types.LogGenericData
 	var resultLogs []types.LogResultData
+	var statusLogs []types.LogStatusData
 	var err error
-	if logType == types.ResultLog {
+	switch logType {
+	case types.ResultLog:
 		resultLogs, err = parseResultLogs(data)
 		logs = make([]types.LogGenericData, len(resultLogs))
 		for i, result := range resultLogs {
@@ -38,7 +40,24 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 				Decorations:    result.Decorations,
 			}
 		}
-	} else {
+	case types.StatusLog:
+		// When the alert matcher is attached, decode the full schema
+		// once and derive the generic metadata view from it (the
+		// matcher consumes the same slice — no second unmarshal).
+		// Feature-off keeps the historical cheap generic-only decode.
+		if l.Alerts != nil {
+			statusLogs, err = decodeStatusLogs(data)
+			logs = make([]types.LogGenericData, len(statusLogs))
+			for i, status := range statusLogs {
+				logs[i] = types.LogGenericData{
+					HostIdentifier: status.HostIdentifier,
+					Decorations:    status.Decorations,
+				}
+			}
+		} else {
+			err = json.Unmarshal(data, &logs)
+		}
+	default:
 		err = json.Unmarshal(data, &logs)
 	}
 	if err != nil {
@@ -48,16 +67,15 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 	if debug {
 		log.Debug().Msgf("parsing logs for metadata in %s:%s", logType, environment)
 	}
-	// Alert evaluation. Off the metadata path: result batches are
-	// already decoded; status batches get a dedicated decode inside the
-	// hook. The nil-check keeps the feature-off cost at a single
-	// comparison.
+	// Alert evaluation. The batches were decoded above; matching is a
+	// pure snapshot read. The nil-check keeps the feature-off cost at a
+	// single comparison.
 	if l.Alerts != nil {
 		switch logType {
 		case types.ResultLog:
 			l.Alerts.MatchResultLogs(envID, environment, resultLogs)
 		case types.StatusLog:
-			l.Alerts.MatchStatusLogs(envID, environment, parseStatusLogs(data))
+			l.Alerts.MatchStatusLogs(envID, environment, statusLogs)
 		}
 	}
 	// Iterate through received messages to extract metadata
@@ -91,15 +109,16 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 	return resultLogs
 }
 
-// parseStatusLogs decodes a status-log batch for consumers that need
-// the full schema (the alert matcher). Malformed payloads yield nil —
-// the caller's matcher no-ops on them.
-func parseStatusLogs(data json.RawMessage) []types.LogStatusData {
+// decodeStatusLogs decodes a status-log batch with the full schema.
+// Called once per ProcessLogs invocation; the decoded slice feeds both
+// the generic metadata extraction and the alert matcher. Malformed
+// payloads yield nil — downstream consumers no-op on them.
+func decodeStatusLogs(data json.RawMessage) ([]types.LogStatusData, error) {
 	var statusLogs []types.LogStatusData
 	if err := json.Unmarshal(data, &statusLogs); err != nil {
-		return nil
+		return nil, err
 	}
-	return statusLogs
+	return statusLogs, nil
 }
 
 // ProcessLogQueryResult - Helper to process on-demand query result logs

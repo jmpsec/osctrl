@@ -382,9 +382,17 @@ func osctrlService() {
 	// sender caches reset alongside so channel edits are picked up.
 	var alertsRefreshStop chan struct{}
 	var alertsInactiveStop chan struct{}
+	var alertsRetentionStop chan struct{}
 	if alertsStore != nil {
 		alertsRefreshStop = make(chan struct{})
 		go watchAlertRules(alertsRefreshStop, alertsMgr, alertsStore, alertsDispatcher)
+	}
+	// Daily alert-history retention prune (bounded by the
+	// alert_history_retention_days setting, 30d default). Keeps the
+	// table from becoming the next bloat problem.
+	if alertsMgr != nil {
+		alertsRetentionStop = make(chan struct{})
+		go watchAlertRetention(alertsRetentionStop, alertsMgr, settingsmgr)
 	}
 	// Node-inactive watcher: sweeps node liveness on a ticker and fires
 	// node_inactive / node_recovered rules on state transitions. State
@@ -569,14 +577,14 @@ func osctrlService() {
 	case err := <-serverErr:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
-		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsWorker)
+		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsRetentionStop, alertsWorker)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-restartCh:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
-		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsWorker)
+		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsRetentionStop, alertsWorker)
 		log.Info().Msg("TLS service command consumed — exiting for restart")
 		os.Exit(1)
 	}
@@ -590,12 +598,15 @@ const alertsInactiveInterval = 5 * time.Minute
 // stopAlerts tears the alerting subsystem down on shutdown: stop the
 // background loops first (no new rules mid-drain), then drain the
 // dispatch queue. All nil-safe for the feature-off path.
-func stopAlerts(refreshStop, inactiveStop chan struct{}, worker *alerts.Worker) {
+func stopAlerts(refreshStop, inactiveStop, retentionStop chan struct{}, worker *alerts.Worker) {
 	if refreshStop != nil {
 		close(refreshStop)
 	}
 	if inactiveStop != nil {
 		close(inactiveStop)
+	}
+	if retentionStop != nil {
+		close(retentionStop)
 	}
 	if worker != nil {
 		worker.Close()
@@ -622,6 +633,39 @@ func watchAlertRules(stop <-chan struct{}, mgr *alerts.Manager, store *alerts.St
 			if dispatcher != nil {
 				dispatcher.Reset()
 			}
+		}
+	}
+}
+
+// watchAlertRetention periodically prunes alert_history rows older than
+// the configured retention (alert_history_retention_days setting, 30d
+// default). Runs once a day — the table grows by dispatched-alert count,
+// which is post-cooldown and low-rate, so a daily sweep is ample. Never
+// runs on the ingest path.
+func watchAlertRetention(stop <-chan struct{}, mgr *alerts.Manager, settingsMgr *settings.Settings) {
+	const interval = 24 * time.Hour
+	// Prune once shortly after boot so a long-stopped service catches up
+	// immediately instead of waiting a full day.
+	pruneOnce := func() {
+		retention := settingsMgr.AlertHistoryRetentionDays()
+		deleted, err := mgr.PruneHistoryWithRetention(retention, time.Now())
+		if err != nil {
+			log.Err(err).Msg("error pruning alert history")
+			return
+		}
+		if deleted > 0 {
+			log.Info().Int64("deleted", deleted).Int64("retention_days", retention).Msg("Pruned alert history")
+		}
+	}
+	pruneOnce()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			pruneOnce()
 		}
 	}
 }
