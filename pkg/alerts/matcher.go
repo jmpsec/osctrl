@@ -60,6 +60,10 @@ func (rs *RuleSet) MatchResultLogs(envID uint, environment string, logs []types.
 			if !r.ruleApplies(envID) {
 				continue
 			}
+			// Node-scoped rules only see entries from their node.
+			if r.nodeScope != "" && r.nodeScope != uuid {
+				continue
+			}
 			if matched, detail := matchFields(r, fields, lowered); matched {
 				hits = append(hits, Hit{
 					RuleID:          r.id,
@@ -93,6 +97,10 @@ func (rs *RuleSet) MatchStatusLogs(envID uint, environment string, logs []types.
 		for j := range rs.status {
 			r := &rs.status[j]
 			if !r.ruleApplies(envID) {
+				continue
+			}
+			// Node-scoped rules only see entries from their node.
+			if r.nodeScope != "" && r.nodeScope != uuid {
 				continue
 			}
 			if int(entry.Severity) < r.minSeverity {
@@ -360,6 +368,7 @@ func CompileRule(rule AlertRule) (compiledRule, error) {
 		id:              rule.ID,
 		name:            rule.Name,
 		env:             rule.EnvironmentID,
+		nodeScope:       strings.TrimSpace(rule.NodeUUID),
 		matchAny:        strings.TrimSpace(rule.MatchField) == "",
 		matchFieldLower: strings.ToLower(strings.TrimSpace(rule.MatchField)),
 		cooldownMinutes: rule.CooldownMinutes,

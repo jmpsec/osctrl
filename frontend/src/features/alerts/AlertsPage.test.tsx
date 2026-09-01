@@ -80,6 +80,7 @@ function makeRule(overrides: Partial<AlertRule> = {}): AlertRule {
     name: 'sudoers-write',
     environment_id: 0,
     source: 'result_log',
+    node_uuid: '',
     match_type: 'substring',
     match_field: 'path',
     match_value: '/etc/sudoers',

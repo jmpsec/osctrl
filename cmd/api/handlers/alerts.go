@@ -34,6 +34,7 @@ type alertRuleDTO struct {
 	Name            string `json:"name"`
 	EnvironmentID   uint   `json:"environment_id"`
 	Source          string `json:"source"`
+	NodeUUID        string `json:"node_uuid"`
 	MatchType       string `json:"match_type"`
 	MatchField      string `json:"match_field"`
 	MatchValue      string `json:"match_value"`
@@ -53,6 +54,7 @@ func toAlertRuleDTO(r alerts.AlertRule) alertRuleDTO {
 		Name:            r.Name,
 		EnvironmentID:   r.EnvironmentID,
 		Source:          r.Source,
+		NodeUUID:        r.NodeUUID,
 		MatchType:       r.MatchType,
 		MatchField:      r.MatchField,
 		MatchValue:      r.MatchValue,
@@ -236,6 +238,7 @@ func (h *HandlersApi) AlertRulesCreateHandler(w http.ResponseWriter, r *http.Req
 		Name:            body.Name,
 		EnvironmentID:   body.EnvironmentID,
 		Source:          body.Source,
+		NodeUUID:        strings.TrimSpace(body.NodeUUID),
 		MatchType:       body.MatchType,
 		MatchField:      body.MatchField,
 		MatchValue:      body.MatchValue,
@@ -296,6 +299,7 @@ func (h *HandlersApi) AlertRulesUpdateHandler(w http.ResponseWriter, r *http.Req
 		Name:            body.Name,
 		EnvironmentID:   body.EnvironmentID,
 		Source:          body.Source,
+		NodeUUID:        strings.TrimSpace(body.NodeUUID),
 		MatchType:       body.MatchType,
 		MatchField:      body.MatchField,
 		MatchValue:      body.MatchValue,

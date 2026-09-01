@@ -29,6 +29,8 @@ type compiledRule struct {
 	id   uint
 	name string
 	env  uint
+	// nodeScope, when set, restricts the rule to a single node UUID.
+	nodeScope string
 
 	matchSubstring string // lowercased when matchField is set
 	matchRegex     *regexp.Regexp

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 // errors.go + channel decode helpers.
@@ -45,6 +47,11 @@ func ValidateRule(rule AlertRule) error {
 	}
 	if !validSources[rule.Source] {
 		return fmt.Errorf("%w: %q", ErrInvalidSource, rule.Source)
+	}
+	// A node scope, when set, must be a syntactically valid UUID so a
+	// typo cannot silently create a rule that never matches anything.
+	if rule.NodeUUID != "" && !utils.CheckUUID(strings.TrimSpace(rule.NodeUUID)) {
+		return errors.New("node_uuid must be a valid UUID")
 	}
 	if rule.Source == SourceNodeInactive || rule.Source == SourceNodeRecovered {
 		// Node-state rules do no pattern matching.
