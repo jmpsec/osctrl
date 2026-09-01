@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -267,13 +268,26 @@ func (m *Manager) RecentHistory(limit int) ([]AlertHistory, error) {
 }
 
 // PruneHistory removes rows older than the retention window. Called by a
-// periodic sweep, never on the hot path.
+// periodic sweep, never on the hot path. Returns the number of rows
+// deleted so the sweep can log the effect.
 func (m *Manager) PruneHistory(olderThan interface{}) (int64, error) {
 	res := m.DB.Where("created_at < ?", olderThan).Delete(&AlertHistory{})
 	if res.Error != nil {
 		return 0, res.Error
 	}
 	return res.RowsAffected, nil
+}
+
+// PruneHistoryWithRetention computes the cutoff from a retention window
+// in days and prunes. Kept separate from the raw PruneHistory so the
+// sweep can log "retention=Nd deleted=N" in one place.
+func (m *Manager) PruneHistoryWithRetention(retentionDays int64, now time.Time) (int64, error) {
+	if retentionDays <= 0 {
+		// Defensive: settings already reject zero, but a direct caller
+		// must not accidentally delete everything (cutoff in the future).
+		return 0, nil
+	}
+	return m.PruneHistory(now.AddDate(0, 0, -int(retentionDays)))
 }
 
 // ─────────────────────────────── snapshot ───────────────────────────────

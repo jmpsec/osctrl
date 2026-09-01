@@ -77,6 +77,9 @@ const (
 	InactiveHours      string = "inactive_hours"
 	AcceleratedSeconds string = "accelerated_seconds"
 	OnelinerExpiration string = "oneliner_expiration"
+	// AlertHistoryRetentionDays bounds how long dispatched-alert rows
+	// stay in alert_history before the periodic prune deletes them.
+	AlertHistoryRetentionDays string = "alert_history_retention_days"
 )
 
 // Values for generic IDs
@@ -90,6 +93,13 @@ const (
 // setting itself — from treating all nodes as inactive when the DB row is
 // missing.
 const DefaultInactiveHours int64 = 72
+
+// DefaultAlertHistoryRetentionDays is the fallback retention (in days) for
+// alert_history rows when the alert_history_retention_days setting is absent
+// or invalid. 30 days balances audit trail depth against table growth; 0
+// (disable pruning) is rejected so the table can never grow unbounded by
+// accident.
+const DefaultAlertHistoryRetentionDays int64 = 30
 
 // SettingValue to hold each value for settings
 type SettingValue struct {
@@ -339,4 +349,19 @@ func (conf *Settings) OnelinerExpiration(envID uint) bool {
 		return false
 	}
 	return value.Boolean
+}
+
+// AlertHistoryRetentionDays gets how long dispatched-alert rows are kept
+// before pruning. Returns DefaultAlertHistoryRetentionDays when the setting
+// is absent, invalid, or zero (a zero would disable pruning and let the
+// table grow unbounded, so it is treated as "use the default").
+func (conf *Settings) AlertHistoryRetentionDays() int64 {
+	value, err := conf.RetrieveValue(config.ServiceTLS, AlertHistoryRetentionDays, NoEnvironmentID)
+	if err != nil {
+		return DefaultAlertHistoryRetentionDays
+	}
+	if value.Integer <= 0 {
+		return DefaultAlertHistoryRetentionDays
+	}
+	return value.Integer
 }
