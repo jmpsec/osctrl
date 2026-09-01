@@ -5,6 +5,9 @@ export interface Features {
   service_config: boolean;
   log_sinks?: boolean;
   auth_providers?: boolean;
+  /** Alerting subsystem (--alerts-enabled). When false the alerts
+   * routes are absent and the SPA hides the Alerts section. */
+  alerts?: boolean;
   accelerated: boolean;
   console?: boolean;
   file_explorer: boolean;

@@ -29,6 +29,11 @@ func TestFeaturesHandlerReportsPostureDisabledByDefault(t *testing.T) {
 	if resp.Accelerated {
 		t.Fatalf("accelerated feature: got true want false")
 	}
+	// Alerts defaults off: a nil manager (feature flag disabled) must
+	// advertise the SPA-hiding switch.
+	if resp.Alerts {
+		t.Fatalf("alerts feature: got true want false with nil manager")
+	}
 }
 
 func TestFeaturesHandlerReportsServiceConfigEnabled(t *testing.T) {

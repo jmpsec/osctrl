@@ -3,6 +3,7 @@ import { Link, useRouterState, useParams } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   Archive,
+  Bell,
   Bookmark,
   Boxes,
   DatabaseBackup,
@@ -250,6 +251,8 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
     pathname.startsWith('/_app/config') || pathname.startsWith('/config');
   const isLogSinksActive =
     pathname.startsWith('/_app/log-sinks') || pathname.startsWith('/log-sinks');
+  const isAlertsActive =
+    pathname.startsWith('/_app/alerts') || pathname.startsWith('/alerts');
   const isAuthProvidersActive =
     pathname.startsWith('/_app/auth-providers') || pathname.startsWith('/auth-providers');
   const isAuditActive = pathname.startsWith('/_app/audit') || pathname === '/audit';
@@ -563,6 +566,15 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               icon={<FileStack size={14} strokeWidth={1.8} />}
             >
               Log Sinks
+            </NavItem>}
+            {features?.alerts && <NavItem
+              collapsed={collapsed}
+              active={isAlertsActive}
+              to="/_app/alerts"
+              tone="amber"
+              icon={<Bell size={14} strokeWidth={1.8} />}
+            >
+              Alerts
             </NavItem>}
             {features?.auth_providers && <NavItem
               collapsed={collapsed}
