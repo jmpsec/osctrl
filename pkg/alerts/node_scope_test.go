@@ -2,6 +2,8 @@ package alerts
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -79,20 +81,32 @@ func TestInactiveWatcherNodeScopedRule(t *testing.T) {
 	}
 }
 
-// TestValidateRuleNodeUUID rejects malformed node scopes before rows
-// are stored — a typo would silently create a rule matching nothing.
+// TestValidateRuleNodeUUID accepts any node identifier that fits the
+// column. A node's UUID is osquery's host_identifier uppercased, so it is
+// a hostname / instance id / vendor serial under every --host_identifier
+// but "uuid" — validating it as RFC-4122 rejected real nodes and the API
+// reported that as a 500.
 func TestValidateRuleNodeUUID(t *testing.T) {
-	bad := AlertRule{Name: "r", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "x", NodeUUID: "not-a-uuid"}
-	if err := ValidateRule(bad); err == nil {
-		t.Fatal("malformed node_uuid must be rejected")
+	for _, scope := range []string{
+		"123e4567-e89b-42d3-a456-426614174000", // --host_identifier=uuid
+		"WEB-SERVER-01.CORP",                   // =hostname
+		"i-0abcd1234efgh5678",                  // =instance
+		"",                                     // all nodes
+	} {
+		rule := AlertRule{Name: "r", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "x", NodeUUID: scope}
+		if err := ValidateRule(rule); err != nil {
+			t.Fatalf("node scope %q rejected: %v", scope, err)
+		}
 	}
-	good := AlertRule{Name: "r", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "x", NodeUUID: "123e4567-e89b-42d3-a456-426614174000"}
-	if err := ValidateRule(good); err != nil {
-		t.Fatalf("valid node_uuid rejected: %v", err)
+	tooLong := AlertRule{Name: "r", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "x", NodeUUID: strings.Repeat("a", MaxNodeUUIDLen+1)}
+	if err := ValidateRule(tooLong); err == nil {
+		t.Fatal("node scope wider than the column must be rejected")
 	}
-	none := AlertRule{Name: "r", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "x"}
-	if err := ValidateRule(none); err != nil {
-		t.Fatalf("empty node_uuid must stay valid: %v", err)
+	// Every validation failure has to be recognizable as bad input so the
+	// API answers 400 with the reason instead of an opaque 500.
+	noName := AlertRule{Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "x"}
+	if err := ValidateRule(noName); !errors.Is(err, ErrInvalidRule) {
+		t.Fatalf("validation error must wrap ErrInvalidRule, got %v", err)
 	}
 }
 

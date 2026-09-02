@@ -165,7 +165,22 @@ describe('AlertsPage', () => {
     renderPage();
     expect(await screen.findByText('No alert rules')).toBeInTheDocument();
     // The empty state can render before features resolve (query still
-    // disabled); wait for the actual fetch to confirm the wiring.
+    // disabled); wait for the actual fetch to confirm the wiring. The
+    // default filter is no filter — every environment's rules, so one
+    // created from a node page is visible without changing the selector.
+    await waitFor(() => expect(mockListRules).toHaveBeenCalledWith(undefined));
+  });
+
+  it('filters by environment only when the operator picks one', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() => expect(mockListRules).toHaveBeenCalledWith(undefined));
+
+    const select = screen.getByLabelText('Select environment whose alerts to show');
+    await user.selectOptions(select, '5');
+    await waitFor(() => expect(mockListRules).toHaveBeenCalledWith({ env: 5 }));
+
+    await user.selectOptions(select, '0');
     await waitFor(() => expect(mockListRules).toHaveBeenCalledWith({ env: 0 }));
   });
 
@@ -197,6 +212,10 @@ describe('AlertsPage', () => {
     expect(screen.getByText('soc-webhook')).toBeInTheDocument();
     // node-state rule shows an em dash instead of a pattern
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
+    // column titles above the rows
+    for (const title of ['Rule', 'Source', 'Match', 'Pattern', 'Cooldown', 'Channels', 'Status']) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
   });
 
   it('switches to the channels tab and lists channels', async () => {
@@ -206,6 +225,9 @@ describe('AlertsPage', () => {
     await user.click(await screen.findByRole('tab', { name: 'channels' }));
     expect(await screen.findByText('soc-webhook')).toBeInTheDocument();
     expect(screen.getByText('HTTP POST to a URL with the alert as JSON')).toBeInTheDocument();
+    for (const title of ['Channel', 'Type', 'Description', 'Status']) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
   });
 
   it('switches to the history tab and lists dispatched alerts', async () => {

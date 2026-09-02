@@ -55,6 +55,9 @@ export function NodeAlertModal({
   const createMutation = useMutation({
     mutationFn: createAlertRule,
     onSuccess: () => {
+      // Drop every cached rule list (all env filters) so the new rule is
+      // there whether or not the operator goes on to apply it.
+      void qc.invalidateQueries({ queryKey: ['alert-rules'] });
       setSaved(true);
     },
     onError: (e) => {

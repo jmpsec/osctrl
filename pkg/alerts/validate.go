@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 // errors.go + channel decode helpers.
@@ -22,6 +20,8 @@ var (
 	ErrChannelExists = errors.New("alert channel already exists")
 	// ErrInvalidSource is returned when Source is not a known source.
 	ErrInvalidSource = errors.New("invalid alert source")
+	// ErrInvalidRule wraps every ValidateRule failure.
+	ErrInvalidRule = errors.New("invalid alert rule")
 	// errInvalidMatchType guards MatchType.
 	errInvalidMatchType = errors.New("invalid match type")
 	// errPatternTooLong guards MaxPatternLen.
@@ -29,6 +29,9 @@ var (
 	// ErrTooManyRules guards MaxRulesPerEnv.
 	ErrTooManyRules = fmt.Errorf("too many alert rules for one environment (max %d)", MaxRulesPerEnv)
 )
+
+// MaxNodeUUIDLen bounds NodeUUID to its column width.
+const MaxNodeUUIDLen = 64
 
 // validSources is the closed set of Source values a rule may use.
 var validSources = map[string]bool{
@@ -40,18 +43,30 @@ var validSources = map[string]bool{
 }
 
 // ValidateRule checks the operator-facing fields of a rule before it is
-// stored. Mirrors logsinks.ValidateSink.
+// stored. Mirrors logsinks.ValidateSink. Every failure wraps
+// ErrInvalidRule: these are all operator-input errors, so the API answers
+// 400 with the reason instead of an opaque 500.
 func ValidateRule(rule AlertRule) error {
+	if err := validateRule(rule); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidRule, err)
+	}
+	return nil
+}
+
+func validateRule(rule AlertRule) error {
 	if strings.TrimSpace(rule.Name) == "" {
 		return errors.New("rule name is required")
 	}
 	if !validSources[rule.Source] {
 		return fmt.Errorf("%w: %q", ErrInvalidSource, rule.Source)
 	}
-	// A node scope, when set, must be a syntactically valid UUID so a
-	// typo cannot silently create a rule that never matches anything.
-	if rule.NodeUUID != "" && !utils.CheckUUID(strings.TrimSpace(rule.NodeUUID)) {
-		return errors.New("node_uuid must be a valid UUID")
+	// A node scope, when set, only has to fit the column. It is NOT an
+	// RFC-4122 UUID: a node's UUID is osquery's host_identifier
+	// uppercased, which is a hostname / instance id / vendor serial
+	// under any --host_identifier but "uuid". Parsing it as a UUID
+	// rejected legitimate nodes outright.
+	if len(strings.TrimSpace(rule.NodeUUID)) > MaxNodeUUIDLen {
+		return fmt.Errorf("node_uuid exceeds %d characters", MaxNodeUUIDLen)
 	}
 	if rule.Source == SourceNodeInactive || rule.Source == SourceNodeRecovered {
 		// Node-state rules do no pattern matching.

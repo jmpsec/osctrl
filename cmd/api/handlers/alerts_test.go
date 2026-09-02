@@ -162,6 +162,35 @@ func TestAlertRuleCreateRejectsInvalidSource(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
+// TestAlertRuleCreateNodeScoped covers the node detail page's "alert on
+// this node" flow: the scope is osquery's host_identifier, which is not
+// necessarily a UUID. It used to fail validation and surface as a 500.
+func TestAlertRuleCreateNodeScoped(t *testing.T) {
+	h := setupAlertsHandler(t)
+	body := map[string]any{
+		"name": "web-server-01-inactive", "environment_id": 1, "source": "node_inactive",
+		"node_uuid": "WEB-SERVER-01.CORP", "match_type": "substring",
+		"match_field": "", "match_value": "", "cooldown_minutes": 0,
+		"channel_ids": []uint{}, "enabled": true,
+	}
+	rr := call(t, h.AlertRulesCreateHandler, http.MethodPost, "/api/v1/alerts/rules", body)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var created alertRuleDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &created))
+	require.Equal(t, "WEB-SERVER-01.CORP", created.NodeUUID)
+}
+
+// TestAlertRuleCreateInvalidIs400 pins bad input to 400 with the reason —
+// validation errors used to fall through to a 500 saying only "error".
+func TestAlertRuleCreateInvalidIs400(t *testing.T) {
+	h := setupAlertsHandler(t)
+	body := ruleBody()
+	body["name"] = "   "
+	rr := call(t, h.AlertRulesCreateHandler, http.MethodPost, "/api/v1/alerts/rules", body)
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, rr.Body.String(), "rule name is required")
+}
+
 func TestAlertChannelCRUDRoundTrip(t *testing.T) {
 	h := setupAlertsHandler(t)
 
