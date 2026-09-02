@@ -18,6 +18,9 @@ export interface AlertRule {
   name: string;
   environment_id: number;
   source: string;
+  /** Scopes the rule to one node (set by the node detail "alert on this
+   * node" flow). Empty = all nodes. */
+  node_uuid: string;
   match_type: string;
   match_field: string;
   match_value: string;
@@ -84,6 +87,7 @@ export interface AlertRuleRequest {
   name: string;
   environment_id: number;
   source: string;
+  node_uuid?: string;
   match_type: string;
   match_field?: string;
   match_value: string;

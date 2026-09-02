@@ -466,6 +466,14 @@ function RulesTable({
           </div>
           <div className="text-xs text-[color:var(--text-2)] truncate">
             {sourceLabel(rule.source)}
+            {rule.node_uuid && (
+              <span
+                title={`Scoped to node ${rule.node_uuid}`}
+                className="ml-1.5 inline-block max-w-[110px] truncate align-middle rounded bg-[color:var(--bg-3)] border border-[color:var(--border)] px-1 py-px font-mono text-[10px] text-[color:var(--text-3)]"
+              >
+                {rule.node_uuid}
+              </span>
+            )}
           </div>
           <div className="text-xs text-[color:var(--text-2)] truncate">
             {PATTERN_SOURCES.has(rule.source)
@@ -661,6 +669,7 @@ function RuleEditorModal({
   const [statusSeverity, setStatusSeverity] = useState(existing?.status_severity || 'any');
   const [cooldown, setCooldown] = useState(existing?.cooldown_minutes ?? 0);
   const [channelIDs, setChannelIDs] = useState<number[]>(existing?.channel_ids ?? []);
+  const nodeScope = existing?.node_uuid ?? '';
   const [enabled, setEnabled] = useState(existing?.enabled ?? true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -695,6 +704,7 @@ function RuleEditorModal({
       name: name.trim(),
       environment_id: envID,
       source,
+      node_uuid: nodeScope || undefined,
       match_type: needsPattern ? matchType : 'substring',
       match_field: needsPattern ? matchField : '',
       match_value: needsPattern ? matchValue : '',

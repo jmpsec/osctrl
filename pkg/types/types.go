@@ -727,6 +727,9 @@ type AlertRuleCreateRequest struct {
 	Name            string `json:"name"`
 	EnvironmentID   uint   `json:"environment_id"`
 	Source          string `json:"source"`
+	// NodeUUID optionally scopes the rule to one node (used by the node
+	// detail page's "Alert on this node" button). Empty = all nodes.
+	NodeUUID        string `json:"node_uuid,omitempty"`
 	MatchType       string `json:"match_type"`
 	MatchField      string `json:"match_field,omitempty"`
 	MatchValue      string `json:"match_value"`

@@ -64,6 +64,11 @@ type AlertRule struct {
 	EnvironmentID uint   `gorm:"uniqueIndex:idx_alert_rules_unique"`
 	// Source is one of the Source* constants.
 	Source string `gorm:"index;size:32"`
+	// NodeUUID optionally scopes the rule to a single node. When set:
+	// log-matching rules only match entries whose hostIdentifier equals
+	// it, and node-state rules only fire for that node. Empty = all
+	// nodes in scope (the original behavior).
+	NodeUUID string `gorm:"size:64;index"`
 	// MatchType is MatchTypeSubstring or MatchTypeRegex.
 	MatchType string `gorm:"size:16"`
 	// MatchField scopes the match to one column ("message" for status

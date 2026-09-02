@@ -39,6 +39,7 @@ func NewManager(backend *gorm.DB) *Manager {
 // environment is enforced here.
 func (m *Manager) CreateRule(rule AlertRule) (AlertRule, error) {
 	rule.Name = strings.TrimSpace(rule.Name)
+	rule.NodeUUID = strings.TrimSpace(rule.NodeUUID)
 	if err := ValidateRule(rule); err != nil {
 		return AlertRule{}, err
 	}
@@ -71,6 +72,7 @@ func (m *Manager) UpdateRule(id uint, rule AlertRule) (AlertRule, error) {
 	if err := m.DB.Model(&row).Updates(map[string]any{
 		"name":             rule.Name,
 		"source":           rule.Source,
+		"node_uuid":        strings.TrimSpace(rule.NodeUUID),
 		"match_type":       rule.MatchType,
 		"match_field":      rule.MatchField,
 		"match_value":      rule.MatchValue,

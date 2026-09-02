@@ -177,6 +177,10 @@ func (w *InactiveWatcher) Sweep(ctx context.Context) {
 			if !r.ruleApplies(node.EnvironmentID) {
 				continue
 			}
+			// Node-scoped rules only fire for their node.
+			if r.nodeScope != "" && r.nodeScope != node.UUID {
+				continue
+			}
 			hits = append(hits, Hit{
 				RuleID:          r.id,
 				RuleName:        r.name,
@@ -200,6 +204,10 @@ func (w *InactiveWatcher) Sweep(ctx context.Context) {
 			for i := range rs.nodeRecovered {
 				r := &rs.nodeRecovered[i]
 				if !r.ruleApplies(node.EnvironmentID) {
+					continue
+				}
+				// Node-scoped rules only fire for their node.
+				if r.nodeScope != "" && r.nodeScope != node.UUID {
 					continue
 				}
 				hits = append(hits, Hit{

@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
+import { NodeAlertModal } from './NodeAlertModal';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Archive, Copy, FileArchive, PlayCircle, RefreshCw, Tag, Terminal } from 'lucide-react';
+import { Archive, Bell, Copy, FileArchive, PlayCircle, RefreshCw, Tag, Terminal } from 'lucide-react';
 import { getNode, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
 import { runCarve } from '$/api/carves';
 import { runQuery } from '$/api/queries';
@@ -64,7 +65,7 @@ interface NodeHeatmapBucket {
 // ---------------------------------------------------------------------------
 
 type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture' | 'file-explorer';
-type NodeActionModal = 'query' | 'carve' | 'tag' | null;
+type NodeActionModal = 'query' | 'carve' | 'tag' | 'alert' | null;
 const TAG_TYPE_REGULAR = 6;
 const POSTURE_QUERY_PREFIX = 'osctrl:posture:';
 
@@ -641,6 +642,7 @@ export function NodeDetailPage() {
   const postureEnabled = features?.posture === true;
   const consoleEnabled = features?.console === true;
   const fileExplorerEnabled = features?.file_explorer === true;
+  const alertsEnabled = features?.alerts === true;
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => {
       if (tab.id === 'posture') return postureEnabled;
@@ -892,6 +894,24 @@ export function NodeDetailPage() {
                 >
                   <FileArchive className="h-3.5 w-3.5" aria-hidden="true" />
                   Carve File
+                </button>
+              )}
+              {alertsEnabled && canAdminNode && (
+                <button
+                  type="button"
+                  aria-label="Create alert for this node"
+                  title="Create an alert rule scoped to this node"
+                  onClick={() => setActionModal('alert')}
+                  className={cn(
+                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
+                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
+                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
+                    'transition-colors',
+                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
+                  )}
+                >
+                  <Bell className="h-3.5 w-3.5" aria-hidden="true" />
+                  Alert
                 </button>
               )}
               {canAdminNode && (
@@ -1364,6 +1384,16 @@ export function NodeDetailPage() {
             void qc.invalidateQueries({ queryKey: ['node', env, uuid] });
             void qc.invalidateQueries({ queryKey: ['nodes', env] });
           }}
+        />
+      )}
+
+      {node && actionModal === 'alert' && (
+        <NodeAlertModal
+          envID={envs?.find((e) => e.name === env)?.id}
+          envName={env}
+          uuid={node.uuid}
+          hostname={node.hostname}
+          onClose={() => setActionModal(null)}
         />
       )}
     </div>

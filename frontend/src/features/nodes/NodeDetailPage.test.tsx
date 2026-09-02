@@ -22,7 +22,7 @@ const mockDeleteNode = vi.fn<() => Promise<{ message: string }>>();
 const mockGetNodePosture = vi.fn<() => Promise<NodePosture[]>>();
 const mockGetNodePostureScore = vi.fn<() => Promise<PostureScore>>();
 const mockGetMe = vi.fn<() => Promise<unknown>>();
-const mockListEnvironments = vi.fn<() => Promise<Array<{ name: string; uuid: string }>>>();
+const mockListEnvironments = vi.fn<() => Promise<Array<{ id: number; name: string; uuid: string }>>>();
 const mockGetNodeActivity = vi.fn<() => Promise<NodeActivityBucket[]>>();
 const mockGetNodeActivityTiles = vi.fn<() => Promise<NodeTileSeries>>();
 const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
@@ -76,6 +76,17 @@ vi.mock('$/api/queries', () => ({
 
 vi.mock('$/api/carves', () => ({
   runCarve: (...args: unknown[]) => mockRunCarve(...(args as [])),
+}));
+
+const mockCreateAlertRule = vi.fn();
+const mockApplyAlerts = vi.fn();
+const mockListAlertChannels = vi.fn();
+vi.mock('$/api/alerts', () => ({
+  // Only forward the first argument: react-query calls mutationFn with
+  // (variables, context) and the assertions compare just the payload.
+  createAlertRule: (first: unknown) => mockCreateAlertRule(first),
+  applyAlerts: (first: unknown) => mockApplyAlerts(first),
+  listAlertChannels: (first: unknown) => mockListAlertChannels(first),
 }));
 
 vi.mock('$/api/tags', () => ({
@@ -283,7 +294,7 @@ describe('NodeDetailPage', () => {
     mockDeleteNode.mockResolvedValue({ message: 'ok' });
     mockGetNodePosture.mockResolvedValue([]);
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
-    mockListEnvironments.mockResolvedValue([{ name: 'test-env', uuid: 'env-uuid-1' }]);
+    mockListEnvironments.mockResolvedValue([{ id: 5, name: 'test-env', uuid: 'env-uuid-1' }]);
     mockGetNodeActivity.mockResolvedValue(makeActivityBuckets());
     mockGetNodeActivityTiles.mockResolvedValue({
       start: new Date(Date.now() - 23 * 3600_000).toISOString(),
@@ -314,6 +325,9 @@ describe('NodeDetailPage', () => {
     mockRunCarve.mockResolvedValue({ query_name: 'carve-123' });
     mockListEnvTags.mockResolvedValue(makeTags());
     mockTagNode.mockResolvedValue({ message: 'ok' });
+    mockListAlertChannels.mockResolvedValue([]);
+    mockCreateAlertRule.mockResolvedValue({ id: 1, name: 'r' });
+    mockApplyAlerts.mockResolvedValue({ message: 'ok' });
   });
 
   it('shows node activity in the default details view and removes the separate activity tab', async () => {
@@ -971,6 +985,61 @@ describe('NodeDetailPage', () => {
         tag: 'incident-response',
         type: 6,
       });
+    });
+  });
+
+  it('hides the node Alert button while the alerts feature is disabled', async () => {
+    renderWithProviders(makeTestRouter());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run query' })).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Create alert for this node' })).not.toBeInTheDocument();
+  });
+
+  it('shows the node Alert button and creates a node-scoped rule', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, alerts: true });
+    const user = userEvent.setup();
+    renderWithProviders(makeTestRouter());
+    const bell = await screen.findByRole('button', { name: 'Create alert for this node' });
+    await user.click(bell);
+
+    // Modal opens prefilled for this node.
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Node goes inactive/ })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Create alert' }));
+
+    await waitFor(() => {
+      expect(mockCreateAlertRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'web-server-01-inactive',
+          source: 'node_inactive',
+          node_uuid: 'abc12345-0000-0000-0000-000000000001',
+          enabled: true,
+        }),
+      );
+    });
+
+    // Created confirmation offers the hot-reload apply.
+    await user.click(await screen.findByRole('button', { name: 'Apply changes' }));
+    await waitFor(() => expect(mockApplyAlerts).toHaveBeenCalled());
+  });
+
+  it('creates a log-match rule on this node from the modal', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, alerts: true });
+    const user = userEvent.setup();
+    renderWithProviders(makeTestRouter());
+    await user.click(await screen.findByRole('button', { name: 'Create alert for this node' }));
+
+    await user.click(screen.getByRole('radio', { name: /Log match on this node/ }));
+    await user.type(screen.getByLabelText(/Pattern.*/), '/etc/sudoers');
+    await user.click(screen.getByRole('button', { name: 'Create alert' }));
+
+    await waitFor(() => {
+      expect(mockCreateAlertRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'result_log',
+          node_uuid: 'abc12345-0000-0000-0000-000000000001',
+          match_value: '/etc/sudoers',
+        }),
+      );
     });
   });
 });
