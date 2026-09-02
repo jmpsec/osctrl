@@ -4,6 +4,7 @@ import { NodeAlertModal } from './NodeAlertModal';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Archive, Bell, Copy, FileArchive, PlayCircle, RefreshCw, Tag, Terminal } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { getNode, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
 import { runCarve } from '$/api/carves';
 import { runQuery } from '$/api/queries';
@@ -31,6 +32,7 @@ import { formatRelative, formatAbsolute, formatBucketAgo } from '$/lib/time';
 import { countryFlag } from '$/lib/flags';
 import { isNodeActive, useInactiveHours } from '$/lib/node-status';
 import { cn } from '$/lib/cn';
+import { buttonClasses } from '$/components/atoms/Button';
 import { StatusPip } from '$/components/data/StatusPip';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
@@ -623,6 +625,53 @@ const TABS = [
   { id: 'file-explorer' as Tab, label: 'File Explorer' },
 ] as const;
 
+// Toolbar icons borrow the SideNav's tone chip — coloured glyph on a tinted
+// square — and reuse the same tone per section (queries violet, carves rose,
+// tags green, nodes sky) so an action reads as the thing it navigates to.
+const actionTones = {
+  violet: 'var(--nav-violet)',
+  rose: 'var(--nav-rose)',
+  sky: 'var(--info)',
+  green: 'var(--success)',
+  amber: 'var(--warning)',
+  neutral: 'var(--text-2)',
+  danger: 'var(--danger)',
+} as const;
+
+function ActionIcon({
+  tone,
+  icon: Icon,
+}: {
+  tone: keyof typeof actionTones;
+  icon: LucideIcon;
+}) {
+  const color = actionTones[tone];
+  return (
+    <span
+      className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] border"
+      style={{
+        color,
+        backgroundColor: `color-mix(in srgb, ${color} 11%, transparent)`,
+        borderColor: `color-mix(in srgb, ${color} 24%, transparent)`,
+      }}
+      aria-hidden
+    >
+      <Icon size={14} strokeWidth={1.8} />
+    </span>
+  );
+}
+
+// Single definition of the node action-toolbar button look, so every button
+// keeps the same height and never wraps mid-label into the hostname block.
+const actionBtn = buttonClasses({
+  variant: 'ghost',
+  className: 'w-full xl:w-auto whitespace-nowrap',
+});
+const actionBtnDanger = buttonClasses({
+  variant: 'danger',
+  className: 'w-full xl:w-auto whitespace-nowrap',
+});
+
 export function NodeDetailPage() {
   usePageTitle('Node');
   const { env, uuid } = useParams({ from: '/_app/env/$env/nodes/$uuid' as const });
@@ -847,10 +896,13 @@ export function NodeDetailPage() {
         ) : node ? (
           <>
             <div className="min-w-0 xl:flex-1">
-              <h1 className="font-display text-2xl font-bold text-[color:var(--text-1)] leading-tight">
+              <h1
+                className="font-display text-2xl font-bold text-[color:var(--text-1)] leading-tight break-words"
+                title={node.hostname}
+              >
                 {node.hostname}
               </h1>
-              <p className="font-mono-tabular text-xs text-[color:var(--text-3)] mt-0.5">
+              <p className="font-mono-tabular text-xs text-[color:var(--text-3)] mt-0.5 break-all">
                 {node.uuid}
               </p>
             </div>
@@ -860,22 +912,16 @@ export function NodeDetailPage() {
                 so the button hides for non-admins same as Delete. */}
             <div
               aria-label="Node actions"
-              className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:flex xl:flex-wrap xl:items-center xl:justify-end xl:flex-shrink-0"
+              className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3 xl:w-auto xl:max-w-[60%] xl:flex xl:flex-wrap xl:items-center xl:justify-end xl:flex-shrink-0"
             >
               {canQueryNode && (
                 <button
                   type="button"
                   aria-label="Run query"
                   onClick={() => setActionModal('query')}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  )}
+                  className={actionBtn}
                 >
-                  <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ActionIcon tone="violet" icon={PlayCircle} />
                   Run Query
                 </button>
               )}
@@ -884,15 +930,9 @@ export function NodeDetailPage() {
                   type="button"
                   aria-label="Carve file"
                   onClick={() => setActionModal('carve')}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  )}
+                  className={actionBtn}
                 >
-                  <FileArchive className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ActionIcon tone="rose" icon={FileArchive} />
                   Carve File
                 </button>
               )}
@@ -902,15 +942,9 @@ export function NodeDetailPage() {
                   aria-label="Create alert for this node"
                   title="Create an alert rule scoped to this node"
                   onClick={() => setActionModal('alert')}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  )}
+                  className={actionBtn}
                 >
-                  <Bell className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ActionIcon tone="amber" icon={Bell} />
                   Alert
                 </button>
               )}
@@ -919,15 +953,9 @@ export function NodeDetailPage() {
                   type="button"
                   aria-label="Tag"
                   onClick={() => setActionModal('tag')}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  )}
+                  className={actionBtn}
                 >
-                  <Tag className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ActionIcon tone="green" icon={Tag} />
                   Tag
                 </button>
               )}
@@ -935,15 +963,9 @@ export function NodeDetailPage() {
                 <Link
                   to="/_app/env/$env/nodes/$uuid/console"
                   params={{ env, uuid }}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  )}
+                  className={actionBtn}
                 >
-                  <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ActionIcon tone="sky" icon={Terminal} />
                   Console
                 </Link>
               )}
@@ -952,15 +974,9 @@ export function NodeDetailPage() {
                   type="button"
                   aria-label="Copy node key"
                   onClick={handleCopyNodeKey}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                    'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                  )}
+                  className={actionBtn}
                 >
-                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ActionIcon tone="neutral" icon={Copy} />
                   {copiedNodeKey ? 'Copied node key' : 'Copy node key'}
                 </button>
               )}
@@ -968,15 +984,9 @@ export function NodeDetailPage() {
                 type="button"
                 aria-label="Refresh node"
                 onClick={handleRefresh}
-                className={cn(
-                  'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
-                  'border border-[color:var(--border)] text-[color:var(--text-2)]',
-                  'hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',
-                  'transition-colors',
-                  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                )}
+                className={actionBtn}
               >
-                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                <ActionIcon tone="neutral" icon={RefreshCw} />
                 Refresh
               </button>
               {/* Single archive action — no separate hard-delete button.
@@ -994,16 +1004,9 @@ export function NodeDetailPage() {
                   aria-label="Archive this node"
                   onClick={handleArchive}
                   disabled={archiveMut.isPending}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded',
-                    'border border-[color:var(--danger)] text-[color:var(--danger)]',
-                    'hover:bg-[color:var(--danger)] hover:text-white',
-                    'transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
-                    'disabled:opacity-50 disabled:cursor-not-allowed',
-                  )}
+                  className={actionBtnDanger}
                 >
-                  <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ActionIcon tone="danger" icon={Archive} />
                   {archiveMut.isPending ? 'Archiving…' : 'Archive'}
                 </button>
               )}
