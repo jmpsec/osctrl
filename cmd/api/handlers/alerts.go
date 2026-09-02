@@ -746,11 +746,19 @@ func respondAlertsErr(w http.ResponseWriter, err error) {
 		apiErrorResponse(w, "already exists", http.StatusConflict, err)
 	case errors.Is(err, alerts.ErrInvalidSource), errors.Is(err, alerts.ErrInvalidChannelType), errors.Is(err, alerts.ErrInvalidChannelConfig):
 		apiErrorResponse(w, "invalid value", http.StatusBadRequest, err)
+	// Rule validation failures are operator input, not server faults —
+	// they used to fall through to the 500 below, which told the SPA
+	// nothing and read as an outage.
+	case errors.Is(err, alerts.ErrInvalidRule):
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 	case errors.Is(err, alerts.ErrTooManyRules):
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		apiErrorResponse(w, "not found", http.StatusNotFound, err)
 	default:
+		// apiErrorResponse only logs at debug level, so a genuine 500
+		// here was invisible in a normally-configured deployment.
+		log.Error().Err(err).Msg("alerts request failed")
 		apiErrorResponse(w, "error", http.StatusInternalServerError, err)
 	}
 }

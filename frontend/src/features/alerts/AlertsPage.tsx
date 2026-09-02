@@ -35,6 +35,11 @@ import { cn } from '$/lib/cn';
 import { StatusBadge } from '$/components/data/StatusBadge';
 
 const GLOBAL_ENV_ID = 0;
+// Sentinel for the env selector: no env filter at all, so the list shows
+// every environment's rules. GLOBAL_ENV_ID is a real filter (env 0 rows),
+// not "everything" — a rule created from a node's page lives in that
+// node's environment and was invisible under it.
+const ALL_ENVS = -1;
 
 /** Rule sources the form offers, with human descriptions. */
 const RULE_SOURCES = [
@@ -82,7 +87,7 @@ export function AlertsPage() {
   const qc = useQueryClient();
 
   const [tab, setTab] = useState<Tab>('rules');
-  const [selectedEnv, setSelectedEnv] = useState<number>(GLOBAL_ENV_ID);
+  const [selectedEnv, setSelectedEnv] = useState<number>(ALL_ENVS);
   const [ruleModal, setRuleModal] = useState<RuleModalMode>({ kind: 'closed' });
   const [channelModal, setChannelModal] = useState<ChannelModalMode>({ kind: 'closed' });
   const [applyErr, setApplyErr] = useState<string | null>(null);
@@ -104,14 +109,14 @@ export function AlertsPage() {
 
   const rulesQuery = useQuery({
     queryKey: ['alert-rules', selectedEnv],
-    queryFn: () => listAlertRules({ env: selectedEnv }),
+    queryFn: () => listAlertRules(selectedEnv === ALL_ENVS ? undefined : { env: selectedEnv }),
     enabled: !!features?.alerts,
     staleTime: 30_000,
   });
 
   const channelsQuery = useQuery({
     queryKey: ['alert-channels', selectedEnv],
-    queryFn: () => listAlertChannels({ env: selectedEnv }),
+    queryFn: () => listAlertChannels(selectedEnv === ALL_ENVS ? undefined : { env: selectedEnv }),
     enabled: !!features?.alerts,
     staleTime: 30_000,
   });
@@ -310,7 +315,8 @@ export function AlertsPage() {
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               )}
             >
-              <option value={GLOBAL_ENV_ID}>Global (all environments)</option>
+              <option value={ALL_ENVS}>All environments</option>
+              <option value={GLOBAL_ENV_ID}>Global rules only</option>
               {envs?.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.name}
@@ -416,6 +422,34 @@ function FeatureDisabledShell() {
 // Tables
 // ---------------------------------------------------------------------------
 
+// Grid templates are shared between each table's header and its rows so the
+// two can never drift out of alignment.
+const RULES_GRID =
+  'grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_80px_minmax(0,1fr)_120px] items-center gap-3 px-4';
+const CHANNELS_GRID =
+  'grid grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,2fr)_120px] items-center gap-3 px-4';
+
+// Column titles, in the same style as the <th> rows on the other admin
+// pages. The last column holds the status badge and row actions, so it is
+// right-aligned to match.
+function TableHeader({ grid, columns }: { grid: string; columns: string[] }) {
+  return (
+    <div
+      className={cn(
+        grid,
+        'sticky top-0 z-10 py-2 bg-[color:var(--bg-2)]',
+        'text-xs font-medium uppercase tracking-wide text-[color:var(--text-2)]',
+      )}
+    >
+      {columns.map((label, i) => (
+        <div key={label || i} className={cn('truncate', i === columns.length - 1 && 'text-right')}>
+          {label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RulesTable({
   rules,
   loading,
@@ -453,10 +487,14 @@ function RulesTable({
     channels.find((c) => c.id === id)?.name ?? `#${id}`;
   return (
     <div className="divide-y divide-[color:var(--border)]">
+      <TableHeader
+        grid={RULES_GRID}
+        columns={['Rule', 'Source', 'Match', 'Pattern', 'Cooldown', 'Channels', 'Status']}
+      />
       {rules.map((rule) => (
         <div
           key={rule.id}
-          className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_80px_minmax(0,1fr)_120px] items-center gap-3 px-4 py-2.5 text-sm hover:bg-[color:var(--bg-2)] transition-colors"
+          className={cn(RULES_GRID, 'py-2.5 text-sm hover:bg-[color:var(--bg-2)] transition-colors')}
         >
           <div className="min-w-0">
             <div className="font-medium text-[color:var(--text-1)] truncate">{rule.name}</div>
@@ -551,10 +589,14 @@ function ChannelsTable({
     types.find((t) => t.type === type)?.description ?? '';
   return (
     <div className="divide-y divide-[color:var(--border)]">
+      <TableHeader
+        grid={CHANNELS_GRID}
+        columns={['Channel', 'Type', 'Description', 'Status']}
+      />
       {channels.map((channel) => (
         <div
           key={channel.id}
-          className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,2fr)_120px] items-center gap-3 px-4 py-2.5 text-sm hover:bg-[color:var(--bg-2)] transition-colors"
+          className={cn(CHANNELS_GRID, 'py-2.5 text-sm hover:bg-[color:var(--bg-2)] transition-colors')}
         >
           <div className="min-w-0">
             <div className="font-medium text-[color:var(--text-1)] truncate">{channel.name}</div>
