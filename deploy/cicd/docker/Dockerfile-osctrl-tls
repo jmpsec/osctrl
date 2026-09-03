@@ -1,8 +1,13 @@
 FROM ubuntu:24.04
 
 ARG COMPONENT=tls
-ARG GOOS=linux
-ARG GOARCH=amd64
+# TARGETPLATFORM / TARGETOS / TARGETARCH are supplied by buildx per platform.
+# GoReleaser (dockers_v2) stages each platform's binary under
+# $TARGETPLATFORM/ in the build context, so a single multi-platform build
+# picks up the right architecture without per-arch build args.
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
 
 # Keep runtime image minimal while retaining CA certs and basic tooling.
 RUN apt-get update -y -q && \
@@ -14,7 +19,7 @@ RUN mkdir -p /opt/osctrl/bin \
     /opt/osctrl/config && \
     chown -R osctrl-${COMPONENT}:osctrl-${COMPONENT} /opt/osctrl
 
-COPY osctrl-${COMPONENT}-${GOOS}-${GOARCH} /opt/osctrl/bin/osctrl-${COMPONENT}
+COPY ${TARGETPLATFORM}/osctrl-${COMPONENT}-${TARGETOS}-${TARGETARCH} /opt/osctrl/bin/osctrl-${COMPONENT}
 RUN chmod 0755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
 USER osctrl-${COMPONENT}
