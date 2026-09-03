@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { NodeAlertModal } from './NodeAlertModal';
+import { nodeAlertCoverage, coverageSummary } from './alertCoverage';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Archive, Bell, Copy, FileArchive, PlayCircle, RefreshCw, Tag, Terminal } from 'lucide-react';
@@ -10,6 +11,7 @@ import { runCarve } from '$/api/carves';
 import { runQuery } from '$/api/queries';
 import { listSavedQueries } from '$/api/saved-queries';
 import { listEnvTags, tagNode } from '$/api/tags';
+import { listAlertRules } from '$/api/alerts';
 import type { NodePosture, NodeUptime, PostureScore } from '$/api/types';
 import { getMe } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
@@ -742,13 +744,31 @@ export function NodeDetailPage() {
     queryFn: () => listEnvironments(),
     staleTime: 60_000,
   });
-  const envUuid = envs?.find((e) => e.name === env)?.uuid;
+  const envRow = envs?.find((e) => e.name === env);
+  const envUuid = envRow?.uuid;
+  const envID = envRow?.id;
   const canAdminNode =
     me?.admin === true ||
     (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
   const envAccess = envUuid !== undefined ? me?.permissions?.[envUuid] : undefined;
   const canQueryNode = canAdminNode || envAccess?.query === true;
   const canCarveNode = canAdminNode || envAccess?.carve === true;
+
+  // Which alert rules would fire for this node. One unfiltered list is
+  // enough for all three scopes (node / env / global) and is shared with
+  // the Alerts page by the same query key prefix, so creating a rule from
+  // the modal refreshes the marker. Listing rules is global-admin only —
+  // gate on that, not canAdminNode, or an env-admin fires a doomed 403.
+  const { data: alertRules } = useQuery({
+    queryKey: ['alert-rules', 'all'],
+    queryFn: () => listAlertRules(),
+    enabled: alertsEnabled && me?.admin === true,
+    staleTime: 60_000,
+  });
+  const coveringRules = useMemo(
+    () => (node ? nodeAlertCoverage(alertRules ?? [], envID, node.uuid) : []),
+    [alertRules, envID, node],
+  );
 
   // Archive the current node. The backend's POST /nodes/{env}/delete
   // handler maps to ArchiveDeleteByUUID — it always snapshots into the
@@ -905,6 +925,39 @@ export function NodeDetailPage() {
               <p className="font-mono-tabular text-xs text-[color:var(--text-3)] mt-0.5 break-all">
                 {node.uuid}
               </p>
+              {/* Alert coverage marker — present whenever a rule would fire
+                  for this node, whether it names the node, covers its
+                  environment, or is global. Links to Alerts, where the rule
+                  itself can be edited. */}
+              {coveringRules.length > 0 && (
+                <Link
+                  to="/_app/alerts"
+                  className="mt-1.5 inline-block"
+                  aria-label={`${coveringRules.length} alert ${
+                    coveringRules.length === 1 ? 'rule' : 'rules'
+                  } cover this node`}
+                  title={coveringRules
+                    .map(
+                      ({ rule, scope }) =>
+                        `${rule.name} — ${
+                          scope === 'node'
+                            ? 'this node'
+                            : scope === 'environment'
+                              ? `environment ${env}`
+                              : 'global'
+                        }`,
+                    )
+                    .join('\n')}
+                >
+                  <MetadataBadge className="gap-1.5 hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-1)] transition-colors">
+                    <Bell className="h-3 w-3 text-[color:var(--warning)]" aria-hidden="true" />
+                    {coveringRules.length} alert {coveringRules.length === 1 ? 'rule' : 'rules'}
+                    <span className="font-normal text-[color:var(--text-3)]">
+                      {coverageSummary(coveringRules)}
+                    </span>
+                  </MetadataBadge>
+                </Link>
+              )}
             </div>
             {/* Single-node action toolbar — copy node_key, refresh, archive.
                 Archive routes through the same DELETE endpoint with
@@ -1392,7 +1445,7 @@ export function NodeDetailPage() {
 
       {node && actionModal === 'alert' && (
         <NodeAlertModal
-          envID={envs?.find((e) => e.name === env)?.id}
+          envID={envID}
           envName={env}
           uuid={node.uuid}
           hostname={node.hostname}
