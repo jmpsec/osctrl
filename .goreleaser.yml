@@ -101,175 +101,97 @@ changelog:
       - Merge pull request
       - Merge branch
 
-dockers:
-  # osctrl-tls — amd64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-amd64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-tls
-    use: buildx
-    goarch: amd64
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/amd64"
-    extra_files:
-      - dist/osctrl-tls-linux-amd64
-  # osctrl-tls — arm64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-arm64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-tls
-    use: buildx
-    goarch: arm64
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--build-arg=GOARCH=arm64"
-    extra_files:
-      - dist/osctrl-tls-linux-arm64
-
-  # osctrl-api — amd64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-amd64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-api
-    use: buildx
-    goarch: amd64
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/amd64"
-    extra_files:
-      - dist/osctrl-api-linux-amd64
-  # osctrl-api — arm64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-arm64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-api
-    use: buildx
-    goarch: arm64
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--build-arg=GOARCH=arm64"
-    extra_files:
-      - dist/osctrl-api-linux-arm64
-
-  # osctrl-frontend — amd64
-  # No Go binary: the image ships the pre-built Vite bundle (frontend/dist/)
-  # produced before GoReleaser runs. ids is intentionally empty so GoReleaser
-  # does not try to stage a binary into the context; extra_files pulls in the
-  # bundle, nginx configs, and entrypoint the Dockerfile copies.
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-amd64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-frontend
-    use: buildx
-    goos: linux
-    goarch: amd64
-    ids: []
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/amd64"
-    extra_files:
-      - frontend/dist
-      - deploy/cicd/nginx/frontend.conf
-      - deploy/cicd/nginx/frontend-tls.conf
-      - deploy/cicd/nginx/docker-entrypoint-frontend.sh
-  # osctrl-frontend — arm64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-arm64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-frontend
-    use: buildx
-    goos: linux
-    goarch: arm64
-    ids: []
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/arm64"
-    extra_files:
-      - frontend/dist
-      - deploy/cicd/nginx/frontend.conf
-      - deploy/cicd/nginx/frontend-tls.conf
-      - deploy/cicd/nginx/docker-entrypoint-frontend.sh
-
-  # osctrl-cli — amd64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-amd64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-cli
-    use: buildx
-    goarch: amd64
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/amd64"
-    extra_files:
-      - dist/osctrl-cli-linux-amd64
-  # osctrl-cli — arm64
-  - image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-arm64"
-    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-cli
-    use: buildx
-    goarch: arm64
-    skip_push: false
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--build-arg=GOARCH=arm64"
-    extra_files:
-      - dist/osctrl-cli-linux-arm64
-
-# docker_manifests fuses per-arch images into a single multi-arch manifest
-# list that `docker pull <image>:<tag>` resolves to the right arch
-# automatically. Without this section, the previous `dockers:` blocks were
-# trying to write a manifest list directly from a single buildx invocation,
-# which the default Docker exporter does not support — that was the
-# `docker exporter does not currently support exporting manifest lists`
-# error on every tagged release back to v0.4.8.
+# dockers_v2 replaces the old `dockers` + `docker_manifests` pair (both
+# deprecated upstream). One entry per image: buildx builds every platform
+# and pushes the multi-arch manifest list itself, so the per-arch `-amd64`
+# / `-arm64` tags and the separate manifest-fuse step are gone — which also
+# retires the `docker exporter does not currently support exporting
+# manifest lists` failure those two sections existed to work around.
 #
-# skip_push gates the manifest combine on snapshot builds: snapshots
-# don't push individual per-arch images either, so there'd be nothing
-# to combine into a list.
-docker_manifests:
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:latest"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
+# GoReleaser stages the built binaries per platform in the build context
+# ($TARGETPLATFORM/<binary>), so the Dockerfiles copy from there instead of
+# from a flat dist/ path.
+#
+# sbom and provenance are pinned off to keep the published tags shaped
+# exactly like the pre-migration ones: dockers_v2 defaults sbom to true,
+# and the extra attestation manifests would show up under each tag, which
+# the release workflow's cosign verification does not expect.
+dockers_v2:
+  - id: osctrl-tls
+    images:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-tls"
+    tags:
+      - "{{ .Version }}"
+      - "latest"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-tls
+    ids:
+      - osctrl-tls
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    sbom: false
+    flags:
+      - "--provenance=false"
 
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:latest"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
+  - id: osctrl-api
+    images:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-api"
+    tags:
+      - "{{ .Version }}"
+      - "latest"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-api
+    ids:
+      - osctrl-api
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    sbom: false
+    flags:
+      - "--provenance=false"
 
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:latest"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
+  - id: osctrl-cli
+    images:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-cli"
+    tags:
+      - "{{ .Version }}"
+      - "latest"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-cli
+    ids:
+      - osctrl-cli
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    sbom: false
+    flags:
+      - "--provenance=false"
 
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
-  - name_template: "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:latest"
-    image_templates:
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-amd64"
-      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend:{{ .Version }}-arm64"
-    skip_push: '{{ .IsSnapshot }}'
+  # No Go binary: the image ships the pre-built Vite bundle (frontend/dist/)
+  # produced before GoReleaser runs. `ids` stays empty so no binary is
+  # staged into the context; extra_files pulls in the bundle, nginx configs,
+  # and entrypoint the Dockerfile copies (paths stay relative to the
+  # project root).
+  - id: osctrl-frontend
+    images:
+      - "{{ .Env.DOCKER_HUB_ORG }}/osctrl-frontend"
+    tags:
+      - "{{ .Version }}"
+      - "latest"
+    dockerfile: deploy/cicd/docker/Dockerfile-osctrl-frontend
+    ids: []
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    sbom: false
+    flags:
+      - "--provenance=false"
+    extra_files:
+      - frontend/dist
+      - deploy/cicd/nginx/frontend.conf
+      - deploy/cicd/nginx/frontend-tls.conf
+      - deploy/cicd/nginx/docker-entrypoint-frontend.sh
 
 docker_signs:
-  - artifacts: all
-    cmd: cosign
+  - cmd: cosign
     args:
       - sign
       - "${artifact}@${digest}"
