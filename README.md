@@ -28,6 +28,7 @@ With **osctrl** you can:
 - 🖥️ Open a read-only, shell-like node console backed by osquery
 - 🗃️ Browse node files through accelerated, permission-checked osquery requests
 - 🗂️ Carve files and directories
+- 🔔 Alert on log matches and node state, delivered to webhook or email channels
 - 🧭 Track node posture, GeoIP country metadata, and node activity in the modern UI
 - ⚙️ Scale from **hundreds to hundreds of thousands of nodes**
 
@@ -40,12 +41,13 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 
 ## ✨ Current Highlights
 
-- **Modern operator UI**: React SPA powered by `osctrl-api`, with views for nodes, environments, queries, saved queries, carves, users, settings, node activity, and optional posture data.
+- **Modern operator UI**: React SPA powered by `osctrl-api`, with views for nodes, environments, queries, saved queries, carves, tags, users, enrollment, audit log, service configuration, log sinks, auth providers, alerting, node activity, and optional posture data.
 - **Node console**: Read-only console for a specific node using hidden accelerated distributed queries. It supports shell-like commands such as `pwd`, `cd`, `ls`, `stat`, `ps`, `sql`, `osquery`, `.tables`, and `get` for permission-checked file carves.
 - **File explorer**: Accelerated per-node directory listing and stat requests backed by osquery distributed queries.
 - **Accelerated distributed queries**: Optional osquery accelerated query reads, defaulting to a 5 second interval when enabled. Console acceleration is scoped to the target node and fresh active console sessions.
 - **osquery schema awareness**: Ships osquery table metadata through 5.23.1 and exposes authenticated table metadata to the UI/API for query authoring and console `.tables`.
 - **Security-sensitive API defaults**: JWT authentication by default for `osctrl-api`, optional multi-factor authentication (TOTP, passkeys/security keys, recovery codes) for password logins, trusted proxy controls, audit logging, and authenticated access to query/carve sample libraries.
+- **Alerting**: Optional rule-based alerting on result/status/query logs and node state (inactive/recovered), scoped globally, per environment, or to a single node. Notifications fan out to webhook and email channels with Redis-backed cooldown/dedupe, dispatched history, and hot reload without a restart. Rules can be created straight from a node's page, and a node shows a marker when any rule covers it.
 - **Posture and enrichment hooks**: Optional posture ingestion from scheduled query prefixes, optional MaxMind GeoIP country enrichment, Redis-backed activity tracking, and API-managed service configuration sections.
 
 ## 👉 Documentation
@@ -63,6 +65,7 @@ osctrl/
 ├── frontend/                    # React SPA frontend for the operator UI
 ├── pkg/                         # Shared application packages
 │   ├── activity/                # Redis-backed node/environment activity tracking
+│   ├── alerts/                  # Alert rules/channels, log+node-state matcher, dispatch worker
 │   ├── auditlog/                # Audit log manager
 │   ├── auth/                    # Shared OIDC/SAML auth state and provider helpers
 │   ├── authproviders/           # Persisted federated auth provider configs (OIDC, SAML)
@@ -85,7 +88,7 @@ osctrl/
 │   ├── posture/                 # Optional posture ingestion, storage, and scoring
 │   ├── queries/                 # Query management/scheduling/results/cache
 │   ├── ratelimit/               # HTTP rate limiting helpers
-│   ├── servicecommands/         # Service restart command handoff
+│   ├── servicecommands/         # Service restart and hot-reload command handoff
 │   ├── serviceconfig/           # Persisted service configuration sections
 │   ├── settings/                # Runtime settings + Redis-backed cache
 │   ├── tags/                    # Tag management

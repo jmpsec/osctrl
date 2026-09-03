@@ -77,5 +77,8 @@
   },
   "overrides": {
     "dompurify": "^3.4.11"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true
   }
 }

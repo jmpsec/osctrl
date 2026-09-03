@@ -102,6 +102,10 @@ frontend-test:
 frontend-build:
 	cd $(FRONTEND_DIR) && npm run build
 
+# Update the frontend dependencies (package.json + package-lock.json).
+frontend-update:
+	cd $(FRONTEND_DIR) && npm update --no-audit --no-fund
+
 # One-shot: install + build (used by CI / Docker builds).
 frontend: frontend-install frontend-build
 

@@ -538,7 +538,7 @@ type SettingPatchRequest struct {
 // /api/v1/service-config/{service}/{section}. Value is a raw JSON object
 // representing the new section contents.
 type ServiceConfigUpdateRequest struct {
-	Value json.RawMessage `json:"value"`
+	Value json.RawMessage `json:"value" swaggertype:"object"`
 }
 
 // ServiceConfigApplyRequest is the optional body for POST
@@ -690,7 +690,7 @@ type LogSinkCreateRequest struct {
 	Type          string          `json:"type"`
 	Enabled       bool            `json:"enabled"`
 	Order         int             `json:"order"`
-	Config        json.RawMessage `json:"config"`
+	Config        json.RawMessage `json:"config" swaggertype:"object"`
 	EnvironmentID uint            `json:"environment_id"`
 	Info          string          `json:"info,omitempty"`
 	Categories    []string        `json:"categories,omitempty"`
@@ -705,7 +705,7 @@ type LogSinkUpdateRequest struct {
 	Type       string          `json:"type"`
 	Enabled    bool            `json:"enabled"`
 	Order      int             `json:"order"`
-	Config     json.RawMessage `json:"config"`
+	Config     json.RawMessage `json:"config" swaggertype:"object"`
 	Info       string          `json:"info,omitempty"`
 	Categories []string        `json:"categories,omitempty"`
 }
@@ -748,7 +748,7 @@ type AlertChannelCreateRequest struct {
 	EnvironmentID uint            `json:"environment_id"`
 	Type          string          `json:"type"`
 	Enabled       bool            `json:"enabled"`
-	Config        json.RawMessage `json:"config"`
+	Config        json.RawMessage `json:"config" swaggertype:"object"`
 	Info          string          `json:"info,omitempty"`
 }
 
@@ -759,7 +759,7 @@ type AlertChannelCreateRequest struct {
 type AlertChannelTestRequest struct {
 	ID     uint            `json:"id,omitempty"`
 	Type   string          `json:"type"`
-	Config json.RawMessage `json:"config"`
+	Config json.RawMessage `json:"config" swaggertype:"object"`
 }
 
 // AlertFieldSpec is one field in an alert channel type's config schema.

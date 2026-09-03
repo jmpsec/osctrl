@@ -9,7 +9,7 @@ info:
     url: https://github.com/jmpsec/osctrl/blob/master/LICENSE
   termsOfService: https://github.com/jmpsec/osctrl
   title: osctrl API
-  version: 0.5.7
+  version: 0.5.8
 paths:
   /:
     get:
@@ -72,6 +72,662 @@ paths:
       summary: API root liveness check
       tags:
         - system
+  /api/v1/alerts/apply:
+    post:
+      description: Queues a reload-alerts service command for osctrl-tls. The TLS
+        process reloads its alert rule snapshot and resets the channel sender
+        cache without restarting. The snapshot swap is atomic; in-flight matches
+        finish against the old ruleset.
+      responses:
+        "202":
+          description: Reload requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ServiceConfigApplyResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled or service commands unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Apply alert changes (hot reload)
+      tags:
+        - alerts
+  /api/v1/alerts/channels:
+    get:
+      description: Returns alert channel rows. Secrets are redacted unless reveal=1 is
+        passed by an admin.
+      parameters:
+        - description: Environment ID; omit to list all
+          in: query
+          name: env
+          schema:
+            type: integer
+        - description: Pass 1 to include secret fields (admin only)
+          in: query
+          name: reveal
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/handlers.alertChannelDTO"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List alert channels
+      tags:
+        - alerts
+    post:
+      description: Creates a new notification channel. Config is validated against the
+        channel type registry.
+      requestBody:
+        $ref: "#/components/requestBodies/types.AlertChannelCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.alertChannelDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Create an alert channel
+      tags:
+        - alerts
+  "/api/v1/alerts/channels/{id}":
+    delete:
+      description: Deletes an alert channel by ID. Rules referencing it keep the
+        dangling ID and the dispatcher skips it; deletion takes effect on the
+        next alert reload.
+      parameters:
+        - description: Channel ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Delete an alert channel
+      tags:
+        - alerts
+    get:
+      description: Returns a single alert channel by ID. Secrets are redacted unless
+        reveal=1.
+      parameters:
+        - description: Channel ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - description: Pass 1 to include secret fields (admin only)
+          in: query
+          name: reveal
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.alertChannelDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get one alert channel
+      tags:
+        - alerts
+    put:
+      description: Replaces an existing channel's mutable fields. A secret field set
+        to "***" is merged from the previously stored value.
+      parameters:
+        - description: Channel ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/types.AlertChannelCreateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.alertChannelDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Update an alert channel
+      tags:
+        - alerts
+  /api/v1/alerts/channels/test:
+    post:
+      description: Delivers a test notification through the posted channel config.
+        Secrets left as "***" are merged from the stored channel named by id.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.AlertChannelTestRequest"
+        description: Request body
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiGenericResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "502":
+          description: Delivery failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Test an alert channel
+      tags:
+        - alerts
+  /api/v1/alerts/channels/types:
+    get:
+      description: "Returns the channel type registry: type, description, whether the
+        config carries secrets, and which JSON keys hold them."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/types.AlertChannelTypeSpec"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List supported alert channel types
+      tags:
+        - alerts
+  /api/v1/alerts/history:
+    get:
+      description: Returns the most recent dispatched alerts, newest first, capped at 500.
+      parameters:
+        - description: Maximum rows (default 100, max 500)
+          in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/alerts.AlertHistory"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Recent alert history
+      tags:
+        - alerts
+  /api/v1/alerts/rules:
+    get:
+      description: Returns alert rule rows, optionally filtered by environment.
+      parameters:
+        - description: Environment ID; omit to list all
+          in: query
+          name: env
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/handlers.alertRuleDTO"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List alert rules
+      tags:
+        - alerts
+    post:
+      description: Creates a new alert rule for the given environment (or global when
+        environment_id is 0).
+      requestBody:
+        $ref: "#/components/requestBodies/types.AlertRuleCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.alertRuleDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Create an alert rule
+      tags:
+        - alerts
+  "/api/v1/alerts/rules/{id}":
+    delete:
+      description: Deletes an alert rule by ID. Deletion takes effect on the next
+        alert reload.
+      parameters:
+        - description: Rule ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Delete an alert rule
+      tags:
+        - alerts
+    get:
+      description: Returns a single alert rule by ID.
+      parameters:
+        - description: Rule ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.alertRuleDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get one alert rule
+      tags:
+        - alerts
+    put:
+      description: Replaces an existing alert rule's mutable fields.
+      parameters:
+        - description: Rule ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/types.AlertRuleCreateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.alertRuleDTO"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Alerts disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Update an alert rule
+      tags:
+        - alerts
   "/api/v1/all-queries/{env}":
     get:
       description: Returns on-demand queries for an environment.
@@ -3611,6 +4267,16 @@ paths:
         - description: RFC3339 lower bound
           in: query
           name: since
+          schema:
+            type: string
+        - description: Free-text search (substring, case-insensitive)
+          in: query
+          name: q
+          schema:
+            type: string
+        - description: Severity filter for status logs (0=info, 1=warning, 2=error)
+          in: query
+          name: severity
           schema:
             type: string
       responses:
@@ -8373,7 +9039,7 @@ paths:
       tags:
         - system
 servers:
-  - url: https://osctrl.net
+  - url: /
 components:
   requestBodies:
     handlers.MFAWebAuthnRequest:
@@ -8390,11 +9056,25 @@ components:
             $ref: "#/components/schemas/types.ApiActionsRequest"
       description: Request body
       required: true
+    types.AlertChannelCreateRequest:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/types.AlertChannelCreateRequest"
+      description: Request body
+      required: true
     types.ApiDistributedQueryRequest:
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/types.ApiDistributedQueryRequest"
+      description: Request body
+      required: true
+    types.AlertRuleCreateRequest:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/types.AlertRuleCreateRequest"
       description: Request body
       required: true
     types.ApiLoginRequest:
@@ -8501,6 +9181,36 @@ components:
           items:
             type: integer
           type: array
+      type: object
+    alerts.AlertHistory:
+      properties:
+        channel_id:
+          type: integer
+        channel_name:
+          type: string
+        created_at:
+          type: string
+        detail:
+          description: Detail is the rendered match context (bounded at match time).
+          type: string
+        entity:
+          description: |-
+            Entity is what matched: a hostname, a query name, or "node" for
+            inactive/recovered rules. Part of the Redis dedupe key.
+          type: string
+        environment:
+          type: string
+        id:
+          type: integer
+        node_uuid:
+          type: string
+        rule_id:
+          description: |-
+            RuleID / ChannelID are denormalized as uint rather than FKs so
+            deleting a rule or channel does not cascade-delete history.
+          type: integer
+        rule_name:
+          type: string
       type: object
     carves.CarveSample:
       properties:
@@ -8816,6 +9526,13 @@ components:
           type: string
       type: object
     handlers.MFAWebAuthnRequest:
+      properties:
+        challenge:
+          type: string
+        credential:
+          type: object
+        name:
+          type: string
       type: object
     handlers.NodeActivityBucket:
       properties:
@@ -8879,14 +9596,72 @@ components:
           description: Cross-env totals (the user's allowed envs only).
           type: integer
       type: object
+    handlers.alertChannelDTO:
+      properties:
+        config:
+          type: object
+        created_at:
+          type: string
+        enabled:
+          type: boolean
+        environment_id:
+          type: integer
+        id:
+          type: integer
+        info:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        updated_at:
+          type: string
+      type: object
+    handlers.alertRuleDTO:
+      properties:
+        channel_ids:
+          items:
+            type: integer
+          type: array
+        cooldown_minutes:
+          type: integer
+        created_at:
+          type: string
+        enabled:
+          type: boolean
+        environment_id:
+          type: integer
+        id:
+          type: integer
+        info:
+          type: string
+        match_field:
+          type: string
+        match_type:
+          type: string
+        match_value:
+          type: string
+        name:
+          type: string
+        node_uuid:
+          type: string
+        source:
+          type: string
+        status_severity:
+          type: string
+        updated_at:
+          type: string
+      type: object
     handlers.logSinkDTO:
       properties:
         bytes_sent:
           type: integer
-        config:
+        categories:
           items:
-            type: integer
+            type: string
           type: array
+        config:
+          type: object
         created_at:
           type: string
         enabled:
@@ -9337,6 +10112,95 @@ components:
         uuid:
           type: string
       type: object
+    types.AlertChannelCreateRequest:
+      properties:
+        config:
+          type: object
+        enabled:
+          type: boolean
+        environment_id:
+          type: integer
+        info:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+      type: object
+    types.AlertChannelTestRequest:
+      properties:
+        config:
+          type: object
+        id:
+          type: integer
+        type:
+          type: string
+      type: object
+    types.AlertChannelTypeSpec:
+      properties:
+        description:
+          type: string
+        fields:
+          items:
+            $ref: "#/components/schemas/types.AlertFieldSpec"
+          type: array
+        has_secret:
+          type: boolean
+        secret_fields:
+          items:
+            type: string
+          type: array
+        type:
+          type: string
+      type: object
+    types.AlertFieldSpec:
+      properties:
+        default: {}
+        help:
+          type: string
+        label:
+          type: string
+        name:
+          type: string
+        placeholder:
+          type: string
+        required:
+          type: boolean
+        type:
+          type: string
+      type: object
+    types.AlertRuleCreateRequest:
+      properties:
+        channel_ids:
+          items:
+            type: integer
+          type: array
+        cooldown_minutes:
+          type: integer
+        enabled:
+          type: boolean
+        environment_id:
+          type: integer
+        info:
+          type: string
+        match_field:
+          type: string
+        match_type:
+          type: string
+        match_value:
+          type: string
+        name:
+          type: string
+        node_uuid:
+          description: |-
+            NodeUUID optionally scopes the rule to one node (used by the node
+            detail page's "Alert on this node" button). Empty = all nodes.
+          type: string
+        source:
+          type: string
+        status_severity:
+          type: string
+      type: object
     types.ApiActionsRequest:
       properties:
         certificate:
@@ -9778,6 +10642,25 @@ components:
           type: integer
       type: object
     types.LogSinkCreateRequest:
+      properties:
+        categories:
+          items:
+            type: string
+          type: array
+        config:
+          type: object
+        enabled:
+          type: boolean
+        environment_id:
+          type: integer
+        info:
+          type: string
+        name:
+          type: string
+        order:
+          type: integer
+        type:
+          type: string
       type: object
     types.LogSinkFieldSpec:
       properties:
@@ -9803,6 +10686,10 @@ components:
       type: object
     types.LogSinkTypeSpec:
       properties:
+        categories:
+          items:
+            type: string
+          type: array
         description:
           type: string
         fields:
@@ -9819,6 +10706,23 @@ components:
           type: string
       type: object
     types.LogSinkUpdateRequest:
+      properties:
+        categories:
+          items:
+            type: string
+          type: array
+        config:
+          type: object
+        enabled:
+          type: boolean
+        info:
+          type: string
+        name:
+          type: string
+        order:
+          type: integer
+        type:
+          type: string
       type: object
     types.LoginEnvironment:
       properties:
@@ -9985,15 +10889,48 @@ components:
       type: object
     types.OsqueryTable:
       properties:
+        cacheable:
+          type: boolean
+        columns:
+          items:
+            $ref: "#/components/schemas/types.OsqueryTableColumn"
+          type: array
+        description:
+          type: string
+        evented:
+          type: boolean
+        examples:
+          items:
+            type: string
+          type: array
         filter:
           type: string
         name:
+          type: string
+        notes:
           type: string
         platforms:
           items:
             type: string
           type: array
         url:
+          type: string
+      type: object
+    types.OsqueryTableColumn:
+      properties:
+        description:
+          type: string
+        hidden:
+          type: boolean
+        index:
+          type: boolean
+        name:
+          type: string
+        notes:
+          type: string
+        required:
+          type: boolean
+        type:
           type: string
       type: object
     types.PasswordChangeRequest:
@@ -10155,6 +11092,9 @@ components:
           type: string
       type: object
     types.ServiceConfigUpdateRequest:
+      properties:
+        value:
+          type: object
       type: object
     types.SetPermissionsAllRequest:
       properties:

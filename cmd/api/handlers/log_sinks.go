@@ -36,7 +36,7 @@ type logSinkDTO struct {
 	Type          string          `json:"type"`
 	Enabled       bool            `json:"enabled"`
 	Order         int             `json:"order"`
-	Config        json.RawMessage `json:"config"`
+	Config        json.RawMessage `json:"config" swaggertype:"object"`
 	Source        string          `json:"source"`
 	Info          string          `json:"info"`
 	BytesSent     int64           `json:"bytes_sent"`
