@@ -272,6 +272,17 @@ func matchStatus(r *compiledRule, entry *types.LogStatusData, lowered map[string
 	}, lowered)
 }
 
+// substringDetail is the context a substring match reports. An empty
+// pattern matches everything (the "any error from this node" preset), and
+// echoing the empty pattern back would leave the notification with no
+// context at all — so fall back to the value that matched.
+func substringDetail(pattern, value string) string {
+	if pattern == "" {
+		return value
+	}
+	return pattern
+}
+
 // matchSingle evaluates one value against the rule, lowering through
 // the shared cache.
 func matchSingle(r *compiledRule, value, key string, lowered map[string]string) (bool, string) {
@@ -283,14 +294,14 @@ func matchSingle(r *compiledRule, value, key string, lowered map[string]string) 
 	}
 	if lv, ok := lowered[key]; ok {
 		if strings.Contains(lv, r.matchSubstring) {
-			return true, r.matchSubstring
+			return true, substringDetail(r.matchSubstring, value)
 		}
 		return false, ""
 	}
 	lv := strings.ToLower(value)
 	lowered[key] = lv
 	if strings.Contains(lv, r.matchSubstring) {
-		return true, r.matchSubstring
+		return true, substringDetail(r.matchSubstring, value)
 	}
 	return false, ""
 }
@@ -321,7 +332,7 @@ func matchFields(r *compiledRule, fields map[string]string, lowered map[string]s
 			return false, ""
 		}
 		if strings.Contains(lowerOnce(r.matchFieldLower, v), r.matchSubstring) {
-			return true, r.matchSubstring
+			return true, substringDetail(r.matchSubstring, v)
 		}
 		return false, ""
 	}
@@ -335,7 +346,7 @@ func matchFields(r *compiledRule, fields map[string]string, lowered map[string]s
 	}
 	for k, v := range fields {
 		if strings.Contains(lowerOnce(k, v), r.matchSubstring) {
-			return true, r.matchSubstring
+			return true, substringDetail(r.matchSubstring, v)
 		}
 	}
 	return false, ""

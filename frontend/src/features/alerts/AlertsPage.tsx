@@ -10,6 +10,7 @@ import {
   listAlertChannels,
   listAlertChannelTypes,
   createAlertChannel,
+  testAlertChannel,
   updateAlertChannel,
   deleteAlertChannel,
   listAlertHistory,
@@ -48,6 +49,26 @@ const RULE_SOURCES = [
   { value: 'query_log', label: 'Distributed query results', help: 'On-demand query answers submitted by nodes.' },
   { value: 'node_inactive', label: 'Node inactive', help: 'Node last_seen crosses the inactive threshold. No pattern needed.' },
   { value: 'node_recovered', label: 'Node recovered', help: 'A previously inactive node is seen again. No pattern needed.' },
+] as const;
+
+/**
+ * One-click starting points for the rule form. Same premade rules the node
+ * detail page offers, minus the node scope — from here they cover every
+ * node in the selected environment.
+ */
+const RULE_PRESETS = [
+  {
+    label: 'Errors reported',
+    help: 'Any osquery status line at error severity — a failing scheduled query, a bad config, a plugin that will not start. No pattern needed.',
+    name: 'errors-reported',
+    fields: {
+      source: 'status_log',
+      status_severity: 'error',
+      match_type: 'substring',
+      match_field: '',
+      match_value: '',
+    },
+  },
 ] as const;
 
 /** Sources that match patterns (vs. node-state sources). */
@@ -731,14 +752,28 @@ function RuleEditorModal({
     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
   );
   const needsPattern = PATTERN_SOURCES.has(source);
+  // A status-log rule with a severity floor is complete without a pattern:
+  // "every error line" is the whole rule. Result/query rules still need
+  // one — an empty pattern there matches every row that lands.
+  const patternOptional = source === 'status_log' && statusSeverity !== 'any';
   const sourceHelp = RULE_SOURCES.find((s) => s.value === source)?.help;
+
+  const applyPreset = (preset: (typeof RULE_PRESETS)[number]) => {
+    setErr(null);
+    if (!name.trim()) setName(preset.name);
+    setSource(preset.fields.source);
+    setStatusSeverity(preset.fields.status_severity);
+    setMatchType(preset.fields.match_type);
+    setMatchField(preset.fields.match_field);
+    setMatchValue(preset.fields.match_value);
+  };
 
   const submit = () => {
     if (!name.trim()) {
       setErr('Name is required');
       return;
     }
-    if (needsPattern && !matchValue.trim()) {
+    if (needsPattern && !patternOptional && !matchValue.trim()) {
       setErr('Match value is required for pattern sources');
       return;
     }
@@ -771,6 +806,28 @@ function RuleEditorModal({
         }}
         className="space-y-4"
       >
+        {!existing && (
+          <div>
+            <span className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+              Start from a premade rule
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {RULE_PRESETS.map((preset) => (
+                <Button
+                  key={preset.label}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  title={preset.help}
+                  onClick={() => applyPreset(preset)}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <label htmlFor="rule-name" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
             Name
@@ -859,7 +916,12 @@ function RuleEditorModal({
             </div>
             <div>
               <label htmlFor="rule-match-value" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
-                Pattern
+                Pattern{' '}
+                {patternOptional && (
+                  <span className="font-normal text-[color:var(--text-3)]">
+                    (empty = every line at this severity)
+                  </span>
+                )}
               </label>
               <input
                 id="rule-match-value"
@@ -993,6 +1055,7 @@ function ChannelEditorModal({
     (existing?.config as Record<string, unknown>) ?? {},
   );
   const [err, setErr] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   // Reset the config object when the type changes during creation.
   useEffect(() => {
@@ -1011,6 +1074,22 @@ function ChannelEditorModal({
     onError: (e) => {
       if (e instanceof AuthError) return;
       setErr(e instanceof Error ? e.message : 'Save failed');
+    },
+  });
+
+  // Test delivery uses the form's current values, so a channel can be
+  // proven before it is saved. Editing an existing one sends its id too:
+  // untouched secrets read back as "***" and the server merges them.
+  const testMutation = useMutation({
+    mutationFn: () =>
+      testAlertChannel({ id: existing?.id, type, config }),
+    onSuccess: (res) => {
+      setErr(null);
+      setTestResult({ ok: true, message: res.message });
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) return;
+      setTestResult({ ok: false, message: e instanceof Error ? e.message : 'Test failed' });
     },
   });
 
@@ -1117,13 +1196,40 @@ function ChannelEditorModal({
           </p>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
+        {testResult && (
+          <p
+            role="status"
+            className={cn(
+              'text-xs',
+              testResult.ok
+                ? 'text-[color:var(--success)]'
+                : 'text-[color:var(--danger)]',
+            )}
+          >
+            {testResult.message}
+          </p>
+        )}
+
+        <div className="flex items-center gap-2 pt-2">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={testMutation.isPending}
+            onClick={() => {
+              setTestResult(null);
+              testMutation.mutate();
+            }}
+          >
+            {testMutation.isPending ? 'Sending…' : 'Send test'}
           </Button>
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : existing ? 'Save changes' : 'Create channel'}
-          </Button>
+          <span className="ml-auto flex gap-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? 'Saving…' : existing ? 'Save changes' : 'Create channel'}
+            </Button>
+          </span>
         </div>
       </form>
     </ModalShell>

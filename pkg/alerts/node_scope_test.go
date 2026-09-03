@@ -81,6 +81,32 @@ func TestInactiveWatcherNodeScopedRule(t *testing.T) {
 	}
 }
 
+// TestMatchNodeScopedErrorRule pins the node page's "errors reported by
+// this node" preset: a status_log rule scoped to the node, severity floor
+// "error", and no pattern at all. It must fire on every error line from
+// that node and nothing else.
+func TestMatchNodeScopedErrorRule(t *testing.T) {
+	rs := compileForTest(t, AlertRule{
+		Model: ruleWithID(1), Name: "node-errors", Source: SourceStatusLog,
+		MatchType: MatchTypeSubstring, MatchValue: "", StatusSeverity: "error",
+		NodeUUID: "WATCH-U9",
+	})
+	logs := []types.LogStatusData{
+		statusEntry("WATCH-U9", 2, "query failed to execute"),
+		statusEntry("WATCH-U9", 1, "a warning nobody asked to be paged for"),
+		statusEntry("WATCH-U9", 0, "an informational line"),
+		statusEntry("OTHER-NODE", 2, "someone else's error"),
+	}
+	hits := rs.MatchStatusLogs(0, "prod", logs)
+	if len(hits) != 1 {
+		t.Fatalf("expected exactly the node's error line to hit, got %+v", hits)
+	}
+	// A pattern-less rule still has to say what happened.
+	if hits[0].NodeUUID != "WATCH-U9" || hits[0].Detail != "query failed to execute" {
+		t.Fatalf("hit must carry the node and the error text: %+v", hits[0])
+	}
+}
+
 // TestValidateRuleNodeUUID accepts any node identifier that fits the
 // column. A node's UUID is osquery's host_identifier uppercased, so it is
 // a hostname / instance id / vendor serial under every --host_identifier

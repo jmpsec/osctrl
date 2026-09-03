@@ -168,6 +168,23 @@ export function createAlertChannel(body: AlertChannelRequest): Promise<AlertChan
   });
 }
 
+/**
+ * POST /api/v1/alerts/channels/test — deliver one test notification
+ * through this config without storing it. Pass `id` when testing a saved
+ * channel so secrets left as "***" are merged from the stored row.
+ */
+export function testAlertChannel(body: {
+  id?: number;
+  type: string;
+  config: unknown;
+}): Promise<{ message: string }> {
+  return apiFetch('/api/v1/alerts/channels/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 /** PUT /api/v1/alerts/channels/{id}. */
 export function updateAlertChannel(id: number, body: AlertChannelRequest): Promise<AlertChannel> {
   return apiFetch<AlertChannel>(`/api/v1/alerts/channels/${id}`, {

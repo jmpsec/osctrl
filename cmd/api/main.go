@@ -59,6 +59,10 @@ const (
 	appDescription = serviceDescription + ", a fast and efficient osquery management"
 	// Default refreshing interval in seconds
 	defaultRefresh int = 300
+	// restartDrainTimeout bounds how long a restart waits for in-flight
+	// requests — including the apply response that triggered it — before
+	// the process exits.
+	restartDrainTimeout = 5 * time.Second
 )
 
 // Build-time metadata (overridden via -ldflags "-X main.buildVersion=... -X main.buildCommit=... -X main.buildDate=...")
@@ -1157,6 +1161,9 @@ func osctrlAPIService() {
 			"POST "+_apiPath(apiAlertsPath)+"/channels",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"POST "+_apiPath(apiAlertsPath)+"/channels/test",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsTestHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"PUT "+_apiPath(apiAlertsPath)+"/channels/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AlertChannelsUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
@@ -1277,7 +1284,17 @@ func osctrlAPIService() {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-restartCh:
-		log.Info().Msg("Service config apply triggered — exiting for restart")
+		log.Info().Msg("Service config apply triggered — draining requests before restart")
+		// Drain first. Exiting straight off the signal raced the apply
+		// handler's own 202: the handler had written the response but the
+		// server had not flushed it, so the operator's client could see an
+		// aborted request while the process was already gone.
+		drainCtx, cancelDrain := context.WithTimeout(context.Background(), restartDrainTimeout)
+		if err := srv.Shutdown(drainCtx); err != nil {
+			log.Err(err).Msg("error draining HTTP server before restart")
+		}
+		cancelDrain()
+		log.Info().Msg("Drained — exiting for restart")
 		// Exit with code 1 so process managers (systemd, docker, k8s) and
 		// dev tools like air restart the process. A clean exit (0) is not
 		// restarted by air (the dev hot-reload tool), which treats exit 0
