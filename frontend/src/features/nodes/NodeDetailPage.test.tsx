@@ -1022,6 +1022,31 @@ describe('NodeDetailPage', () => {
     await waitFor(() => expect(mockApplyAlerts).toHaveBeenCalled());
   });
 
+  it('creates an error-severity rule on this node from the modal', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, alerts: true });
+    const user = userEvent.setup();
+    renderWithProviders(makeTestRouter());
+    await user.click(await screen.findByRole('button', { name: 'Create alert for this node' }));
+
+    await user.click(screen.getByRole('radio', { name: /Errors reported by this node/ }));
+    // Predefined: no pattern for the operator to fill in.
+    expect(screen.queryByLabelText(/Pattern/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Create alert' }));
+
+    await waitFor(() => {
+      expect(mockCreateAlertRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'web-server-01-errors',
+          source: 'status_log',
+          status_severity: 'error',
+          node_uuid: 'abc12345-0000-0000-0000-000000000001',
+          match_value: '',
+          enabled: true,
+        }),
+      );
+    });
+  });
+
   it('creates a log-match rule on this node from the modal', async () => {
     mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, alerts: true });
     const user = userEvent.setup();

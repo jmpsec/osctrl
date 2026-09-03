@@ -153,7 +153,12 @@ export async function apiFetch<T>(
     throw new ApiError(errorMsg, res.status, code);
   }
 
-  return res.json() as Promise<T>;
+  // A 204 (every DELETE endpoint) and any other empty body have nothing
+  // to parse: res.json() threw "Unexpected end of JSON input", which the
+  // caller's onError reported as a failure even though the request had
+  // succeeded. Parse only when there are bytes.
+  const text = await res.text();
+  return (text ? (JSON.parse(text) as T) : (undefined as T));
 }
 
 // ---------------------------------------------------------------------------

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -243,6 +245,76 @@ func TestAlertChannelRejectsBadConfig(t *testing.T) {
 	}
 	rr := call(t, h.AlertChannelsCreateHandler, http.MethodPost, "/api/v1/alerts/channels", body)
 	require.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+// TestAlertChannelTestHandler covers the editor's "Send test" button: a
+// working relay answers 200, a refused one is 502 (the relay's fault, not
+// the operator's input), and an unknown type is 400.
+func TestAlertChannelTestHandler(t *testing.T) {
+	h := setupAlertsHandler(t)
+	var got []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	rr := call(t, h.AlertChannelsTestHandler, http.MethodPost, "/api/v1/alerts/channels/test", map[string]any{
+		"type":   "webhook",
+		"config": json.RawMessage(fmt.Sprintf(`{"url":%q,"timeoutSeconds":5,"allowPrivateTargets":true}`, srv.URL)),
+	})
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	require.Contains(t, string(got), "osctrl-channel-test")
+
+	// Nothing listening → the relay refused, 502.
+	rr = call(t, h.AlertChannelsTestHandler, http.MethodPost, "/api/v1/alerts/channels/test", map[string]any{
+		"type":   "webhook",
+		"config": json.RawMessage(`{"url":"http://127.0.0.1:1/x","timeoutSeconds":1,"allowPrivateTargets":true}`),
+	})
+	require.Equal(t, http.StatusBadGateway, rr.Code)
+
+	rr = call(t, h.AlertChannelsTestHandler, http.MethodPost, "/api/v1/alerts/channels/test", map[string]any{
+		"type": "carrier_pigeon", "config": json.RawMessage(`{}`),
+	})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, rr.Body.String(), "carrier_pigeon", "a 400 has to name what was rejected")
+
+	// A config the registry refuses to build reports the reason, not a
+	// bare "invalid value" — here, the private-target guard.
+	rr = call(t, h.AlertChannelsTestHandler, http.MethodPost, "/api/v1/alerts/channels/test", map[string]any{
+		"type":   "webhook",
+		"config": json.RawMessage(`{"url":"http://127.0.0.1:9/x"}`),
+	})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, rr.Body.String(), "allowPrivateTargets")
+}
+
+// TestAlertChannelTestMergesStoredSecret pins the edit case: the form
+// reads secrets back as "***", so testing an untouched secret has to send
+// the stored one instead of the placeholder.
+func TestAlertChannelTestMergesStoredSecret(t *testing.T) {
+	h := setupAlertsHandler(t)
+	var signature string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		signature = r.Header.Get("X-Osctrl-Signature")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	rr := call(t, h.AlertChannelsCreateHandler, http.MethodPost, "/api/v1/alerts/channels", map[string]any{
+		"name": "signed-hook", "type": "webhook", "enabled": true,
+		"config": json.RawMessage(fmt.Sprintf(`{"url":%q,"secret":"s3cr3t","timeoutSeconds":5,"allowPrivateTargets":true}`, srv.URL)),
+	})
+	require.Equal(t, http.StatusCreated, rr.Code)
+	var created alertChannelDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &created))
+
+	rr = call(t, h.AlertChannelsTestHandler, http.MethodPost, "/api/v1/alerts/channels/test", map[string]any{
+		"id": created.ID, "type": "webhook",
+		"config": json.RawMessage(fmt.Sprintf(`{"url":%q,"secret":"***","timeoutSeconds":5,"allowPrivateTargets":true}`, srv.URL)),
+	})
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	require.NotEmpty(t, signature, "stored HMAC secret must be merged into the test send")
 }
 
 func TestAlertChannelTypesHandler(t *testing.T) {

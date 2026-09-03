@@ -27,6 +27,7 @@ const mockUpdateChannel = vi.fn();
 const mockDeleteChannel = vi.fn<(id: number) => Promise<void>>();
 const mockHistory = vi.fn<(limit?: number) => Promise<unknown[]>>();
 const mockApply = vi.fn();
+const mockTestChannel = vi.fn();
 const mockGetCommand = vi.fn<(commandID: string) => Promise<ServiceCommand>>();
 
 vi.mock('$/api/alerts', () => ({
@@ -40,6 +41,7 @@ vi.mock('$/api/alerts', () => ({
   updateAlertChannel: (...args: unknown[]) => mockUpdateChannel(...args),
   deleteAlertChannel: (id: number) => mockDeleteChannel(id),
   listAlertHistory: (limit?: number) => mockHistory(limit),
+  testAlertChannel: (...args: unknown[]) => mockTestChannel(...args),
   applyAlerts: () => mockApply(),
 }));
 
@@ -276,6 +278,31 @@ describe('AlertsPage', () => {
     });
   });
 
+  it('fills the form from the errors-reported preset and saves it without a pattern', async () => {
+    const user = userEvent.setup();
+    mockCreateRule.mockResolvedValue(makeRule());
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New rule' }));
+    await user.click(screen.getByRole('button', { name: 'Errors reported' }));
+
+    // Preset picks the source and severity, and names the rule.
+    expect(screen.getByLabelText('Name')).toHaveValue('errors-reported');
+    expect(screen.getByLabelText('Source')).toHaveValue('status_log');
+    expect(screen.getByLabelText('Minimum severity')).toHaveValue('error');
+
+    await user.click(screen.getByRole('button', { name: 'Create rule' }));
+    await waitFor(() => {
+      expect(mockCreateRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'errors-reported',
+          source: 'status_log',
+          status_severity: 'error',
+          match_value: '',
+        }),
+      );
+    });
+  });
+
   it('requires a pattern for pattern sources and validates', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -322,6 +349,43 @@ describe('AlertsPage', () => {
         }),
       );
     });
+  });
+
+  it('sends a test notification from the channel editor', async () => {
+    const user = userEvent.setup();
+    mockTestChannel.mockResolvedValue({ message: 'Test notification sent through the webhook channel' });
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'channels' }));
+    await user.click(await screen.findByRole('button', { name: 'New channel' }));
+    await user.type(screen.getByLabelText('URL'), 'https://hooks.example.com/x');
+    await user.click(screen.getByRole('button', { name: 'Send test' }));
+
+    await waitFor(() =>
+      expect(mockTestChannel).toHaveBeenCalledWith({
+        id: undefined,
+        type: 'webhook',
+        config: expect.objectContaining({ url: 'https://hooks.example.com/x' }),
+      }),
+    );
+    expect(
+      await screen.findByText('Test notification sent through the webhook channel'),
+    ).toBeInTheDocument();
+    // Testing must not save anything.
+    expect(mockCreateChannel).not.toHaveBeenCalled();
+  });
+
+  it('shows why a channel test failed', async () => {
+    const user = userEvent.setup();
+    mockTestChannel.mockRejectedValue(new Error('webhook delivery failed after 3 attempts'));
+    mockListChannels.mockResolvedValue([makeChannel()]);
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'channels' }));
+    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+    await user.click(screen.getByRole('button', { name: 'Send test' }));
+
+    expect(await screen.findByText('webhook delivery failed after 3 attempts')).toBeInTheDocument();
+    // Editing a saved channel sends its id so stored secrets are merged.
+    expect(mockTestChannel).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
   });
 
   it('deletes a rule from the table', async () => {

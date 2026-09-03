@@ -24,6 +24,47 @@ import { AuthError } from '$/api/client';
  * ends with the apply action so the rule goes live immediately — the
  * same hot-reload path as the Alerts page.
  */
+type NodeAlertKind = 'inactive' | 'error' | 'result';
+
+/**
+ * The predefined node-scoped rules, in the order they are offered.
+ *
+ * `rule` is merged into the create request, so each kind is fully
+ * described here rather than in a chain of ternaries at the submit site.
+ * "error" leans on the matcher's existing behavior: a status_log rule
+ * with an empty substring and a severity floor of "error" matches every
+ * error line this node reports, with no pattern for the operator to get
+ * right.
+ */
+const NODE_ALERT_KINDS: Record<
+  NodeAlertKind,
+  {
+    suffix: string;
+    title: string;
+    help: string;
+    rule: { source: string; status_severity: string };
+  }
+> = {
+  inactive: {
+    suffix: 'inactive',
+    title: 'Node goes inactive',
+    help: "Fires once when this node stops reporting past the environment's inactive threshold, and again on recovery if a recovery rule exists.",
+    rule: { source: 'node_inactive', status_severity: '' },
+  },
+  error: {
+    suffix: 'errors',
+    title: 'Errors reported by this node',
+    help: 'Fires on any osquery status line this node reports at error severity — a failing scheduled query, a bad config, a plugin that cannot start. No pattern needed.',
+    rule: { source: 'status_log', status_severity: 'error' },
+  },
+  result: {
+    suffix: 'log-match',
+    title: 'Log match on this node',
+    help: 'Alerts when this node ingests a result-log row matching your pattern (case-insensitive substring).',
+    rule: { source: 'result_log', status_severity: '' },
+  },
+};
+
 export function NodeAlertModal({
   envID,
   envName,
@@ -38,7 +79,7 @@ export function NodeAlertModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const [kind, setKind] = useState<'inactive' | 'result'>('inactive');
+  const [kind, setKind] = useState<NodeAlertKind>('inactive');
   const [pattern, setPattern] = useState('');
   const [matchField, setMatchField] = useState('');
   const [cooldown, setCooldown] = useState(0);
@@ -83,8 +124,8 @@ export function NodeAlertModal({
     'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
   );
 
-  const baseName =
-    kind === 'inactive' ? `${hostname}-inactive` : `${hostname}-log-match`;
+  const spec = NODE_ALERT_KINDS[kind];
+  const baseName = `${hostname}-${spec.suffix}`;
 
   const submit = () => {
     setErr(null);
@@ -99,14 +140,16 @@ export function NodeAlertModal({
     createMutation.mutate({
       name: baseName,
       environment_id: envID,
-      source: kind === 'inactive' ? 'node_inactive' : 'result_log',
       node_uuid: uuid,
-      match_type: kind === 'result' ? 'substring' : 'substring',
+      // Substring with an empty value matches anything, which is what the
+      // two pattern-less kinds want.
+      match_type: 'substring',
       match_field: kind === 'result' ? matchField : '',
       match_value: kind === 'result' ? pattern : '',
       cooldown_minutes: cooldown,
       channel_ids: channelIDs,
       enabled: true,
+      ...spec.rule,
     });
   };
 
@@ -168,57 +211,31 @@ export function NodeAlertModal({
 
         {/* Rule kind */}
         <div role="radiogroup" aria-label="Alert type" className="space-y-2">
-          <label
-            className={cn(
-              'flex items-start gap-2 rounded-md border px-3 py-2 cursor-pointer transition-colors',
-              kind === 'inactive'
-                ? 'border-[color:var(--signal)] bg-[color:var(--bg-3)]'
-                : 'border-[color:var(--border)] hover:bg-[color:var(--bg-2)]',
-            )}
-          >
-            <input
-              type="radio"
-              name="alert-kind"
-              className="mt-0.5 accent-[color:var(--signal)]"
-              checked={kind === 'inactive'}
-              onChange={() => setKind('inactive')}
-            />
-            <span className="text-xs">
-              <span className="block font-semibold text-[color:var(--text-1)]">
-                Node goes inactive
+          {(Object.keys(NODE_ALERT_KINDS) as NodeAlertKind[]).map((k) => (
+            <label
+              key={k}
+              className={cn(
+                'flex items-start gap-2 rounded-md border px-3 py-2 cursor-pointer transition-colors',
+                kind === k
+                  ? 'border-[color:var(--signal)] bg-[color:var(--bg-3)]'
+                  : 'border-[color:var(--border)] hover:bg-[color:var(--bg-2)]',
+              )}
+            >
+              <input
+                type="radio"
+                name="alert-kind"
+                className="mt-0.5 accent-[color:var(--signal)]"
+                checked={kind === k}
+                onChange={() => setKind(k)}
+              />
+              <span className="text-xs">
+                <span className="block font-semibold text-[color:var(--text-1)]">
+                  {NODE_ALERT_KINDS[k].title}
+                </span>
+                <span className="text-[color:var(--text-3)]">{NODE_ALERT_KINDS[k].help}</span>
               </span>
-              <span className="text-[color:var(--text-3)]">
-                Fires once when this node stops reporting past the
-                environment&apos;s inactive threshold, and again on recovery
-                if a recovery rule exists.
-              </span>
-            </span>
-          </label>
-          <label
-            className={cn(
-              'flex items-start gap-2 rounded-md border px-3 py-2 cursor-pointer transition-colors',
-              kind === 'result'
-                ? 'border-[color:var(--signal)] bg-[color:var(--bg-3)]'
-                : 'border-[color:var(--border)] hover:bg-[color:var(--bg-2)]',
-            )}
-          >
-            <input
-              type="radio"
-              name="alert-kind"
-              className="mt-0.5 accent-[color:var(--signal)]"
-              checked={kind === 'result'}
-              onChange={() => setKind('result')}
-            />
-            <span className="text-xs">
-              <span className="block font-semibold text-[color:var(--text-1)]">
-                Log match on this node
-              </span>
-              <span className="text-[color:var(--text-3)]">
-                Alerts when this node ingests a result-log row matching your
-                pattern (case-insensitive substring).
-              </span>
-            </span>
-          </label>
+            </label>
+          ))}
         </div>
 
         {kind === 'result' && (

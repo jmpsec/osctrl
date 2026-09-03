@@ -724,9 +724,9 @@ type LogSinkCloneRequest struct {
 // AlertRuleCreateRequest is the body for POST /api/v1/alerts/rules and
 // PUT /api/v1/alerts/rules/{id}. All fields are required on update.
 type AlertRuleCreateRequest struct {
-	Name            string `json:"name"`
-	EnvironmentID   uint   `json:"environment_id"`
-	Source          string `json:"source"`
+	Name          string `json:"name"`
+	EnvironmentID uint   `json:"environment_id"`
+	Source        string `json:"source"`
 	// NodeUUID optionally scopes the rule to one node (used by the node
 	// detail page's "Alert on this node" button). Empty = all nodes.
 	NodeUUID        string `json:"node_uuid,omitempty"`
@@ -750,6 +750,16 @@ type AlertChannelCreateRequest struct {
 	Enabled       bool            `json:"enabled"`
 	Config        json.RawMessage `json:"config"`
 	Info          string          `json:"info,omitempty"`
+}
+
+// AlertChannelTestRequest is the body for POST /api/v1/alerts/channels/test:
+// deliver one synthetic notification through this config without storing
+// it. ID, when set, names the stored channel whose secrets fill in any
+// "***" placeholder the form did not touch.
+type AlertChannelTestRequest struct {
+	ID     uint            `json:"id,omitempty"`
+	Type   string          `json:"type"`
+	Config json.RawMessage `json:"config"`
 }
 
 // AlertFieldSpec is one field in an alert channel type's config schema.

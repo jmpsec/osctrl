@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 )
 
 // channels.go — pluggable notification channels (logsinks Registry
@@ -55,6 +56,7 @@ var ChannelRegistry = map[string]ChannelSpec{
 			{Name: "secret", Label: "HMAC secret", Type: FieldSecret, Help: "When set, the payload is signed with X-Osctrl-Signature (HMAC-SHA256, hex)."},
 			{Name: "timeoutSeconds", Label: "Timeout (seconds)", Type: FieldInteger, Default: 10, Help: "Per-request timeout, including retries."},
 			{Name: "insecureSkipVerify", Label: "Skip TLS verify", Type: FieldBoolean, Default: false, Help: "Do not verify the server certificate. Avoid in production."},
+			{Name: "allowPrivateTargets", Label: "Allow private/loopback target", Type: FieldBoolean, Default: false, Help: "Required to reach localhost or an RFC1918 address. Off by default so a webhook cannot be pointed at internal services; enable only for a relay you run yourself."},
 		},
 		Decode: decodeTyped[WebhookConfig](),
 		Build: func(cfg any) (ChannelSender, error) {
@@ -80,6 +82,55 @@ var ChannelRegistry = map[string]ChannelSpec{
 			return buildEmail(*cfg.(*EmailConfig))
 		},
 	},
+}
+
+// TestSendTimeout bounds a channel test so an unresponsive relay cannot
+// hold the API request open. Senders carry their own per-request
+// timeouts; this is the backstop for the ones that do not (SMTP).
+const TestSendTimeout = 15 * time.Second
+
+// TestSend delivers one synthetic notification through a channel config
+// without storing it, so an operator can verify a channel from the form
+// before saving. Config errors and delivery errors are both returned as
+// they are — the operator needs to see which relay refused what.
+func TestSend(typ, cfgJSON string) error {
+	spec, ok := ChannelRegistry[normalizeChannelType(typ)]
+	if !ok {
+		return fmt.Errorf("%w: %q", ErrInvalidChannelType, typ)
+	}
+	if strings.TrimSpace(cfgJSON) == "" {
+		cfgJSON = "{}"
+	}
+	decoded, err := spec.Decode(json.RawMessage(cfgJSON))
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidChannelConfig, err)
+	}
+	sender, err := spec.Build(decoded)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidChannelConfig, err)
+	}
+	// Buffered by one so an abandoned send finishes into the channel and
+	// the goroutine exits instead of leaking on timeout.
+	done := make(chan error, 1)
+	go func() { done <- sender.Send(TestHit()) }()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(TestSendTimeout):
+		return fmt.Errorf("channel test timed out after %s", TestSendTimeout)
+	}
+}
+
+// TestHit is the payload a channel test delivers. It is shaped like a
+// real hit so the operator sees exactly the format their relay will
+// receive, and is labelled so nobody mistakes it for a live alert.
+func TestHit() Hit {
+	return Hit{
+		RuleName:    "osctrl-channel-test",
+		Environment: "osctrl",
+		Entity:      "channel-test",
+		Detail:      "Test notification from osctrl. If you are reading this, the channel works.",
+	}
 }
 
 // FieldSpec reuses the logsinks field schema for SPA form rendering.

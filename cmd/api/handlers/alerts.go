@@ -539,6 +539,80 @@ func (h *HandlersApi) AlertChannelsCreateHandler(w http.ResponseWriter, r *http.
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, toAlertChannelDTO(row, true))
 }
 
+// AlertChannelsTestHandler — POST /api/v1/alerts/channels/test
+//
+// Sends one synthetic notification through the posted config without
+// storing it, so a channel can be verified from the editor before it is
+// saved. No new capability: an admin could already save a channel and
+// wait for it to fire — this just closes the feedback loop.
+//
+// @Summary Test an alert channel
+// @Description Delivers a test notification through the posted channel config. Secrets left as "***" are merged from the stored channel named by id.
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param request body types.AlertChannelTestRequest true "Request body"
+// @Success 200 {object} types.ApiGenericResponse
+// @Failure 400 {object} types.ApiErrorResponse "Bad request"
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 502 {object} types.ApiErrorResponse "Delivery failed"
+// @Failure 503 {object} types.ApiErrorResponse "Alerts disabled"
+// @Security ApiKeyAuth
+// @Router /api/v1/alerts/channels/test [post]
+func (h *HandlersApi) AlertChannelsTestHandler(w http.ResponseWriter, r *http.Request) {
+	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
+		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
+	}
+	user, ok := h.requireAlertsAdmin(w, r)
+	if !ok {
+		return
+	}
+	mgr, ok := h.alertsMgr(w)
+	if !ok {
+		return
+	}
+	var body types.AlertChannelTestRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
+		return
+	}
+	cfg := string(body.Config)
+	// Editing an existing channel reads its secrets back as "***", so a
+	// test of an untouched secret has to merge the stored value or it
+	// would send the placeholder and fail for the wrong reason.
+	if body.ID != 0 {
+		prev, err := mgr.GetChannel(body.ID)
+		if err != nil {
+			respondAlertsErr(w, err)
+			return
+		}
+		if body.Type == "" {
+			body.Type = prev.Type
+		}
+		merged, err := alerts.MergeChannelSecrets(prev.Type, prev.Config, cfg)
+		if err != nil {
+			apiErrorResponse(w, "error merging channel secrets", http.StatusBadRequest, err)
+			return
+		}
+		cfg = merged
+	}
+	h.AuditLog.SettingsAction(user, fmt.Sprintf("tested alert channel (type %s, id %d)", body.Type, body.ID), strings.Split(r.RemoteAddr, ":")[0])
+	if err := alerts.TestSend(body.Type, cfg); err != nil {
+		// A bad config is the operator's input; anything else is the
+		// relay refusing us, which is not a 400 and not our 500.
+		if errors.Is(err, alerts.ErrInvalidChannelType) || errors.Is(err, alerts.ErrInvalidChannelConfig) {
+			respondAlertsErr(w, err)
+			return
+		}
+		apiErrorResponse(w, err.Error(), http.StatusBadGateway, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{
+		Message: fmt.Sprintf("Test notification sent through the %s channel", body.Type),
+	})
+}
+
 // AlertChannelsUpdateHandler — PUT /api/v1/alerts/channels/{id}
 //
 // @Summary Update an alert channel
@@ -744,8 +818,11 @@ func respondAlertsErr(w http.ResponseWriter, err error) {
 		apiErrorResponse(w, "not found", http.StatusNotFound, err)
 	case errors.Is(err, alerts.ErrRuleExists), errors.Is(err, alerts.ErrChannelExists):
 		apiErrorResponse(w, "already exists", http.StatusConflict, err)
+	// Echo the reason: "invalid value" told the operator nothing about
+	// which field the registry rejected, or why a channel test refused to
+	// build. These endpoints are admin-only.
 	case errors.Is(err, alerts.ErrInvalidSource), errors.Is(err, alerts.ErrInvalidChannelType), errors.Is(err, alerts.ErrInvalidChannelConfig):
-		apiErrorResponse(w, "invalid value", http.StatusBadRequest, err)
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 	// Rule validation failures are operator input, not server faults —
 	// they used to fall through to the 500 below, which told the SPA
 	// nothing and read as an outage.
