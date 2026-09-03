@@ -7,8 +7,10 @@ Talks exclusively to `osctrl-api` (port 8081 by default). Served as static files
 ## 🤔 What is the frontend?
 
 The **osctrl frontend** is the modern operator UI for managing environments,
-nodes, node console sessions, queries, saved queries, carves, tags, users,
-settings, and optional posture data through `osctrl-api`.
+nodes, node console sessions and file explorer, queries, saved queries, carves,
+tags, enrollment, users and profile/MFA, alerting (rules, channels, dispatched
+history), log sinks, auth providers, audit log, service configuration, settings,
+and optional posture data through `osctrl-api`.
 
 ### 🚀 Why it exists
 
@@ -24,11 +26,12 @@ frontend/
 │   ├── main.tsx          React 19 entry point
 │   ├── router.tsx        TanStack Router instance
 │   ├── routes/           Page components (TanStack Router)
-│   ├── components/       Reusable UI components (primitives, atoms, data, chrome, forms, feedback)
-│   ├── features/         Feature modules (one folder per page: nodes, queries, carves, ...)
+│   ├── components/       Reusable UI components (primitives, atoms, data, charts, chrome, forms, feedback)
+│   ├── features/         Feature modules (one folder per page: nodes, queries, carves, alerts, ...)
 │   ├── api/              Typed API client + generated types
 │   ├── lib/              Utilities, custom hooks, time formatting
 │   └── styles/           Tailwind base + design token CSS
+├── scripts/              Build helpers (copy-monaco.mjs stages the Monaco assets)
 └── tests/
     └── e2e/              Playwright end-to-end tests
 ```
@@ -45,6 +48,10 @@ frontend/
 | `npm test` | Run Vitest once |
 | `npm run test:watch` | Run Vitest in watch mode |
 | `npm run test:e2e` | Run Playwright e2e tests |
+
+`dev` and `build` run `scripts/copy-monaco.mjs` first (`predev`/`prebuild`) to
+stage the Monaco editor assets locally — the editor is self-hosted rather than
+pulled from a CDN.
 
 ## 🛠 Development
 
@@ -92,7 +99,9 @@ Output: `frontend/dist/`. Deploy options:
 - Radix UI primitives (à la carte)
 - react-hook-form 7 + zod 4 + @hookform/resolvers 5
 - Monaco Editor 0.56 (@monaco-editor/react 4)
-- clsx 2 + tailwind-merge 3 + lucide-react 1
-- Vitest 4 + @testing-library/react 16 + jsdom 30
+- visx 4 + d3-array 3 / d3-shape 3 (activity, posture, and stats charts)
+- motion 13 + @number-flow/react 0.6 (transitions and animated counters)
+- clsx 2 + tailwind-merge 3 + lucide-react 1 + react-icons 5
+- Vitest 4 + @testing-library/react 16 (+ jest-dom 7, user-event 14) + jsdom 30
 - @playwright/test 1 (e2e)
 - @types/react 19, @types/react-dom 19, @types/node 26

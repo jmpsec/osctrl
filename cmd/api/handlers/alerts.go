@@ -76,7 +76,7 @@ type alertChannelDTO struct {
 	EnvironmentID uint            `json:"environment_id"`
 	Type          string          `json:"type"`
 	Enabled       bool            `json:"enabled"`
-	Config        json.RawMessage `json:"config"`
+	Config        json.RawMessage `json:"config" swaggertype:"object"`
 	Info          string          `json:"info"`
 }
 

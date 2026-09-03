@@ -32,7 +32,7 @@ type authProviderDTO struct {
 	Name      string          `json:"name"`
 	Type      string          `json:"type"`
 	Enabled   bool            `json:"enabled"`
-	Config    json.RawMessage `json:"config"`
+	Config    json.RawMessage `json:"config" swaggertype:"object"`
 	Source    string          `json:"source"`
 	Info      string          `json:"info"`
 }
@@ -168,7 +168,7 @@ func (h *HandlersApi) AuthProvidersCreateHandler(w http.ResponseWriter, r *http.
 		Name    string          `json:"name"`
 		Type    string          `json:"type"`
 		Enabled bool            `json:"enabled"`
-		Config  json.RawMessage `json:"config"`
+		Config  json.RawMessage `json:"config" swaggertype:"object"`
 		Info    string          `json:"info,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -206,7 +206,7 @@ func (h *HandlersApi) AuthProvidersUpdateHandler(w http.ResponseWriter, r *http.
 		Name    string          `json:"name"`
 		Type    string          `json:"type"`
 		Enabled bool            `json:"enabled"`
-		Config  json.RawMessage `json:"config"`
+		Config  json.RawMessage `json:"config" swaggertype:"object"`
 		Info    string          `json:"info,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -311,7 +311,7 @@ func (h *HandlersApi) AuthProvidersTestHandler(w http.ResponseWriter, r *http.Re
 	}
 	var body struct {
 		Type   string          `json:"type"`
-		Config json.RawMessage `json:"config"`
+		Config json.RawMessage `json:"config" swaggertype:"object"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)

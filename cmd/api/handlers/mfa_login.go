@@ -38,7 +38,7 @@ type MFALoginRequest struct {
 type MFAWebAuthnRequest struct {
 	Challenge  string          `json:"challenge"`
 	Name       string          `json:"name"`
-	Credential json.RawMessage `json:"credential"`
+	Credential json.RawMessage `json:"credential" swaggertype:"object"`
 }
 
 // MFAEnrollRequest completes a forced enrollment at login time.
