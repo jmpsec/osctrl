@@ -81,12 +81,14 @@ vi.mock('$/api/carves', () => ({
 const mockCreateAlertRule = vi.fn();
 const mockApplyAlerts = vi.fn();
 const mockListAlertChannels = vi.fn();
+const mockListAlertRules = vi.fn();
 vi.mock('$/api/alerts', () => ({
   // Only forward the first argument: react-query calls mutationFn with
   // (variables, context) and the assertions compare just the payload.
   createAlertRule: (first: unknown) => mockCreateAlertRule(first),
   applyAlerts: (first: unknown) => mockApplyAlerts(first),
   listAlertChannels: (first: unknown) => mockListAlertChannels(first),
+  listAlertRules: (first: unknown) => mockListAlertRules(first),
 }));
 
 vi.mock('$/api/tags', () => ({
@@ -294,6 +296,7 @@ describe('NodeDetailPage', () => {
     mockDeleteNode.mockResolvedValue({ message: 'ok' });
     mockGetNodePosture.mockResolvedValue([]);
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
+    mockListAlertRules.mockResolvedValue([]);
     mockListEnvironments.mockResolvedValue([{ id: 5, name: 'test-env', uuid: 'env-uuid-1' }]);
     mockGetNodeActivity.mockResolvedValue(makeActivityBuckets());
     mockGetNodeActivityTiles.mockResolvedValue({
@@ -1020,6 +1023,37 @@ describe('NodeDetailPage', () => {
     // Created confirmation offers the hot-reload apply.
     await user.click(await screen.findByRole('button', { name: 'Apply changes' }));
     await waitFor(() => expect(mockApplyAlerts).toHaveBeenCalled());
+  });
+
+  it('marks the node when a rule covers it, whichever scope it comes from', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, alerts: true });
+    mockListAlertRules.mockResolvedValue([
+      // env 5 is this page's environment (test-env); env 0 is global.
+      { id: 1, name: 'node-errors', environment_id: 5, node_uuid: 'abc12345-0000-0000-0000-000000000001', enabled: true, source: 'status_log', match_type: 'substring', match_field: '', match_value: '', status_severity: 'error', cooldown_minutes: 0, channel_ids: [], created_at: '', updated_at: '', info: '' },
+      { id: 2, name: 'env-wide', environment_id: 5, node_uuid: '', enabled: true, source: 'result_log', match_type: 'substring', match_field: '', match_value: 'x', status_severity: 'any', cooldown_minutes: 0, channel_ids: [], created_at: '', updated_at: '', info: '' },
+      { id: 3, name: 'everywhere', environment_id: 0, node_uuid: '', enabled: true, source: 'result_log', match_type: 'substring', match_field: '', match_value: 'y', status_severity: 'any', cooldown_minutes: 0, channel_ids: [], created_at: '', updated_at: '', info: '' },
+      // Neither of these reaches this node.
+      { id: 4, name: 'other-node', environment_id: 5, node_uuid: 'SOMEONE-ELSE', enabled: true, source: 'result_log', match_type: 'substring', match_field: '', match_value: 'z', status_severity: 'any', cooldown_minutes: 0, channel_ids: [], created_at: '', updated_at: '', info: '' },
+      { id: 5, name: 'switched-off', environment_id: 5, node_uuid: '', enabled: false, source: 'result_log', match_type: 'substring', match_field: '', match_value: 'w', status_severity: 'any', cooldown_minutes: 0, channel_ids: [], created_at: '', updated_at: '', info: '' },
+    ]);
+
+    renderWithProviders(makeTestRouter());
+
+    const marker = await screen.findByLabelText('3 alert rules cover this node');
+    expect(marker).toHaveTextContent('1 this node · 1 env · 1 global');
+    // The tooltip names each rule and why it applies.
+    expect(marker).toHaveAttribute('title', expect.stringContaining('node-errors — this node'));
+    expect(marker).toHaveAttribute('title', expect.stringContaining('everywhere — global'));
+    expect(marker).not.toHaveAttribute('title', expect.stringContaining('other-node'));
+  });
+
+  it('shows no alert marker when nothing covers the node', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, alerts: true });
+    renderWithProviders(makeTestRouter());
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/alert rules? cover this node/)).not.toBeInTheDocument();
   });
 
   it('creates an error-severity rule on this node from the modal', async () => {
