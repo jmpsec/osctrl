@@ -779,7 +779,7 @@ func (h *HandlersApi) NodePostureHandler(w http.ResponseWriter, r *http.Request)
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(user, users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
 		return
 	}
@@ -845,7 +845,7 @@ func (h *HandlersApi) NodePostureScoreHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissions(user, users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
 		return
 	}

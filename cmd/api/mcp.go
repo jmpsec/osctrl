@@ -45,8 +45,8 @@ const mcpInternalHost = "http://osctrl-api.internal"
 // client would hit, so authentication, the per-endpoint permission checks,
 // and audit logging all run exactly as they do for any other caller. The MCP
 // layer therefore contains no authorization logic of its own — which matters
-// because osctrl's read permissions are not uniform (reading a node needs
-// AdminLevel, its posture only UserLevel, queries QueryLevel), and restating
+// because osctrl's read permissions are not uniform (node detail and posture
+// need AdminLevel, queries need QueryLevel), and restating
 // that policy anywhere else would over-grant the moment the two drift.
 type loopbackTransport struct {
 	handler http.Handler
