@@ -121,6 +121,7 @@ const (
 	apiFileExplorerPath = "/file-explorer"
 	// API audit logs path
 	apiAuditLogsPath = "/audit-logs"
+	apiMCPPath       = "/mcp"
 	// API logs path
 	apiLogsPath = "/logs"
 	// API stats path
@@ -214,6 +215,7 @@ func init() {
 		JWT:     &config.YAMLConfigurationJWT{},
 		OIDC:    &config.YAMLConfigurationOIDC{},
 		SAML:    &config.YAMLConfigurationSAML{},
+		MCP:     &config.YAMLConfigurationMCP{},
 		TLS:     &config.YAMLConfigurationTLS{},
 		Osquery: &config.YAMLConfigurationOsquery{},
 		Logger: &config.YAMLConfigurationLogger{
@@ -1242,6 +1244,21 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"GET "+_apiPath(apiAuditLogsPath),
 			handlerAuthCheck(http.HandlerFunc(handlersApi.AuditLogsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	}
+	// MCP endpoint. Registered only when enabled, matching the OIDC/SAML
+	// posture: an operator opts in, and a deployment never inherits the
+	// surface on upgrade.
+	//
+	// handlerAuthCheck rejects unauthenticated callers at the MCP boundary,
+	// so a bad token fails once here rather than once per tool call. Tool
+	// calls are then dispatched back into muxAPI by loopbackTransport, which
+	// re-runs the full chain — including the per-endpoint permission checks
+	// — as the calling user.
+	if flagParams.MCP != nil && flagParams.MCP.Enabled {
+		log.Info().Msgf("MCP enabled — serving %s", _apiPath(apiMCPPath))
+		muxAPI.Handle(
+			_apiPath(apiMCPPath),
+			handlerAuthCheck(mcpHandler(muxAPI, buildVersion), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// Launch listeners for API server. The server runs in a goroutine so
 	// the main goroutine can wait on the restart channel and trigger a

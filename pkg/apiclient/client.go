@@ -149,6 +149,37 @@ func CreateAPI(config JSONConfigurationAPI, insecure bool) (*OsctrlAPI, error) {
 	return a, nil
 }
 
+// CreateAPIWithTransport builds a client that issues its requests through rt
+// instead of the network.
+//
+// This exists so osctrl-api can host an MCP server against its own handlers:
+// the transport dispatches straight into the service's mux, so tool calls run
+// the real handler chain — same authentication, same per-endpoint permission
+// checks, same audit logging — without a socket. The alternative, reaching
+// into the managers directly, would mean restating authorization policy that
+// is deliberately non-uniform across endpoints, and any drift there
+// over-grants silently.
+//
+// config.URL still has to parse; the transport is free to ignore its host and
+// route on the path alone.
+func CreateAPIWithTransport(config JSONConfigurationAPI, rt http.RoundTripper) (*OsctrlAPI, error) {
+	if rt == nil {
+		return nil, fmt.Errorf("nil round tripper")
+	}
+	if _, err := url.Parse(config.URL); err != nil {
+		return nil, fmt.Errorf("invalid url - %w", err)
+	}
+	headers := map[string]string{
+		Authorization: fmt.Sprintf("Bearer %s", config.Token),
+		ContentType:   JSONApplicationUTF8,
+	}
+	return &OsctrlAPI{
+		Configuration: config,
+		Client:        &http.Client{Transport: rt},
+		Headers:       headers,
+	}, nil
+}
+
 // GetGeneric - Helper function to implement generic retrieval from API with a GET request
 func (api *OsctrlAPI) GetGeneric(url string, body io.Reader) ([]byte, error) {
 	return api.ReqGeneric(http.MethodGet, url, body)

@@ -6,7 +6,7 @@
 # startup when this differs from the version the binary supports: a lower
 # number means fields were added since this file was written, a higher
 # number means the binary is older than this file. See pkg/config/version.go.
-version: 1
+version: 2
 
 # Main HTTP service behavior and shared service-level features.
 service:
@@ -299,6 +299,25 @@ oidc:
   linkLocalAccounts: false
   # PKCE (S256) for the authorization code flow
   usePKCE: false
+
+# Model Context Protocol endpoint, served at /api/v1/mcp. Lets MCP clients
+# (Claude Code, Claude Desktop, and others) read the fleet — environments,
+# nodes, the osquery schema, and query results.
+#
+# Disabled by default: it is a read surface designed for LLM agents, and that
+# should be an explicit choice rather than something a deployment inherits on
+# upgrade.
+#
+# Enabling it grants no new access. Requests authenticate with the same bearer
+# token or session cookie as any other API call, and each tool call is
+# dispatched back through osctrl-api's own handlers — so the per-endpoint
+# permission checks apply exactly as they do for the SPA or osctrl-cli. A
+# caller sees only what their own token already allows.
+#
+# The tools are read-only; nothing here schedules a query or mutates state.
+# See docs/mcp.md.
+mcp:
+  enabled: false
 
 # JWT authentication configuration. Used for API bearer tokens and SPA cookies.
 jwt:
