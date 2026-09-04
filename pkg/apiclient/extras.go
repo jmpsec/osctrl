@@ -1,4 +1,4 @@
-package main
+package apiclient
 
 import (
 	"bytes"
@@ -38,15 +38,15 @@ import (
 // Node logs routes:
 //   GET /api/v1/logs/{type}/{env}/{uuid}
 
-// fileExplorerSessionResponse mirrors the create-session response.
-type fileExplorerSessionResponse struct {
+// FileExplorerSessionResponse mirrors the create-session response.
+type FileExplorerSessionResponse struct {
 	Session  fileexplorer.Session `json:"session"`
-	NodeInfo consoleNodeInfo      `json:"node_info"`
+	NodeInfo ConsoleNodeInfo      `json:"node_info"`
 }
 
 // CreateFileExplorerSession opens a file explorer session against a node.
-func (api *OsctrlAPI) CreateFileExplorerSession(env, uuid string) (fileExplorerSessionResponse, error) {
-	var res fileExplorerSessionResponse
+func (api *OsctrlAPI) CreateFileExplorerSession(env, uuid string) (FileExplorerSessionResponse, error) {
+	var res FileExplorerSessionResponse
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, "/file-explorer", env, "nodes", uuid, "sessions"))
 	raw, err := api.PostGeneric(reqURL, nil)
 	if err != nil {
@@ -267,8 +267,8 @@ func (api *OsctrlAPI) GetQuerySamples() ([]queries.QuerySample, error) {
 }
 
 // GetFeatures retrieves the deployment feature switches.
-func (api *OsctrlAPI) GetFeatures() (featuresResponse, error) {
-	var res featuresResponse
+func (api *OsctrlAPI) GetFeatures() (FeaturesResponse, error) {
+	var res FeaturesResponse
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, "/features"))
 	raw, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
@@ -280,8 +280,8 @@ func (api *OsctrlAPI) GetFeatures() (featuresResponse, error) {
 	return res, nil
 }
 
-// featuresResponse mirrors the /features deployment switches.
-type featuresResponse struct {
+// FeaturesResponse mirrors the /features deployment switches.
+type FeaturesResponse struct {
 	Posture       bool `json:"posture"`
 	ServiceConfig bool `json:"service_config"`
 	LogSinks      bool `json:"log_sinks"`

@@ -1,4 +1,4 @@
-package main
+package apiclient
 
 import (
 	"crypto/tls"
@@ -17,6 +17,10 @@ import (
 )
 
 const (
+	// ConfigKey is the top-level JSON key the API configuration lives under
+	// in the on-disk config file (osctrl-api.json). Previously read from
+	// cmd/cli's projectName const; inlined here so the package stands alone.
+	ConfigKey = "osctrl"
 	// APIPath for the generic API path in osctrl
 	APIPath = "/api/v1"
 	// APINodes for the nodes path
@@ -66,8 +70,8 @@ type OsctrlAPI struct {
 	Headers       map[string]string
 }
 
-// loadAPIConfiguration to load the API configuration file and assign to variables
-func loadAPIConfiguration(file string) (JSONConfigurationAPI, error) {
+// LoadConfiguration to load the API configuration file and assign to variables
+func LoadConfiguration(file string) (JSONConfigurationAPI, error) {
 	var config JSONConfigurationAPI
 	// Load file and read config
 	viper.SetConfigFile(file)
@@ -75,9 +79,9 @@ func loadAPIConfiguration(file string) (JSONConfigurationAPI, error) {
 		return config, err
 	}
 	// API values
-	apiRaw := viper.Sub(projectName)
+	apiRaw := viper.Sub(ConfigKey)
 	if apiRaw == nil {
-		return config, fmt.Errorf("JSON key %s not found in %s", projectName, file)
+		return config, fmt.Errorf("JSON key %s not found in %s", ConfigKey, file)
 	}
 	if err := apiRaw.Unmarshal(&config); err != nil {
 		return config, err
@@ -86,13 +90,13 @@ func loadAPIConfiguration(file string) (JSONConfigurationAPI, error) {
 	return config, nil
 }
 
-// writeAPIConfiguration to write the API configuration file and update values
-func writeAPIConfiguration(file string, apiConf JSONConfigurationAPI) error {
+// WriteConfiguration to write the API configuration file and update values
+func WriteConfiguration(file string, apiConf JSONConfigurationAPI) error {
 	if apiConf.URL == "" || apiConf.Token == "" {
 		return fmt.Errorf("invalid JSON values")
 	}
 	fileData := make(map[string]JSONConfigurationAPI)
-	fileData[projectName] = apiConf
+	fileData[ConfigKey] = apiConf
 	confByte, err := json.MarshalIndent(fileData, "", " ")
 	if err != nil {
 		return fmt.Errorf("error serializing data %w", err)
@@ -103,20 +107,25 @@ func writeAPIConfiguration(file string, apiConf JSONConfigurationAPI) error {
 	return nil
 }
 
-// CreateAPI to initialize the API client and handlers
-func CreateAPI(config JSONConfigurationAPI, insecure bool) *OsctrlAPI {
+// CreateAPI to initialize the API client and handlers.
+//
+// Returns an error rather than calling log.Fatal on bad input: as a library
+// this is called by long-lived processes (and by tests) where killing the
+// process on a malformed URL is not an acceptable failure mode. Callers that
+// genuinely want to abort should log.Fatal on the returned error themselves.
+func CreateAPI(config JSONConfigurationAPI, insecure bool) (*OsctrlAPI, error) {
 	var a *OsctrlAPI
 	// Prepare URL
 	u, err := url.Parse(config.URL)
 	if err != nil {
-		log.Fatal().Msgf("invalid url: %v", err)
+		return nil, fmt.Errorf("invalid url - %w", err)
 	}
 	// Define client with correct TLS settings
 	client := &http.Client{}
 	if u.Scheme == "https" {
 		certPool, err := x509.SystemCertPool()
 		if err != nil {
-			log.Fatal().Msgf("error loading x509 certificate pool: %v", err)
+			return nil, fmt.Errorf("error loading x509 certificate pool - %w", err)
 		}
 		tlsCfg := &tls.Config{RootCAs: certPool}
 		if insecure {
@@ -133,7 +142,7 @@ func CreateAPI(config JSONConfigurationAPI, insecure bool) *OsctrlAPI {
 		Client:        client,
 		Headers:       headers,
 	}
-	return a
+	return a, nil
 }
 
 // GetGeneric - Helper function to implement generic retrieval from API with a GET request

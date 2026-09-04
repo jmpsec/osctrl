@@ -1,4 +1,4 @@
-package main
+package apiclient
 
 import (
 	"encoding/json"
@@ -34,7 +34,7 @@ func newTestAPI(t *testing.T) *OsctrlAPI {
 		}
 		_ = json.NewEncoder(w).Encode(ConsoleSessionResponse{
 			Session:  console.Session{ID: 7, NodeUUID: "UUID1", CWD: "/", Platform: "linux"},
-			NodeInfo: consoleNodeInfo{OsqueryVersion: "5.23.1"},
+			NodeInfo: ConsoleNodeInfo{OsqueryVersion: "5.23.1"},
 		})
 	})
 	mux.HandleFunc("DELETE /api/v1/console/{env}/sessions/{session_id}", func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +70,7 @@ func newTestAPI(t *testing.T) *OsctrlAPI {
 
 	// File explorer routes
 	mux.HandleFunc("POST /api/v1/file-explorer/{env}/nodes/{uuid}/sessions", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode(fileExplorerSessionResponse{
+		_ = json.NewEncoder(w).Encode(FileExplorerSessionResponse{
 			Session: fileexplorer.Session{ID: 9, Root: "/"},
 		})
 	})
@@ -153,7 +153,11 @@ func newTestAPI(t *testing.T) *OsctrlAPI {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	return CreateAPI(JSONConfigurationAPI{URL: srv.URL, Token: "testtoken"}, false)
+	api, err := CreateAPI(JSONConfigurationAPI{URL: srv.URL, Token: "testtoken"}, false)
+	if err != nil {
+		t.Fatalf("CreateAPI: %v", err)
+	}
+	return api
 }
 
 func TestConsoleClientRoundTrip(t *testing.T) {
@@ -324,44 +328,6 @@ func TestQuerySamplesAndNodeLogs(t *testing.T) {
 	}
 	if parsed.Type != "result" || parsed.Env != "dev" {
 		t.Fatalf("unexpected logs body: %s", body)
-	}
-}
-
-func TestStoreCastErrors(t *testing.T) {
-	// dbStore does not implement the console/posture/saved surfaces.
-	store := newDBStore()
-	if _, err := storeConsole(store); err == nil {
-		t.Fatal("expected storeConsole to reject dbStore")
-	}
-	if _, err := storePosture(store); err == nil {
-		t.Fatal("expected storePosture to reject dbStore")
-	}
-	if _, err := storeSaved(store); err == nil {
-		t.Fatal("expected storeSaved to reject dbStore")
-	}
-}
-
-func TestAPIStoreImplementsExtraSurfaces(t *testing.T) {
-	api := newTestAPI(t)
-	store := newAPIStore(api)
-	if _, err := storeConsole(store); err != nil {
-		t.Fatalf("apiStore should implement consoleStore: %v", err)
-	}
-	if _, err := storePosture(store); err != nil {
-		t.Fatalf("apiStore should implement postureStore: %v", err)
-	}
-	if _, err := storeSaved(store); err != nil {
-		t.Fatalf("apiStore should implement savedStore: %v", err)
-	}
-}
-
-func TestColumnKeysAndIndent(t *testing.T) {
-	keys := columnKeys(map[string]any{"b": 1, "a": 2, "c": 3})
-	if len(keys) != 3 || keys[0] != "a" || keys[2] != "c" {
-		t.Fatalf("columnKeys not sorted: %v", keys)
-	}
-	if got := indentLines("x\ny", "  "); got != "  x\n  y" {
-		t.Fatalf("indentLines: %q", got)
 	}
 }
 

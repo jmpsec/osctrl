@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"os"
 	"strconv"
 	"strings"
@@ -68,7 +69,7 @@ func alertRulesList(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func ruleToRow(r alertRuleJSON, _ bool) []string {
+func ruleToRow(r apiclient.AlertRuleJSON, _ bool) []string {
 	return []string{
 		strconv.FormatUint(uint64(r.ID), 10),
 		r.Name,
@@ -190,7 +191,7 @@ func alertChannelsList(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func channelToRow(c alertChannelJSON) []string {
+func channelToRow(c apiclient.AlertChannelJSON) []string {
 	return []string{
 		strconv.FormatUint(uint64(c.ID), 10),
 		c.Name,

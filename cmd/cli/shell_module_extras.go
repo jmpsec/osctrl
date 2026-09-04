@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"sort"
 	"strconv"
 	"strings"
@@ -49,7 +50,7 @@ func shConsoleOpen(s *shellState, args []string) {
 		errf("%v", err)
 		return
 	}
-	res, err := spinGet("⌨️  Opening console session", func() (ConsoleSessionResponse, error) { return cs.CreateConsoleSession(s.env, n.UUID) })
+	res, err := spinGet("⌨️  Opening console session", func() (apiclient.ConsoleSessionResponse, error) { return cs.CreateConsoleSession(s.env, n.UUID) })
 	if err != nil {
 		errf("%v", err)
 		return
@@ -169,7 +170,9 @@ func shFexploreOpen(s *shellState, args []string) {
 		errf("%v", err)
 		return
 	}
-	res, err := spinGet("🗂️  Opening file explorer session", func() (fileExplorerSessionResponse, error) { return cs.CreateFileExplorerSession(s.env, n.UUID) })
+	res, err := spinGet("🗂️  Opening file explorer session", func() (apiclient.FileExplorerSessionResponse, error) {
+		return cs.CreateFileExplorerSession(s.env, n.UUID)
+	})
 	if err != nil {
 		errf("%v", err)
 		return
