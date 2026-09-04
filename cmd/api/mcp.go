@@ -2,15 +2,34 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/jmpsec/osctrl/cmd/api/handlers"
 	"github.com/jmpsec/osctrl/pkg/apiclient"
+	"github.com/jmpsec/osctrl/pkg/auditlog"
 	osctrlmcp "github.com/jmpsec/osctrl/pkg/mcp"
 )
+
+// maxAuditedArgsBytes bounds how much of a tool call's arguments the audit
+// middleware records. Tool inputs are small scalars and short lists by
+// construction (see pkg/mcp's tool schemas); this only guards against a
+// pathological or malicious client sending an oversized arguments blob and
+// bloating the audit_logs table.
+const maxAuditedArgsBytes = 500
+
+// mcpAuditLog is the one audit-log capability the MCP boundary needs.
+// Narrowed to a single method — matching the Backend/WriteBackend pattern in
+// pkg/mcp — so tests can fake it without a database.
+type mcpAuditLog interface {
+	MCPToolCall(username, tool, args, ip string, envID uint, failed bool)
+}
 
 // mcpInternalHost is the host the in-process client addresses. Nothing
 // resolves it: loopbackTransport routes on method and path only, and none of
@@ -111,8 +130,24 @@ func (r *responseRecorder) result(req *http.Request) *http.Response {
 // The returned handler must still be mounted behind handlerAuthCheck: that
 // rejects unauthenticated callers up front, so a bad token fails once at the
 // MCP boundary instead of once per tool call.
-func mcpHandler(apiHandler http.Handler, version string, allowWrites bool) http.Handler {
+//
+// auditLog receives one entry per tool call, tagged with auditlog.LogTypeMCP
+// so an operator can filter agent activity out of the far larger volume of
+// SPA/CLI-driven entries, which carry no origin marker at all. This is only
+// possible here, at the hosted boundary: osctrl-api itself is dispatching
+// the call, so it has first-hand knowledge the request came from MCP. The
+// standalone stdio binary (cmd/mcp) is, from the server's point of view,
+// just another authenticated HTTP client — indistinguishable from
+// osctrl-cli — and its calls are audited the same way any REST client's
+// would be, with no special tagging.
+func mcpHandler(apiHandler http.Handler, version string, allowWrites bool, auditLog mcpAuditLog) http.Handler {
 	getServer := func(r *http.Request) *sdk.Server {
+		// Captured once per session (getServer runs at session creation, not
+		// per tool call — see mcp.NewStreamableHTTPHandler), same lifetime
+		// as the credentials loopbackTransport binds below.
+		username := mcpCallerUsername(r)
+		ip := strings.Split(r.RemoteAddr, ":")[0]
+
 		// One client per request, bound to that request's credentials. The
 		// MCP server is cheap to build and holds no state, so per-request
 		// construction keeps sessions from ever sharing an identity.
@@ -129,10 +164,85 @@ func mcpHandler(apiHandler http.Handler, version string, allowWrites bool) http.
 			// or a nil transport, neither of which is reachable here.
 			return nil
 		}
+		var srv *sdk.Server
 		if allowWrites {
-			return osctrlmcp.NewServer(client, version, osctrlmcp.WithWrites(client))
+			srv = osctrlmcp.NewServer(client, version, osctrlmcp.WithWrites(client))
+		} else {
+			srv = osctrlmcp.NewServer(client, version)
 		}
-		return osctrlmcp.NewServer(client, version)
+		srv.AddReceivingMiddleware(auditToolCalls(auditLog, username, ip))
+		return srv
 	}
 	return sdk.NewStreamableHTTPHandler(getServer, nil)
+}
+
+// mcpCallerUsername reads the username handlerAuthCheck already resolved and
+// stashed on the request context before mcpHandler ever runs. Re-deriving it
+// here (rather than re-parsing the token) keeps this file agreeing with the
+// rest of cmd/api about who the caller is, with no second source of truth.
+func mcpCallerUsername(r *http.Request) string {
+	cv, ok := r.Context().Value(handlers.ContextKey(contextAPI)).(handlers.ContextValue)
+	if !ok {
+		return ""
+	}
+	return cv["user"]
+}
+
+// auditToolCalls records one auditLog.MCPToolCall entry per "tools/call"
+// request on this session — every read tool included, matching the existing
+// convention of auditing GET-style views (see NodeAction's "viewed all
+// nodes" and friends) rather than treating audit volume as a reason to skip
+// reads. It never blocks or fails a tool call: audit failures only log a
+// warning inside MCPToolCall itself.
+func auditToolCalls(auditLog mcpAuditLog, username, ip string) sdk.Middleware {
+	return func(next sdk.MethodHandler) sdk.MethodHandler {
+		return func(ctx context.Context, method string, req sdk.Request) (sdk.Result, error) {
+			result, err := next(ctx, method, req)
+			if method != "tools/call" {
+				return result, err
+			}
+
+			tool, args := toolCallDetails(req)
+			failed := err != nil
+			// A tool error is reported in-band (IsError on the result, no Go
+			// error) so the model can see and self-correct — see
+			// CallToolResult.IsError. That still counts as "failed" for the
+			// audit trail: a denied run_query is exactly what an operator
+			// wants to be able to find.
+			if ctr, ok := result.(*sdk.CallToolResult); ok && ctr.IsError {
+				failed = true
+			}
+			auditLog.MCPToolCall(username, tool, args, ip, auditlog.NoEnvironment, failed)
+			return result, err
+		}
+	}
+}
+
+// toolCallDetails extracts the tool name and a size-bounded JSON rendering
+// of its arguments from a tools/call request. The concrete parameter type
+// varies by SDK dispatch phase (CallToolParamsRaw server-side,
+// CallToolParams on the wire-shaped path); both are handled so this never
+// depends on an SDK internal staying the same across versions any more than
+// necessary. An unrecognized type degrades to an empty summary rather than
+// panicking — a middleware must never be the reason a tool call fails.
+func toolCallDetails(req sdk.Request) (tool, args string) {
+	switch p := req.GetParams().(type) {
+	case *sdk.CallToolParamsRaw:
+		return p.Name, truncate(string(p.Arguments), maxAuditedArgsBytes)
+	case *sdk.CallToolParams:
+		b, err := json.Marshal(p.Arguments)
+		if err != nil {
+			return p.Name, ""
+		}
+		return p.Name, truncate(string(b), maxAuditedArgsBytes)
+	default:
+		return "unknown", ""
+	}
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "...(truncated)"
 }

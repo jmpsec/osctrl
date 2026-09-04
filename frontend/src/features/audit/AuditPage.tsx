@@ -26,7 +26,7 @@ type Search = z.infer<typeof auditSearchSchema>;
 // uses bare "tls"/"admin"/"api"). The two should not be unified — audit
 // readers compare to what was actually written to the column.
 const SERVICES = ['', 'osctrl-tls', 'osctrl-api', 'osctrl-cli'] as const;
-const LOG_TYPE_KEYS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+const LOG_TYPE_KEYS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 
 export function AuditPage() {
   usePageTitle('Audit');

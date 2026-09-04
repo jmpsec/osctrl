@@ -18,7 +18,7 @@ import (
 //
 //	?service=...       exact match on service name
 //	?username=...      case-insensitive partial match on username
-//	?type=...          log type integer (1..10), see pkg/auditlog.LogType*
+//	?type=...          log type integer (1..11), see pkg/auditlog.LogType*
 //	?env_uuid=...      filter to one environment (resolved to internal ID)
 //	?since=RFC3339     created_at >= since
 //	?until=RFC3339     created_at <= until

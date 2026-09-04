@@ -6,7 +6,7 @@ import { AuditPage } from '$/features/audit/AuditPage';
 export const auditSearchSchema = z.object({
   service: z.string().optional(),
   username: z.string().optional(),
-  type: z.number().int().min(1).max(10).optional(),
+  type: z.number().int().min(1).max(11).optional(),
   env_uuid: z.string().optional(),
   since: z.string().optional(),
   until: z.string().optional(),
