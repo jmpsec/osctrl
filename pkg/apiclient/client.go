@@ -39,6 +39,10 @@ const (
 	APILogin = "/login"
 	// APIAuditLogs for the audit logs path
 	APIAuditLogs = "/audit-logs"
+	// APIStats for the fleet statistics path
+	APIStats = "/stats"
+	// APIOsquery for the osquery schema path
+	APIOsquery = "/osquery"
 	// APIChecksNoAuth for the unauthenticated checks path
 	APIChecksNoAuth = "/checks-no-auth"
 	// APIChecksAuth for the authenticated checks path

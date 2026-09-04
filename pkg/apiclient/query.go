@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path"
+	"strconv"
 
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -105,6 +107,38 @@ func (api *OsctrlAPI) RunQuery(env, query string, uuids, hosts, platforms, tags 
 		return r, fmt.Errorf("error api request - %w - %s", err, string(rawQ))
 	}
 	if err := json.Unmarshal(rawQ, &r); err != nil {
+		return r, fmt.Errorf("can not parse body - %w", err)
+	}
+	return r, nil
+}
+
+// GetQueryResults to retrieve the results collected so far for a query.
+//
+// Distributed queries are asynchronous: RunQuery returns as soon as the query
+// is scheduled, and rows arrive over the following seconds or minutes as nodes
+// check in. Callers poll this until TotalItems stops growing — there is no
+// "query finished" signal beyond the query's own expiration.
+//
+// page starts at 1; pageSize is clamped server-side to 1000 (default 100).
+// Requires QueryLevel on the environment, not merely UserLevel.
+func (api *OsctrlAPI) GetQueryResults(env, name string, page, pageSize int) (types.QueryResultsResponse, error) {
+	var r types.QueryResultsResponse
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIQueries, env, "results", name))
+	q := url.Values{}
+	if page > 0 {
+		q.Set("page", strconv.Itoa(page))
+	}
+	if pageSize > 0 {
+		q.Set("page_size", strconv.Itoa(pageSize))
+	}
+	if len(q) > 0 {
+		reqURL += "?" + q.Encode()
+	}
+	rawR, err := api.GetGeneric(reqURL, nil)
+	if err != nil {
+		return r, fmt.Errorf("error api request - %w - %s", err, string(rawR))
+	}
+	if err := json.Unmarshal(rawR, &r); err != nil {
 		return r, fmt.Errorf("can not parse body - %w", err)
 	}
 	return r, nil
