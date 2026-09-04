@@ -6,7 +6,7 @@
 # startup when this differs from the version the binary supports: a lower
 # number means fields were added since this file was written, a higher
 # number means the binary is older than this file. See pkg/config/version.go.
-version: 2
+version: 3
 
 # Main HTTP service behavior and shared service-level features.
 service:
@@ -314,10 +314,21 @@ oidc:
 # permission checks apply exactly as they do for the SPA or osctrl-cli. A
 # caller sees only what their own token already allows.
 #
-# The tools are read-only; nothing here schedules a query or mutates state.
 # See docs/mcp.md.
 mcp:
   enabled: false
+  # Also expose the mutating tools: run_query, expire_query, complete_query
+  # and tag_node. Separate from `enabled`, and off by default, because the
+  # risks are not comparable — a read tool spends context, while run_query
+  # spends work on every targeted endpoint, and an agent acting on text it
+  # read from a monitored host only becomes a real path once writes are on.
+  #
+  # The caller's own permissions still apply either way (run_query needs
+  # query-level, tag_node admin-level); this switch decides whether the tools
+  # exist at all. Queries scheduled through MCP are never hidden and always
+  # carry an expiry, so an operator can see and outlast anything an agent
+  # started.
+  allowWrites: false
 
 # JWT authentication configuration. Used for API bearer tokens and SPA cookies.
 jwt:

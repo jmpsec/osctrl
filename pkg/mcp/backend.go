@@ -63,3 +63,19 @@ type Backend interface {
 // signature drifts in pkg/apiclient, this breaks here rather than at the
 // call site in cmd/osctrl-mcp.
 var _ Backend = (*apiclient.OsctrlAPI)(nil)
+
+// WriteBackend is the mutating slice of osctrl, kept separate from Backend so
+// the write tools cannot be registered by accident: NewServer takes a Backend
+// and stays read-only unless a caller also passes WithWrites.
+//
+// As with Backend, nothing here performs authorization. RunQuery needs
+// QueryLevel on the environment (and CarveLevel too if the SQL touches
+// carves); TagNode needs AdminLevel. Those checks belong to osctrl-api.
+type WriteBackend interface {
+	RunQuery(env, query string, uuids, hosts, platforms, tags []string, hidden bool, exp int) (types.ApiQueriesResponse, error)
+	ExpireQuery(env, name string) (types.ApiGenericResponse, error)
+	CompleteQuery(env, name string) (types.ApiGenericResponse, error)
+	TagNode(env, identifier, tag string, tagType uint, custom string) error
+}
+
+var _ WriteBackend = (*apiclient.OsctrlAPI)(nil)

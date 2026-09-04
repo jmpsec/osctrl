@@ -413,4 +413,14 @@ type YAMLConfigurationOIDC struct {
 // caller nothing beyond what their own token already allows.
 type YAMLConfigurationMCP struct {
 	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	// AllowWrites additionally registers the mutating tools: scheduling
+	// queries, expiring and completing them, and tagging nodes.
+	//
+	// Separate from Enabled, and off by default, because the read and write
+	// risks are not comparable. A read tool spends context; run_query spends
+	// work on every targeted endpoint, and an agent acting on text it read
+	// from a monitored host is a confused-deputy path that only exists once
+	// writes are on. osctrl-api still enforces the caller's permissions
+	// either way — this switch decides whether the tools exist at all.
+	AllowWrites bool `yaml:"allowWrites" mapstructure:"allowWrites"`
 }
