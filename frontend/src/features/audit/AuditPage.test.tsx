@@ -63,7 +63,7 @@ vi.mock('$/api/client', () => ({
 const auditSearchSchema = z.object({
   service: z.string().optional(),
   username: z.string().optional(),
-  type: z.number().int().min(1).max(10).optional(),
+  type: z.number().int().min(1).max(11).optional(),
   env_uuid: z.string().optional(),
   since: z.string().optional(),
   until: z.string().optional(),
@@ -174,6 +174,20 @@ describe('AuditPage', () => {
     expect(lastArgs).toBeDefined();
     expect(lastArgs?.service).toBe('admin');
     expect(lastArgs?.type).toBe(1);
+  });
+
+  it('accepts the MCP audit type filter', async () => {
+    mockList.mockResolvedValue(makeResp([]));
+    renderWithProviders(
+      makeTestRouter('/_app/audit?type=11&page=1'),
+    );
+
+    await waitFor(() => {
+      expect(mockList).toHaveBeenCalled();
+    });
+    const calls = mockList.mock.calls;
+    const lastArgs = calls[calls.length - 1]?.[0];
+    expect(lastArgs?.type).toBe(11);
   });
 
   it('Apply filters button writes the username draft into the URL', async () => {

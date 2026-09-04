@@ -12,6 +12,7 @@ const (
 	LogTypeSettingStr = "Setting"
 	LogTypeVisitStr   = "Visit"
 	LogTypeUserStr    = "User"
+	LogTypeMCPStr     = "MCP"
 	LogTypeUnknown    = "Unknown"
 	// Severity strings
 	SeverityInfoStr    = "Info"
@@ -43,6 +44,8 @@ func (m *AuditLogManager) LogTypeToString(logType uint) string {
 		return LogTypeVisitStr
 	case 10:
 		return LogTypeUserStr
+	case 11:
+		return LogTypeMCPStr
 	default:
 		return LogTypeUnknown
 	}

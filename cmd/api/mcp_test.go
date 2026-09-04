@@ -42,11 +42,35 @@ func (a *recordingAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(a.body))
 }
 
+type fakeMCPAuditCall struct {
+	username string
+	tool     string
+	args     string
+	ip       string
+	envID    uint
+	failed   bool
+}
+
+type fakeAuditLog struct {
+	calls []fakeMCPAuditCall
+}
+
+func (a *fakeAuditLog) MCPToolCall(username, tool, args, ip string, envID uint, failed bool) {
+	a.calls = append(a.calls, fakeMCPAuditCall{
+		username: username,
+		tool:     tool,
+		args:     args,
+		ip:       ip,
+		envID:    envID,
+		failed:   failed,
+	})
+}
+
 // newMCPClient mounts mcpHandler over api and returns a connected MCP session.
 // creds are applied to the inbound HTTP request the way a real client would.
 func newMCPClient(t *testing.T, api http.Handler, apply func(*http.Request)) *sdk.ClientSession {
 	t.Helper()
-	srv := httptest.NewServer(mcpHandler(api, "test", false))
+	srv := httptest.NewServer(mcpHandler(api, "test", false, &fakeAuditLog{}))
 	t.Cleanup(srv.Close)
 
 	client := sdk.NewClient(&sdk.Implementation{Name: "test", Version: "test"}, nil)
@@ -193,6 +217,63 @@ func TestPerRequestCredentialIsolation(t *testing.T) {
 	}
 }
 
+func TestAuditToolCallsRecordsToolCallOutcome(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		result     sdk.Result
+		err        error
+		wantFailed bool
+	}{
+		{
+			name:       "success",
+			result:     &sdk.CallToolResult{},
+			wantFailed: false,
+		},
+		{
+			name:       "tool error result",
+			result:     &sdk.CallToolResult{IsError: true},
+			wantFailed: true,
+		},
+		{
+			name:       "protocol error",
+			err:        context.Canceled,
+			wantFailed: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			auditLog := &fakeAuditLog{}
+			handler := auditToolCalls(auditLog, "alice", "192.0.2.10")(func(context.Context, string, sdk.Request) (sdk.Result, error) {
+				return tc.result, tc.err
+			})
+			req := &sdk.ServerRequest[*sdk.CallToolParamsRaw]{
+				Params: &sdk.CallToolParamsRaw{
+					Name:      "get_node",
+					Arguments: json.RawMessage(`{"environment":"prod","identifier":"node-1"}`),
+				},
+			}
+
+			_, _ = handler(context.Background(), "tools/call", req)
+
+			if len(auditLog.calls) != 1 {
+				t.Fatalf("audit calls = %d, want 1", len(auditLog.calls))
+			}
+			call := auditLog.calls[0]
+			if call.username != "alice" || call.ip != "192.0.2.10" {
+				t.Fatalf("audit attribution = %+v, want alice/192.0.2.10", call)
+			}
+			if call.tool != "get_node" {
+				t.Fatalf("tool = %q, want get_node", call.tool)
+			}
+			if call.args != `{"environment":"prod","identifier":"node-1"}` {
+				t.Fatalf("args = %q", call.args)
+			}
+			if call.failed != tc.wantFailed {
+				t.Fatalf("failed = %v, want %v", call.failed, tc.wantFailed)
+			}
+		})
+	}
+}
+
 // The hosted handler must honour the operator's write switch: mounting MCP
 // does not by itself put mutating tools on the wire.
 func TestHostedWriteToolsGated(t *testing.T) {
@@ -207,7 +288,7 @@ func TestHostedWriteToolsGated(t *testing.T) {
 		{"writes on", true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			srv := httptest.NewServer(mcpHandler(api, "test", tc.allowWrites))
+			srv := httptest.NewServer(mcpHandler(api, "test", tc.allowWrites, &fakeAuditLog{}))
 			defer srv.Close()
 
 			client := sdk.NewClient(&sdk.Implementation{Name: "test", Version: "test"}, nil)

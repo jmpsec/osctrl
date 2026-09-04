@@ -61,6 +61,7 @@ export const LOG_TYPE = {
   Setting: 8,
   Visit: 9,
   User: 10,
+  MCP: 11,
 } as const;
 
 export const LOG_TYPE_LABELS: Record<number, string> = {
@@ -74,4 +75,5 @@ export const LOG_TYPE_LABELS: Record<number, string> = {
   8: 'setting',
   9: 'visit',
   10: 'user',
+  11: 'mcp',
 };
