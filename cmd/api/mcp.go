@@ -103,10 +103,15 @@ func (r *responseRecorder) result(req *http.Request) *http.Response {
 // it. It is passed as an http.Handler rather than captured at construction so
 // main.go can build the mux first and hand it over once.
 //
+// allowWrites additionally registers the mutating tools. It only decides
+// whether they exist: the dispatched request still runs the handler chain, so
+// a caller without QueryLevel gets a 403 from run_query exactly as they would
+// from the REST endpoint.
+//
 // The returned handler must still be mounted behind handlerAuthCheck: that
 // rejects unauthenticated callers up front, so a bad token fails once at the
 // MCP boundary instead of once per tool call.
-func mcpHandler(apiHandler http.Handler, version string) http.Handler {
+func mcpHandler(apiHandler http.Handler, version string, allowWrites bool) http.Handler {
 	getServer := func(r *http.Request) *sdk.Server {
 		// One client per request, bound to that request's credentials. The
 		// MCP server is cheap to build and holds no state, so per-request
@@ -123,6 +128,9 @@ func mcpHandler(apiHandler http.Handler, version string) http.Handler {
 			// CreateAPIWithTransport only fails on a malformed constant URL
 			// or a nil transport, neither of which is reachable here.
 			return nil
+		}
+		if allowWrites {
+			return osctrlmcp.NewServer(client, version, osctrlmcp.WithWrites(client))
 		}
 		return osctrlmcp.NewServer(client, version)
 	}

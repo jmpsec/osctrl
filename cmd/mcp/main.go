@@ -45,6 +45,7 @@ var (
 	apiToken    string
 	apiConfFile string
 	insecure    bool
+	allowWrites bool
 	logLevel    string
 )
 
@@ -78,6 +79,12 @@ func main() {
 				Usage:       "Skip TLS verification when talking to osctrl-api (development only)",
 				Sources:     cli.EnvVars("OSCTRL_INSECURE"),
 				Destination: &insecure,
+			},
+			&cli.BoolFlag{
+				Name:        "allow-writes",
+				Usage:       "Expose the mutating tools (run_query, expire_query, complete_query, tag_node). Off by default; the token's own permissions still apply",
+				Sources:     cli.EnvVars("OSCTRL_MCP_ALLOW_WRITES"),
+				Destination: &allowWrites,
 			},
 			&cli.StringFlag{
 				Name:        "log-level",
@@ -116,8 +123,13 @@ func run(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("error reaching osctrl-api at %s - %w", cfg.URL, err)
 	}
 
-	log.Info().Str("api", cfg.URL).Str("version", buildVersion).Msgf("%s starting on stdio", serviceName)
-	srv := osctrlmcp.NewServer(client, buildVersion)
+	log.Info().Str("api", cfg.URL).Str("version", buildVersion).Bool("writes", allowWrites).
+		Msgf("%s starting on stdio", serviceName)
+	opts := []osctrlmcp.Option{}
+	if allowWrites {
+		opts = append(opts, osctrlmcp.WithWrites(client))
+	}
+	srv := osctrlmcp.NewServer(client, buildVersion, opts...)
 	if err := srv.Run(ctx, &sdk.StdioTransport{}); err != nil {
 		return fmt.Errorf("mcp server - %w", err)
 	}

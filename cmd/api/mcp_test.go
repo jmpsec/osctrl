@@ -46,7 +46,7 @@ func (a *recordingAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // creds are applied to the inbound HTTP request the way a real client would.
 func newMCPClient(t *testing.T, api http.Handler, apply func(*http.Request)) *sdk.ClientSession {
 	t.Helper()
-	srv := httptest.NewServer(mcpHandler(api, "test"))
+	srv := httptest.NewServer(mcpHandler(api, "test", false))
 	t.Cleanup(srv.Close)
 
 	client := sdk.NewClient(&sdk.Implementation{Name: "test", Version: "test"}, nil)
@@ -190,5 +190,51 @@ func TestPerRequestCredentialIsolation(t *testing.T) {
 	}
 	if api.gotAuth != "Bearer bob" {
 		t.Fatalf("Authorization = %q, want bob — a cached client leaked alice's identity", api.gotAuth)
+	}
+}
+
+// The hosted handler must honour the operator's write switch: mounting MCP
+// does not by itself put mutating tools on the wire.
+func TestHostedWriteToolsGated(t *testing.T) {
+	api := &recordingAPI{body: `[]`}
+
+	for _, tc := range []struct {
+		name        string
+		allowWrites bool
+		want        bool
+	}{
+		{"writes off", false, false},
+		{"writes on", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(mcpHandler(api, "test", tc.allowWrites))
+			defer srv.Close()
+
+			client := sdk.NewClient(&sdk.Implementation{Name: "test", Version: "test"}, nil)
+			session, err := client.Connect(context.Background(), &sdk.StreamableClientTransport{
+				Endpoint: srv.URL,
+				HTTPClient: &http.Client{Transport: headerInjector{apply: func(r *http.Request) {
+					r.Header.Set("Authorization", "Bearer token")
+				}}},
+			}, nil)
+			if err != nil {
+				t.Fatalf("connect: %v", err)
+			}
+			defer func() { _ = session.Close() }()
+
+			tools, err := session.ListTools(context.Background(), nil)
+			if err != nil {
+				t.Fatalf("ListTools: %v", err)
+			}
+			var found bool
+			for _, tool := range tools.Tools {
+				if tool.Name == "run_query" {
+					found = true
+				}
+			}
+			if found != tc.want {
+				t.Errorf("run_query present = %v, want %v", found, tc.want)
+			}
+		})
 	}
 }

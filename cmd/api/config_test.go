@@ -317,3 +317,47 @@ db:
 		t.Error("MCP enabled without an mcp section")
 	}
 }
+
+func TestMCPAllowWritesRoundTrips(t *testing.T) {
+	const body = `
+service:
+  auth: jwt
+db:
+  type: postgres
+mcp:
+  enabled: true
+  allowWrites: true
+`
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+	if params.MCP == nil || !params.MCP.AllowWrites {
+		t.Fatalf("MCP.AllowWrites did not survive the round trip: %+v", params.MCP)
+	}
+}
+
+func TestMCPWritesOffWhenOnlyEnabled(t *testing.T) {
+	// Enabling MCP must not enable writes. These are separate switches
+	// because the risks are not comparable.
+	const body = `
+service:
+  auth: jwt
+db:
+  type: postgres
+mcp:
+  enabled: true
+`
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+	if params.MCP == nil || !params.MCP.Enabled {
+		t.Fatal("MCP not enabled")
+	}
+	if params.MCP.AllowWrites {
+		t.Error("enabling MCP also enabled writes")
+	}
+}

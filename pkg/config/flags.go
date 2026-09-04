@@ -1148,5 +1148,11 @@ func initMCPFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("MCP_ENABLED"),
 			Destination: &params.MCP.Enabled,
 		},
+		&cli.BoolFlag{
+			Name:        "mcp-allow-writes",
+			Usage:       "Also expose the mutating MCP tools (run_query, expire_query, complete_query, tag_node). Requires --mcp-enabled; the caller's own permissions still apply",
+			Sources:     cli.EnvVars("MCP_ALLOW_WRITES"),
+			Destination: &params.MCP.AllowWrites,
+		},
 	}
 }

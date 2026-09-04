@@ -1255,10 +1255,10 @@ func osctrlAPIService() {
 	// re-runs the full chain — including the per-endpoint permission checks
 	// — as the calling user.
 	if flagParams.MCP != nil && flagParams.MCP.Enabled {
-		log.Info().Msgf("MCP enabled — serving %s", _apiPath(apiMCPPath))
+		log.Info().Bool("writes", flagParams.MCP.AllowWrites).Msgf("MCP enabled — serving %s", _apiPath(apiMCPPath))
 		muxAPI.Handle(
 			_apiPath(apiMCPPath),
-			handlerAuthCheck(mcpHandler(muxAPI, buildVersion), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+			handlerAuthCheck(mcpHandler(muxAPI, buildVersion, flagParams.MCP.AllowWrites), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// Launch listeners for API server. The server runs in a goroutine so
 	// the main goroutine can wait on the restart channel and trigger a
