@@ -18,6 +18,10 @@ CLI_DIR = cmd/cli
 CLI_NAME = osctrl-cli
 CLI_CODE = ${CLI_DIR:=/*.go}
 
+MCP_DIR = cmd/mcp
+MCP_NAME = osctrl-mcp
+MCP_CODE = ${MCP_DIR:=/*.go}
+
 DEST ?= /opt/osctrl
 
 OUTPUT = bin
@@ -29,7 +33,7 @@ SWAG_VERSION ?= v1.16.6
 SWAG = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
 SWAG_OUTPUT_DIR ?= $(API_DIR)/docs
 
-.PHONY: build static clean tls cli api swagger openapi openapi-check release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
+.PHONY: build static clean tls cli api mcp mcp-static swagger openapi openapi-check release release-build release-check release-init clean-dist frontend frontend-install frontend-dev frontend-build frontend-test
 
 # Build code according to caller OS and architecture
 build:
@@ -37,12 +41,14 @@ build:
 	make frontend
 	make api
 	make cli
+	make mcp
 
 # Build everything statically
 static:
 	make tls-static
 	make api-static
 	make cli-static
+	make mcp-static
 
 # Build TLS endpoint
 tls:
@@ -79,6 +85,14 @@ cli:
 # Build the CLI statically
 cli-static:
 	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(CLI_NAME) -a $(CLI_CODE)
+
+# Build the MCP server
+mcp:
+	go build $(BUILD_ARGS) -o $(OUTPUT)/$(MCP_NAME) $(MCP_CODE)
+
+# Build the MCP server statically
+mcp-static:
+	go build $(BUILD_ARGS) $(STATIC_ARGS) -o $(OUTPUT)/$(MCP_NAME) -a $(MCP_CODE)
 
 # ---------------------------------------------------------------------------
 # React admin frontend (Vite + TypeScript SPA, served by nginx)
