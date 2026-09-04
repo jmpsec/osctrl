@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/users"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -155,5 +159,49 @@ func TestProjectNodeHealthUsesPostureRisk(t *testing.T) {
 
 	if view.Health.Status != "at_risk" {
 		t.Fatalf("expected at_risk health, got %+v", view.Health)
+	}
+}
+
+func TestNodePostureHandlersRequireAdminLevel(t *testing.T) {
+	_, h, env, node := setupConsoleHandlers(t)
+	if err := h.Users.CreatePermission(users.UserPermission{
+		Username:      "bob",
+		AccessType:    int(users.UserLevel),
+		AccessValue:   true,
+		Environment:   env.UUID,
+		EnvironmentID: env.ID,
+	}); err != nil {
+		t.Fatalf("create user-level permission: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name    string
+		handler http.HandlerFunc
+		path    string
+	}{
+		{
+			name:    "posture",
+			handler: h.NodePostureHandler,
+			path:    "/api/v1/nodes/env/node/NODE-UUID/posture",
+		},
+		{
+			name:    "posture score",
+			handler: h.NodePostureScoreHandler,
+			path:    "/api/v1/nodes/env/node/NODE-UUID/posture/score",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req.SetPathValue("env", env.Name)
+			req.SetPathValue("uuid", node.UUID)
+			req = req.WithContext(context.WithValue(req.Context(), ContextKey(contextAPI), ContextValue{ctxUser: "bob"}))
+			rr := httptest.NewRecorder()
+
+			tc.handler(rr, req)
+
+			if rr.Code != http.StatusForbidden {
+				t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusForbidden, rr.Body.String())
+			}
+		})
 	}
 }
