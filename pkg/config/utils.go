@@ -56,6 +56,7 @@ func GenerateAPIConfigFile(path string, cfg *ServiceParameters, overwrite bool) 
 		Logger:     cfg.Logger,
 		Carver:     cfg.Carver,
 		Debug:      cfg.Debug,
+		MCP:        cfg.MCP,
 		RateLimits: cfg.RateLimits,
 	}
 	return GenerateGenericConfigFile(path, cfgAPI, overwrite)

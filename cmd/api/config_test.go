@@ -272,3 +272,48 @@ service:
 		t.Fatalf("cfg.Version = %d, want 999", cfg.Version)
 	}
 }
+
+func TestLoadedYAMLCarriesMCPSection(t *testing.T) {
+	// Same failure mode the SAML/OIDC sections hit: a section that
+	// loadedYAMLToServiceParams forgets to copy is silently dropped, and the
+	// endpoint stays off with no error anywhere.
+	const body = `
+service:
+  auth: jwt
+db:
+  type: postgres
+mcp:
+  enabled: true
+`
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+
+	if params.MCP == nil {
+		t.Fatal("MCP params are nil — the mcp section was dropped")
+	}
+	if !params.MCP.Enabled {
+		t.Error("MCP.Enabled = false, want true")
+	}
+}
+
+func TestMCPDefaultsOffWhenSectionAbsent(t *testing.T) {
+	// Omitting the section must leave the endpoint unmounted, so an upgrade
+	// never turns on an agent-facing read surface by itself.
+	const body = `
+service:
+  auth: jwt
+db:
+  type: postgres
+`
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+	if params.MCP != nil && params.MCP.Enabled {
+		t.Error("MCP enabled without an mcp section")
+	}
+}

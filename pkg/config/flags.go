@@ -61,6 +61,8 @@ type ServiceParameters struct {
 	SAML *YAMLConfigurationSAML
 	// OIDC configuration values
 	OIDC *YAMLConfigurationOIDC
+	// MCP configuration values
+	MCP *YAMLConfigurationMCP
 	// JWT configuration values
 	JWT *YAMLConfigurationJWT
 	// TLS configuration values
@@ -156,6 +158,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initJWTFlags(params)...)
 	allFlags = append(allFlags, initOIDCFlags(params)...)
 	allFlags = append(allFlags, initSAMLFlags(params)...)
+	allFlags = append(allFlags, initMCPFlags(params)...)
 	allFlags = append(allFlags, initOsqueryFlags(params)...)
 	allFlags = append(allFlags, initCarverFlags(params)...)
 	allFlags = append(allFlags, initRateLimitFlags(params, ServiceAPI)...)
@@ -1131,6 +1134,19 @@ func initOsctrldFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Enable osctrld endpoints and functionality.",
 			Sources:     cli.EnvVars("OSCTRLD"),
 			Destination: &params.Osctrld.Enabled,
+		},
+	}
+}
+
+// initMCPFlags initializes the flags for the hosted MCP endpoint on
+// osctrl-api. Off by default — see YAMLConfigurationMCP for why.
+func initMCPFlags(params *ServiceParameters) []cli.Flag {
+	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "mcp-enabled",
+			Usage:       "Serve the Model Context Protocol endpoint at /api/v1/mcp, exposing osctrl's read surface to MCP clients under the caller's own permissions",
+			Sources:     cli.EnvVars("MCP_ENABLED"),
+			Destination: &params.MCP.Enabled,
 		},
 	}
 }

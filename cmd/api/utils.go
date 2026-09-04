@@ -48,6 +48,9 @@ func loadedYAMLToServiceParams(yml config.APIConfiguration, loadedFile string) *
 	if yml.Debug != nil {
 		params.Debug = yml.Debug
 	}
+	if yml.MCP != nil {
+		params.MCP = yml.MCP
+	}
 	if yml.RateLimits != nil {
 		params.RateLimits = yml.RateLimits
 	}

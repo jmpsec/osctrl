@@ -107,6 +107,7 @@ type APIConfiguration struct {
 	Logger     *YAMLConfigurationLogger     `mapstructure:"logger"`
 	Carver     *YAMLConfigurationCarver     `mapstructure:"carver"`
 	Debug      *YAMLConfigurationDebug      `mapstructure:"debug"`
+	MCP        *YAMLConfigurationMCP        `mapstructure:"mcp"`
 	RateLimits *YAMLConfigurationRateLimits `mapstructure:"rateLimits"`
 }
 
@@ -400,4 +401,16 @@ type YAMLConfigurationOIDC struct {
 	// on, whoever controls the IdP's username namespace can take over any
 	// same-named local account, including admins.
 	LinkLocalAccounts bool `yaml:"linkLocalAccounts" mapstructure:"linkLocalAccounts"`
+}
+
+// YAMLConfigurationMCP gates the hosted Model Context Protocol endpoint on
+// osctrl-api (/api/v1/mcp).
+//
+// Disabled by default: mounting it opens a read surface designed for LLM
+// agents, and that should be a deliberate choice rather than something a
+// deployment inherits on upgrade. The endpoint sits behind the same auth
+// middleware as the rest of the API, so an enabled endpoint still grants a
+// caller nothing beyond what their own token already allows.
+type YAMLConfigurationMCP struct {
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
 }

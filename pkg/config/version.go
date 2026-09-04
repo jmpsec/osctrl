@@ -8,7 +8,7 @@ import "fmt"
 // operators whose files predate the change. The sample files in
 // deploy/config and the files written by the config-generate
 // subcommands carry the same number in their top-level "version" field.
-const ConfigVersion = 1
+const ConfigVersion = 2
 
 // ConfigVersionWarning returns a warning when the "version" field of a
 // YAML configuration file does not match ConfigVersion, or an empty
