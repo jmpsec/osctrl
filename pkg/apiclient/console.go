@@ -1,4 +1,4 @@
-package main
+package apiclient
 
 import (
 	"bytes"
@@ -18,8 +18,8 @@ import (
 //   GET    /api/v1/console/{env}/sessions/{session_id}/commands/{command_id}
 //   GET    /api/v1/console/{env}/sessions/{session_id}/commands/{command_id}/results
 
-// consoleNodeInfo mirrors the API's node_info projection for a console session.
-type consoleNodeInfo struct {
+// ConsoleNodeInfo mirrors the API's node_info projection for a console session.
+type ConsoleNodeInfo struct {
 	IPAddress       string `json:"ip_address"`
 	OsqueryUser     string `json:"osquery_user"`
 	OsqueryVersion  string `json:"osquery_version"`
@@ -31,7 +31,7 @@ type consoleNodeInfo struct {
 type ConsoleSessionResponse struct {
 	Session  console.Session        `json:"session"`
 	History  []console.HistoryEntry `json:"history"`
-	NodeInfo consoleNodeInfo        `json:"node_info"`
+	NodeInfo ConsoleNodeInfo        `json:"node_info"`
 }
 
 // ConsoleCommandResponse mirrors the submit-command response.

@@ -1,4 +1,4 @@
-package main
+package apiclient
 
 import (
 	"bytes"
@@ -27,8 +27,8 @@ import (
 //   GET    /api/v1/alerts/history[?limit={n}]
 //   POST   /api/v1/alerts/apply
 
-// alertRuleJSON mirrors the API DTO.
-type alertRuleJSON struct {
+// AlertRuleJSON mirrors the API DTO.
+type AlertRuleJSON struct {
 	ID              uint   `json:"id"`
 	Name            string `json:"name"`
 	EnvironmentID   uint   `json:"environment_id"`
@@ -43,8 +43,8 @@ type alertRuleJSON struct {
 	Info            string `json:"info"`
 }
 
-// alertChannelJSON mirrors the API DTO (config decoded).
-type alertChannelJSON struct {
+// AlertChannelJSON mirrors the API DTO (config decoded).
+type AlertChannelJSON struct {
 	ID            uint            `json:"id"`
 	Name          string          `json:"name"`
 	EnvironmentID uint            `json:"environment_id"`
@@ -55,8 +55,8 @@ type alertChannelJSON struct {
 }
 
 // GetAlertRules lists alert rules.
-func (api *OsctrlAPI) GetAlertRules() ([]alertRuleJSON, error) {
-	var rules []alertRuleJSON
+func (api *OsctrlAPI) GetAlertRules() ([]AlertRuleJSON, error) {
+	var rules []AlertRuleJSON
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, "/alerts", "rules"))
 	raw, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
@@ -111,8 +111,8 @@ func (api *OsctrlAPI) DeleteAlertRule(id uint) error {
 }
 
 // GetAlertChannels lists alert channels.
-func (api *OsctrlAPI) GetAlertChannels() ([]alertChannelJSON, error) {
-	var channels []alertChannelJSON
+func (api *OsctrlAPI) GetAlertChannels() ([]AlertChannelJSON, error) {
+	var channels []AlertChannelJSON
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, "/alerts", "channels"))
 	raw, err := api.GetGeneric(reqURL, nil)
 	if err != nil {

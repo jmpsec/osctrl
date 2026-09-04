@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -62,7 +63,7 @@ var (
 	err          error
 	app          *cli.Command
 	dbConfig     *config.YAMLConfigurationDB
-	apiConfig    JSONConfigurationAPI
+	apiConfig    apiclient.JSONConfigurationAPI
 	flags        []cli.Flag
 	commands     []*cli.Command
 	settingsmgr  *settings.Settings
@@ -74,7 +75,7 @@ var (
 	envs         *environments.EnvManager
 	db           *backend.DBManager
 	auditlogsmgr *auditlog.AuditLogManager
-	osctrlAPI    *OsctrlAPI
+	osctrlAPI    *apiclient.OsctrlAPI
 	formats      map[string]bool
 )
 
@@ -2055,13 +2056,16 @@ func checkAPI(ctx context.Context, cmd *cli.Command) error {
 	}
 	if apiFlag {
 		if apiConfigFile != "" {
-			apiConfig, err = loadAPIConfiguration(apiConfigFile)
+			apiConfig, err = apiclient.LoadConfiguration(apiConfigFile)
 			if err != nil {
-				return fmt.Errorf("loadAPIConfiguration - %w", err)
+				return fmt.Errorf("apiclient.LoadConfiguration - %w", err)
 			}
 		}
 		// Initialize API
-		osctrlAPI = CreateAPI(apiConfig, insecureFlag)
+		osctrlAPI, err = apiclient.CreateAPI(apiConfig, insecureFlag)
+		if err != nil {
+			return fmt.Errorf("error creating API client - %w", err)
+		}
 		if err := osctrlAPI.CheckAPI(); err != nil {
 			return fmt.Errorf("error checking API - %w", err)
 		}
@@ -2108,7 +2112,10 @@ func loginAPI(ctx context.Context, cmd *cli.Command) error {
 	}
 	fmt.Println()
 	// Initialize API
-	osctrlAPI = CreateAPI(apiConfig, insecureFlag)
+	osctrlAPI, err = apiclient.CreateAPI(apiConfig, insecureFlag)
+	if err != nil {
+		return fmt.Errorf("error creating API client - %w", err)
+	}
 	apiResponse, err := osctrlAPI.PostLogin(env, username, string(passwordByte), expHours)
 	if err != nil {
 		return fmt.Errorf("error in login %w", err)
@@ -2118,7 +2125,7 @@ func loginAPI(ctx context.Context, cmd *cli.Command) error {
 		fmt.Printf("\n✅ API Login successful: %s\n", apiResponse.Token)
 	}
 	if writeApiFileFlag {
-		if err := writeAPIConfiguration(apiConfigFile, apiConfig); err != nil {
+		if err := apiclient.WriteConfiguration(apiConfigFile, apiConfig); err != nil {
 			return fmt.Errorf("error writing to file %s, %w", apiConfigFile, err)
 		}
 		if !silentFlag {
@@ -2231,14 +2238,17 @@ func cliWrapper(action func(context.Context, *cli.Command) error) func(context.C
 		if apiFlag {
 			if apiConfigFile != "" {
 				log.Debug().Msg("Loading API configuration from file")
-				apiConfig, err = loadAPIConfiguration(apiConfigFile)
+				apiConfig, err = apiclient.LoadConfiguration(apiConfigFile)
 				if err != nil {
-					return fmt.Errorf("loadAPIConfiguration - %w", err)
+					return fmt.Errorf("apiclient.LoadConfiguration - %w", err)
 				}
 			}
 			// Initialize API
 			log.Debug().Msg("Creating API client")
-			osctrlAPI = CreateAPI(apiConfig, insecureFlag)
+			osctrlAPI, err = apiclient.CreateAPI(apiConfig, insecureFlag)
+			if err != nil {
+				return fmt.Errorf("error creating API client - %w", err)
+			}
 			// Execute action
 			return action(ctx, cmd)
 		}

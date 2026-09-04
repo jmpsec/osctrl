@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
@@ -18,14 +19,14 @@ import (
 
 // consoleStore is the API-backed surface for interactive per-node access.
 type consoleStore interface {
-	CreateConsoleSession(env, uuid string) (ConsoleSessionResponse, error)
+	CreateConsoleSession(env, uuid string) (apiclient.ConsoleSessionResponse, error)
 	GetConsoleSession(env string, sessionID uint) (console.Session, error)
 	CloseConsoleSession(env string, sessionID uint) error
-	SubmitConsoleCommand(env string, sessionID uint, input string, osqueryMode bool) (ConsoleCommandResponse, error)
+	SubmitConsoleCommand(env string, sessionID uint, input string, osqueryMode bool) (apiclient.ConsoleCommandResponse, error)
 	GetConsoleCommand(env string, sessionID, commandID uint) (console.Command, error)
 	GetConsoleCommandResults(env string, sessionID, commandID uint) ([]map[string]any, error)
 
-	CreateFileExplorerSession(env, uuid string) (fileExplorerSessionResponse, error)
+	CreateFileExplorerSession(env, uuid string) (apiclient.FileExplorerSessionResponse, error)
 	CloseFileExplorerSession(env string, sessionID uint) error
 	SubmitFileExplorerList(env string, sessionID uint, path string) (fileexplorer.Request, error)
 	SubmitFileExplorerStat(env string, sessionID uint, path string) (fileexplorer.Request, error)
@@ -76,7 +77,7 @@ func storeSaved(s DataStore) (savedStore, error) {
 
 // ─────────────────────────────── apiStore implementations ───────────────────────────────
 
-func (s *apiStore) CreateConsoleSession(env, uuid string) (ConsoleSessionResponse, error) {
+func (s *apiStore) CreateConsoleSession(env, uuid string) (apiclient.ConsoleSessionResponse, error) {
 	return s.api.CreateConsoleSession(env, uuid)
 }
 
@@ -88,7 +89,7 @@ func (s *apiStore) CloseConsoleSession(env string, sessionID uint) error {
 	return s.api.CloseConsoleSession(env, sessionID)
 }
 
-func (s *apiStore) SubmitConsoleCommand(env string, sessionID uint, input string, osqueryMode bool) (ConsoleCommandResponse, error) {
+func (s *apiStore) SubmitConsoleCommand(env string, sessionID uint, input string, osqueryMode bool) (apiclient.ConsoleCommandResponse, error) {
 	return s.api.SubmitConsoleCommand(env, sessionID, input, osqueryMode)
 }
 
@@ -100,7 +101,7 @@ func (s *apiStore) GetConsoleCommandResults(env string, sessionID, commandID uin
 	return s.api.GetConsoleCommandResults(env, sessionID, commandID)
 }
 
-func (s *apiStore) CreateFileExplorerSession(env, uuid string) (fileExplorerSessionResponse, error) {
+func (s *apiStore) CreateFileExplorerSession(env, uuid string) (apiclient.FileExplorerSessionResponse, error) {
 	return s.api.CreateFileExplorerSession(env, uuid)
 }
 

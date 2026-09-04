@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"path"
 	"strconv"
 	"strings"
@@ -28,7 +29,7 @@ const APIStatsPath = "/stats"
 // tui_store.go — single data-access façade for the interactive TUI.
 //
 // The TUI never branches on dbFlag/apiFlag itself; it talks to a DataStore
-// implementation. apiStore wraps the existing OsctrlAPI client; dbStore wraps
+// implementation. apiStore wraps the existing apiclient.OsctrlAPI client; dbStore wraps
 // the pkg/* managers. DTOs (xxxRow) decouple the views from the underlying
 // model JSON shapes so a view does not care whether data came from REST or GORM.
 
@@ -449,16 +450,16 @@ func auditToRow(a auditlog.AuditLog) auditRow {
 // ─────────────────────────────── apiStore ───────────────────────────────
 
 type apiStore struct {
-	api *OsctrlAPI
+	api *apiclient.OsctrlAPI
 }
 
-func newAPIStore(api *OsctrlAPI) DataStore { return &apiStore{api: api} }
+func newAPIStore(api *apiclient.OsctrlAPI) DataStore { return &apiStore{api: api} }
 
 func (s *apiStore) Mode() string { return "api" }
 
 func (s *apiStore) Stats() (tuiStats, error) {
 	var st tuiStats
-	reqURL := fmt.Sprintf("%s%s", s.api.Configuration.URL, path.Join(APIPath, APIStatsPath))
+	reqURL := fmt.Sprintf("%s%s", s.api.Configuration.URL, path.Join(apiclient.APIPath, APIStatsPath))
 	raw, err := s.api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return st, fmt.Errorf("stats: %w - %s", err, string(raw))
@@ -526,7 +527,7 @@ func (s *apiStore) Queries(env, target string) ([]queryRow, error) {
 }
 
 func (s *apiStore) QueryResults(env, name string) (string, error) {
-	reqURL := fmt.Sprintf("%s%s", s.api.Configuration.URL, path.Join(APIPath, APIQueries, env, "results", name))
+	reqURL := fmt.Sprintf("%s%s", s.api.Configuration.URL, path.Join(apiclient.APIPath, apiclient.APIQueries, env, "results", name))
 	raw, err := s.api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("results: %w - %s", err, string(raw))
