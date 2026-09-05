@@ -67,6 +67,25 @@ builds:
       - -X main.buildCommit={{.Commit}}
       - -X main.buildDate={{.Date}}
 
+  - id: osctrl-mcp
+    main: ./cmd/mcp
+    binary: "osctrl-mcp-{{ .Os }}-{{ .Arch }}"
+    no_unique_dist_dir: true
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.buildVersion={{.Version}}
+      - -X main.buildCommit={{.Commit}}
+      - -X main.buildDate={{.Date}}
+
 archives:
   - id: osctrl
     allow_different_binary_count: true
@@ -86,6 +105,18 @@ archives:
     files:
       - README.md
       - LICENSE
+
+  - id: osctrl-mcp
+    ids:
+      - osctrl-mcp
+    formats:
+      - binary
+    name_template: >-
+      osctrl-mcp-
+      {{- .Version }}-
+      {{- title .Os }}-
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
 
 checksum:
   name_template: "checksums.txt"
