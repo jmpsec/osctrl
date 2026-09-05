@@ -9,6 +9,7 @@ before:
   hooks:
     - go mod tidy
     - go mod download
+    - sh deploy/cicd/package/generate-systemd-services.sh
 
 builds:
   - id: osctrl-tls
@@ -208,15 +209,33 @@ nfpms:
     license: MIT
     formats:
       - deb
+      - rpm
     bindir: /opt/osctrl/bin
     contents:
       - src: ./dist/osctrl-tls-{{ .Os }}-{{ .Arch }}
         dst: /opt/osctrl/bin/osctrl-tls
-    overrides:
-      deb:
-        scripts:
-          postinstall: deploy/cicd/deb/post-install.sh
-          preremove: deploy/cicd/deb/pre-remove.sh
+      - src: deploy/config/tls.yml
+        dst: /opt/osctrl/config/tls.yml.example
+        file_info:
+          mode: 0640
+          owner: root
+          group: osctrl
+      - src: deploy/config/tls.yml
+        dst: /opt/osctrl/config/tls.yml
+        type: "config|noreplace"
+        file_info:
+          mode: 0640
+          owner: root
+          group: osctrl
+      - src: ./dist/package/osctrl-tls.service
+        dst: /usr/lib/systemd/system/osctrl-tls.service
+        file_info:
+          mode: 0644
+    scripts:
+      preinstall: deploy/cicd/package/pre-install.sh
+      postinstall: deploy/cicd/package/post-install.sh
+      preremove: deploy/cicd/package/pre-remove-tls.sh
+      postremove: deploy/cicd/package/post-remove.sh
 
   - id: osctrl-api
     ids:
@@ -228,15 +247,33 @@ nfpms:
     license: MIT
     formats:
       - deb
+      - rpm
     bindir: /opt/osctrl/bin
     contents:
       - src: ./dist/osctrl-api-{{ .Os }}-{{ .Arch }}
         dst: /opt/osctrl/bin/osctrl-api
-    overrides:
-      deb:
-        scripts:
-          postinstall: deploy/cicd/deb/post-install.sh
-          preremove: deploy/cicd/deb/pre-remove.sh
+      - src: deploy/config/api.yml
+        dst: /opt/osctrl/config/api.yml.example
+        file_info:
+          mode: 0640
+          owner: root
+          group: osctrl
+      - src: deploy/config/api.yml
+        dst: /opt/osctrl/config/api.yml
+        type: "config|noreplace"
+        file_info:
+          mode: 0640
+          owner: root
+          group: osctrl
+      - src: ./dist/package/osctrl-api.service
+        dst: /usr/lib/systemd/system/osctrl-api.service
+        file_info:
+          mode: 0644
+    scripts:
+      preinstall: deploy/cicd/package/pre-install.sh
+      postinstall: deploy/cicd/package/post-install.sh
+      preremove: deploy/cicd/package/pre-remove-api.sh
+      postremove: deploy/cicd/package/post-remove.sh
 
   - id: osctrl-cli
     ids:
@@ -248,15 +285,11 @@ nfpms:
     license: MIT
     formats:
       - deb
+      - rpm
     bindir: /opt/osctrl/bin
     contents:
       - src: ./dist/osctrl-cli-{{ .Os }}-{{ .Arch }}
         dst: /opt/osctrl/bin/osctrl-cli
-    overrides:
-      deb:
-        scripts:
-          postinstall: deploy/cicd/deb/post-install.sh
-          preremove: deploy/cicd/deb/pre-remove.sh
 
 release:
   draft: false
