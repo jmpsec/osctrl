@@ -227,7 +227,7 @@ nfpms:
           mode: 0640
           owner: root
           group: osctrl
-      - src: ./dist/package/osctrl-tls.service
+      - src: ./tmp/goreleaser-package/osctrl-tls.service
         dst: /usr/lib/systemd/system/osctrl-tls.service
         file_info:
           mode: 0644
@@ -265,7 +265,7 @@ nfpms:
           mode: 0640
           owner: root
           group: osctrl
-      - src: ./dist/package/osctrl-api.service
+      - src: ./tmp/goreleaser-package/osctrl-api.service
         dst: /usr/lib/systemd/system/osctrl-api.service
         file_info:
           mode: 0644

@@ -3,7 +3,7 @@
 set -eu
 
 template=deploy/config/systemd.service
-output_dir=dist/package
+output_dir=tmp/goreleaser-package
 
 mkdir -p "${output_dir}"
 
