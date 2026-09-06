@@ -8,6 +8,7 @@ for each tested provider.
 ## Table of contents
 
 - [Configuration modes](#configuration-modes)
+- [Database-backed provider editor](#database-backed-provider-editor)
 - [Environment variables reference](#environment-variables-reference)
 - [Username rules](#username-rules)
 - [Linking existing local accounts](#linking-existing-local-accounts)
@@ -30,15 +31,17 @@ for each tested provider.
 
 ## Configuration modes
 
-osctrl-api takes its settings from **either** flags/environment variables
-**or** a YAML file — not both. When `--config` is passed (which is what
-the systemd unit written by `deploy/provision.sh` does), the YAML file is
-the only source: environment variables are not merged in and are ignored.
+osctrl-api resolves startup settings from **either** flags/environment
+variables **or** a YAML file — not both. When `--config` is passed, the YAML
+file is the only service-configuration source; environment variables are not
+merged into it.
 
 So pick the one that matches how you run the service:
 
 - **Provisioned / systemd deployments** — edit the `saml:` and `oidc:`
-  sections of `config/osctrl-api.yml`. Run
+  sections of the deployed API YAML file. Native packages install it at
+  `/opt/osctrl/config/api.yml`; source provisioning commonly uses
+  `config/osctrl-api.yml`. Run
   `osctrl-api config-generate` to emit a fresh file with both sections
   present, or copy them from
   [`deploy/config/api.yml`](../deploy/config/api.yml).
@@ -49,6 +52,35 @@ The YAML keys are the camelCase equivalents of the flags
 (`OIDC_ISSUER_URL` → `oidc.issuerUrl`, `SAML_ACS_URL` → `saml.acsUrl`,
 and so on). A complete annotated example of both sections lives in
 `deploy/config/api.yml`.
+
+At startup, enabled YAML or flag-based OIDC and SAML definitions are also
+seeded into the `auth_providers` table with create-if-missing semantics.
+The API builds its provider registry from those rows, but the public login
+routes described in this guide remain gated by the resolved `oidc.enabled`
+and `saml.enabled` service settings.
+
+---
+
+## Database-backed provider editor
+
+The SPA exposes an administrator-only provider editor when
+`service.authProvidersEnabled` / `AUTH_PROVIDERS_ENABLED` is true (the
+default). It can create, validate, redact, reveal, update, revert, and delete
+OIDC or SAML rows independently of the general service-configuration UI.
+
+The current runtime integration is incomplete:
+
+- Provider discovery advertises database rows with ID-scoped login URLs, but
+  `osctrl-api` does not currently register those ID-scoped public login,
+  callback, ACS, or metadata routes.
+- `POST /api/v1/auth-providers/apply` queues
+  `reload-auth-providers` for `osctrl-tls`; TLS does not consume that
+  action, and the API has no service-command consumer.
+
+Consequently, use the YAML/flag configuration documented below for working
+federated login. Database edits persist, but an API restart alone does not make
+new ID-scoped providers usable until the public route wiring is completed.
+This limitation is also recorded in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ---
 
@@ -61,7 +93,7 @@ and so on). A complete annotated example of both sections lives in
 | `OIDC_ENABLED` | yes | Set `true` to enable the OIDC login surface |
 | `OIDC_ISSUER_URL` | yes | Issuer URL (realm root); `/.well-known/openid-configuration` is appended automatically |
 | `OIDC_CLIENT_ID` | yes | Client ID registered with the IdP |
-| `OIDC_CLIENT_SECRET` | yes | Client secret |
+| `OIDC_CLIENT_SECRET` | unless PKCE | Client secret; may be empty only when `OIDC_USE_PKCE=true` |
 | `OIDC_REDIRECT_URL` | yes | Must match the IdP's allowed callback and end with `/api/v1/auth/oidc/callback` |
 | `OIDC_SCOPES` | no | Comma-separated list (default: `openid,profile,email`) |
 | `OIDC_USERNAME_CLAIM` | no | id_token claim to use as the osctrl username (default: `preferred_username`; see [Username rules](#username-rules)) |
@@ -126,19 +158,6 @@ an account belonging to whoever owns it.
 than renaming existing ones — the username is the identity. Moving from
 `nickname` to `email` means `alice` and `alice@example.com` are two different
 users with separate permissions. Migrate deliberately.
-
----------------------|---------------|---------|
-| `preferred_username` | `alice` | yes |
-| `nickname` | `alice` | yes |
-| `email` | `alice@example.com` | **no** — contains `@` and `.` |
-| `sub` (Auth0) | `auth0\|6a0a...` | **no** — contains `\|` |
-| `sub` (Keycloak) | `a1b2c3d4-...` | **no** — contains `-` longer than 64 chars (UUID is 36) |
-| NameID (email format) | `alice@example.com` | **no** |
-
-**Recommendation:** always set `OIDC_USERNAME_CLAIM=nickname` (or
-`preferred_username` if your IdP populates it) and
-`SAML_USERNAME_ATTRIBUTE` to an attribute that carries a short
-alphanumeric identifier.
 
 ---
 
@@ -386,10 +405,10 @@ OIDC_USE_PKCE=true
 
 ### Okta (OIDC)
 
-**Username claim:** Okta populates `preferred_username` with the user's
-login (email format by default). If the login is an email address, set
-`OIDC_USERNAME_CLAIM` to a claim that carries a short identifier, or
-configure Okta to use a non-email login format.
+**Username claim:** Okta commonly populates `preferred_username` with the
+user's email address. Valid email usernames are supported and stored
+lowercased. Use a short identifier claim only when that better matches your
+existing osctrl account names.
 
 **Logout requirement:** Okta REQUIRES `id_token_hint` when chaining a
 `post_logout_redirect_uri`. osctrl handles this automatically — the
@@ -398,10 +417,10 @@ SPA includes it in the IdP logout URL.
 
 ### Entra ID (OIDC)
 
-**Username claim:** Entra ID uses `upn` (User Principal Name) which is
-typically an email address and fails username validation. Set
-`OIDC_USERNAME_CLAIM` to a custom claim or to `preferred_username` if
-you have configured it in your token configuration.
+**Username claim:** Entra ID commonly uses an email-shaped
+`preferred_username` or `upn`. Valid email usernames are
+supported and stored lowercased. Select a custom claim only when you need to
+match pre-existing short account names.
 
 **Groups claim:** Entra ID can emit groups as object IDs or display
 names. Configure: Enterprise Applications > your app > Token Configuration >
@@ -587,9 +606,9 @@ to create the osctrl user account.
 Check the osctrl-api logs for one of:
 - `oidc: id_token verification failed` — the id_token signing algorithm
   is likely HS256; switch to RS256 in the IdP.
-- `oidc: username failed character validation` — the configured
-  username claim contains characters outside `[a-zA-Z0-9_-]`. Set
-  `OIDC_USERNAME_CLAIM` to a claim with a clean value (e.g. `nickname`).
+- `oidc: username failed character validation` — the configured claim is
+  neither a valid short handle nor a valid email address. Select a supported
+  claim such as `preferred_username`, verified `email`, or `nickname`.
 - `oidc: state mismatch` — the state cookie expired (10-minute TTL) or
   the callback URL doesn't match `OIDC_REDIRECT_URL`.
 
@@ -600,9 +619,9 @@ Check the osctrl-api logs for one of:
   audience, or time window check failed. Verify that the IdP metadata
   URL is correct and that the `SAML_ENTITY_ID` matches the IdP's
   expected audience.
-- `saml: username failed character validation` — the username attribute
-  value contains invalid characters. Make sure `SAML_USERNAME_ATTRIBUTE`
-  points to an attribute with a clean short identifier (see
+- `saml: username failed character validation` — the username attribute is
+  neither a valid short handle nor a valid email address. Make sure
+  `SAML_USERNAME_ATTRIBUTE` points to an appropriate identity value (see
   [Username rules](#username-rules)).
 - `saml: state cookie missing or invalid` — the state cookie expired or
   the ACS URL doesn't match `SAML_ACS_URL`.
@@ -625,8 +644,8 @@ grant elevated permissions.
 
 ### Groups gate blocks login
 
-If `OIDC_REQUIRED_GROUPS` or the SAML equivalent is set, the user must
-belong to at least one of the listed groups. Verify:
+If `OIDC_REQUIRED_GROUPS` is set, the user must belong to at least one of
+the listed groups. Verify:
 - The IdP includes the groups claim/attribute in the token/assertion.
 - The group name matches exactly (case-sensitive).
 - For Auth0: a post-login Action is required to inject the `groups`
