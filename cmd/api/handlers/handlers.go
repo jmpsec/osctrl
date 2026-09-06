@@ -1,16 +1,20 @@
 package handlers
 
 import (
+	"time"
+
 	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/authproviders"
 	"github.com/jmpsec/osctrl/pkg/backend"
+	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
+	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/mfa"
@@ -59,6 +63,18 @@ type HandlersApi struct {
 	// tables when --alerts-enabled is set. nil otherwise — the alert
 	// routes are not registered in that case.
 	Alerts *alerts.Manager
+	// Health, when wired via WithHealth, serves /api/v1/health/status. nil
+	// means --health-enabled is off: the routes are not registered and the
+	// service_status table was never created.
+	Health *health.Manager
+	// HealthVersions caches the upstream version check so the request path
+	// never makes an external HTTP call.
+	HealthVersions *health.VersionCache
+	// StartedAt is this process's boot time, for uptime reporting.
+	StartedAt time.Time
+	// Redis, when wired via WithRedis, lets the health endpoint PING the
+	// cache. nil is reported as "redis is not configured" rather than down.
+	Redis *cache.RedisManager
 	// AuthProviders holds the live multi-provider registry (OIDC + SAML).
 	AuthProviders        *AuthProviderRegistry
 	AuthProviderMgr      *authproviders.AuthProviderManager
@@ -218,6 +234,37 @@ func WithLogSinks(mgr *logsinks.LogSinksManager) HandlersOption {
 func WithAlerts(mgr *alerts.Manager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Alerts = mgr
+	}
+}
+
+// WithHealth wires the health manager. Only meaningful when
+// --health-enabled is also set; the routes are gated on that flag in
+// cmd/api/main.go.
+func WithHealth(mgr *health.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Health = mgr
+	}
+}
+
+// WithHealthVersions wires the cached upstream version check.
+func WithHealthVersions(c *health.VersionCache) HandlersOption {
+	return func(h *HandlersApi) {
+		h.HealthVersions = c
+	}
+}
+
+// WithStartedAt records this process's boot time for uptime reporting.
+func WithStartedAt(t time.Time) HandlersOption {
+	return func(h *HandlersApi) {
+		h.StartedAt = t
+	}
+}
+
+// WithRedis wires the Redis manager so the health endpoint can PING the
+// cache.
+func WithRedis(rm *cache.RedisManager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Redis = rm
 	}
 }
 
