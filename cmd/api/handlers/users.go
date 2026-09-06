@@ -318,6 +318,13 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 		returnData = "user removed successfully"
+	default:
+		// Reject unknown actions explicitly. Without this case an
+		// unrecognized action (e.g. "update") matches nothing, skips all
+		// branches, and still returns 200 with an empty payload — a silent
+		// no-op that looks like success while creating/editing nothing.
+		apiErrorResponse(w, "invalid action", http.StatusBadRequest, fmt.Errorf("unknown user action %q", actionVar))
+		return
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned [%s]", returnData)
