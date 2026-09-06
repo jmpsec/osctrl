@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/health"
@@ -11,8 +12,11 @@ import (
 
 func TestBuildHealthPayloadWithoutAlerts(t *testing.T) {
 	var payload health.WorkerPayload
-	require.NoError(t, json.Unmarshal([]byte(buildHealthPayload(nil)), &payload))
+	require.NoError(t, json.Unmarshal([]byte(buildHealthPayload(nil, time.Now().Add(-time.Hour))), &payload))
 	require.Nil(t, payload.Alerts, "a disabled subsystem must be omitted, not reported as zeroes")
+	require.NotNil(t, payload.Runtime, "runtime state rides every heartbeat, alerts or not")
+	require.Greater(t, payload.Runtime.HeapAlloc, uint64(0))
+	require.InDelta(t, 3600, payload.Runtime.UptimeSeconds, 5)
 }
 
 func TestBuildHealthPayloadWithAlerts(t *testing.T) {
@@ -20,7 +24,7 @@ func TestBuildHealthPayloadWithAlerts(t *testing.T) {
 	defer w.Close()
 
 	var payload health.WorkerPayload
-	require.NoError(t, json.Unmarshal([]byte(buildHealthPayload(w)), &payload))
+	require.NoError(t, json.Unmarshal([]byte(buildHealthPayload(w, time.Now().Add(-time.Hour))), &payload))
 	require.NotNil(t, payload.Alerts)
 	require.True(t, payload.Alerts.Enabled)
 	require.Equal(t, 32, payload.Alerts.QueueCapacity)

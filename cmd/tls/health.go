@@ -20,11 +20,16 @@ const heartbeatEveryNTicks = int(health.HeartbeatInterval / serviceCommandPollIn
 // out of the loop so the cadence is testable without waiting a minute.
 func shouldHeartbeat(tick int) bool { return tick%heartbeatEveryNTicks == 0 }
 
-// buildHealthPayload renders the worker counters carried by the heartbeat.
+// buildHealthPayload renders the worker counters and runtime state carried
+// by the heartbeat.
 // Every value read here is a plain atomic or a channel length — nothing that
 // stops the world.
-func buildHealthPayload(w *alerts.Worker) string {
-	var payload health.WorkerPayload
+func buildHealthPayload(w *alerts.Worker, processStartedAt time.Time) string {
+	// Sampled through runtime/metrics, never ReadMemStats: this runs on the
+	// 60s heartbeat inside the log-ingest service, where a stop-the-world
+	// pause is exactly what the design refuses to pay.
+	runtimeStats := health.SampleRuntimeMetrics(processStartedAt)
+	payload := health.WorkerPayload{Runtime: &runtimeStats}
 	if w != nil {
 		snap := w.MetricsSnapshot()
 		payload.Alerts = &health.AlertsWorkerStats{
@@ -58,7 +63,7 @@ func reportHealth(mgr *health.Manager, w *alerts.Worker, startedAt time.Time, bu
 		StartedAt:  startedAt,
 		ReportedAt: time.Now(),
 		Goroutines: runtimeNumGoroutine(),
-		Payload:    buildHealthPayload(w),
+		Payload:    buildHealthPayload(w, startedAt),
 	}); err != nil {
 		log.Err(err).Msg("error writing health heartbeat")
 	}

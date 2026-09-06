@@ -25,12 +25,16 @@ type Component struct {
 	Details map[string]any `json:"details,omitempty"`
 }
 
-// WorkerPayload is the JSON osctrl-tls writes in ServiceStatus.Payload. Every
-// field comes from a counter that is free to read; nothing here stops the
-// world. Subsystems that are disabled are omitted, so the page shows what the
-// deployment actually runs.
+// WorkerPayload is the JSON osctrl-tls writes in ServiceStatus.Payload.
+// Everything in it is free to read — atomics, channel lengths, and
+// runtime/metrics counters; nothing here stops the world. Subsystems that are
+// disabled are omitted, so the page shows what the deployment actually runs.
 type WorkerPayload struct {
 	Alerts *AlertsWorkerStats `json:"alerts,omitempty"`
+	// Runtime is the reporting service's Go runtime state, sampled through
+	// runtime/metrics rather than ReadMemStats — see SampleRuntimeMetrics for
+	// why, and for the two fields that sampler cannot fill.
+	Runtime *RuntimeStats `json:"runtime,omitempty"`
 }
 
 // AlertsWorkerStats mirrors alerts.WorkerSnapshot.
@@ -43,6 +47,18 @@ type AlertsWorkerStats struct {
 	Collapsed     uint64 `json:"collapsed"`
 	Dropped       uint64 `json:"dropped"`
 	Failed        uint64 `json:"failed"`
+}
+
+// decodePayload reads the heartbeat's JSON payload. A payload that will not
+// decode is reported as such by the caller rather than silently rendering as
+// "nothing enabled".
+func decodePayload(row ServiceStatus) (WorkerPayload, error) {
+	var payload WorkerPayload
+	if row.Payload == "" {
+		return payload, nil
+	}
+	err := json.Unmarshal([]byte(row.Payload), &payload)
+	return payload, err
 }
 
 // DatabaseComponent reports the backend database. degraded comes from the
@@ -105,6 +121,14 @@ func ServiceComponent(row ServiceStatus, err error, now time.Time, apiVersion st
 		"goroutines":       row.Goroutines,
 		"version_mismatch": mismatch,
 	}
+	// The SPA renders a runtime card for any component carrying "runtime", so
+	// forwarding the sampled block is all it takes for osctrl-tls to appear
+	// beside osctrl-api under System status. Unlike the API's, these numbers
+	// are up to one heartbeat interval old — "reported_at" above is what says
+	// how old.
+	if payload, err := decodePayload(row); err == nil && payload.Runtime != nil {
+		c.Details["runtime"] = payload.Runtime
+	}
 
 	switch {
 	case age > StaleAfter:
@@ -140,13 +164,11 @@ func WorkersComponent(row ServiceStatus, err error, now time.Time) Component {
 		return c
 	}
 
-	var payload WorkerPayload
-	if row.Payload != "" {
-		if decodeErr := json.Unmarshal([]byte(row.Payload), &payload); decodeErr != nil {
-			c.Status = StatusUnknown
-			c.Summary = "worker payload could not be decoded"
-			return c
-		}
+	payload, decodeErr := decodePayload(row)
+	if decodeErr != nil {
+		c.Status = StatusUnknown
+		c.Summary = "worker payload could not be decoded"
+		return c
 	}
 	if payload.Alerts == nil || !payload.Alerts.Enabled {
 		c.Status = StatusOperational

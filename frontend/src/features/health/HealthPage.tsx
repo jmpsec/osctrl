@@ -96,14 +96,28 @@ function ComponentRow({ component }: { component: HealthComponent }) {
   );
 }
 
-/** The Go runtime card, one per service that reports runtime detail. */
+/**
+ * The Go runtime card, one per service that reports runtime detail.
+ *
+ * osctrl-api's numbers are read while serving this request; osctrl-tls's ride
+ * its heartbeat and are up to a minute old. The card says which, so nobody
+ * debugs a memory spike against stale numbers.
+ */
 function RuntimeCard({ component }: { component: HealthComponent }) {
   const runtime = component.details?.runtime as Record<string, unknown> | undefined;
   if (!runtime) return null;
+  const reportedAt = component.details?.reported_at;
+  const asOf =
+    typeof reportedAt === 'string' && !Number.isNaN(Date.parse(reportedAt))
+      ? `as of ${new Date(reportedAt).toLocaleTimeString()}`
+      : 'live';
   return (
     <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]">
-      <div className="px-4 py-2 border-b border-[color:var(--border)] text-xs font-semibold uppercase tracking-wide text-[color:var(--text-2)]">
+      <div className="flex items-baseline gap-2 px-4 py-2 border-b border-[color:var(--border)] text-xs font-semibold uppercase tracking-wide text-[color:var(--text-2)]">
         {component.name}
+        <span className="ml-auto font-normal normal-case tracking-normal text-[color:var(--text-3)]">
+          {asOf}
+        </span>
       </div>
       <DetailRows details={runtime} />
     </div>

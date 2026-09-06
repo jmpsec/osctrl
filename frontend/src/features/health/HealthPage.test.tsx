@@ -73,6 +73,27 @@ describe('HealthPage', () => {
     expect(mockGetHealth).toHaveBeenCalledTimes(1);
   });
 
+  it('labels each runtime card live or as-of, so stale numbers are obvious', async () => {
+    const reported = '2026-09-06T10:00:00.000Z';
+    mockGetHealth.mockResolvedValue(makeStatus({
+      components: [
+        {
+          id: 'api', name: 'osctrl-api', status: 'operational', summary: 'up 1h0m0s, 56 goroutines',
+          details: { version: '0.5.8', goroutines: 56, runtime: { heap_alloc: 70254592, num_gc: 26440 } },
+        },
+        {
+          id: 'tls', name: 'osctrl-tls', status: 'operational', summary: 'up 2h0m0s, 71 goroutines',
+          details: { version: '0.5.8', reported_at: reported, goroutines: 71, runtime: { heap_alloc: 12345678, num_gc: 99 } },
+        },
+      ],
+    }));
+    renderPage();
+    // The API reads its own runtime while serving the request.
+    expect(await screen.findByText('live')).toBeInTheDocument();
+    // The TLS card came from a heartbeat, so it is timestamped.
+    expect(screen.getByText(new RegExp(`as of ${new Date(reported).toLocaleTimeString()}`))).toBeInTheDocument();
+  });
+
   it('shows upgrade status and hides the skew row when versions agree', async () => {
     renderPage();
     expect(await screen.findByText('0.5.9')).toBeInTheDocument();
