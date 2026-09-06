@@ -2,67 +2,50 @@
 
 ## Reporting a Vulnerability
 
-The `osctrl` project takes security vulnerabilities seriously.
+Do not report suspected vulnerabilities in a public GitHub issue, discussion, or pull request.
 
-If you believe you have found a security issue in `osctrl`, **please do not open a public GitHub issue**.
+Email reports to <osctrl-security@jmpsec.com> and include:
 
-Instead, report it responsibly by emailing:
+- Affected version, component, and deployment model
+- A clear description of the issue and its impact
+- Reproduction steps or a proof of concept
+- Required privileges or preconditions
+- Suggested mitigations, if known
 
-📧 <osctrl-security@jmpsec.com>
-
-Please include:
-
-- A clear description of the vulnerability
-- Steps to reproduce (proof of concept if possible)
-- Affected versions or components
-- Potential impact (e.g., RCE, privilege escalation, data exposure)
-- Any suggested mitigation or fix (if available)
-
-We will acknowledge receipt of your report as soon as possible and work with you to assess and remediate the issue.
-
----
+Avoid including live credentials, production data, private keys, or unnecessary personal data. We will acknowledge the report, investigate it, coordinate remediation, and disclose the issue after a fix is available or on an agreed schedule.
 
 ## Supported Versions
 
-Security fixes are provided for the **latest released version** of `osctrl`.
+Security fixes are provided for the latest released version of `osctrl`. Operators should upgrade promptly and review release notes for security and compatibility changes.
 
-Users are strongly encouraged to keep their deployments up to date and follow release notes closely, especially for **breaking changes** and security-related updates.
+## Security Boundaries
 
----
+`osctrl` manages endpoint telemetry, remote query execution, file collection, and operator credentials. Deployments should:
 
-## Disclosure Policy
+- Expose `osctrl-tls` and the operator frontend only through correctly configured TLS
+- Protect API bearer tokens, JWT signing secrets, enrollment secrets, database credentials, and SAML signing keys
+- Keep `osctrl-api` authentication enabled in production
+- Restrict administrative and environment permissions to the minimum necessary
+- Review audit logs and external log-sink destinations
+- Configure retention and backup policies for SQL and Redis data
+- Apply operating-system, database, Redis, osquery, and container updates promptly
 
-We follow a **responsible disclosure** process:
+The `auth=none` API mode requires `OSCTRL_INSECURE_NO_AUTH=1` and is intended only for isolated local development. Hosted MCP is disabled by default, and MCP write tools require a separate explicit opt-in. Neither control should be weakened for production convenience.
 
-- Reporters will receive confirmation of the vulnerability report.
-- We will investigate and validate the issue.
-- We will work on a fix and coordinate a release.
-- Public disclosure will occur **after a fix is available**, or in coordination with the reporter when appropriate.
+Native packages install sample configuration and systemd units but do not start services automatically. Configure deployment-specific secrets before enabling the units.
 
-We appreciate responsible disclosure and will credit reporters when possible (unless anonymity is requested).
+## Disclosure Process
 
----
+We aim to:
 
-## Security Considerations
+1. Confirm receipt of the report.
+2. Reproduce and assess severity and affected versions.
+3. Develop and validate a fix.
+4. Coordinate release and disclosure with the reporter.
+5. Credit the reporter when requested and appropriate.
 
-`osctrl` is a security-sensitive system that manages endpoint telemetry and remote query execution. Operators should take care to:
+Timelines depend on severity, reproducibility, and release complexity. Please allow reasonable time for investigation before public disclosure.
 
-- Secure API endpoints and credentials
-- Use TLS and strong authentication mechanisms
-- Restrict access to administrative interfaces
-- Monitor logs and audit trails
-- Apply upgrades promptly, especially for security-related releases
+## Third-Party Vulnerabilities
 
----
-
-## Third-Party Dependencies
-
-`osctrl` relies on third-party open source components. Dependency updates and security fixes are regularly tracked and applied.
-
-If a vulnerability is discovered in a third-party dependency that affects `osctrl`, it should be reported following the same process above.
-
----
-
-## Acknowledgements
-
-We thank the security community for helping keep `osctrl` and its users safe.
+Report dependency vulnerabilities through the same private channel when they affect an `osctrl` deployment. Include the vulnerable dependency, affected code path, and any known exploitability conditions.

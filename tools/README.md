@@ -6,7 +6,7 @@
     Fast and efficient osquery management.
   </p>
   <p align="center">
-    <a href="https://github.com/jmpsec/osctrl/blob/master/LICENSE">
+    <a href="https://github.com/jmpsec/osctrl/blob/main/LICENSE">
       <img alt="Software License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square&fuckgithubcache=1">
     </a>
     <a href="https://github.com/jmpsec/osctrl">
@@ -18,7 +18,7 @@
   </p>
 </p>
 
-Random collection of tools/scripts that all have been used at some point during the development of osctrl
+Development, migration, load-testing, and packaging helpers used by the osctrl project. Run commands from the repository root unless a section says otherwise.
 
 ## api_tester.py
 
@@ -120,7 +120,7 @@ See [tools/fake_news_go/README.md](./fake_news_go/README.md) for details.
 
 ## json2yaml-config
 
-Go tool to convert the old (pre 0.5.0) osctrl JSON configuration files into the single YAML configuration file used by `osctrl-tls`, `osctrl-admin` and `osctrl-api` since the YAML migration. The old configuration was split in multiple JSON files (`tls.json`/`admin.json`/`api.json`, `db.json`, `redis.json`, `jwt.json`, plus optional SAML, logger and carver files), each wrapped in a top-level JSON key.
+Go tool to convert old pre-0.5.0 JSON configuration into the YAML format used by `osctrl-tls` and `osctrl-api`. The converter accepts the legacy service, database, Redis, JWT, SAML, logger, and carver files, but only emits current TLS or API service configuration.
 
 ```shell
 # Convert an old TLS configuration with graylog logger and S3 carver
@@ -132,32 +132,24 @@ $ go run ./tools/json2yaml-config -service tls \
     -carver config/carver_tls.json \
     -output tls.yml
 
-# Convert an old admin configuration with SAML auth
-$ go run ./tools/json2yaml-config -service admin \
-    -config config/admin.json \
-    -db config/db.json \
-    -redis config/redis.json \
-    -jwt config/jwt.json \
-    -saml config/saml.json \
-    -output admin.yml
-
-# Convert an old API configuration and print to stdout
+# Convert an old API configuration with SAML and print to stdout
 $ go run ./tools/json2yaml-config -service api \
     -config config/api.json \
     -db config/db.json \
     -redis config/redis.json \
     -jwt config/jwt.json \
+    -saml config/saml.json \
     -output -
 ```
 
 **Options:**
 
-- `-service`: Service to convert the configuration for: `tls`, `admin` or `api`. Required.
-- `-config`: Path to the old service JSON file (`tls.json`, `admin.json` or `api.json`). Required.
+- `-service`: Service to convert: `tls` or `api`. Required.
+- `-config`: Path to the old `tls.json` or `api.json`. Required.
 - `-db`: Path to the old `db.json` file (optional, defaults are used if omitted)
 - `-redis`: Path to the old `redis.json` file (optional, defaults are used if omitted)
-- `-jwt`: Path to the old `jwt.json` file (optional, `admin`/`api` only)
-- `-saml`: Path to the old `saml.json` file (optional, `admin` only)
+- `-jwt`: Path to the old `jwt.json` file (optional, API only)
+- `-saml`: Path to the old `saml.json` file (optional, API only)
 - `-logger`: Path to the old logger JSON file, keyed by logger type: `graylog`, `splunk`, `elastic`, `logstash`, `kinesis`, `s3` or `kafka` (optional)
 - `-carver`: Path to the old S3 carver JSON file (optional)
 - `-output`: Path to write the YAML output to (default: `<service>.yml`, use `-` for stdout)

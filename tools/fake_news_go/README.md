@@ -4,17 +4,17 @@
 
 It keeps the terminal workflow of the original `fake_news.py`, but adds a structured package layout, testable transport and synthetic query simulation, a `termui` dashboard, and sweep mode for finding a practical limit.
 
-## 🚦 Modes
+## Modes
 
 - `steady`: fixed node count, continuous traffic, exit with `Ctrl+C`, `q`, or `Q`
 - `sweep`: staged ramp-up, automatic stop when thresholds are crossed, JSON report on completion, exit early with `Ctrl+C`, `q`, or `Q`
 
-## 🎯 Targets
+## Targets
 
 - `osctrl-tls`: enroll, log, config, distributed read, distributed write
 - `osctrl-api`: auth discovery, login environment list, login, `users/me`, environment reads, paged node reads, node detail, settings reads
 
-## 🛠️ Useful flags
+## Useful Flags
 
 - `--tls-url` or legacy `--url`: base URL for `osctrl-tls`
 - `--api-url`: base URL for `osctrl-api`
@@ -63,7 +63,7 @@ Default runtime files:
 - node state: `fake_news_state.json`
 - final report: `fake_news_report.json`
 
-## 🚀 Examples
+## Examples
 
 Helper targets from this directory:
 
@@ -171,7 +171,7 @@ go run ./tools/fake_news_go \
   --sample 20s
 ```
 
-## ✅ Verification
+## Verification
 
 Focused package verification:
 

@@ -1,31 +1,71 @@
-## Contributing
+# Contributing to osctrl
 
-Like any other open source projects, there are multiple ways to contribute to osctrl:
+Contributions are welcome across the Go services, React frontend, deployment assets, documentation, and tests.
 
-* As a developer, depending on your skills and experience,
-* As a user who enjoys the project and wants to help.
+## Before You Start
 
-##### Reporting Bugs
+- Search existing issues and pull requests before opening a duplicate.
+- Use the latest supported Go version from `go.mod` and Node.js 22 or newer for frontend work.
+- Read [AGENTS.md](./AGENTS.md) for repository-specific workflows and [ARCHITECTURE.md](./ARCHITECTURE.md) before changing shared runtime behavior.
+- Report vulnerabilities privately according to [SECURITY.md](./SECURITY.md), not in a public issue.
 
-If you found something broken or not working properly, feel free to create an issue in Github with as much information as possible, such as logs and how to reproduce the problem. Before opening the issue, make sure that:
+For substantial behavior or architecture changes, open an issue first so the approach and compatibility impact can be discussed.
 
-* You have read this documentation,
-* You are using the latest stable version of osctrl,
-* You already searched other issues to see if your problem or request was already reported.
+## Development Workflow
 
-##### Improving the Documentation
+Build the complete project:
 
-You can improve this documentation by forking its repository, updating the content and sending a pull request.
+```bash
+make build
+```
 
+Run the Go test suite:
 
-#### We ❤️ Pull Requests
+```bash
+go test ./...
+```
 
-A pull request does not need to be a fix for a bug or implementing something new. Software can always be improved, legacy code removed and tests are always welcome!
+Validate frontend changes:
 
-Please do not be afraid of contributing code, make sure it follows these rules:
+```bash
+make frontend-test
+```
 
-* Your code compiles, does not break any of the existing code in the master branch and does not cause conflicts,
-* The code is readable and has comments, that aren’t superfluous or unnecessary,
-* An overview or context is provided as body of the Pull Request. It does not need to be too extensive.
+When public REST behavior changes, regenerate and verify the API specification:
 
-Extra points if your code comes with tests!
+```bash
+make openapi
+make openapi-check
+```
+
+Release and package changes should also pass:
+
+```bash
+make release-check
+make release-build
+```
+
+The local stack can be built and started with:
+
+```bash
+cp .env.example .env
+make docker_dev_certs
+make docker_dev_build
+make docker_dev_up
+```
+
+Review the development credentials in `.env` before use. Never commit that file, generated certificates, tokens, or built artifacts.
+
+## Pull Requests
+
+Keep each pull request focused and include:
+
+- The problem being solved
+- The resulting behavior
+- Security, compatibility, or operational impact
+- Tests and validation performed
+- Screenshots for visible frontend changes
+
+Follow existing code patterns, format Go changes with `gofmt`, and add focused regression coverage for changed behavior. Generated OpenAPI files, sample configuration, package metadata, and documentation should remain synchronized with the implementation.
+
+By contributing, you agree that your changes are provided under the repository's MIT license.

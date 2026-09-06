@@ -6,7 +6,7 @@
     Fast and efficient osquery management.
   </p>
   <p align="center">
-    <a href="https://github.com/jmpsec/osctrl/blob/master/LICENSE">
+    <a href="https://github.com/jmpsec/osctrl/blob/main/LICENSE">
       <img alt="Software License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square&fuckgithubcache=1">
     </a>
     <a href="https://github.com/jmpsec/osctrl">
@@ -15,31 +15,31 @@
   </p>
 </p>
 
-## 🤔 What is osctrl?
+## What is osctrl?
 
-**osctrl** is a fast and efficient [osquery](https://osquery.io) management solution, implementing its [remote API](https://osquery.readthedocs.io/en/stable/deployment/remote/) as TLS endpoint.
+**osctrl** is a fast and efficient [osquery](https://osquery.io) management solution that implements the [osquery remote API](https://osquery.readthedocs.io/en/stable/deployment/remote/) through a TLS endpoint.
 
 With **osctrl** you can:
 
-- ✨ Monitor all your systems running osquery
-- 📦 Distribute its configuration fast
-- 📊 Collect all the status and result logs
-- ⚡ Run on-demand queries
-- 🖥️ Open a read-only, shell-like node console backed by osquery
-- 🗃️ Browse node files through accelerated, permission-checked osquery requests
-- 🗂️ Carve files and directories
-- 🔔 Alert on log matches and node state, delivered to webhook or email channels
-- 🧭 Track node posture, GeoIP country metadata, and node activity in the modern UI
-- ⚙️ Scale from **hundreds to hundreds of thousands of nodes**
+- Monitor systems running osquery
+- Distribute osquery configuration
+- Collect status and result logs
+- Run on-demand distributed queries
+- Open a read-only, shell-like node console backed by osquery
+- Browse node files through accelerated, permission-checked requests
+- Carve files and directories
+- Alert on log matches and node state through webhook or email channels
+- Track node posture, GeoIP country metadata, and node activity
+- Scale from hundreds to hundreds of thousands of nodes
 
 > [!WARNING]
-> **osctrl** is a fast evolving project, and while it is already being used in production environments, it is still under active development. Please make sure to read the documentation and understand its current state before deploying it in a critical environment.
+> **osctrl** is a rapidly evolving project. It is used in production, but remains under active development. Review the documentation and known constraints before deploying it in a critical environment.
 
-### 🚀 Why osctrl?
+### Why osctrl?
 
 Whether you’re running a small deployment or managing large fleets, **osctrl** gives you visibility and control over your osquery endpoints without compromising security or performance.
 
-## ✨ Current Highlights
+## Current Highlights
 
 - **Modern operator UI**: React SPA powered by `osctrl-api`, with views for nodes, environments, queries, saved queries, carves, tags, users, enrollment, audit log, service configuration, log sinks, auth providers, alerting, node activity, and optional posture data.
 - **Node console**: Read-only console for a specific node using hidden accelerated distributed queries. It supports shell-like commands such as `pwd`, `cd`, `ls`, `stat`, `ps`, `sql`, `osquery`, `.tables`, and `get` for permission-checked file carves.
@@ -47,20 +47,22 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 - **Accelerated distributed queries**: Optional osquery accelerated query reads, defaulting to a 5 second interval when enabled. Console acceleration is scoped to the target node and fresh active console sessions.
 - **osquery schema awareness**: Ships osquery table metadata through 5.23.1 and exposes authenticated table metadata to the UI/API for query authoring and console `.tables`.
 - **Security-sensitive API defaults**: JWT authentication by default for `osctrl-api`, optional multi-factor authentication (TOTP, passkeys/security keys, recovery codes) for password logins, trusted proxy controls, audit logging, and authenticated access to query/carve sample libraries.
+- **Model Context Protocol**: A standalone `osctrl-mcp` stdio server and an optional hosted `/api/v1/mcp` endpoint expose permission-checked fleet inspection tools to MCP clients. Mutating tools are separately gated and disabled by default.
 - **Alerting**: Optional rule-based alerting on result/status/query logs and node state (inactive/recovered), scoped globally, per environment, or to a single node. Notifications fan out to webhook and email channels with Redis-backed cooldown/dedupe, dispatched history, and hot reload without a restart. Rules can be created straight from a node's page, and a node shows a marker when any rule covers it.
 - **Posture and enrichment hooks**: Optional posture ingestion from scheduled query prefixes, optional MaxMind GeoIP country enrichment, Redis-backed activity tracking, and API-managed service configuration sections.
 
-## 👉 Documentation
+## Documentation
 
-You can find the documentation of the project in [https://docs.osctrl.net](https://docs.osctrl.net)
+The published project documentation is available at [docs.osctrl.net](https://docs.osctrl.net). Repository-level references include [ARCHITECTURE.md](./ARCHITECTURE.md), [MCP.md](./MCP.md), and the [identity-provider guide](./docs/auth-providers.md).
 
-## 🗂 Project Structure
+## Project Structure
 
 ```text
 osctrl/
 ├── cmd/                         # Service and CLI entrypoints
 │   ├── api/                     # osctrl-api (REST API service + generated docs)
 │   ├── cli/                     # osctrl-cli (operator CLI)
+│   ├── mcp/                     # osctrl-mcp (standalone MCP stdio server)
 │   └── tls/                     # osctrl-tls (osquery remote API endpoint)
 ├── frontend/                    # React SPA frontend for the operator UI
 ├── pkg/                         # Shared application packages
@@ -83,6 +85,7 @@ osctrl/
 │   ├── logging/                 # Log pipeline, readers, and logger backends
 │   ├── logsinks/                # Per-environment persisted log sink configs
 │   ├── mfa/                     # TOTP, WebAuthn, and recovery-code second factors
+│   ├── mcp/                     # MCP tools shared by standalone and hosted servers
 │   ├── nodes/                   # Node state/registration/cache
 │   ├── osquery/                 # osquery schema/table metadata helpers
 │   ├── posture/                 # Optional posture ingestion, storage, and scoring
@@ -104,7 +107,7 @@ osctrl/
 └── osctrl-api.yaml              # OpenAPI specification for osctrl-api
 ```
 
-## 🏛 Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -112,13 +115,15 @@ flowchart LR
         Agents["osquery agents"]
         Ops["Operators"]
         Tools["Automation / CLI"]
+        MCPClients["MCP clients"]
     end
 
     subgraph Interfaces["Interfaces"]
         TLS["osctrl-tls"]
         Frontend["osctrl frontend"]
-        API["osctrl-api"]
+        API["osctrl-api<br/>REST + hosted MCP"]
         CLI["osctrl-cli"]
+        MCP["osctrl-mcp"]
     end
 
     subgraph Core["Shared backend"]
@@ -136,9 +141,12 @@ flowchart LR
     Ops -->|Browser UI| Frontend
     Tools -->|REST API| API
     Tools -->|CLI| CLI
+    MCPClients -->|stdio| MCP
+    MCPClients -->|HTTP MCP| API
 
     Frontend -->|HTTP API| API
     CLI -->|HTTP API| API
+    MCP -->|Authenticated REST API| API
 
     TLS --> Shared
     API --> Shared
@@ -151,23 +159,30 @@ flowchart LR
     CLI -.->|Direct DB mode| DB
 ```
 
-## 🛠 Development
+## Development
 
 The fastest way to get started with **osctrl** development is by using [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/). But you can find other methods below.
 
-### 🐳 Running osctrl with docker for development
+### Docker development
 
-You can use docker to run **osctrl** and all the components are defined in the `docker-compose-dev.yml` that ties all the components together, to serve a functional deployment.
+The root `docker-compose-dev.yml` runs nginx, the frontend, API, TLS service, CLI bootstrap, PostgreSQL, Redis, and sample osquery clients.
+
+Prepare the local environment and certificate before the first build:
+
+```bash
+cp .env.example .env
+make docker_dev_certs
+make docker_dev_build
+make docker_dev_up
+```
 
 The docker development stack exposes:
 
 - `https://localhost:8444` for the frontend
 
-For frontend-only development details, see [frontend/README.md](./frontend/README.md).
+For the complete stack workflow, endpoints, logs, and reset commands, see [deploy/docker/README.md](./deploy/docker/README.md). For frontend-only development, see [frontend/README.md](./frontend/README.md).
 
-Ultimately you can just execute `make docker_dev` and it will automagically build and run `osctrl` locally in docker, for development purposes.
-
-### 📦 Runtime and tooling versions
+### Runtime and tooling versions
 
 - Go module target: **Go 1.26.5**
 - Backend stack: **GORM** (PostgreSQL/MySQL/SQLite), **go-redis**, **zerolog**, **Viper** (YAML config), **urfave/cli**, **Prometheus client**, **JWT/SAML/OIDC auth**, **go-webauthn** (passkeys & security keys), **AWS SDK v2** (S3 + Kinesis), **franz-go** (Kafka), **Elasticsearch v8**, **MaxMind GeoIP**
@@ -177,42 +192,72 @@ Ultimately you can just execute `make docker_dev` and it will automagically buil
 - osquery schema data included through **osquery 5.23.1**
 - Default database/cache stack: **PostgreSQL** and **Redis**
 
-### 🤖 Using provisioning script
+### Provisioning script
 
-Using the provided `deploy/provision.sh` script, you can set up a development environment on your local machine. This script will install all necessary dependencies and configure the environment for **osctrl** development in a latest Ubuntu LTS system.
+The `deploy/provision.sh` script installs dependencies and configures an `osctrl` deployment on supported Ubuntu systems.
 
 Check the [documentation](https://docs.osctrl.net/deployment/natively/) for more details on how to use the provisioning script.
 
-Ultimately the script can also be used to deploy **osctrl** in production systems, please refer to the documentation for more details.
+The script can also provision production systems; review every generated credential and service configuration before exposing the deployment.
 
-### 🏗 Building from source
+### Building from source
 
 To build **osctrl** from source, ensure you have [Go](https://golang.org/dl/) installed (version 1.26.5 is recommended). Then, clone the repository and run the following commands:
 
 ```bash
 git clone https://github.com/jmpsec/osctrl.git
 cd osctrl
-make
+make build
 ```
 
-This will compile all the **osctrl** [components](https://docs.osctrl.net/components/) (`osctrl-tls`, `osctrl-api`, `osctrl-cli`), placing the binaries in the `bin/` directory.
+This will compile all the **osctrl** [components](https://docs.osctrl.net/components/) (`osctrl-tls`, `osctrl-api`, `osctrl-cli`, `osctrl-mcp`), placing the binaries in the `bin/` directory.
 
 The default `make`/`make build` target also builds the frontend bundle. If you are working on the operator UI directly, the frontend SPA lives in `frontend/` and can be run with `make frontend-dev` or `cd frontend && npm run dev`.
 
-## 💬 Slack
+Build only the standalone MCP server with `make mcp`.
+
+### Model Context Protocol
+
+MCP clients can connect in either of two modes:
+
+- `osctrl-mcp` is a cross-platform stdio binary launched by an MCP client. It calls `osctrl-api` with `OSCTRL_API_URL` and `OSCTRL_API_TOKEN`, and inherits that token's environment permissions.
+- `osctrl-api` can host MCP over HTTP at `/api/v1/mcp`. Enable it with `mcp.enabled: true` in `api.yml`; `mcp.allowWrites` remains `false` unless mutating tools are explicitly required.
+
+Use a dedicated, narrowly scoped service-user token for the standalone server. Fleet values returned by monitored endpoints are untrusted data, and write tools should only be enabled for trusted operators and deliberate workflows.
+
+See [MCP.md](./MCP.md) for the complete tool list, authentication model, and client configuration examples.
+
+### Release binaries and packages
+
+Tagged releases publish platform archives for `osctrl-tls`, `osctrl-api`, and `osctrl-cli`, plus standalone `osctrl-mcp` binaries for Linux, macOS, and Windows on amd64 and arm64. Continuous builds from `main` and `develop` retain the MCP binaries as downloadable workflow artifacts.
+
+Linux releases also include DEB and RPM packages for `osctrl-tls`, `osctrl-api`, and `osctrl-cli`. The TLS and API packages install:
+
+- the executable under `/opt/osctrl/bin`
+- an editable configuration and `.yml.example` under `/opt/osctrl/config`
+- a generated systemd unit under `/usr/lib/systemd/system`
+
+Package installation creates the unprivileged `osctrl` account and reloads systemd. Review the database credentials, API JWT secret, and other deployment-specific settings before enabling a service:
+
+```bash
+sudo systemctl enable --now osctrl-tls.service
+sudo systemctl enable --now osctrl-api.service
+```
+
+Configuration files use package-manager `noreplace` semantics, so upgrades preserve operator changes. Services are stopped and disabled on package removal; the shared `osctrl` account is retained for other installed components.
+
+## Slack
 
 Find us in the #osctrl channel in the official osquery Slack community ([Request an auto-invite!](https://join.slack.com/t/osquery/shared_invite/zt-1wipcuc04-DBXmo51zYJKBu3_EP3xZPA))
 
-## 📜 License
+## License
 
-**osctrl** is licensed under the [MIT License](https://github.com/jmpsec/osctrl/blob/master/LICENSE).
+**osctrl** is licensed under the [MIT License](https://github.com/jmpsec/osctrl/blob/main/LICENSE).
 
-## 🧠 Security & Reporting
+## Security and Reporting
 
-This is a security-sensitive project. Please read the `SECURITY.md` for vulnerability reporting and responsible disclosure guidelines.
+This is a security-sensitive project. Read [SECURITY.md](./SECURITY.md) for vulnerability reporting and responsible disclosure guidelines.
 
-## 🤝 Contributing
+## Contributing
 
-We ❤️ contributions!
-
-Feel free to fork the repository and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) for the current development and pull-request workflow. For substantial changes, open an issue first to discuss the approach and compatibility impact.

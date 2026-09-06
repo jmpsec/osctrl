@@ -84,8 +84,13 @@ tools/bruno/collection.bru
 *.md
 !README.md
 !CONTRIBUTING.md
-!CHANGELOG.md
 !SECURITY.md
+!MCP.md
+!ARCHITECTURE.md
+!AGENTS.md
+!senior_software_engineer.md
+!security_engineer.md
+!security-reviewer.md
 !frontend/**/*.md
 
 # Local-only planning / design notes (internal toolchain output)

@@ -1,71 +1,102 @@
-# osctrl Docker dev environment
+# Docker Development Environment
 
-This directory contains all the necessary configs to setup the osctrl Docker dev environment. There a couple of manual steps that are required before having a fully functional deployment:
+The root [docker-compose-dev.yml](../../docker-compose-dev.yml) runs the local `osctrl` stack:
 
-1. Generate TLS/SSL termination certificate and private key
-2. Generate JWT secret for API tokens
+- nginx TLS termination
+- `osctrl-tls`
+- `osctrl-api`
+- the React frontend
+- PostgreSQL and Redis
+- `osctrl-cli` bootstrap
+- three sample osquery clients
+- an optional catch-all HTTP sink
 
-## Generate TLS/SSL termination certificate and private key
+This stack is for development and testing. Its sample credentials and self-signed certificate are not production defaults.
 
-Follow these steps to generate a self-signed certificate that is going to be used for the osctrl deployment:
+## Prerequisites
 
-1. `cp conf/tls/openssl.cnf.example conf/tls/openssl.cnf`
-2. `BASE_DOMAIN=<DOMAIN> openssl req -x509 -new -nodes -days <X - ex: 365) -keyout conf/tls/osctrl.key -out conf/tls/osctrl.crt -config conf/tls/openssl.cnf`
-   1. Replace `<DOMAIN>` with an a domain like `osctrl.example.com`
-   2. ![docker_openssl_generate](../../.img/docker_openssl_generate.png)
+Install Docker with the Compose v2 plugin and OpenSSL.
 
-## Generate JWT secret
+Create the local environment file:
 
-You can generate a random enough JWT secret to be used with the `osctrl-api` component using one of the following commands:
+```bash
+cp .env.example .env
+```
 
-1. `uuidgen | shasum -a 256 | awk '{print $1}'`
-   1. ![docker_uuid_gen](../../.img/docker_uuid_gen.png)
-2. `vim .env` and set `JWT_SECRET`
+Review at least `JWT_SECRET`, `OSCTRL_USER`, `OSCTRL_PASS`, image versions, and database credentials. Generate a long JWT secret, for example:
 
-## Set .env
+```bash
+openssl rand -hex 32
+```
 
-1. `cp .env.example .env`
-2. `vim .env` and set:
-   1. osctrl
-      1. `OSCTRL_VERSION` - define the version of osctrl to use
-      2. `JWT_SECRET` - define the JWT secret (see instructions above)
-      3. `OSCTRL_USER` - define username for osctrl admin user
-      4. `OSCTRL_PASS` - define password for osctrl admin user
-   2. osquery
-      1. `OSQUERY_VERSION` - define the version of Osquery for test instance
-   3. NGINX
-      1. `NGINX_VERSION` - define the version of NGINX to use
-   4. Postgres
-      1. `POSTGRES_VERSION` - define the version of Postgres to use
-      2. `POSTGRES_DB_NAME` - define the name of the database for osctrl
-      3. `POSTGRES_DB_USERNAME` - define the username to conenct to osctrl database
-      4. `POSTGRES_DB_PASSWORD` - define the password to conenct to osctrl database
-   5. Save and exit
-3. `docker-compose build`
-   1. Build Docker images
-4. `docker-compose up`
-   1. Spin up osctrl Docker stack
+Do not commit `.env`.
 
-## Login into osctrl
+## TLS Certificate
 
-1. Open a browser to `https://127.0.0.1:8443/login`
-2. Login
-   1. Enter `<OSCTRL_USER>` for username
-   2. Enter `<OSCTRL_PASS>` for password
+Generate the development certificate and private key from `deploy/docker/conf/tls/openssl.cnf`:
 
-## References
+```bash
+make docker_dev_certs
+```
 
-- [What is osctrl?](https://osctrl.net/)
-- [osctrl-api](https://docs.osctrl.net/openapi/doc.html)
+The generated `osctrl.crt` and `osctrl.key` are local development material and must not be committed. To customize names or subject alternative names, copy and edit `openssl.cnf.example` before generating the certificate.
 
-### Docker
+## Build and Start
 
-- [How to create new users in a Docker container?](https://net2.com/how-to-create-new-users-in-docker-container/)
-- [Is mkdir -p totally safe when creating folder already exists](https://unix.stackexchange.com/questions/242995/is-mkdir-p-totally-safe-when-creating-folder-already-exists)
-- [Meaning of ampersand (&) in docker-compose.yml file](https://stackoverflow.com/questions/45805380/meaning-of-ampersand-in-docker-compose-yml-file)
-- [ChooseYourSIEMAdventure/docker-compose-splunk.yml](https://github.com/CptOfEvilMinions/ChooseYourSIEMAdventure/blob/main/docker-compose-splunk.yml)
-- [Interactive shell using Docker Compose](https://stackoverflow.com/questions/36249744/interactive-shell-using-docker-compose)
-- [Advanced Dockerfiles: Faster Builds and Smaller Images Using BuildKit and Multistage Builds](https://www.docker.com/blog/advanced-dockerfiles-faster-builds-and-smaller-images-using-buildkit-and-multistage-builds/)
-- [Using openssl to get the certificate from a server](https://stackoverflow.com/questions/7885785/using-openssl-to-get-the-certificate-from-a-server)
-- [osquery flags](https://osquery.readthedocs.io/en/stable/installation/cli-flags/)
-- [mkcert is a simple tool for making locally-trusted development certificates](https://github.com/FiloSottile/mkcert)
+From the repository root:
+
+```bash
+make docker_dev_build
+make docker_dev_up
+```
+
+Or run both through the combined target:
+
+```bash
+make docker_dev
+```
+
+The first CLI bootstrap creates the `dev` environment and the administrator configured by `OSCTRL_USER` and `OSCTRL_PASS`.
+
+## Endpoints
+
+| Surface | URL | Purpose |
+| --- | --- | --- |
+| Operator frontend | `https://localhost:8444` | React SPA and proxied `/api/*` requests |
+| osquery TLS endpoint | `https://localhost:8443` | Enroll, config, log, distributed query, and carve traffic |
+| Direct API | `http://localhost:9002` | Local API debugging |
+| Direct TLS service | `http://localhost:9000` | Local TLS-handler debugging |
+| PostgreSQL | `localhost:5432` | Development database |
+| Redis | `localhost:6379` | Development cache and shared runtime state |
+| Catch-all sink | `http://localhost:8088` | External log/alert sink testing |
+
+The browser will warn about the self-signed certificate unless the development CA or certificate is trusted locally.
+
+## Common Commands
+
+```bash
+make docker_dev_logs_tls
+make docker_dev_logs_api
+make docker_dev_logs_frontend
+
+make docker_dev_shell_tls
+make docker_dev_shell_api
+make docker_dev_shell_frontend
+make docker_dev_shell_cli
+
+make docker_dev_rebuild_tls
+make docker_dev_rebuild_api
+make docker_dev_rebuild_frontend
+
+make docker_dev_down
+```
+
+`make docker_dev_clean` removes matching development images and volumes, including PostgreSQL and Redis data. Use it only when a full local reset is intended.
+
+## Troubleshooting
+
+- **Missing `.env`**: run `cp .env.example .env`.
+- **Missing certificate or key**: run `make docker_dev_certs`.
+- **Frontend login loops**: use `https://localhost:8444` so the SPA and API cookies remain same-origin.
+- **Services cannot reach PostgreSQL or Redis**: inspect container health and the shared `osctrl-dev-backend` network.
+- **osquery clients do not enroll**: confirm the CLI bootstrap completed and the certificate mounted into the clients matches nginx.
