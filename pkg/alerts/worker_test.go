@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/stretchr/testify/require"
 )
 
 // recordingSink captures dispatched hits in order.
@@ -221,4 +222,20 @@ func TestIngestMatcherAdapts(t *testing.T) {
 	nilMatcher.MatchResultLogs(1, "dev", nil)
 	nilMatcher.MatchStatusLogs(1, "dev", nil)
 	nilMatcher.MatchQueryResult(1, "dev", "q", nil, 0, "")
+}
+
+func TestMetricsSnapshotReadsCounters(t *testing.T) {
+	var w *Worker
+	require.Equal(t, WorkerSnapshot{}, w.MetricsSnapshot(), "nil worker must be safe")
+
+	w = NewWorker(NewStore(), nil, nil, nil, 16, 1)
+	defer w.Close()
+	w.metrics.Dispatched.Add(7)
+	w.metrics.Dropped.Add(2)
+
+	snap := w.MetricsSnapshot()
+	require.EqualValues(t, 7, snap.Dispatched)
+	require.EqualValues(t, 2, snap.Dropped)
+	require.Equal(t, 16, snap.QueueCapacity)
+	require.Equal(t, 0, snap.QueueDepth)
 }

@@ -48,6 +48,35 @@ func (w *Worker) QueueDepth() int {
 	return len(w.queue)
 }
 
+// WorkerSnapshot is a point-in-time read of the worker counters, for callers
+// outside this package (the health heartbeat). Plain values, not atomics, so
+// the caller cannot mutate live counters.
+type WorkerSnapshot struct {
+	QueueDepth    int
+	QueueCapacity int
+	Matched       uint64
+	Dispatched    uint64
+	Collapsed     uint64
+	Dropped       uint64
+	Failed        uint64
+}
+
+// MetricsSnapshot reads the counters. Safe on a nil worker (alerts disabled).
+func (w *Worker) MetricsSnapshot() WorkerSnapshot {
+	if w == nil {
+		return WorkerSnapshot{}
+	}
+	return WorkerSnapshot{
+		QueueDepth:    len(w.queue),
+		QueueCapacity: cap(w.queue),
+		Matched:       w.metrics.Matched.Load(),
+		Dispatched:    w.metrics.Dispatched.Load(),
+		Collapsed:     w.metrics.Collapsed.Load(),
+		Dropped:       w.metrics.Dropped.Load(),
+		Failed:        w.metrics.Failed.Load(),
+	}
+}
+
 // claimGate is the cooldown surface the worker needs. *State
 // implements it; tests substitute their own.
 type claimGate interface {
