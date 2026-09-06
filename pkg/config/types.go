@@ -137,6 +137,11 @@ type YAMLConfigurationService struct {
 	// alert tables are not created. The feature is fully inert —
 	// enabling requires a service restart (same as PostureEnabled).
 	AlertsEnabled bool `yaml:"alertsEnabled"`
+	// HealthEnabled controls whether the health/system-status subsystem is
+	// active. When false (default) no health manager is constructed, so the
+	// service_status table is never created, osctrl-tls writes no
+	// heartbeat, and the /api/v1/health routes are not registered.
+	HealthEnabled bool `yaml:"healthEnabled"`
 	// ServiceConfigEnabled controls whether the service-config API and the
 	// matching SPA section exist. It does not change how configuration is
 	// loaded: every boot seeds the YAML sections into the database and

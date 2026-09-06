@@ -191,3 +191,23 @@ func TestRateLimitFlagsWireDefaults(t *testing.T) {
 		t.Fatal("login burst flag destination does not wire RateLimits.Login.Burst")
 	}
 }
+
+func TestServiceHealthEnabledFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Service: &YAMLConfigurationService{}}
+	flags := initServiceFlags(params)
+	if params.Service.HealthEnabled {
+		t.Fatal("health must be disabled by default: it creates a table and writes heartbeats")
+	}
+	var found bool
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.BoolFlag); ok && f.Name == "health-enabled" {
+			found = true
+			if f.Value {
+				t.Fatal("health-enabled flag default: got true want false")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("missing health-enabled service flag")
+	}
+}
