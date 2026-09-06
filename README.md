@@ -30,6 +30,7 @@ With **osctrl** you can:
 - Carve files and directories
 - Alert on log matches and node state through webhook or email channels
 - Track node posture, GeoIP country metadata, and node activity
+- Check deployment health: database, Redis, services, workers, and upgrade status
 - Scale from hundreds to hundreds of thousands of nodes
 
 > [!WARNING]
@@ -50,6 +51,7 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 - **Model Context Protocol**: A standalone `osctrl-mcp` stdio server and an optional hosted `/api/v1/mcp` endpoint expose permission-checked fleet inspection tools to MCP clients. Mutating tools are separately gated and disabled by default.
 - **Alerting**: Optional rule-based alerting on result/status/query logs and node state (inactive/recovered), scoped globally, per environment, or to a single node. Notifications fan out to webhook and email channels with Redis-backed cooldown/dedupe, dispatched history, and hot reload without a restart. Rules can be created straight from a node's page, and a node shows a marker when any rule covers it.
 - **Posture and enrichment hooks**: Optional posture ingestion from scheduled query prefixes, optional MaxMind GeoIP country enrichment, Redis-backed activity tracking, and API-managed service configuration sections.
+- **Health / system status**: Optional deployment health page behind `--health-enabled` (disabled by default), fusing a live database ping, a Redis PING, per-service runtime stats, an `osctrl-tls` heartbeat, and cached upgrade status.
 
 ## Documentation
 
@@ -81,6 +83,7 @@ osctrl/
 │   ├── fileexplorer/            # Accelerated per-node file explorer
 │   ├── filequery/               # File query helpers
 │   ├── geoip/                   # MaxMind GeoIP enrichment
+│   ├── health/                  # Deployment health: service heartbeats, component status
 │   ├── handlers/                # Shared HTTP handler helpers (query/carve targeting)
 │   ├── logging/                 # Log pipeline, readers, and logger backends
 │   ├── logsinks/                # Per-environment persisted log sink configs

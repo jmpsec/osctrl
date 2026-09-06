@@ -67,6 +67,12 @@ service:
   # matches ingested logs against them. Requires a service restart to
   # change.
   alertsEnabled: false
+  # Enable the health/system-status subsystem. When false (default), no
+  # health manager is constructed: the service_status table is never
+  # created and osctrl-tls writes no heartbeat. When true, osctrl-tls
+  # writes a heartbeat row (version, uptime, goroutines, worker
+  # counters) every 60s. Requires a service restart to change.
+  healthEnabled: false
   # DB health monitor. When enabled, osctrl-tls pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache and SettingsCache switch to
