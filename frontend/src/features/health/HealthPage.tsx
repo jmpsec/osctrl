@@ -166,13 +166,20 @@ export function HealthPage() {
         <p className="text-xs text-[color:var(--text-3)] mb-3">Version running versus what is available</p>
         <div className="rounded-md border border-[color:var(--border)]">
           <DetailRows
-            details={{
-              current: upgrade.current,
-              suggested: upgrade.suggested ?? '—',
-              latest: upgrade.latest ?? '—',
-              up_to_date: upgrade.up_to_date,
-              checked_at: upgrade.checked_at ?? 'never',
-            }}
+            details={
+              upgrade.checked
+                ? {
+                    current: upgrade.current,
+                    suggested: upgrade.suggested ?? '—',
+                    latest: upgrade.latest ?? '—',
+                    up_to_date: upgrade.up_to_date,
+                    checked_at: upgrade.checked_at ?? 'never',
+                  }
+                : {
+                    current: upgrade.current,
+                    status: 'Upstream check has not run yet',
+                  }
+            }
           />
           {upgrade.skew && (
             <p className={cn('px-4 py-2 text-xs border-t border-[color:var(--border)]', 'text-[color:var(--warning)]')}>

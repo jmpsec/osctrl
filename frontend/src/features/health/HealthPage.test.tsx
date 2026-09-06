@@ -86,4 +86,14 @@ describe('HealthPage', () => {
     renderPage();
     expect(await screen.findByText(/version mismatch/i)).toBeInTheDocument();
   });
+
+  it('shows the check has not run instead of a stale verdict when upgrade.checked is false', async () => {
+    mockGetHealth.mockResolvedValue(makeStatus({
+      upgrade: { current: '0.5.8', up_to_date: false, checked: false, skew: false },
+    }));
+    renderPage();
+    expect(await screen.findByText(/upstream check has not run yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/up to date/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('no')).not.toBeInTheDocument();
+  });
 });
