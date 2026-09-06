@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,6 +13,12 @@ import (
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
+
+// healthCheckTimeout bounds every DB/Redis check the health endpoint makes.
+// This page's entire job is to answer during an outage, so a saturated pool
+// or a blackholed connection must not hang the request forever — it must
+// render "down" within a fixed budget instead.
+const healthCheckTimeout = 3 * time.Second
 
 // healthStatusResponse is the payload the SPA renders. One response carries
 // every component and its details, so the page's drill-downs are expansions
@@ -48,14 +55,17 @@ func (h *HandlersApi) HealthStatusHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	checkCtx, cancel := context.WithTimeout(r.Context(), healthCheckTimeout)
+	defer cancel()
+
 	now := time.Now()
 	components := []health.Component{
-		h.databaseComponent(r),
-		h.redisComponent(),
+		h.databaseComponent(checkCtx),
+		h.redisComponent(checkCtx),
 		h.apiComponent(),
 	}
 
-	row, err := h.Health.Get(config.ServiceTLS)
+	row, err := h.Health.GetContext(checkCtx, config.ServiceTLS)
 	components = append(components,
 		health.ServiceComponent(row, err, now, h.ServiceVersion),
 		health.WorkersComponent(row, err, now),
@@ -75,8 +85,8 @@ func (h *HandlersApi) HealthStatusHandler(w http.ResponseWriter, r *http.Request
 }
 
 // databaseComponent pings the database, on top of the existing background
-// health monitor's verdict.
-func (h *HandlersApi) databaseComponent(r *http.Request) health.Component {
+// health monitor's verdict. ctx carries the bounded health-check deadline.
+func (h *HandlersApi) databaseComponent(ctx context.Context) health.Component {
 	var degraded bool
 	if h.DBHealth != nil {
 		degraded = h.DBHealth.IsDegraded()
@@ -87,19 +97,20 @@ func (h *HandlersApi) databaseComponent(r *http.Request) health.Component {
 	if err != nil {
 		pingErr = err
 	} else {
-		pingErr = sqlDB.PingContext(r.Context())
+		pingErr = sqlDB.PingContext(ctx)
 	}
 	return health.DatabaseComponent(degraded, pingErr, time.Since(start))
 }
 
-// redisComponent reuses the existing cache manager check.
-func (h *HandlersApi) redisComponent() health.Component {
+// redisComponent reuses the existing cache manager check. ctx carries the
+// bounded health-check deadline.
+func (h *HandlersApi) redisComponent(ctx context.Context) health.Component {
 	start := time.Now()
 	var err error
 	if h.Redis == nil {
 		err = fmt.Errorf("redis is not configured")
 	} else {
-		err = h.Redis.Check()
+		err = h.Redis.CheckContext(ctx)
 	}
 	return health.RedisComponent(err, time.Since(start))
 }

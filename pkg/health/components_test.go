@@ -60,3 +60,12 @@ func TestWorkersComponentReportsDrops(t *testing.T) {
 
 	require.Equal(t, StatusUnknown, WorkersComponent(ServiceStatus{}, ErrNotReporting, now).Status)
 }
+
+func TestWorkersComponentDoesNotBlameTLSForDBError(t *testing.T) {
+	now := time.Now()
+	dbErr := errors.New("dial tcp: connection refused")
+	got := WorkersComponent(ServiceStatus{}, dbErr, now)
+	require.Equal(t, StatusUnknown, got.Status)
+	require.NotContains(t, got.Summary, "osctrl-tls is not reporting")
+	require.Contains(t, got.Summary, "connection refused")
+}

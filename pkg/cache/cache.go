@@ -36,7 +36,13 @@ func (rm *RedisManager) GetRedis() *redis.Client {
 
 // Check to verify if connection is open and ready
 func (rm *RedisManager) Check() error {
-	ctx := context.TODO()
+	return rm.CheckContext(context.TODO())
+}
+
+// CheckContext is Check with a caller-supplied context, so callers that need
+// a bounded deadline (e.g. the health endpoint) are not left waiting forever
+// on a blackholed connection.
+func (rm *RedisManager) CheckContext(ctx context.Context) error {
 	if err := rm.Client.Ping(ctx).Err(); err != nil {
 		return err
 	}

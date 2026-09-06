@@ -127,7 +127,11 @@ func WorkersComponent(row ServiceStatus, err error, now time.Time) Component {
 	c := Component{ID: "workers", Name: "Workers"}
 	if err != nil {
 		c.Status = StatusUnknown
-		c.Summary = "no worker data — osctrl-tls is not reporting"
+		if errors.Is(err, ErrNotReporting) {
+			c.Summary = "no worker data — osctrl-tls is not reporting"
+		} else {
+			c.Summary = fmt.Sprintf("worker data unavailable: %s", err.Error())
+		}
 		return c
 	}
 	if now.Sub(row.ReportedAt) > StaleAfter {

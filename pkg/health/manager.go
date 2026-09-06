@@ -1,6 +1,7 @@
 package health
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -44,11 +45,18 @@ func (m *Manager) Report(s ServiceStatus) error {
 
 // Get returns one service's heartbeat, or ErrNotReporting.
 func (m *Manager) Get(service string) (ServiceStatus, error) {
+	return m.GetContext(context.Background(), service)
+}
+
+// GetContext is Get with a caller-supplied context, so callers that need a
+// bounded deadline (e.g. the health endpoint) are not left waiting forever
+// on a saturated connection pool.
+func (m *Manager) GetContext(ctx context.Context, service string) (ServiceStatus, error) {
 	if m == nil {
 		return ServiceStatus{}, ErrNotReporting
 	}
 	var row ServiceStatus
-	if err := m.DB.Where("service = ?", service).First(&row).Error; err != nil {
+	if err := m.DB.WithContext(ctx).Where("service = ?", service).First(&row).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ServiceStatus{}, ErrNotReporting
 		}
