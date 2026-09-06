@@ -21,6 +21,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -286,6 +287,19 @@ func osctrlService() {
 	} else {
 		log.Info().Msg("Alerting system disabled (enable with --alerts-enabled)")
 	}
+	// Health/system-status heartbeat (disabled by default). When off, no
+	// manager is constructed, so no table is created and nothing is written.
+	var healthMgr *health.Manager
+	serviceStartedAt := time.Now()
+	if flagParams.Service.HealthEnabled {
+		healthMgr = health.NewManager(db.Conn)
+		log.Info().Msg("Health reporting enabled")
+	} else {
+		log.Info().Msg("Health reporting disabled (enable with --health-enabled)")
+	}
+	// Write the first heartbeat now so the page is populated without
+	// waiting a minute for the poll loop's first tick.
+	reportHealth(healthMgr, alertsWorker, serviceStartedAt, buildVersion)
 	log.Info().Msg("Initialize tags")
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize queries")
@@ -562,7 +576,7 @@ func osctrlService() {
 		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
 	}
 	watchCtx, stopCommandWatcher := context.WithCancel(context.Background())
-	go watchServiceCommands(watchCtx, serviceCommandMgr, serviceConfigMgr, logSinksMgr, loggerTLS, settingsmgr, auditLog, alertsReloadFn(alertsMgr, alertsStore, alertsDispatcher), restartCh)
+	go watchServiceCommands(watchCtx, serviceCommandMgr, serviceConfigMgr, logSinksMgr, loggerTLS, settingsmgr, auditLog, alertsReloadFn(alertsMgr, alertsStore, alertsDispatcher), restartCh, healthMgr, alertsWorker, serviceStartedAt)
 	serverErr := make(chan error, 1)
 	go func() {
 		log.Info().Msgf("%s v%s - HTTP%s listening %s", serviceName, buildVersion, map[bool]string{true: "S", false: ""}[flagParams.TLS.Termination], serviceListener)
@@ -687,14 +701,20 @@ func alertsReloadFn(mgr *alerts.Manager, store *alerts.Store, dispatcher *alerts
 	}
 }
 
-func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfgMgr *serviceconfig.ServiceConfigManager, sinksMgr *logsinks.LogSinksManager, logTLS *logging.LoggerTLS, settingsMgr *settings.Settings, auditLog *auditlog.AuditLogManager, reloadAlerts func(), restartCh chan<- struct{}) {
+func watchServiceCommands(ctx context.Context, mgr *servicecommands.Manager, cfgMgr *serviceconfig.ServiceConfigManager, sinksMgr *logsinks.LogSinksManager, logTLS *logging.LoggerTLS, settingsMgr *settings.Settings, auditLog *auditlog.AuditLogManager, reloadAlerts func(), restartCh chan<- struct{}, healthMgr *health.Manager, alertsWorker *alerts.Worker, startedAt time.Time) {
 	ticker := time.NewTicker(serviceCommandPollInterval)
 	defer ticker.Stop()
+	ticks := 0
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			// Heartbeat rides this loop: no extra goroutine, no extra ticker.
+			ticks++
+			if shouldHeartbeat(ticks) {
+				reportHealth(healthMgr, alertsWorker, startedAt, buildVersion)
+			}
 			cmd, ok, err := mgr.ConsumeNext(config.ServiceTLS, serviceName, time.Now())
 			if err != nil {
 				log.Err(err).Msg("error checking TLS service commands")
