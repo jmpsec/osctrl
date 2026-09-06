@@ -131,10 +131,13 @@ func (h *HandlersApi) LoginMFAHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch req.Method {
+	case "totp":
+		err = h.MFA.VerifyTOTP(challenge.Username, req.Code)
 	case "recovery":
 		err = h.MFA.VerifyRecoveryCode(challenge.Username, req.Code)
 	default:
-		err = h.MFA.VerifyTOTP(challenge.Username, req.Code)
+		apiErrorResponse(w, "invalid mfa method", http.StatusBadRequest, nil)
+		return
 	}
 	if err != nil {
 		h.mfaFailed(w, r, challenge.Username, "invalid second factor")

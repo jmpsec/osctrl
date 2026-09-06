@@ -47,3 +47,42 @@ func TestQueriesRunHandlerCreatesPendingNodeQueryForUUIDTarget(t *testing.T) {
 	require.NoError(t, db.Where("node_id = ? AND query_id = ?", node.ID, distributed.ID).First(&nodeQuery).Error)
 	require.Equal(t, queries.DistributedQueryStatusPending, nodeQuery.Status)
 }
+
+func TestQueriesActionHandlerRejectsUnknownAction(t *testing.T) {
+	db, h, env, _ := setupConsoleHandlers(t)
+	h.DebugHTTPConfig = &config.YAMLConfigurationDebug{}
+	auditLog, err := auditlog.CreateAuditLogManager(db, "api", true)
+	require.NoError(t, err)
+	h.AuditLog = auditLog
+
+	query := queries.DistributedQuery{
+		Name:          "query-action-test",
+		Active:        true,
+		EnvironmentID: env.ID,
+	}
+	require.NoError(t, h.Queries.Create(&query))
+
+	req := consoleRequest(http.MethodPost, "/queries", nil, "alice")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("action", "unknown")
+	req.SetPathValue("name", query.Name)
+	rr := httptest.NewRecorder()
+
+	h.QueriesActionHandler(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
+	var resp types.ApiErrorResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.Equal(t, "invalid action", resp.Error)
+
+	var persisted queries.DistributedQuery
+	require.NoError(t, db.First(&persisted, query.ID).Error)
+	require.True(t, persisted.Active)
+	require.False(t, persisted.Completed)
+	require.False(t, persisted.Deleted)
+	require.False(t, persisted.Expired)
+
+	var auditEntries int64
+	require.NoError(t, db.Model(&auditlog.AuditLog{}).Count(&auditEntries).Error)
+	require.Zero(t, auditEntries)
+}

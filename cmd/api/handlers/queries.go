@@ -341,6 +341,9 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		msgReturn = fmt.Sprintf("query %s completed successfully", nameVar)
+	default:
+		apiErrorResponse(w, "invalid action", http.StatusBadRequest, fmt.Errorf("unknown query action %q", actionVar))
+		return
 	}
 	// Return message as serialized response
 	log.Debug().Msgf("Returned message %s", msgReturn)
