@@ -176,6 +176,37 @@ func TestLoginMFACompletesWithTOTPAndRejectsReuse(t *testing.T) {
 	}
 }
 
+func TestLoginMFARejectsUnknownMethodWithoutConsumingChallenge(t *testing.T) {
+	h, m, _ := mfaTestHandlers(t, false)
+	secret := enrollTOTP(t, m, "admin")
+
+	first := postJSON(t, h.LoginHandler, "/api/v1/login", map[string]any{
+		"username": "admin", "password": "s3cr3t-password",
+	})
+	var challenge MFAChallengeResponse
+	if err := json.Unmarshal(first.Body.Bytes(), &challenge); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	code, err := mfa.Code(secret, mfa.Step(time.Now())+1)
+	if err != nil {
+		t.Fatalf("code: %v", err)
+	}
+
+	bad := postJSON(t, h.LoginMFAHandler, "/api/v1/login/mfa", map[string]any{
+		"challenge": challenge.Challenge, "method": "unknown", "code": code,
+	})
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("unknown method status: got %d want 400 (%s)", bad.Code, bad.Body.String())
+	}
+
+	good := postJSON(t, h.LoginMFAHandler, "/api/v1/login/mfa", map[string]any{
+		"challenge": challenge.Challenge, "method": "totp", "code": code,
+	})
+	if good.Code != http.StatusOK {
+		t.Fatalf("challenge after unknown method: got %d want 200 (%s)", good.Code, good.Body.String())
+	}
+}
+
 func TestLoginMFAAcceptsRecoveryCodeOnce(t *testing.T) {
 	h, m, _ := mfaTestHandlers(t, false)
 	enrollTOTP(t, m, "admin")
