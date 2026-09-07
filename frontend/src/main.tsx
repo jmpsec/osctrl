@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { loader as monacoLoader } from '@monaco-editor/react'
 import { router } from './router'
 import { primeCsrfFromCookie } from './api/client'
+import './i18n/i18n'
 
 // Seed the in-memory CSRF token from the osctrl_csrf cookie BEFORE the
 // router runs its beforeLoad guards. Required for the OIDC flow: the

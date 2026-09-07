@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +13,7 @@ import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { Logo } from '$/components/atoms/Logo';
 import { ThemeToggle } from '$/components/chrome/ThemeToggle';
+import { LanguageMenu } from '$/components/chrome/LanguageMenu';
 import { login, listAuthMethods } from '$/api/client';
 import { LoginIsometricScene } from './LoginIsometricScene';
 import './login-visual.css';
@@ -62,7 +64,7 @@ function InlineError({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProductVisualPanel() {
+function ProductVisualPanel({ t }: { t: ReturnType<typeof useTranslation>['t'] }) {
   return (
     <aside
       className="login-visual-panel relative hidden min-w-0 overflow-hidden rounded-xl lg:flex lg:flex-col"
@@ -71,11 +73,11 @@ function ProductVisualPanel() {
       <div className="relative z-[2] flex items-center justify-between gap-4 py-6 pl-7 pr-20 text-sm text-[color:var(--login-scene-muted)] xl:py-8 xl:pl-9 xl:pr-24">
         <div className="flex items-center gap-2 font-medium">
           <ShieldCheck size={16} strokeWidth={1.8} aria-hidden />
-          Performant OSQuery Fleet Management
+          {t('login.tagline')}
         </div>
         <div className="flex items-center gap-2 text-xs font-medium">
           <span className="size-1.5 rounded-full bg-[color:var(--login-scene-success)]" aria-hidden />
-          Environment aware
+          {t('login.environmentAware')}
         </div>
       </div>
 
@@ -84,14 +86,14 @@ function ProductVisualPanel() {
       </div>
 
       <div className="relative z-[2] mt-auto max-w-xl px-7 pb-7 text-[color:var(--login-scene-muted)] xl:px-9 xl:pb-9">
-        <p className="text-sm font-medium">osquery fleet operations</p>
+        <p className="text-sm font-medium">{t('login.fleetOperations')}</p>
         <h2 className="mt-2 max-w-[20ch] text-balance font-display text-2xl font-semibold leading-tight tracking-tight xl:text-3xl">
-          See the whole environment. Act on one endpoint.
+          {t('login.hero')}
         </h2>
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium opacity-80">
-          <span>Observe</span>
-          <span>Query</span>
-          <span>Investigate</span>
+          <span>{t('login.observe')}</span>
+          <span>{t('login.query')}</span>
+          <span>{t('login.investigate')}</span>
         </div>
       </div>
     </aside>
@@ -99,7 +101,8 @@ function ProductVisualPanel() {
 }
 
 export function LoginPage() {
-  usePageTitle('Login');
+  const { t } = useTranslation();
+  usePageTitle(t('login.title'));
   const [serverError, setServerError] = useState<string | null>(null);
   const [mfa, setMfa] = useState<MFAState | null>(null);
   const [mfaCode, setMfaCode] = useState('');
@@ -151,7 +154,7 @@ export function LoginPage() {
       }
       void router.navigate({ to: '/_app' });
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Login failed');
+      setServerError(err instanceof Error ? err.message : t('login.loginFailed'));
     }
   }
 
@@ -171,7 +174,7 @@ export function LoginPage() {
       await submitMFACode(mfa.challenge, useRecoveryCode ? 'recovery' : 'totp', mfaCode);
       void router.navigate({ to: '/_app' });
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Verification failed');
+      setServerError(err instanceof Error ? err.message : t('login.verificationFailed'));
       setMfaCode('');
     } finally {
       setMfaBusy(false);
@@ -186,7 +189,7 @@ export function LoginPage() {
       await loginWithSecurityKey(mfa.challenge);
       void router.navigate({ to: '/_app' });
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Security key verification failed');
+      setServerError(err instanceof Error ? err.message : t('login.securityKeyFailed'));
     } finally {
       setMfaBusy(false);
     }
@@ -208,30 +211,31 @@ export function LoginPage() {
         </div>
         <div className="rounded-lg bg-[color:var(--bg-1)] ring-1 ring-inset ring-[color:var(--border)]">
           <ThemeToggle />
+          <LanguageMenu />
         </div>
       </header>
 
       <main className="grid min-h-dvh gap-3 p-3 lg:grid-cols-[minmax(420px,0.86fr)_minmax(560px,1.14fr)]">
-        <section className="flex min-w-0 items-center px-3 pb-12 pt-28 sm:px-9 lg:px-12 xl:px-16" aria-label="Sign in">
+        <section className="flex min-w-0 items-center px-3 pb-12 pt-28 sm:px-9 lg:px-12 xl:px-16" aria-label={t('login.signInAria')}>
             <div className="mx-auto flex w-full max-w-[420px] flex-col gap-8">
               {recoveryCodes ? (
                 <AuthIntro
-                  title="Save your recovery codes"
-                  description="Each code signs you in once if you lose your authenticator. They are shown only now."
+                  title={t('login.saveRecoveryCodes')}
+                  description={t('login.saveRecoveryDescription')}
                 />
               ) : mfa ? (
                 <AuthIntro
-                  title={mfa.enrollment ? 'Set up two-factor authentication' : 'Verify your identity'}
+                  title={mfa.enrollment ? t('login.setUpTwoFactor') : t('login.verifyIdentity')}
                   description={
                     mfa.enrollment
-                      ? 'Scan the code with an authenticator app, then enter the verification code it shows.'
+                      ? t('login.setUpDescription')
                       : useRecoveryCode
-                        ? 'Enter one of the recovery codes you saved when you enrolled.'
-                        : 'Enter the current code from your authenticator app.'
+                        ? t('login.recoveryDescription')
+                        : t('login.verifyDescription')
                   }
                 />
               ) : (
-                <AuthIntro title="Welcome back" description="Sign in to continue to your osquery control workspace." />
+                <AuthIntro title={t('login.welcomeBack')} description={t('login.welcomeDescription')} />
               )}
 
               {recoveryCodes ? (
@@ -255,7 +259,7 @@ export function LoginPage() {
                     className="h-11 w-full sm:h-10"
                     onClick={() => void router.navigate({ to: '/_app' })}
                   >
-                    I have saved them — continue
+                    {t('login.savedContinue')}
                   </Button>
                 </div>
               ) : mfa ? (
@@ -264,11 +268,11 @@ export function LoginPage() {
                     <div className="flex flex-col items-center gap-3 rounded-lg bg-[color:var(--bg-2)] p-4 ring-1 ring-inset ring-[color:var(--border)]">
                       {mfa.setup.qr && (
                         <div className="rounded-lg bg-white p-2 ring-1 ring-black/5">
-                          <img src={mfa.setup.qr} alt="Authenticator enrollment QR code" width={176} height={176} />
+                          <img src={mfa.setup.qr} alt={t('login.qrAlt')} width={176} height={176} />
                         </div>
                       )}
                       <p className="text-center text-base text-[color:var(--text-2)] sm:text-sm">
-                        Can&apos;t scan? Enter this key manually.
+                        {t('login.cantScan')}
                       </p>
                       <code className="break-all text-center font-mono-tabular text-sm text-[color:var(--text-1)]">
                         {mfa.setup.secret}
@@ -278,7 +282,7 @@ export function LoginPage() {
 
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="mfa-code" className="mb-0 text-base sm:text-sm">
-                      {useRecoveryCode ? 'Recovery code' : 'Authentication code'}
+                      {useRecoveryCode ? t('login.recoveryCode') : t('login.authenticationCode')}
                     </Label>
                     <Input
                       id="mfa-code"
@@ -299,7 +303,7 @@ export function LoginPage() {
                   {serverError && <InlineError>{serverError}</InlineError>}
 
                   <Button type="submit" variant="primary" size="lg" disabled={mfaBusy} className="h-11 w-full sm:h-10">
-                    {mfaBusy ? 'Verifying…' : mfa.enrollment ? 'Confirm and sign in' : 'Verify'}
+                    {mfaBusy ? t('login.verifying') : mfa.enrollment ? t('login.confirmSignIn') : t('login.verify')}
                   </Button>
 
                   {!mfa.enrollment && mfa.methods.includes('webauthn') && isWebAuthnAvailable() && (
@@ -312,7 +316,7 @@ export function LoginPage() {
                       onClick={() => void onSecurityKey()}
                     >
                       <KeyRound size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
-                      Use a security key or passkey
+                      {t('login.useSecurityKey')}
                     </Button>
                   )}
 
@@ -327,7 +331,7 @@ export function LoginPage() {
                           setServerError(null);
                         }}
                       >
-                        {useRecoveryCode ? 'Use authenticator code' : 'Use a recovery code'}
+                        {useRecoveryCode ? t('login.useAuthenticatorCode') : t('login.useRecoveryCode')}
                       </button>
                     ) : (
                       <div aria-hidden />
@@ -337,7 +341,7 @@ export function LoginPage() {
                       className="shrink-0 rounded font-medium text-[color:var(--text-2)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--signal)]"
                       onClick={restart}
                     >
-                      Back to sign in
+                      {t('login.backToSignIn')}
                     </button>
                   </div>
                 </form>
@@ -346,7 +350,7 @@ export function LoginPage() {
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="username" className="mb-0 text-base sm:text-sm">
-                        Username
+                        {t('login.username')}
                       </Label>
                       <Input
                         id="username"
@@ -369,7 +373,7 @@ export function LoginPage() {
 
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="password" className="mb-0 text-base sm:text-sm">
-                        Password
+                        {t('login.password')}
                       </Label>
                       <div className="relative">
                         <Input
@@ -384,7 +388,7 @@ export function LoginPage() {
                           type="button"
                           onClick={() => setShowPassword((visible) => !visible)}
                           className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-[color:var(--text-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 -outline-offset-2 focus-visible:outline-[color:var(--signal)]"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                         >
                           {showPassword ? (
                             <EyeOff size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
@@ -415,13 +419,13 @@ export function LoginPage() {
                     disabled={isSubmitting}
                     className="h-11 w-full sm:h-10"
                   >
-                    {isSubmitting ? 'Signing in…' : 'Sign in'}
+                    {isSubmitting ? t('login.signingIn') : t('login.signIn')}
                   </Button>
 
                   {hasSSO && (
                     <div className="flex items-center gap-3">
                       <div className="h-px grow bg-[color:var(--border)]" />
-                      <p className="shrink-0 text-base text-[color:var(--text-2)] sm:text-sm">or continue with</p>
+                      <p className="shrink-0 text-base text-[color:var(--text-2)] sm:text-sm">{t('login.orContinueWith')}</p>
                       <div className="h-px grow bg-[color:var(--border)]" />
                     </div>
                   )}
@@ -436,7 +440,7 @@ export function LoginPage() {
                       )}
                     >
                       <LockKeyhole aria-hidden size={16} strokeWidth={1.8} className="shrink-0" />
-                      Continue with OIDC
+                      {t('login.continueOidc')}
                     </a>
                   )}
                   {samlMethod && (
@@ -450,7 +454,7 @@ export function LoginPage() {
                       )}
                     >
                       <LockKeyhole aria-hidden size={16} strokeWidth={1.8} className="shrink-0" />
-                      Continue with SAML
+                      {t('login.continueSaml')}
                     </a>
                   )}
                 </form>
@@ -458,12 +462,12 @@ export function LoginPage() {
 
               <div className="flex items-start gap-2 border-t border-[color:var(--border)] pt-5 text-base text-[color:var(--text-2)] sm:text-sm">
                 <ShieldCheck size={16} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
-                <p className="text-pretty">Protected by your deployment&apos;s authentication policy.</p>
+                <p className="text-pretty">{t('login.protectedBy')}</p>
               </div>
             </div>
         </section>
 
-        <ProductVisualPanel />
+        <ProductVisualPanel t={t} />
       </main>
     </div>
   );
