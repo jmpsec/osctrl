@@ -20,10 +20,10 @@ describe('LanguageMenu', () => {
     await user.click(screen.getByRole('button', { name: 'Change language' }));
 
     const menu = screen.getByRole('menu');
-    for (const name of ['English', 'Español', 'Français', 'Deutsch']) {
+    for (const name of ['English', 'Español', 'Français', 'Deutsch', 'Português', 'Català', 'Italiano']) {
       expect(within(menu).getByText(name)).toBeInTheDocument();
     }
-    expect(SUPPORTED_LANGUAGES).toHaveLength(4);
+    expect(SUPPORTED_LANGUAGES).toHaveLength(7);
   });
 
   it('switches the active language and persists the choice', async () => {

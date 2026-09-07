@@ -41,7 +41,7 @@ export function TooltipContent({ title, rows, children }: TooltipContentProps) {
                 </span>
               </div>
               <span className="font-medium text-chart-tooltip-foreground text-sm tabular-nums">
-                {typeof row.value === "number" ? intFmt(row.value) : row.value}
+                {typeof row.value === "number" ? intFmt().format(row.value) : row.value}
               </span>
             </div>
           ))}

@@ -399,7 +399,7 @@ const TimeSeriesChartCore = memo(function TimeSeriesChartCore({
   );
 
   const dateLabels = useMemo(
-    () => visiblePlotData.map((d) => shortDateFmt.format(xAccessor(d))),
+    () => visiblePlotData.map((d) => shortDateFmt().format(xAccessor(d))),
     [visiblePlotData, xAccessor]
   );
 

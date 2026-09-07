@@ -3,6 +3,7 @@
  * Matches the brand guide §08 "Status & data viz" KPI card conventions.
  */
 
+import { useLocale } from '$/i18n/useLocale';
 import { cn } from '$/lib/cn';
 import { Sparkline } from './Sparkline';
 
@@ -54,6 +55,7 @@ export function StatCard({
   className,
   visualization,
 }: StatCardProps) {
+  const { formatNumber } = useLocale();
   return (
     <div
       className={cn(
@@ -73,7 +75,7 @@ export function StatCard({
 
       {/* Value */}
       <div className="font-display text-2xl font-semibold tabular-nums text-[color:var(--text-1)] leading-none">
-        {typeof value === 'number' ? value.toLocaleString() : value}
+        {typeof value === 'number' ? formatNumber(value) : value}
       </div>
 
       {/* Sub-label */}

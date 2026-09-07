@@ -17,6 +17,9 @@ import { en } from './locales/en/common';
 import { es } from './locales/es/common';
 import { fr } from './locales/fr/common';
 import { de } from './locales/de/common';
+import { pt } from './locales/pt/common';
+import { ca } from './locales/ca/common';
+import { it as itCatalog } from './locales/it/common';
 
 /** Recursively collect every key path ("a.b.c") from a catalog object. */
 function keyPaths(obj: Record<string, unknown>, prefix = ''): string[] {
@@ -41,8 +44,8 @@ describe('i18n language resolution', () => {
   });
 
   it('ignores an unsupported stored language', () => {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'pt');
-    expect(getInitialLanguage()).not.toBe('pt');
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'ja');
+    expect(getInitialLanguage()).not.toBe('ja');
   });
 
   it('falls back to the default language with no signal', () => {
@@ -68,10 +71,12 @@ describe('matchLanguage', () => {
     expect(matchLanguage('es-MX')).toBe('es');
     expect(matchLanguage('de-AT')).toBe('de');
     expect(matchLanguage('fr_FR')).toBe('fr');
+    expect(matchLanguage('pt-BR')).toBe('pt');
+    expect(matchLanguage('ca-ES')).toBe('ca');
+    expect(matchLanguage('it-IT')).toBe('it');
   });
 
   it('returns undefined for unsupported languages', () => {
-    expect(matchLanguage('pt-BR')).toBeUndefined();
     expect(matchLanguage('ja')).toBeUndefined();
     expect(matchLanguage('')).toBeUndefined();
     expect(matchLanguage(undefined)).toBeUndefined();
@@ -108,9 +113,9 @@ describe('language switching', () => {
   it('ignores unsupported languages', async () => {
     await setLanguageEphemeral('en');
     // @ts-expect-error intentionally invalid language
-    await setLanguage('pt');
+    await setLanguage('ja');
     expect(i18n.language).toBe('en');
-    expect(isSupportedLanguage('pt')).toBe(false);
+    expect(isSupportedLanguage('ja')).toBe(false);
   });
 });
 
@@ -118,20 +123,23 @@ describe('catalog completeness', () => {
   const englishKeys = keyPaths(en);
 
   it('has exactly the supported language set', () => {
-    expect([...SUPPORTED_LANGUAGES].sort()).toEqual(['de', 'en', 'es', 'fr']);
+    expect([...SUPPORTED_LANGUAGES].sort()).toEqual(['ca', 'de', 'en', 'es', 'fr', 'it', 'pt']);
   });
 
   it.each([
     ['es', es],
     ['fr', fr],
     ['de', de],
+    ['pt', pt],
+    ['ca', ca],
+    ['it', itCatalog],
   ] as const)('%s catalog mirrors every English key', (_language, catalog) => {
     const paths = keyPaths(catalog);
     expect(paths.sort()).toEqual([...englishKeys].sort());
   });
 
   it('has no empty translations', () => {
-    for (const catalog of [es, fr, de]) {
+    for (const catalog of [es, fr, de, pt, ca, itCatalog]) {
       for (const path of keyPaths(catalog)) {
         const value = path
           .split('.')

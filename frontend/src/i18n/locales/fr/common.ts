@@ -4,6 +4,7 @@ import type { Messages } from '../../locales/en/common';
 export const fr: Messages = {
   common: {
     search: 'Rechercher',
+    clearSearch: 'Effacer la recherche',
     signOut: 'Se déconnecter',
     commandCenter: 'Centre de commande',
     cancel: 'Annuler',
@@ -13,9 +14,31 @@ export const fr: Messages = {
     error: 'Une erreur est survenue',
     retry: 'Réessayer',
   },
+  pagination: {
+    noResults: 'Aucun résultat',
+    range: '{start}–{end} sur {count}',
+    prev: 'Préc.',
+    next: 'Suiv.',
+    previousPage: 'Page précédente',
+    nextPage: 'Page suivante',
+  },
   language: {
     changeLanguage: 'Changer de langue',
     current: 'Langue actuelle',
+  },
+  time: {
+    secondsShort: '{count}s',
+    minutesShort: '{count}m',
+    hoursShort: '{count}h',
+    daysShort: '{count}j',
+    inSeconds: 'dans {count}s',
+    inMinutes: 'dans {count}m',
+    inHours: 'dans {count}h',
+    inDays: 'dans {count}j',
+    justNow: 'à l\u2019instant',
+    withinLastHour: 'au cours de la dernière heure',
+    hoursAgo: 'il y a {count}h',
+    daysAgo: 'il y a {count}j',
   },
   theme: {
     toLight: 'Passer au thème clair',
@@ -51,7 +74,7 @@ export const fr: Messages = {
     collapseNavigation: 'Réduire la navigation',
     openCommandPalette: 'Ouvrir la palette de commandes',
     breadcrumb: 'Fil d\u2019Ariane',
-    userMenu: 'Menu utilisateur de {{name}}',
+    userMenu: 'Menu utilisateur de {name}',
   },
   login: {
     title: 'Connexion',

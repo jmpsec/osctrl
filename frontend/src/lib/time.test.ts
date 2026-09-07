@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatRelative, formatBucketAgo } from './time';
+import { formatRelative, formatTimeUntil, formatBucketAgo } from './time';
+import { setLanguageEphemeral } from '$/i18n/i18n';
 
 describe('formatRelative', () => {
   const NOW = new Date('2024-03-14T15:09:26.000Z').getTime();
@@ -66,6 +67,29 @@ describe('formatRelative', () => {
     const iso = new Date(NOW - 86_400_000).toISOString();
     expect(formatRelative(iso)).toBe('1d');
   });
+
+  it('translates compact units and future strings per language', async () => {
+    await setLanguageEphemeral('es');
+    expect(formatRelative(new Date(NOW - 3_000).toISOString())).toBe('3s');
+    expect(formatTimeUntil(new Date(NOW + 2 * 86_400_000).toISOString())).toBe('en 2d');
+
+    await setLanguageEphemeral('fr');
+    // French uses "j" for days.
+    expect(formatRelative(new Date(NOW - 86_400_000).toISOString())).toBe('1j');
+    expect(formatTimeUntil(new Date(NOW + 86_400_000).toISOString())).toBe('dans 1j');
+
+    await setLanguageEphemeral('it');
+    expect(formatTimeUntil(new Date(NOW + 2 * 3_600_000).toISOString())).toBe('tra 2h');
+
+    await setLanguageEphemeral('en');
+  });
+
+  it('abbreviates old dates in the active locale', async () => {
+    await setLanguageEphemeral('es');
+    const iso = new Date(NOW - 10 * 86_400_000).toISOString();
+    expect(formatRelative(iso)).toMatch(/^mar \d+$|^\d+ mar$/);
+    await setLanguageEphemeral('en');
+  });
 });
 
 describe('formatBucketAgo', () => {
@@ -101,5 +125,14 @@ describe('formatBucketAgo', () => {
   it('returns "—" for invalid input', () => {
     expect(formatBucketAgo('', 3600)).toBe('—');
     expect(formatBucketAgo('not-a-date', 3600)).toBe('—');
+  });
+
+  it('translates bucket phrasing per language', async () => {
+    const iso = new Date(NOW - 3 * HOUR).toISOString();
+    await setLanguageEphemeral('es');
+    expect(formatBucketAgo(iso, 3600)).toBe('hace 3h');
+    await setLanguageEphemeral('de');
+    expect(formatBucketAgo(iso, 3600)).toBe('vor 3h');
+    await setLanguageEphemeral('en');
   });
 });

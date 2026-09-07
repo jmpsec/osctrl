@@ -249,7 +249,7 @@ const ChartTooltipInner = memo(function ChartTooltipInner({
       return barXAccessor(tooltipData.point);
     }
     // For line/area charts, use the date
-    return weekdayDateFmt.format(xAccessor(tooltipData.point));
+    return weekdayDateFmt().format(xAccessor(tooltipData.point));
   }, [tooltipData, barXAccessor, xAccessor]);
 
   const tooltipContent = (
