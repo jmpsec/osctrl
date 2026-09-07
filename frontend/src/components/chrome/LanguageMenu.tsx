@@ -17,6 +17,7 @@ import {
 } from '$/i18n/i18n';
 import {
   SUPPORTED_LANGUAGES,
+  languageFlag,
   languageName,
   type SupportedLanguage,
 } from '$/i18n/locales';
@@ -66,7 +67,10 @@ export function LanguageMenu() {
               disabled={busy !== null && busy !== language}
               aria-current={current === language ? 'true' : undefined}
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-2.5">
+                <span aria-hidden className="text-base leading-none">
+                  {languageFlag(language)}
+                </span>
                 {languageName(language)}
                 {busy === language && (
                   <span className="text-xs text-[color:var(--text-3)]">…</span>

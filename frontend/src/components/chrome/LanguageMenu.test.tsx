@@ -13,17 +13,22 @@ describe('LanguageMenu', () => {
     await setLanguageEphemeral('en');
   });
 
-  it('renders every supported language as an endonym', async () => {
+  it('renders every supported language with its flag', async () => {
     const user = userEvent.setup();
     render(<LanguageMenu />);
 
     await user.click(screen.getByRole('button', { name: 'Change language' }));
 
     const menu = screen.getByRole('menu');
-    for (const name of ['English', 'Español', 'Français', 'Deutsch', 'Português', 'Català', 'Italiano']) {
+    for (const name of ['English', 'Español', 'Français', 'Deutsch', 'Português', 'Català', 'Italiano', 'Nederlands', '日本語', '한국어', '中文', 'Polski', 'Русский']) {
       expect(within(menu).getByText(name)).toBeInTheDocument();
     }
-    expect(SUPPORTED_LANGUAGES).toHaveLength(7);
+    // Flags render as decorated spans next to each name.
+    expect(within(menu).getAllByText('🇬🇧').length).toBeGreaterThanOrEqual(1);
+    expect(within(menu).getAllByText('🇵🇹').length).toBeGreaterThanOrEqual(1);
+    expect(within(menu).getAllByText('🇦🇩').length).toBeGreaterThanOrEqual(1);
+    expect(within(menu).getAllByText('🇷🇺').length).toBeGreaterThanOrEqual(1);
+    expect(SUPPORTED_LANGUAGES).toHaveLength(13);
   });
 
   it('switches the active language and persists the choice', async () => {

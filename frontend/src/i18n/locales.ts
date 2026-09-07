@@ -15,9 +15,15 @@ const LOCALE_TAGS: Record<SupportedLanguage, string> = {
   es: 'es-ES',
   fr: 'fr-FR',
   de: 'de-DE',
-  pt: 'pt-BR',
+  pt: 'pt-PT',
   ca: 'ca-ES',
   it: 'it-IT',
+  nl: 'nl-NL',
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+  zh: 'zh-CN',
+  pl: 'pl-PL',
+  ru: 'ru-RU',
 };
 
 /** UI-facing language names, written in their own language (endonyms). */
@@ -29,13 +35,54 @@ const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   pt: 'Português',
   ca: 'Català',
   it: 'Italiano',
+  nl: 'Nederlands',
+  ja: '日本語',
+  ko: '한국어',
+  zh: '中文',
+  pl: 'Polski',
+  ru: 'Русский',
+};
+
+/**
+ * Flag emoji per language — regional-indicator pairs shown in the
+ * language menu. `en` uses the Union Jack, `pt` the Portuguese flag
+ * (European Portuguese), and `ca` the Andorran flag as the geographic
+ * anchor for Catalan.
+ */
+const LANGUAGE_FLAGS: Record<SupportedLanguage, string> = {
+  en: '🇬🇧',
+  es: '🇪🇸',
+  fr: '🇫🇷',
+  de: '🇩🇪',
+  pt: '🇵🇹',
+  ca: '🇦🇩',
+  it: '🇮🇹',
+  nl: '🇳🇱',
+  ja: '🇯🇵',
+  ko: '🇰🇷',
+  zh: '🇨🇳',
+  pl: '🇵🇱',
+  ru: '🇷🇺',
 };
 
 export const SUPPORTED_LANGUAGES = Object.freeze(
   Object.keys(LOCALE_TAGS) as SupportedLanguage[],
 );
 
-export type SupportedLanguage = 'en' | 'es' | 'fr' | 'de' | 'pt' | 'ca' | 'it';
+export type SupportedLanguage =
+  | 'en'
+  | 'es'
+  | 'fr'
+  | 'de'
+  | 'pt'
+  | 'ca'
+  | 'it'
+  | 'nl'
+  | 'ja'
+  | 'ko'
+  | 'zh'
+  | 'pl'
+  | 'ru';
 
 export function isSupportedLanguage(value: string): value is SupportedLanguage {
   return SUPPORTED_LANGUAGES.includes(value as SupportedLanguage);
@@ -47,6 +94,11 @@ export function localeTag(language: SupportedLanguage): string {
 
 export function languageName(language: SupportedLanguage): string {
   return LANGUAGE_NAMES[language];
+}
+
+/** Flag emoji for the language menu (see LANGUAGE_FLAGS rationale). */
+export function languageFlag(language: SupportedLanguage): string {
+  return LANGUAGE_FLAGS[language];
 }
 
 /**

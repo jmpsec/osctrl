@@ -11,6 +11,7 @@ import {
   DEFAULT_LANGUAGE,
   isSupportedLanguage,
   matchLanguage,
+  languageFlag,
   SUPPORTED_LANGUAGES,
 } from './locales';
 import { en } from './locales/en/common';
@@ -20,6 +21,12 @@ import { de } from './locales/de/common';
 import { pt } from './locales/pt/common';
 import { ca } from './locales/ca/common';
 import { it as itCatalog } from './locales/it/common';
+import { nl } from './locales/nl/common';
+import { ja } from './locales/ja/common';
+import { ko } from './locales/ko/common';
+import { zh } from './locales/zh/common';
+import { pl } from './locales/pl/common';
+import { ru } from './locales/ru/common';
 
 /** Recursively collect every key path ("a.b.c") from a catalog object. */
 function keyPaths(obj: Record<string, unknown>, prefix = ''): string[] {
@@ -44,8 +51,8 @@ describe('i18n language resolution', () => {
   });
 
   it('ignores an unsupported stored language', () => {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'ja');
-    expect(getInitialLanguage()).not.toBe('ja');
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'xx');
+    expect(getInitialLanguage()).not.toBe('xx');
   });
 
   it('falls back to the default language with no signal', () => {
@@ -77,7 +84,7 @@ describe('matchLanguage', () => {
   });
 
   it('returns undefined for unsupported languages', () => {
-    expect(matchLanguage('ja')).toBeUndefined();
+    expect(matchLanguage('xx')).toBeUndefined();
     expect(matchLanguage('')).toBeUndefined();
     expect(matchLanguage(undefined)).toBeUndefined();
   });
@@ -113,9 +120,9 @@ describe('language switching', () => {
   it('ignores unsupported languages', async () => {
     await setLanguageEphemeral('en');
     // @ts-expect-error intentionally invalid language
-    await setLanguage('ja');
+    await setLanguage('xx');
     expect(i18n.language).toBe('en');
-    expect(isSupportedLanguage('ja')).toBe(false);
+    expect(isSupportedLanguage('xx')).toBe(false);
   });
 });
 
@@ -123,7 +130,9 @@ describe('catalog completeness', () => {
   const englishKeys = keyPaths(en);
 
   it('has exactly the supported language set', () => {
-    expect([...SUPPORTED_LANGUAGES].sort()).toEqual(['ca', 'de', 'en', 'es', 'fr', 'it', 'pt']);
+    expect([...SUPPORTED_LANGUAGES].sort()).toEqual([
+      'ca', 'de', 'en', 'es', 'fr', 'it', 'ja', 'ko', 'nl', 'pl', 'pt', 'ru', 'zh',
+    ]);
   });
 
   it.each([
@@ -133,19 +142,39 @@ describe('catalog completeness', () => {
     ['pt', pt],
     ['ca', ca],
     ['it', itCatalog],
+    ['nl', nl],
+    ['ja', ja],
+    ['ko', ko],
+    ['zh', zh],
+    ['pl', pl],
+    ['ru', ru],
   ] as const)('%s catalog mirrors every English key', (_language, catalog) => {
     const paths = keyPaths(catalog);
     expect(paths.sort()).toEqual([...englishKeys].sort());
   });
 
   it('has no empty translations', () => {
-    for (const catalog of [es, fr, de, pt, ca, itCatalog]) {
+    for (const catalog of [es, fr, de, pt, ca, itCatalog, nl, ja, ko, zh, pl, ru]) {
       for (const path of keyPaths(catalog)) {
         const value = path
           .split('.')
           .reduce<unknown>((acc, key) => (acc as Record<string, unknown>)[key], catalog);
         expect(typeof value).toBe('string');
         expect((value as string).length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('assigns a flag emoji to every language', () => {
+    for (const language of SUPPORTED_LANGUAGES) {
+      const flag = languageFlag(language);
+      // Regional-indicator pairs: two code points in the U+1F1E6–1F1FF
+      // range, forming a flag sequence in any emoji-capable renderer.
+      expect([...flag]).toHaveLength(2);
+      for (const char of [...flag]) {
+        const code = char.codePointAt(0)!;
+        expect(code).toBeGreaterThanOrEqual(0x1f1e6);
+        expect(code).toBeLessThanOrEqual(0x1f1ff);
       }
     }
   });

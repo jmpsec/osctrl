@@ -87,6 +87,24 @@ export const en = {
     breadcrumb: 'Breadcrumb',
     userMenu: 'User menu for {name}',
   },
+  commandPalette: {
+    title: 'Command palette',
+    searchLabel: 'Command search',
+    placeholder: 'Type to filter… Up/Down + Enter',
+    noMatches: 'No matches.',
+    /** Keyboard legend. */
+    legend: '⌘K toggle · Esc close · ↑↓ navigate · ↵ activate',
+    goToEnv: 'Go to env · {name}',
+    editConfig: 'Edit config · {name}',
+    /** Static page hints. */
+    dashboardHint: 'Cross-env summary',
+    operatorsHint: 'Users + permissions',
+    profileHint: 'My account',
+    environmentsHint: 'Create / edit envs',
+    auditHint: 'Filtered log read',
+    configHint: 'osquery config sections',
+    settingsHint: 'Service settings',
+  },
   login: {
     title: 'Login',
     /** Marketing panel */

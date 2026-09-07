@@ -33,6 +33,12 @@ type CatalogModule = {
   pt?: unknown;
   ca?: unknown;
   it?: unknown;
+  nl?: unknown;
+  ja?: unknown;
+  ko?: unknown;
+  zh?: unknown;
+  pl?: unknown;
+  ru?: unknown;
 };
 
 const catalogs: Record<SupportedLanguage, () => Promise<CatalogModule>> = {
@@ -43,6 +49,12 @@ const catalogs: Record<SupportedLanguage, () => Promise<CatalogModule>> = {
   pt: () => import('./locales/pt/common'),
   ca: () => import('./locales/ca/common'),
   it: () => import('./locales/it/common'),
+  nl: () => import('./locales/nl/common'),
+  ja: () => import('./locales/ja/common'),
+  ko: () => import('./locales/ko/common'),
+  zh: () => import('./locales/zh/common'),
+  pl: () => import('./locales/pl/common'),
+  ru: () => import('./locales/ru/common'),
 };
 
 /** Languages whose catalog is already loaded (or being loaded). */
