@@ -25,11 +25,24 @@ import {
 export const LANGUAGE_STORAGE_KEY = 'osctrl.language';
 
 /** Lazy catalog loaders — Vite turns each into a separate chunk. */
-const catalogs: Record<SupportedLanguage, () => Promise<{ es?: unknown; fr?: unknown; de?: unknown; en?: unknown }>> = {
+type CatalogModule = {
+  en?: unknown;
+  es?: unknown;
+  fr?: unknown;
+  de?: unknown;
+  pt?: unknown;
+  ca?: unknown;
+  it?: unknown;
+};
+
+const catalogs: Record<SupportedLanguage, () => Promise<CatalogModule>> = {
   en: () => Promise.resolve({ en }),
   es: () => import('./locales/es/common'),
   fr: () => import('./locales/fr/common'),
   de: () => import('./locales/de/common'),
+  pt: () => import('./locales/pt/common'),
+  ca: () => import('./locales/ca/common'),
+  it: () => import('./locales/it/common'),
 };
 
 /** Languages whose catalog is already loaded (or being loaded). */

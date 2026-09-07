@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '$/lib/cn';
 
 interface SearchInputProps {
@@ -14,11 +15,12 @@ interface SearchInputProps {
 export function SearchInput({
   value,
   onChange,
-  placeholder = 'Search…',
+  placeholder,
   debounceMs = 300,
   className,
   id = 'node-search',
 }: SearchInputProps) {
+  const { t } = useTranslation();
   const [local, setLocal] = useState(value);
 
   // Sync external value changes (e.g. URL param reset) — only when the
@@ -47,7 +49,7 @@ export function SearchInput({
   return (
     <div className={cn('relative flex items-center', className)}>
       <label htmlFor={id} className="sr-only">
-        Search nodes
+        {t('common.search')}
       </label>
       <span
         aria-hidden
@@ -61,7 +63,7 @@ export function SearchInput({
         autoComplete="off"
         value={local}
         onChange={handleChange}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('common.search')}
         className={cn(
           'w-full h-8 pl-8 pr-8 text-sm rounded-md',
           'bg-[color:var(--bg-1)] border border-[color:var(--border-strong)]',
@@ -75,7 +77,7 @@ export function SearchInput({
         <button
           type="button"
           onClick={handleClear}
-          aria-label="Clear search"
+          aria-label={t('common.clearSearch')}
           className={cn(
             'absolute right-2 text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent)]',

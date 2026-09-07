@@ -9,6 +9,7 @@
 export const en = {
   common: {
     search: 'Search',
+    clearSearch: 'Clear search',
     signOut: 'Sign out',
     commandCenter: 'Command Center',
     cancel: 'Cancel',
@@ -18,11 +19,37 @@ export const en = {
     error: 'Something went wrong',
     retry: 'Retry',
   },
+  pagination: {
+    noResults: 'No results',
+    /** "1–25 of 3,481" — count is pre-formatted with locale separators. */
+    range: '{start}–{end} of {count}',
+    prev: 'Prev',
+    next: 'Next',
+    previousPage: 'Previous page',
+    nextPage: 'Next page',
+  },
   language: {
     /** aria/title for the language selector button. */
     changeLanguage: 'Change language',
     /** How each option reads inside the menu (endonym + tag). */
     current: 'Current language',
+  },
+  time: {
+    /** Compact relative units: "3s", "4m", "2h", "1d". */
+    secondsShort: '{count}s',
+    minutesShort: '{count}m',
+    hoursShort: '{count}h',
+    daysShort: '{count}d',
+    /** Future: "in 3s" */
+    inSeconds: 'in {count}s',
+    inMinutes: 'in {count}m',
+    inHours: 'in {count}h',
+    inDays: 'in {count}d',
+    /** Bucket-relative phrasing for activity rollups. */
+    justNow: 'just now',
+    withinLastHour: 'within the last hour',
+    hoursAgo: '{count}h ago',
+    daysAgo: '{count}d ago',
   },
   theme: {
     toLight: 'Switch to light theme',
@@ -58,7 +85,7 @@ export const en = {
     collapseNavigation: 'Collapse navigation',
     openCommandPalette: 'Open command palette',
     breadcrumb: 'Breadcrumb',
-    userMenu: 'User menu for {{name}}',
+    userMenu: 'User menu for {name}',
   },
   login: {
     title: 'Login',

@@ -1,12 +1,32 @@
 /**
  * Time formatting utilities for the osctrl admin UI.
+ *
+ * Compact units and phrasal strings go through i18n so they follow the
+ * active language; the long-date fallback uses the locale-tagged Intl
+ * formatter (see useLocale). Reads the i18next instance directly so
+ * both React components and plain modules (table formatters, chart
+ * ticks) get translated output without prop-drilling a `t` function.
  */
+
+import i18next from 'i18next';
+import { localeTag, DEFAULT_LANGUAGE } from '$/i18n/locales';
 
 const SECOND = 1_000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
+
+/** Active language, falling back when i18n is not initialized yet. */
+function t(key: string, options?: Record<string, unknown>): string {
+  return i18next.t(key, options) ?? key;
+}
+
+/** Locale-tagged "Mar 14"-style date. */
+function shortDate(d: Date): string {
+  const language = (i18next.language ?? DEFAULT_LANGUAGE) as Parameters<typeof localeTag>[0];
+  return d.toLocaleDateString(localeTag(language), { month: 'short', day: 'numeric' });
+}
 
 /**
  * Returns a compact relative time string for the given ISO-8601 timestamp.
@@ -16,7 +36,7 @@ const WEEK = 7 * DAY;
  *   4 minutes ago  → "4m"
  *   2 hours ago    → "2h"
  *   1 day ago      → "1d"
- *   > 7 days ago   → "Mar 14" (abbreviated month + day)
+ *   > 7 days ago   → "Mar 14" (abbreviated month + day, locale-tagged)
  *   invalid input  → "—"
  */
 export function formatRelative(iso: string): string {
@@ -34,26 +54,26 @@ export function formatRelative(iso: string): string {
 
   if (diffMs < MINUTE) {
     const s = Math.floor(diffMs / SECOND);
-    return `${s}s`;
+    return t('time.secondsShort', { count: s });
   }
 
   if (diffMs < HOUR) {
     const m = Math.floor(diffMs / MINUTE);
-    return `${m}m`;
+    return t('time.minutesShort', { count: m });
   }
 
   if (diffMs < DAY) {
     const h = Math.floor(diffMs / HOUR);
-    return `${h}h`;
+    return t('time.hoursShort', { count: h });
   }
 
   if (diffMs < WEEK) {
     const day = Math.floor(diffMs / DAY);
-    return `${day}d`;
+    return t('time.daysShort', { count: day });
   }
 
   // Older than a week — show abbreviated date
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return shortDate(d);
 }
 
 /**
@@ -79,21 +99,21 @@ export function formatTimeUntil(iso: string): string {
 
   if (diffMs < MINUTE) {
     const s = Math.floor(diffMs / SECOND);
-    return `in ${s}s`;
+    return t('time.inSeconds', { count: s });
   }
   if (diffMs < HOUR) {
     const m = Math.floor(diffMs / MINUTE);
-    return `in ${m}m`;
+    return t('time.inMinutes', { count: m });
   }
   if (diffMs < DAY) {
     const h = Math.floor(diffMs / HOUR);
-    return `in ${h}h`;
+    return t('time.inHours', { count: h });
   }
   if (diffMs < WEEK) {
     const day = Math.floor(diffMs / DAY);
-    return `in ${day}d`;
+    return t('time.inDays', { count: day });
   }
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return shortDate(d);
 }
 
 /**
@@ -159,12 +179,12 @@ export function formatBucketAgo(iso: string, bucketSeconds = 3600): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
   const diffMs = Date.now() - d.getTime();
-  if (diffMs < 0) return 'just now';
+  if (diffMs < 0) return t('time.justNow');
   // bucketSeconds is in seconds; the bucket is still open while now falls
   // within [bucketStart, bucketStart + bucketSeconds).
-  if (diffMs < bucketSeconds * 1000) return 'within the last hour';
+  if (diffMs < bucketSeconds * 1000) return t('time.withinLastHour');
   const hours = Math.floor(diffMs / HOUR);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('time.hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t('time.daysAgo', { count: days });
 }

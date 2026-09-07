@@ -15,6 +15,9 @@ const LOCALE_TAGS: Record<SupportedLanguage, string> = {
   es: 'es-ES',
   fr: 'fr-FR',
   de: 'de-DE',
+  pt: 'pt-BR',
+  ca: 'ca-ES',
+  it: 'it-IT',
 };
 
 /** UI-facing language names, written in their own language (endonyms). */
@@ -23,13 +26,16 @@ const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   es: 'Español',
   fr: 'Français',
   de: 'Deutsch',
+  pt: 'Português',
+  ca: 'Català',
+  it: 'Italiano',
 };
 
 export const SUPPORTED_LANGUAGES = Object.freeze(
   Object.keys(LOCALE_TAGS) as SupportedLanguage[],
 );
 
-export type SupportedLanguage = 'en' | 'es' | 'fr' | 'de';
+export type SupportedLanguage = 'en' | 'es' | 'fr' | 'de' | 'pt' | 'ca' | 'it';
 
 export function isSupportedLanguage(value: string): value is SupportedLanguage {
   return SUPPORTED_LANGUAGES.includes(value as SupportedLanguage);

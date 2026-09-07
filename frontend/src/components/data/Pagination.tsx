@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '$/lib/cn';
+import { useLocale } from '$/i18n/useLocale';
 
 interface PaginationProps {
   page: number;
@@ -17,6 +19,8 @@ export function Pagination({
   onPageChange,
   className,
 }: PaginationProps) {
+  const { t } = useTranslation();
+  const { formatNumber } = useLocale();
   const start = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalItems);
 
@@ -29,14 +33,16 @@ export function Pagination({
       )}
     >
       <span className="text-[color:var(--text-2)] tnum text-xs">
-        {totalItems === 0 ? 'No results' : `${start}–${end} of ${totalItems.toLocaleString()}`}
+        {totalItems === 0
+          ? t('pagination.noResults')
+          : t('pagination.range', { start, end, count: formatNumber(totalItems) })}
       </span>
 
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          aria-label="Previous page"
+          aria-label={t('pagination.previousPage')}
           className={cn(
             'h-7 px-2.5 rounded-md text-xs font-medium transition-colors',
             'border border-[color:var(--border)] bg-[color:var(--bg-1)]',
@@ -45,7 +51,7 @@ export function Pagination({
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--accent)]',
           )}
         >
-          Prev
+          {t('pagination.prev')}
         </button>
 
         <span className="px-3 py-1.5 text-xs text-[color:var(--text-2)] tnum select-none">
@@ -55,7 +61,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          aria-label="Next page"
+          aria-label={t('pagination.nextPage')}
           className={cn(
             'h-7 px-2.5 rounded-md text-xs font-medium transition-colors',
             'border border-[color:var(--border)] bg-[color:var(--bg-1)]',
@@ -64,7 +70,7 @@ export function Pagination({
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--accent)]',
           )}
         >
-          Next
+          {t('pagination.next')}
         </button>
       </div>
     </div>

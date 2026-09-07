@@ -181,7 +181,7 @@ function dedupeIndicesByLabel(
     if (!point) {
       continue;
     }
-    const label = dateLabels[index] ?? shortDateFmt.format(xAccessor(point));
+    const label = dateLabels[index] ?? shortDateFmt().format(xAccessor(point));
     if (seenLabels.has(label)) {
       continue;
     }
@@ -415,7 +415,7 @@ function buildDataAlignedTicks({
       continue;
     }
     const date = xAccessor(point);
-    const label = dateLabels[index] ?? shortDateFmt.format(date);
+    const label = dateLabels[index] ?? shortDateFmt().format(date);
     if (seenLabels.has(label)) {
       continue;
     }
@@ -460,7 +460,7 @@ function buildDomainTicks({
   for (let i = 0; i < tickCount; i++) {
     const t = i / (tickCount - 1);
     const date = new Date(startTime + t * timeRange);
-    const label = shortDateFmt.format(date);
+    const label = shortDateFmt().format(date);
     if (seenLabels.has(label)) {
       continue;
     }
@@ -528,7 +528,7 @@ function appendProjectionTailTicks(
     const date = new Date(
       startTime + (i / (extraCount + 1)) * (endTime - startTime)
     );
-    const label = shortDateFmt.format(date);
+    const label = shortDateFmt().format(date);
     if (seenLabels.has(label)) {
       continue;
     }
@@ -540,7 +540,7 @@ function appendProjectionTailTicks(
     });
   }
 
-  const endLabel = shortDateFmt.format(domainEnd);
+  const endLabel = shortDateFmt().format(domainEnd);
   if (!seenLabels.has(endLabel)) {
     extras.push({
       date: domainEnd,
@@ -640,7 +640,7 @@ const XAxisInner = memo(function XAxisInner({
   const hoveredLabel =
     isHovering && tooltipData
       ? (dateLabels[tooltipData.index] ??
-        shortDateFmt.format(xAccessor(tooltipData.point)))
+        shortDateFmt().format(xAccessor(tooltipData.point)))
       : null;
 
   return createPortal(

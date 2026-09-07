@@ -4,6 +4,7 @@ import type { Messages } from '../../locales/en/common';
 export const es: Messages = {
   common: {
     search: 'Buscar',
+    clearSearch: 'Borrar búsqueda',
     signOut: 'Cerrar sesión',
     commandCenter: 'Centro de mando',
     cancel: 'Cancelar',
@@ -13,9 +14,31 @@ export const es: Messages = {
     error: 'Algo salió mal',
     retry: 'Reintentar',
   },
+  pagination: {
+    noResults: 'Sin resultados',
+    range: '{start}–{end} de {count}',
+    prev: 'Ant.',
+    next: 'Sig.',
+    previousPage: 'Página anterior',
+    nextPage: 'Página siguiente',
+  },
   language: {
     changeLanguage: 'Cambiar idioma',
     current: 'Idioma actual',
+  },
+  time: {
+    secondsShort: '{count}s',
+    minutesShort: '{count}m',
+    hoursShort: '{count}h',
+    daysShort: '{count}d',
+    inSeconds: 'en {count}s',
+    inMinutes: 'en {count}m',
+    inHours: 'en {count}h',
+    inDays: 'en {count}d',
+    justNow: 'ahora mismo',
+    withinLastHour: 'en la última hora',
+    hoursAgo: 'hace {count}h',
+    daysAgo: 'hace {count}d',
   },
   theme: {
     toLight: 'Cambiar a tema claro',
@@ -51,7 +74,7 @@ export const es: Messages = {
     collapseNavigation: 'Contraer la navegación',
     openCommandPalette: 'Abrir la paleta de comandos',
     breadcrumb: 'Ruta de navegación',
-    userMenu: 'Menú de usuario de {{name}}',
+    userMenu: 'Menú de usuario de {name}',
   },
   login: {
     title: 'Iniciar sesión',

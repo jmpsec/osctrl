@@ -4,6 +4,7 @@ import type { Messages } from '../../locales/en/common';
 export const de: Messages = {
   common: {
     search: 'Suchen',
+    clearSearch: 'Suche löschen',
     signOut: 'Abmelden',
     commandCenter: 'Kommandozentrale',
     cancel: 'Abbrechen',
@@ -13,9 +14,31 @@ export const de: Messages = {
     error: 'Etwas ist schiefgelaufen',
     retry: 'Erneut versuchen',
   },
+  pagination: {
+    noResults: 'Keine Ergebnisse',
+    range: '{start}–{end} von {count}',
+    prev: 'Zurück',
+    next: 'Weiter',
+    previousPage: 'Vorherige Seite',
+    nextPage: 'Nächste Seite',
+  },
   language: {
     changeLanguage: 'Sprache ändern',
     current: 'Aktuelle Sprache',
+  },
+  time: {
+    secondsShort: '{count}s',
+    minutesShort: '{count}m',
+    hoursShort: '{count}h',
+    daysShort: '{count}T',
+    inSeconds: 'in {count}s',
+    inMinutes: 'in {count}m',
+    inHours: 'in {count}h',
+    inDays: 'in {count}T',
+    justNow: 'gerade jetzt',
+    withinLastHour: 'innerhalb der letzten Stunde',
+    hoursAgo: 'vor {count}h',
+    daysAgo: 'vor {count}T',
   },
   theme: {
     toLight: 'Zum hellen Design wechseln',
@@ -51,7 +74,7 @@ export const de: Messages = {
     collapseNavigation: 'Navigation einklappen',
     openCommandPalette: 'Befehlspalette öffnen',
     breadcrumb: 'Brotkrumen',
-    userMenu: 'Benutzermenü für {{name}}',
+    userMenu: 'Benutzermenü für {name}',
   },
   login: {
     title: 'Anmelden',
