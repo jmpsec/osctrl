@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
+import { useLocale } from '$/i18n/useLocale';
 import { NodeAlertModal } from './NodeAlertModal';
 import { nodeAlertCoverage, coverageSummary } from './alertCoverage';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
@@ -675,7 +677,9 @@ const actionBtnDanger = buttonClasses({
 });
 
 export function NodeDetailPage() {
-  usePageTitle('Node');
+  const { t } = useTranslation();
+  const { formatNumber } = useLocale();
+  usePageTitle(t('pageTitle.node'));
   const { env, uuid } = useParams({ from: '/_app/env/$env/nodes/$uuid' as const });
   const navigate = useNavigate();
   const inactiveHours = useInactiveHours();
@@ -1362,7 +1366,7 @@ export function NodeDetailPage() {
                     label: 'Data received',
                     value: (
                       <span className="tabular-nums text-xs">
-                        {node.bytes_received.toLocaleString()} B
+                        {t('nodes.bytes', { count: formatNumber(node.bytes_received) })}
                       </span>
                     ),
                   },
@@ -1939,6 +1943,7 @@ function NodeActivityHeatmap({
   onIntervalChange,
   isLoading,
 }: NodeActivityHeatmapProps) {
+  const { t } = useTranslation();
   const n = buckets.length;
   const bucketSeconds =
     n >= 2
@@ -2004,7 +2009,7 @@ function NodeActivityHeatmap({
                 background: 'rgba(var(--error-bright-r),var(--error-bright-g),var(--error-bright-b),0.08)',
               }}
             >
-              {totalErrors.toLocaleString()} {totalErrors === 1 ? 'error' : 'errors'}
+              {t('nodes.errors', { count: totalErrors })}
             </span>
           )}
         </div>

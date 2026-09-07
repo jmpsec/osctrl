@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,7 +27,8 @@ type ModalMode =
   | { kind: 'delete'; env: TLSEnvironment };
 
 export function EnvironmentsPage() {
-  usePageTitle('Environments');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.environments'));
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [modal, setModal] = useState<ModalMode>({ kind: 'closed' });

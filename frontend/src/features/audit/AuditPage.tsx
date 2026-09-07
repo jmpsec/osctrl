@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -29,7 +30,8 @@ const SERVICES = ['', 'osctrl-tls', 'osctrl-api', 'osctrl-cli'] as const;
 const LOG_TYPE_KEYS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 
 export function AuditPage() {
-  usePageTitle('Audit');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.audit'));
   const search = useSearch({ from: '/_app/audit' });
   const navigate = useNavigate({ from: '/_app/audit' });
 

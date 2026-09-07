@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -108,7 +109,8 @@ const SECTIONS: {
 const RESERVED_OPTION_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
 
 export function EnvConfigPage() {
-  usePageTitle('Configuration');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.configuration'));
   const { env } = useParams({ from: '/_app/env/$env/config' });
   const navigate = useNavigate({ from: '/_app/env/$env/config' });
   const qc = useQueryClient();

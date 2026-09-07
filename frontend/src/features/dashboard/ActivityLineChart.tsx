@@ -2,6 +2,7 @@ import { Grid as BklitGrid } from '$/components/charts/grid';
 import { Line as BklitLine } from '$/components/charts/line';
 import { LineChart as BklitLineChart } from '$/components/charts/line-chart';
 import { ChartTooltip as BklitChartTooltip } from '$/components/charts/tooltip/chart-tooltip';
+import { activeLocaleTag, formatLocaleNumber } from '$/i18n/useLocale';
 import type { ActivitySeries, ChartCategory, ChartPalette } from './DashboardPage';
 
 const CATEGORY_LABELS: Record<ChartCategory, string> = {
@@ -92,12 +93,12 @@ export default function ActivityLineChart({
               ? point.date
               : new Date(String(point.date));
             const hoveredLabel = intervalLabel === '7d'
-              ? new Intl.DateTimeFormat(undefined, {
+              ? new Intl.DateTimeFormat(activeLocaleTag(), {
                   weekday: 'short',
                   month: 'short',
                   day: 'numeric',
                 }).format(hoveredAt)
-              : new Intl.DateTimeFormat(undefined, {
+              : new Intl.DateTimeFormat(activeLocaleTag(), {
                   hour: 'numeric',
                   minute: '2-digit',
                 }).format(hoveredAt);
@@ -126,7 +127,7 @@ export default function ActivityLineChart({
                         {CATEGORY_LABELS[key]}
                       </span>
                       <span className="font-semibold tabular-nums text-[color:var(--chart-tooltip-foreground)]">
-                        {value.toLocaleString()}
+                        {formatLocaleNumber(value)}
                       </span>
                     </div>
                   ))}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useContext, useLayoutEffect, createContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
@@ -465,7 +466,8 @@ function parseDuration(raw: string): number | null {
 }
 
 export function ServiceConfigPage() {
-  usePageTitle('Service Config');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.serviceConfig'));
   const params = useParams({ strict: false });
   const navigate = useNavigate();
   const serviceParam = (params as { service?: string }).service ?? 'api';

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -50,7 +51,8 @@ const CARVE_STATUS_TABS: StatusTab<CarveTarget>[] = [
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
 export function CarvesListPage() {
-  usePageTitle('Carves');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.carves'));
   const { env } = useParams({ from: '/_app/env/$env/carves' });
   const search = useSearch({ from: '/_app/env/$env/carves' });
   const navigate = useNavigate({ from: '/_app/env/$env/carves' });

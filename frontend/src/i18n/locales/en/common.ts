@@ -28,6 +28,50 @@ export const en = {
     previousPage: 'Previous page',
     nextPage: 'Next page',
   },
+  pageTitle: {
+    settings: 'Settings',
+    authProviders: 'Auth Providers',
+    serviceConfig: 'Service Config',
+    logSinks: 'Log Sinks',
+    nodes: 'Nodes',
+    node: 'Node',
+    enroll: 'Enroll',
+    environments: 'Environments',
+    configuration: 'Configuration',
+    health: 'Health',
+    queries: 'Queries',
+    newQuery: 'New Query',
+    query: 'Query',
+    savedQueries: 'Saved Queries',
+    tags: 'Tags',
+    alerts: 'Alerts',
+    dashboard: 'Dashboard',
+    audit: 'Audit',
+    profile: 'Profile',
+    users: 'Users',
+    newCarve: 'New Carve',
+    carves: 'Carves',
+    carve: 'Carve',
+  },
+  health: {
+    /** "as of 14:32:05" — time is pre-formatted. */
+    asOf: 'as of {time}',
+  },
+  nodes: {
+    /** ICU plural: "1 error" / "3 errors". */
+    errors: '{count, plural, one {# error} other {# errors}}',
+    bytes: '{count} B',
+  },
+  users: {
+    /** Token expiry line on the Users page. Date is pre-formatted. */
+    tokenExpires: 'Expires: {date}',
+  },
+  dashboard: {
+    responses: '{executions} of {expected} responses',
+    nodes: '{executions} of {expected} nodes',
+    total: '{count} total',
+    hosts: '{count} hosts',
+  },
   language: {
     /** aria/title for the language selector button. */
     changeLanguage: 'Change language',

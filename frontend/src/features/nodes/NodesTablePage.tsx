@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
+import { useLocale } from '$/i18n/useLocale';
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { listNodes, deleteNode, type NodePlatform } from '$/api/nodes';
@@ -89,6 +91,7 @@ interface QuickFilter {
 }
 
 function QuickFiltersGroup({ filters }: { filters: QuickFilter[] }) {
+  const { formatNumber } = useLocale();
   // Same StatusTabs-style segmented pad as before, but without the
   // surrounding row chrome — meant to slot into the main toolbar
   // alongside the page title and search box so the whole header reads
@@ -123,7 +126,7 @@ function QuickFiltersGroup({ filters }: { filters: QuickFilter[] }) {
                 f.active ? 'text-[color:var(--text-2)]' : 'text-[color:var(--text-3)]',
               )}
             >
-              {f.count.toLocaleString()}
+              {formatNumber(f.count)}
             </span>
           )}
         </button>
@@ -420,7 +423,8 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
 // ---------------------------------------------------------------------------
 
 export function NodesTablePage() {
-  usePageTitle('Nodes');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.nodes'));
   const { env } = useParams({ from: '/_app/env/$env/nodes' });
   const search = useSearch({ from: '/_app/env/$env/nodes' });
   const navigate = useNavigate({ from: '/_app/env/$env/nodes' });

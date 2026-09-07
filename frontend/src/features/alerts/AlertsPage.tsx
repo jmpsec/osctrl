@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -103,7 +104,8 @@ function sourceLabel(source: string): string {
  * CSS-var tokens only.
  */
 export function AlertsPage() {
-  usePageTitle('Alerts');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.alerts'));
   const navigate = useNavigate();
   const qc = useQueryClient();
 

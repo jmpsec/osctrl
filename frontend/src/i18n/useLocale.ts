@@ -8,6 +8,7 @@
  */
 
 import { useMemo } from 'react';
+import i18next from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { localeTag } from './locales';
 
@@ -74,4 +75,30 @@ export function useLocale(): LocaleFormatters {
   const language = i18n.resolvedLanguage ?? i18n.language ?? 'en';
   const tag = localeTag(language as Parameters<typeof localeTag>[0]) ?? 'en-US';
   return useMemo(() => getFormatters(tag), [tag]);
+}
+
+/**
+ * Non-hook variant for plain modules that run outside React render
+ * (table formatters, util functions). Resolves the active tag from the
+ * i18n instance and shares the same per-tag formatter cache.
+ */
+export function activeLocaleFormatters(): LocaleFormatters {
+  const language = i18next.language ?? i18next.resolvedLanguage ?? 'en';
+  const tag = localeTag(language as Parameters<typeof localeTag>[0]) ?? 'en-US';
+  return getFormatters(tag);
+}
+
+/** Convenience wrapper: locale-formatted number for plain module code. */
+export function formatLocaleNumber(value: number, options?: Intl.NumberFormatOptions): string {
+  return activeLocaleFormatters().formatNumber(value, options);
+}
+
+/** Convenience wrapper: locale-formatted date-time for plain module code. */
+export function formatLocaleDateTime(date: Date, options?: Intl.DateTimeFormatOptions): string {
+  return activeLocaleFormatters().formatDateTime(date, options);
+}
+
+/** Active ICU locale tag (e.g. "de-DE") for non-hook call sites. */
+export function activeLocaleTag(): string {
+  return activeLocaleFormatters().tag;
 }

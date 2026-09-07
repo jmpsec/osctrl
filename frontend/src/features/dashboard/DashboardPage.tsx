@@ -11,8 +11,10 @@
 
 import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { FileSearch, FolderOpen, RotateCcw, RotateCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from '@tanstack/react-router';
 import { usePageTitle } from '$/lib/usePageTitle';
+import { useLocale } from '$/i18n/useLocale';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
@@ -386,6 +388,7 @@ function KpiCard({
 }: KpiCardProps) {
   const pct = computeDeltaPct(sparkline);
   const tone = deltaTone(pct, polarity);
+  const { formatNumber } = useLocale();
   const text =
     deltaLabel ??
     (pct == null
@@ -414,7 +417,7 @@ function KpiCard({
         {label}
       </div>
       <div className="font-display text-[30px] font-semibold tabular-nums text-[color:var(--text-1)] leading-none mt-2">
-        {value.toLocaleString()}
+        {formatNumber(value)}
       </div>
       <div className="flex items-end justify-between mt-auto pt-3">
         <span
@@ -631,6 +634,8 @@ function OperationalWorkloadCards({
   recentCarve,
   env,
 }: OperationalWorkloadCardsProps) {
+  const { t } = useTranslation();
+  const { formatNumber } = useLocale();
   const queryProgress = featuredQuery
     ? progressPercent(featuredQuery.executions, featuredQuery.expected)
     : 0;
@@ -642,7 +647,7 @@ function OperationalWorkloadCards({
   const workloads: WorkloadEntry[] = [
     {
       kind: 'query',
-      title: 'Queries',
+      title: t('nav.queries'),
       description: 'Active fleet investigations',
       count: activeQueries,
       statusVariant: activeQueries > 0 ? 'success' : 'dim',
@@ -652,13 +657,16 @@ function OperationalWorkloadCards({
       linkEnv: featuredQuery?.envUuid ?? env,
       progress: queryProgress,
       progressMeta: featuredQuery
-        ? `${featuredQuery.executions.toLocaleString()} of ${featuredQuery.expected.toLocaleString()} responses`
+        ? t('dashboard.responses', {
+            executions: formatNumber(featuredQuery.executions),
+            expected: formatNumber(featuredQuery.expected),
+          })
         : '',
       progressColor: featuredQuery?.errors ? 'var(--warning)' : 'var(--info)',
     },
     {
       kind: 'carve',
-      title: 'Forensic Carves',
+      title: t('nav.carves'),
       description: 'File collections in flight',
       count: activeCarves,
       statusVariant: activeCarves > 0 ? 'info' : 'dim',
@@ -670,7 +678,10 @@ function OperationalWorkloadCards({
       progressMeta: recentCarve
         ? carveReady
           ? 'Archive ready'
-          : `${recentCarve.executions.toLocaleString()} of ${recentCarve.expected.toLocaleString()} nodes`
+          : t('dashboard.nodes', {
+              executions: formatNumber(recentCarve.executions),
+              expected: formatNumber(recentCarve.expected),
+            })
         : '',
       progressColor: carveReady ? 'var(--success)' : 'var(--info)',
     },
@@ -697,7 +708,7 @@ function OperationalWorkloadCards({
             <p className="mt-1 text-[13px] text-[color:var(--text-3)]">{entry.description}</p>
             <div className="mt-auto flex items-start gap-3 pt-3">
               <span className="font-display text-[30px] font-semibold tabular-nums text-[color:var(--text-1)]">
-                {entry.count.toLocaleString()}
+                {formatNumber(entry.count)}
               </span>
               <span className="pt-1">
                 <StatusBadge variant={entry.statusVariant} label={entry.statusLabel} />
@@ -756,6 +767,8 @@ const PLATFORM_COLOR: Record<keyof PlatformCounts, string> = {
   other: 'var(--text-3)',
 };
 function TopPlatformsPanel({ counts, total }: { counts: PlatformCounts; total: number }) {
+  const { t } = useTranslation();
+  const { formatNumber } = useLocale();
   const entries = (Object.keys(counts) as (keyof PlatformCounts)[])
     .map((k) => ({ key: k, count: counts[k] }))
     .sort((a, b) => b.count - a.count);
@@ -769,7 +782,7 @@ function TopPlatformsPanel({ counts, total }: { counts: PlatformCounts; total: n
           Hosts by platform
         </h2>
         <span className="text-xs font-medium text-[color:var(--text-3)] tabular-nums">
-          {total.toLocaleString()} total
+          {t('dashboard.total', { count: formatNumber(total) })}
         </span>
       </div>
       {/* Stacked bar */}
@@ -825,16 +838,10 @@ function initials(username: string): string {
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return username.slice(0, 2).toUpperCase();
 }
-function relativeTime(iso: string): string {
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return `${Math.round(diff)}s ago`;
-  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
-  return `${Math.round(diff / 86400)}d ago`;
-}
 function ActivityRow({
   username, service, logType, line, createdAt,
 }: { username: string; service: string; logType: number; line: string; createdAt: string }) {
+  const { formatDateTime } = useLocale();
   const typeLabel = LOG_TYPE_LABELS[logType] ?? 'action';
   const isAuth = logType === 1 || logType === 2;
   return (
@@ -866,9 +873,9 @@ function ActivityRow({
       <time
         className="flex-shrink-0 text-xs text-[color:var(--text-3)] mt-0.5 tabular-nums"
         dateTime={createdAt}
-        title={new Date(createdAt).toLocaleString()}
+        title={formatDateTime(new Date(createdAt))}
       >
-        {relativeTime(createdAt)}
+        {formatRelative(createdAt)}
       </time>
     </div>
   );
@@ -890,6 +897,7 @@ function ErrorNodesDialog({
     staleTime: 30_000,
     retry: 1,
   });
+  const { formatNumber } = useLocale();
   const rows = data ?? [];
 
   return (
@@ -936,7 +944,7 @@ function ErrorNodesDialog({
                   className="font-mono-tabular text-xs font-semibold tabular-nums flex-shrink-0"
                   style={{ color: 'var(--error-bright)' }}
                 >
-                  {row.errors.toLocaleString()}
+                  {formatNumber(row.errors)}
                 </span>
               </li>
             ))}
@@ -982,6 +990,7 @@ function EndpointHealthPanel({
     return { category, total, lastSeen };
   });
   const anyActivity = rows.some((row) => row.total > 0);
+  const { formatNumber, formatDateTime } = useLocale();
 
   return (
     <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] flex flex-col overflow-hidden">
@@ -1053,13 +1062,13 @@ function EndpointHealthPanel({
                     )}
                     style={{ color: rowColor }}
                   >
-                    {row.total.toLocaleString()}
+                    {formatNumber(row.total)}
                   </span>
                   {row.lastSeen ? (
                     <time
                       className="text-xs text-[color:var(--text-3)] tabular-nums text-right"
                       dateTime={row.lastSeen}
-                      title={new Date(row.lastSeen).toLocaleString()}
+                      title={formatDateTime(new Date(row.lastSeen))}
                     >
                       {formatRelative(row.lastSeen)}
                     </time>
@@ -1150,6 +1159,7 @@ function formatExpireRelative(iso?: string): string {
 }
 
 function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
+  const { formatNumber } = useLocale();
   return (
     <div
       className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
@@ -1194,16 +1204,16 @@ function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
               </span>
             </div>
             <span className="tabular-nums text-[color:var(--text-1)] text-right">
-              {env.active.toLocaleString()}
+              {formatNumber(env.active)}
             </span>
             <span className="tabular-nums text-[color:var(--text-3)] text-right">
-              {env.inactive.toLocaleString()}
+              {formatNumber(env.inactive)}
             </span>
             <span className="tabular-nums text-[color:var(--text-1)] text-right">
-              {env.active_queries.toLocaleString()}
+              {formatNumber(env.active_queries)}
             </span>
             <span className="tabular-nums text-[color:var(--text-1)] text-right">
-              {env.active_carves.toLocaleString()}
+              {formatNumber(env.active_carves)}
             </span>
             <span
               className={cn(
@@ -1250,6 +1260,8 @@ function OsqueryVersionsPanel({
 }: {
   versions: { version: string; count: number }[];
 }) {
+  const { t } = useTranslation();
+  const { formatNumber } = useLocale();
   const total = versions.reduce((s, v) => s + v.count, 0);
   const topPct = total > 0 ? (versions[0]?.count ?? 0) / total : 0;
   const showUpToDate = total > 0 && topPct > 0.8;
@@ -1266,7 +1278,7 @@ function OsqueryVersionsPanel({
           )}
         </h2>
         <span className="text-xs font-medium text-[color:var(--text-3)] tabular-nums">
-          {total.toLocaleString()} hosts
+          {t('dashboard.hosts', { count: formatNumber(total) })}
         </span>
       </div>
       <div className="px-4 py-3 flex-1">
@@ -1287,7 +1299,7 @@ function OsqueryVersionsPanel({
                   {v.version || 'unknown'}
                 </span>
                 <span className="text-[12px] text-[color:var(--text-3)] tabular-nums">
-                  {v.count.toLocaleString()}
+                  {formatNumber(v.count)}
                 </span>
               </li>
             ))}
@@ -1324,6 +1336,7 @@ function ActiveQueryRowItem({
   elapsed: string;
 }) {
   const tone = progressTone(row);
+  const { formatNumber } = useLocale();
   const pct =
     row.expected > 0
       ? Math.min(100, Math.round((row.executions / row.expected) * 100))
@@ -1358,7 +1371,7 @@ function ActiveQueryRowItem({
         {row.envName}
       </span>
       <span className="col-span-2 text-xs tabular-nums text-[color:var(--text-3)] text-right">
-        {row.executions.toLocaleString()} / {row.expected.toLocaleString()}
+        {formatNumber(row.executions)} / {formatNumber(row.expected)}
         {row.errors > 0 && (
           <>
             {' · '}
@@ -1407,6 +1420,7 @@ function RecentlySeenNodesTable({
   nodes: RecentNodeRow[];
   envUuid: string;
 }) {
+  const { formatDateTime } = useLocale();
   return (
     <div
       className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
@@ -1474,7 +1488,7 @@ function RecentlySeenNodesTable({
             <time
                 className="text-xs text-[color:var(--text-3)] tabular-nums text-right"
               dateTime={n.last_seen}
-              title={n.last_seen ? new Date(n.last_seen).toLocaleString() : ''}
+              title={n.last_seen ? formatDateTime(new Date(n.last_seen)) : ''}
             >
               {n.last_seen ? formatRelative(n.last_seen) : '—'}
             </time>
@@ -1517,7 +1531,8 @@ function RefreshButton({ onClick, isPending }: { onClick: () => void; isPending:
 // Main page
 // ---------------------------------------------------------------------------
 export function DashboardPage() {
-  usePageTitle('Dashboard');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.dashboard'));
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['stats'],
     queryFn: getStats,

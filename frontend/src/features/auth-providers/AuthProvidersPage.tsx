@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -57,7 +58,8 @@ function providerIcon(type: string): ReactNode {
 }
 
 export function AuthProvidersPage() {
-  usePageTitle('Auth Providers');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.authProviders'));
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [modal, setModal] = useState<ModalMode>({ kind: 'closed' });

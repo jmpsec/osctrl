@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Archive, ChevronDown, ChevronRight, ExternalLink, File, Folder, Loader2, RefreshCw } from 'lucide-react';
+import { formatLocaleDateTime } from '$/i18n/useLocale';
 import { runCarve } from '$/api/carves';
 import { AuthError } from '$/api/client';
 import {
@@ -500,7 +501,7 @@ function formatSize(size?: number) {
 
 function formatUnix(value?: number) {
   if (!value) return '';
-  return new Date(value * 1000).toLocaleString();
+  return formatLocaleDateTime(new Date(value * 1000));
 }
 
 type PrimingItem = { label: string; value: string };

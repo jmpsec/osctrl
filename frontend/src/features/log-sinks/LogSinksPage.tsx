@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -159,7 +160,8 @@ type ModalMode =
  * for empty/error, ModalShell dialogs, CSS-var tokens only.
  */
 export function LogSinksPage() {
-  usePageTitle('Log Sinks');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.logSinks'));
   const navigate = useNavigate();
   const qc = useQueryClient();
 
