@@ -3375,6 +3375,40 @@ paths:
       summary: Update enrolling package URL
       tags:
         - environments
+  /api/v1/health/status:
+    get:
+      description: Component health, per-service runtime detail and upgrade status.
+        Admin only.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.healthStatusResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Health reporting disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Deployment health
+      tags:
+        - health
   /api/v1/log-sinks:
     get:
       description: Returns log sink rows, optionally filtered by environment. Secrets
@@ -9652,6 +9686,17 @@ components:
         updated_at:
           type: string
       type: object
+    handlers.healthStatusResponse:
+      properties:
+        components:
+          items:
+            $ref: "#/components/schemas/health.Component"
+          type: array
+        generated_at:
+          type: string
+        upgrade:
+          $ref: "#/components/schemas/health.UpgradeInfo"
+      type: object
     handlers.logSinkDTO:
       properties:
         bytes_sent:
@@ -9684,6 +9729,46 @@ components:
           type: string
         updated_at:
           type: string
+      type: object
+    health.Component:
+      properties:
+        details:
+          additionalProperties: {}
+          type: object
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        summary:
+          type: string
+      type: object
+    health.UpgradeInfo:
+      properties:
+        api_version:
+          description: |-
+            API and TLS expose the per-service versions behind Skew so the page
+            can name both sides of a mismatch.
+          type: string
+        checked:
+          type: boolean
+        checked_at:
+          type: string
+        current:
+          type: string
+        latest:
+          type: string
+        more_information:
+          type: string
+        skew:
+          type: boolean
+        suggested:
+          type: string
+        tls_version:
+          type: string
+        up_to_date:
+          type: boolean
       type: object
     nodes.OsqueryNode:
       properties:

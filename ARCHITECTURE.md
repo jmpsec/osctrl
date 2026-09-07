@@ -62,6 +62,7 @@ Main runtime components:
 - `pkg/auth`, `pkg/authproviders`, `pkg/mfa`: OIDC/SAML providers, federated-login state, TOTP, WebAuthn, and recovery codes.
 - `pkg/console`, `pkg/fileexplorer`: interactive workflows implemented through distributed queries.
 - `pkg/environments`: environment model, enrollment/config path metadata, package/script metadata.
+- `pkg/health`: deployment health — the `service_status` heartbeat table, component status derivation (operational/degraded/down/stale/unknown), Go runtime snapshots, and a 24h-refreshed upgrade-version cache. Gated by `--health-enabled` (default off).
 - `pkg/nodes`: node registry, lookup, archive, metadata updates.
 - `pkg/queries`: distributed query definitions, targets, node-query state, saved queries.
 - `pkg/carves`: file carving metadata and storage backends (`db`, `local`, `s3`).
@@ -94,7 +95,7 @@ Both long-lived backend services follow the same pattern in their `main.go`:
 
 Service-specific additions:
 
-- `osctrl-tls` wires Redis-backed environment/settings/query-dispatch caches, node activity batching, node metadata batching, persisted log sinks, service-command polling, and optional DB-health, posture, alerting, and Prometheus components.
+- `osctrl-tls` wires Redis-backed environment/settings/query-dispatch caches, node activity batching, node metadata batching, persisted log sinks, service-command polling, and optional DB-health, posture, alerting, and Prometheus components. When `--health-enabled` is set, it also writes a `service_status` heartbeat (version, uptime, goroutines, worker counters) every 60s by riding the existing 5s service-command poll loop rather than starting a new ticker.
 - `osctrl-api` wires the shared environment/query caches and activity reader; initializes audit, MFA, console, file-explorer, service-config, log-sink, and auth-provider managers; and conditionally registers posture, alerting, service-management, federated-auth, and hosted-MCP routes.
 
 The standalone `osctrl-mcp` process has a smaller startup flow:
@@ -126,6 +127,7 @@ Representative routes (some are feature-gated):
   - `GET /api/v1/nodes/{env}/all`
   - `POST /api/v1/queries/{env}`
   - `GET /api/v1/settings/{service}/{env}`
+  - `GET /api/v1/health/status` when `health.enabled` is true (admin only, 503 when disabled)
   - `/api/v1/mcp` when `mcp.enabled` is true
 
 Request controls are composed at route registration:
@@ -334,6 +336,8 @@ Feature-owned tables are migrated only when their manager is initialized. In par
   - `pkg/logging.OsqueryQueryData` -> `osquery_query_data`
 - Audit:
   - `pkg/auditlog.AuditLog` -> `audit_logs`
+- Health:
+  - `pkg/health.ServiceStatus` -> `service_status` (one upserted row per reporting service; created only when `--health-enabled` is set)
 
 Redis-only state such as activity rollups, query-dispatch hints, and alert cooldown/inactive markers is not represented in these tables. Important relationships are implemented through indexed ID/UUID fields and application code rather than database foreign-key constraints.
 
@@ -371,3 +375,4 @@ Redis-only state such as activity rollups, query-dispatch hints, and alert coold
 - Relationships mostly use indexed numeric IDs, UUIDs, or names without database foreign-key constraints. External routes also mix environment names/UUIDs, node UUIDs/names, and numeric configuration IDs, which matters when integrating or troubleshooting.
 - SAML assertion replay protection uses a per-process TTL cache. In a multi-replica API deployment, the same assertion can be presented once to each replica within its validity window unless a shared replay layer is added.
 - Graceful shutdown is limited. `osctrl-api` drains HTTP requests for an internally requested config restart, while `osctrl-tls` exits for its restart command; neither service currently installs a general OS-signal shutdown path.
+- Health reporting needs `--health-enabled` on both services to show a complete picture: with only `osctrl-api` enabled, the page shows `osctrl-tls` as "not reporting" (unknown), never "down", since there is no heartbeat row to compare against. Multiple `osctrl-tls` replicas share the single `service_status` row for `"tls"` — the last writer wins, so overall liveness stays correct but per-replica detail (which instance, how many) is lost. The health page is a point-in-time snapshot with no history.

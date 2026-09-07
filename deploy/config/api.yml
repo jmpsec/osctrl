@@ -85,6 +85,13 @@ service:
   # history from the shared database (evaluated by osctrl-tls).
   # Requires a service restart to change.
   alertsEnabled: false
+  # Enable the health/system-status subsystem. When false (default), the
+  # /api/v1/health routes are not registered and the SPA hides the Health
+  # section. When true, the API serves GET /api/v1/health/status: a live
+  # DB ping, a Redis PING, its own runtime stats, the osctrl-tls
+  # heartbeat, and cached upgrade status. Requires a service restart to
+  # change.
+  healthEnabled: false
   # DB health monitor. When enabled, osctrl-api pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache switches to stale-serve mode:

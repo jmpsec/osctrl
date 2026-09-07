@@ -287,6 +287,13 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Service.AlertsEnabled,
 		},
 		&cli.BoolFlag{
+			Name:        "health-enabled",
+			Value:       false,
+			Usage:       "Enable the health/system-status subsystem: component health, service heartbeats and runtime stats in the SPA. Disabled by default; when enabled osctrl-tls writes a heartbeat row every 60s and osctrl-api serves /api/v1/health/status. Requires a service restart to change.",
+			Sources:     cli.EnvVars("SERVICE_HEALTH_ENABLED"),
+			Destination: &params.Service.HealthEnabled,
+		},
+		&cli.BoolFlag{
 			Name:        "service-config-enabled",
 			Value:       false,
 			Usage:       "Serve the service-config API and show the matching section in the SPA. Disabled by default: the YAML sections are still seeded into the database at every boot and resolved back at startup, but none of the /api/v1/service-config routes are registered — change the rows or the YAML file directly instead.",

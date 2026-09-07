@@ -10,6 +10,7 @@ import {
   Download,
   FileSearch,
   FileStack,
+  HeartPulse,
   LayoutDashboard,
   ListChecks,
   Monitor,
@@ -253,6 +254,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
     pathname.startsWith('/_app/log-sinks') || pathname.startsWith('/log-sinks');
   const isAlertsActive =
     pathname.startsWith('/_app/alerts') || pathname.startsWith('/alerts');
+  const isHealth = pathname.startsWith('/_app/health') || pathname.startsWith('/health');
   const isAuthProvidersActive =
     pathname.startsWith('/_app/auth-providers') || pathname.startsWith('/auth-providers');
   const isAuditActive = pathname.startsWith('/_app/audit') || pathname === '/audit';
@@ -575,6 +577,15 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               icon={<Bell size={14} strokeWidth={1.8} />}
             >
               Alerts
+            </NavItem>}
+            {features?.health && <NavItem
+              collapsed={collapsed}
+              active={isHealth}
+              to="/_app/health"
+              tone="green"
+              icon={<HeartPulse size={14} strokeWidth={1.8} />}
+            >
+              Health
             </NavItem>}
             {features?.auth_providers && <NavItem
               collapsed={collapsed}

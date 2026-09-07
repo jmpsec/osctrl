@@ -25,6 +25,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
+	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/mfa"
@@ -112,8 +113,10 @@ const (
 	// API service config path
 	apiServiceConfigPath = "/service-config"
 	// API log sinks path
-	apiLogSinksPath      = "/log-sinks"
-	apiAlertsPath        = "/alerts"
+	apiLogSinksPath = "/log-sinks"
+	apiAlertsPath   = "/alerts"
+	// API health / system status path
+	apiHealthPath        = "/health"
 	apiAuthProvidersPath = "/auth-providers"
 	// API features path
 	apiFeaturesPath = "/features"
@@ -383,6 +386,32 @@ func osctrlAPIService() {
 	} else {
 		log.Info().Msg("Alerting system disabled (enable with --alerts-enabled)")
 	}
+	// Health / system status subsystem (disabled by default). When
+	// disabled the service_status table is not created and the health
+	// API routes are not registered.
+	var healthMgr *health.Manager
+	var healthVersions *health.VersionCache
+	if flagParams.Service.HealthEnabled {
+		healthMgr = health.NewManager(db.Conn)
+		healthVersions = health.NewVersionCache(buildVersion)
+		// Seed from the boot check, then refresh daily. This is an external
+		// HTTP call, so it must never happen on the request path.
+		go func() {
+			if err := healthVersions.Refresh(version.VersionDataURL); err != nil {
+				log.Err(err).Msg("error retrieving version data for health")
+			}
+			ticker := time.NewTicker(24 * time.Hour)
+			defer ticker.Stop()
+			for range ticker.C {
+				if err := healthVersions.Refresh(version.VersionDataURL); err != nil {
+					log.Err(err).Msg("error refreshing version data for health")
+				}
+			}
+		}()
+		log.Info().Msg("Health system enabled")
+	} else {
+		log.Info().Msg("Health system disabled (enable with --health-enabled)")
+	}
 	// Initialize settings
 	// Multi-factor authentication for password logins. The manager owns its
 	// tables and is always available; WebAuthn additionally needs a relying
@@ -586,6 +615,10 @@ func osctrlAPIService() {
 		handlers.WithServiceConfig(serviceConfigMgr),
 		handlers.WithLogSinks(logSinksMgr),
 		handlers.WithAlerts(alertsMgr),
+		handlers.WithHealth(healthMgr),
+		handlers.WithHealthVersions(healthVersions),
+		handlers.WithStartedAt(time.Now()),
+		handlers.WithRedis(redis),
 		handlers.WithAuthProviders(authProviderRegistry, authProvidersMgr),
 		handlers.WithServiceConfigEnabled(flagParams.Service.ServiceConfigEnabled),
 		handlers.WithLogSinksEnabled(logSinksEnabled),
@@ -1177,6 +1210,14 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"POST "+_apiPath(apiAlertsPath)+"/apply",
 			restartRateLimit(handlerAuthCheck(http.HandlerFunc(handlersApi.AlertsApplyHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret)))
+	}
+
+	// API: health / system status. Gated by --health-enabled; when the flag
+	// is off the route is absent and the table was never created.
+	if flagParams.Service.HealthEnabled {
+		muxAPI.Handle(
+			"GET "+_apiPath(apiHealthPath)+"/status",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.HealthStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 
 	// API: auth providers. Independently gated by

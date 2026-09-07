@@ -24,6 +24,9 @@ type FeaturesResponse struct {
 	Accelerated  bool `json:"accelerated"`
 	Console      bool `json:"console"`
 	FileExplorer bool `json:"file_explorer"`
+	// Health gates the Health section in the SPA. Tied to --health-enabled —
+	// when false the /api/v1/health routes are not registered.
+	Health bool `json:"health"`
 }
 
 // FeaturesHandler — GET /api/v1/features.
@@ -40,5 +43,6 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 		Accelerated:   h.OsqueryValues.Accelerated,
 		Console:       h.OsqueryValues.Query && h.OsqueryValues.Console,
 		FileExplorer:  h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,
+		Health:        h.Health != nil,
 	})
 }

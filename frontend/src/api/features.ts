@@ -8,6 +8,9 @@ export interface Features {
   /** Alerting subsystem (--alerts-enabled). When false the alerts
    * routes are absent and the SPA hides the Alerts section. */
   alerts?: boolean;
+  /** Health/system status (--health-enabled). When false the health routes
+   * are absent and the SPA hides the Health section. */
+  health?: boolean;
   accelerated: boolean;
   console?: boolean;
   file_explorer: boolean;
