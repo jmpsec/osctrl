@@ -3,7 +3,7 @@ name: Release - Tagged
 on:
   push:
     tags:
-      - '*.*.*'
+      - "*.*.*"
 
 permissions:
   contents: write
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GOLANG_VERSION: 1.26.5
+  GOLANG_VERSION: 1.27.1
   NODE_VERSION: "22"
 
 jobs:

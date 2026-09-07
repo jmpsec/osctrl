@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  GOLANG_VERSION: 1.26.5
+  GOLANG_VERSION: 1.27.1
 
 jobs:
   golangci:
