@@ -1,6 +1,8 @@
 import { cn } from '$/lib/cn';
 import { Menu, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageMenu } from './LanguageMenu';
 import { UserMenu } from './UserMenu';
 
 interface BreadcrumbSegment {
@@ -25,6 +27,8 @@ export function TopBar({
   desktopNavCollapsed,
   onDesktopNavToggle,
 }: TopBarProps) {
+  const { t } = useTranslation();
+
   return (
     <header
       className={cn(
@@ -39,7 +43,7 @@ export function TopBar({
         <button
           type="button"
           onClick={onMenuToggle}
-          aria-label="Open navigation menu"
+          aria-label={t('topbar.openNavigation')}
           className={cn(
             'md:hidden -ml-1 flex h-8 w-8 items-center justify-center rounded-md',
             'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
@@ -57,8 +61,8 @@ export function TopBar({
         <button
           type="button"
           onClick={onDesktopNavToggle}
-          aria-label={desktopNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-          title={desktopNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          aria-label={desktopNavCollapsed ? t('topbar.expandNavigation') : t('topbar.collapseNavigation')}
+          title={desktopNavCollapsed ? t('topbar.expandNavigation') : t('topbar.collapseNavigation')}
           className={cn(
             'hidden md:flex -ml-1 h-8 w-8 items-center justify-center rounded-md',
             'text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-2)]',
@@ -75,7 +79,7 @@ export function TopBar({
       )}
 
       {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm min-w-0">
+      <nav aria-label={t('topbar.breadcrumb')} className="flex items-center gap-1.5 text-sm min-w-0">
         {breadcrumbs.map((seg, idx) => {
           const isLast = idx === breadcrumbs.length - 1;
           return (
@@ -108,7 +112,7 @@ export function TopBar({
           <button
             type="button"
             onClick={onCommandPalette}
-            aria-label="Open command palette"
+            aria-label={t('topbar.openCommandPalette')}
             className={cn(
               'flex h-8 items-center gap-2 rounded-md border border-[color:var(--border)] px-2.5 text-xs',
               'bg-[color:var(--bg-1)] text-[color:var(--text-2)]',
@@ -118,11 +122,12 @@ export function TopBar({
             )}
           >
             <Search size={14} strokeWidth={1.8} />
-            <span className="hidden md:inline">Search</span>
+            <span className="hidden md:inline">{t('common.search')}</span>
             <kbd className="hidden md:inline font-mono-tabular text-xs text-[color:var(--text-3)]">⌘K</kbd>
           </button>
         )}
         <ThemeToggle />
+        <LanguageMenu />
         <UserMenu username={username} />
       </div>
     </header>

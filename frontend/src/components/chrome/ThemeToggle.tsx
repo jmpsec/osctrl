@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '$/lib/cn';
 import { toggleTheme, getInitialTheme, applyTheme } from '$/lib/theme';
 import type { Theme } from '$/lib/design-tokens';
 
 export function ThemeToggle() {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState<Theme>(() => {
     const fromDom = document.documentElement.getAttribute('data-theme') as Theme | null;
     return fromDom === 'light' || fromDom === 'dark' ? fromDom : getInitialTheme();
@@ -19,12 +21,13 @@ export function ThemeToggle() {
     setCurrent(next);
   }
 
+  const nextThemeLabel = current === 'dark' ? t('theme.toLight') : t('theme.toDark');
   return (
     <button
       type="button"
       onClick={handleToggle}
-      aria-label={`Switch to ${current === 'dark' ? 'light' : 'dark'} theme`}
-      title={`Switch to ${current === 'dark' ? 'light' : 'dark'} theme`}
+      aria-label={nextThemeLabel}
+      title={nextThemeLabel}
       className={cn(
         'flex h-8 w-8 items-center justify-center rounded-md',
         'text-[color:var(--text-3)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)]',

@@ -1,4 +1,5 @@
 import { cn } from '$/lib/cn';
+import { useTranslation } from 'react-i18next';
 import { DropdownMenu } from '$/components/primitives/DropdownMenu';
 import { logout } from '$/api/client';
 
@@ -15,6 +16,7 @@ function getInitials(name: string): string {
 }
 
 export function UserMenu({ username = 'admin' }: UserMenuProps) {
+  const { t } = useTranslation();
   const initials = getInitials(username);
 
   function handleLogout() {
@@ -33,7 +35,7 @@ export function UserMenu({ username = 'admin' }: UserMenuProps) {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button
-          aria-label={`User menu for ${username}`}
+          aria-label={t('topbar.userMenu', { name: username })}
           className={cn(
             'w-8 h-8 rounded-md flex items-center justify-center',
             'text-xs font-semibold',
@@ -66,7 +68,7 @@ export function UserMenu({ username = 'admin' }: UserMenuProps) {
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-          Sign out
+          {t('common.signOut')}
         </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>

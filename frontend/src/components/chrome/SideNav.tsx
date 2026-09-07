@@ -22,6 +22,7 @@ import {
   Users,
 } from 'lucide-react';
 import { cn } from '$/lib/cn';
+import { useTranslation } from 'react-i18next';
 import { Logo } from '$/components/atoms/Logo';
 import { EnvSwitcher } from './EnvSwitcher';
 import { listEnvironments } from '$/api/environments';
@@ -160,6 +161,7 @@ interface OpenPreview {
 }
 
 export function SideNav({ className, collapsed, previewsEnabled = true }: SideNavProps = {}) {
+  const { t } = useTranslation();
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
   const params = useParams({ strict: false });
@@ -380,7 +382,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
       {collapsed ? (
         <div className="mx-2 mb-2 border-t border-[color:var(--border)]" aria-hidden />
       ) : (
-        <SectionLabel>Workspace</SectionLabel>
+        <SectionLabel>{t('nav.workspace')}</SectionLabel>
       )}
       <nav className="space-y-0.5 mb-3">
         <NavItem
@@ -390,7 +392,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
           tone="blue"
           icon={<LayoutDashboard size={14} strokeWidth={1.8} />}
         >
-          Dashboard
+          {t('nav.dashboard')}
         </NavItem>
         {canSeeEnv && (
           <div {...previewTriggerProps('nodes')}>
@@ -402,7 +404,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               icon={<Monitor size={14} strokeWidth={1.8} />}
               previewExpanded={preview?.kind === 'nodes'}
             >
-              Nodes
+              {t('nav.nodes')}
             </NavItem>
           </div>
         )}
@@ -416,7 +418,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               icon={<FileSearch size={14} strokeWidth={1.8} />}
               previewExpanded={preview?.kind === 'queries'}
             >
-              Queries
+              {t('nav.queries')}
             </NavItem>
           </div>
         )}
@@ -428,7 +430,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             tone="amber"
             icon={<Bookmark size={14} strokeWidth={1.8} />}
           >
-            Saved
+            {t('nav.saved')}
           </NavItem>
         )}
         {canCarve && (
@@ -439,7 +441,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             tone="rose"
             icon={<DatabaseBackup size={14} strokeWidth={1.8} />}
           >
-            Carves
+            {t('nav.carves')}
           </NavItem>
         )}
         {canManageEnv && (
@@ -450,7 +452,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             tone="green"
             icon={<Tag size={14} strokeWidth={1.8} />}
           >
-            Tags
+            {t('nav.tags')}
           </NavItem>
         )}
         {canManageEnv && (
@@ -461,7 +463,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             tone="teal"
             icon={<Download size={14} strokeWidth={1.8} />}
           >
-            Enrollment
+            {t('nav.enrollment')}
           </NavItem>
         )}
         {canManageEnv && (
@@ -472,7 +474,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             tone="neutral"
             icon={<SlidersHorizontal size={14} strokeWidth={1.8} />}
           >
-            Configuration
+            {t('nav.configuration')}
           </NavItem>
         )}
       </nav>
@@ -483,7 +485,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
       {collapsed ? (
         <div className="mx-2 mb-2 border-t border-[color:var(--border)]" aria-hidden />
       ) : (
-        <SectionLabel>Organization</SectionLabel>
+        <SectionLabel>{t('nav.organization')}</SectionLabel>
       )}
       <nav className="mb-3 space-y-0.5">
         <NavItem
@@ -493,7 +495,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
           tone="amber"
           icon={<ListChecks size={14} strokeWidth={1.8} />}
         >
-          {isSuperAdmin ? 'Audit Trail' : 'My Activity'}
+          {isSuperAdmin ? t('nav.auditTrail') : t('nav.myActivity')}
         </NavItem>
       </nav>
 
@@ -512,7 +514,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
           {collapsed ? (
             <div className="mx-2 mb-2 border-t border-[color:var(--border)]" aria-hidden />
           ) : (
-            <SectionLabel>Admin</SectionLabel>
+            <SectionLabel>{t('nav.admin')}</SectionLabel>
           )}
           <nav className="space-y-0.5">
             <NavItem
@@ -522,7 +524,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="violet"
               icon={<Users size={14} strokeWidth={1.8} />}
             >
-              Operators
+              {t('nav.operators')}
             </NavItem>
             <NavItem
               collapsed={collapsed}
@@ -531,7 +533,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="sky"
               icon={<UserRound size={14} strokeWidth={1.8} />}
             >
-              Profile
+              {t('nav.profile')}
             </NavItem>
             <NavItem
               collapsed={collapsed}
@@ -540,7 +542,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="green"
               icon={<Boxes size={14} strokeWidth={1.8} />}
             >
-              Environments
+              {t('nav.environments')}
             </NavItem>
             <NavItem
               collapsed={collapsed}
@@ -549,7 +551,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="neutral"
               icon={<Settings size={14} strokeWidth={1.8} />}
             >
-              Settings
+              {t('nav.settings')}
             </NavItem>
             {features?.service_config && <NavItem
               collapsed={collapsed}
@@ -558,7 +560,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="blue"
               icon={<Archive size={14} strokeWidth={1.8} />}
             >
-              Service Config
+              {t('nav.serviceConfig')}
             </NavItem>}
             {features?.log_sinks && <NavItem
               collapsed={collapsed}
@@ -567,7 +569,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="teal"
               icon={<FileStack size={14} strokeWidth={1.8} />}
             >
-              Log Sinks
+              {t('nav.logSinks')}
             </NavItem>}
             {features?.alerts && <NavItem
               collapsed={collapsed}
@@ -576,7 +578,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="amber"
               icon={<Bell size={14} strokeWidth={1.8} />}
             >
-              Alerts
+              {t('nav.alerts')}
             </NavItem>}
             {features?.health && <NavItem
               collapsed={collapsed}
@@ -585,7 +587,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="green"
               icon={<HeartPulse size={14} strokeWidth={1.8} />}
             >
-              Health
+              {t('nav.health')}
             </NavItem>}
             {features?.auth_providers && <NavItem
               collapsed={collapsed}
@@ -594,7 +596,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               tone="rose"
               icon={<ShieldCheck size={14} strokeWidth={1.8} />}
             >
-              Auth Providers
+              {t('nav.authProviders')}
             </NavItem>}
           </nav>
         </>
@@ -607,7 +609,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             tone="sky"
             icon={<UserRound size={14} strokeWidth={1.8} />}
           >
-            Profile
+            {t('nav.profile')}
           </NavItem>
         </nav>
       )}
