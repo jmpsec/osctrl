@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { cn } from '$/lib/cn';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { listEnvironments, type TLSEnvironment } from '$/api/environments';
@@ -31,24 +32,20 @@ interface CommandItem {
   run: () => void;
 }
 
-// requires: 'admin' hides the entry from non-super-admin operators.
-// Pages without a requires field show to everyone. The SideNav uses the
-// same gating logic — keep both in sync when adding new admin-only
-// surfaces. The command palette is UI-only defense-in-depth; the
-// server-side handler is still the authoritative gate (an operator
-// could type the URL manually and would get 403/redirect from the
-// data fetch).
-const STATIC_PAGES: { label: string; to: string; hint?: string; aliases?: string[]; requires?: 'admin' }[] = [
-  { label: 'Dashboard', to: '/_app/', hint: 'Cross-env summary' },
-  { label: 'Operators', to: '/_app/users', hint: 'Users + permissions', aliases: ['users', 'permissions'], requires: 'admin' },
-  { label: 'Profile', to: '/_app/profile', hint: 'My account' },
-  { label: 'Environments', to: '/_app/environments', hint: 'Create / edit envs', requires: 'admin' },
-  { label: 'Settings · admin', to: '/_app/settings/admin', aliases: ['settings'], requires: 'admin' },
-  { label: 'Settings · tls', to: '/_app/settings/tls', requires: 'admin' },
-  { label: 'Settings · osctrl-api', to: '/_app/settings/api', requires: 'admin' },
+// Static page registry. `tKey` selects the translated label; `hintKey`
+// the translated hint. English aliases stay in the haystack so typing
+// English still matches regardless of the active language.
+const STATIC_PAGES: { tKey: string; hintKey?: string; serviceSuffix?: string; to: string; aliases?: string[]; requires?: 'admin' }[] = [
+  { tKey: 'nav.dashboard', hintKey: 'commandPalette.dashboardHint', to: '/_app/' },
+  { tKey: 'nav.operators', hintKey: 'commandPalette.operatorsHint', to: '/_app/users', aliases: ['users', 'permissions'], requires: 'admin' },
+  { tKey: 'nav.profile', hintKey: 'commandPalette.profileHint', to: '/_app/profile' },
+  { tKey: 'nav.environments', hintKey: 'commandPalette.environmentsHint', to: '/_app/environments', requires: 'admin' },
+  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'admin', to: '/_app/settings/admin', aliases: ['settings', 'admin'], requires: 'admin' },
+  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'tls', to: '/_app/settings/tls', aliases: ['settings', 'tls'], requires: 'admin' },
+  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'osctrl-api', to: '/_app/settings/api', aliases: ['settings', 'api'], requires: 'admin' },
   // Audit Trail is visible to everyone — non-admins see only their
   // own activity (api force-clamps the username filter server-side).
-  { label: 'Audit Trail', to: '/_app/audit', hint: 'Filtered log read' },
+  { tKey: 'nav.auditTrail', hintKey: 'commandPalette.auditHint', to: '/_app/audit' },
 ];
 
 export function CommandPalette({
@@ -59,6 +56,7 @@ export function CommandPalette({
   onOpenChange: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [filter, setFilter] = useState('');
   const [selected, setSelected] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
@@ -94,13 +92,16 @@ export function CommandPalette({
     const out: CommandItem[] = [];
     for (const p of STATIC_PAGES) {
       if (p.requires === 'admin' && !isSuperAdmin) continue;
-      const aliases = [p.label.toLowerCase(), ...(p.aliases ?? [])].join(' ');
+      const label = p.serviceSuffix
+        ? `${t(p.tKey)} · ${p.serviceSuffix}`
+        : t(p.tKey);
+      const haystack = [label.toLowerCase(), ...(p.aliases ?? [])].join(' ');
       out.push({
         id: `page:${p.to}`,
         kind: 'page',
-        label: p.label,
-        hint: p.hint,
-        haystack: aliases,
+        label,
+        hint: p.hintKey ? t(p.hintKey) : undefined,
+        haystack,
         run: () => {
           void navigate({ to: p.to });
           onOpenChange(false);
@@ -115,7 +116,7 @@ export function CommandPalette({
       out.push({
         id: `env:${e.uuid}`,
         kind: 'env',
-        label: `Go to env · ${e.name}`,
+        label: t('commandPalette.goToEnv', { name: e.name }),
         hint: e.uuid,
         haystack: `${e.name.toLowerCase()} ${e.uuid.toLowerCase()} env`,
         run: () => {
@@ -131,8 +132,8 @@ export function CommandPalette({
         out.push({
           id: `env-config:${e.uuid}`,
           kind: 'action',
-          label: `Edit config · ${e.name}`,
-          hint: 'osquery config sections',
+          label: t('commandPalette.editConfig', { name: e.name }),
+          hint: t('commandPalette.configHint'),
           haystack: `${e.name.toLowerCase()} config options schedule packs`,
           run: () => {
             void navigate({ to: `/_app/env/${e.uuid}/config` });
@@ -142,7 +143,7 @@ export function CommandPalette({
       }
     }
     return out;
-  }, [envs, navigate, onOpenChange, isSuperAdmin, me]);
+  }, [envs, navigate, onOpenChange, isSuperAdmin, me, t]);
 
   const filtered = useMemo(() => {
     const tokens = filter
@@ -185,19 +186,19 @@ export function CommandPalette({
 
   return (
     <ModalShell
-      title="Command palette"
+      title={t('commandPalette.title')}
       titleId="command-palette-title"
       onClose={() => onOpenChange(false)}
       panelClassName="max-w-xl"
     >
       <div className="space-y-3">
         <input
-          aria-label="Command search"
+          aria-label={t('commandPalette.searchLabel')}
           autoFocus
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Type to filter… Up/Down + Enter"
+          placeholder={t('commandPalette.placeholder')}
           className={cn(
             'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
             'bg-[color:var(--bg-2)] text-[color:var(--text-1)]',
@@ -208,7 +209,7 @@ export function CommandPalette({
         <ul ref={listRef} className="max-h-[320px] overflow-y-auto -mx-1">
           {filtered.length === 0 && (
             <li className="px-3 py-4 text-xs text-[color:var(--text-3)] text-center">
-              No matches.
+              {t('commandPalette.noMatches')}
             </li>
           )}
           {filtered.map((it, idx) => (
@@ -252,7 +253,7 @@ export function CommandPalette({
         </ul>
 
         <p className="text-xs tabular-nums text-[color:var(--text-3)] text-right">
-          ⌘K toggle · Esc close · ↑↓ navigate · ↵ activate
+          {t('commandPalette.legend')}
         </p>
       </div>
     </ModalShell>
