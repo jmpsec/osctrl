@@ -187,7 +187,7 @@ For the complete stack workflow, endpoints, logs, and reset commands, see [deplo
 
 ### Runtime and tooling versions
 
-- Go module target: **Go 1.26.5**
+- Go module target: **Go 1.27.1**
 - Backend stack: **GORM** (PostgreSQL/MySQL/SQLite), **go-redis**, **zerolog**, **Viper** (YAML config), **urfave/cli**, **Prometheus client**, **JWT/SAML/OIDC auth**, **go-webauthn** (passkeys & security keys), **AWS SDK v2** (S3 + Kinesis), **franz-go** (Kafka), **Elasticsearch v8**, **MaxMind GeoIP**
 - Frontend runtime: **Node.js 22+**
 - Frontend stack: **React 19**, **TypeScript 7**, **Vite 8**, **Tailwind CSS 4**, **TanStack Router/Query/Table**, **zod 4**, **Monaco Editor**
@@ -205,7 +205,7 @@ The script can also provision production systems; review every generated credent
 
 ### Building from source
 
-To build **osctrl** from source, ensure you have [Go](https://golang.org/dl/) installed (version 1.26.5 is recommended). Then, clone the repository and run the following commands:
+To build **osctrl** from source, ensure you have [Go](https://golang.org/dl/) installed (version 1.27.1 is recommended). Then, clone the repository and run the following commands:
 
 ```bash
 git clone https://github.com/jmpsec/osctrl.git
