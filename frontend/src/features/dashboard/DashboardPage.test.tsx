@@ -270,7 +270,7 @@ describe('DashboardPage', () => {
 
     expect(screen.getByText('Inactive ≥ 72h')).toBeInTheDocument();
     expect(screen.getByText('Active Queries')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Forensic Carves' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Carves' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Operational workload' })).toBeInTheDocument();
     expect(screen.getByText('Executing')).toBeInTheDocument();
     expect(screen.getByText('In flight')).toBeInTheDocument();

@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useLocale } from '$/i18n/useLocale';
 import { cn } from '$/lib/cn';
 
 interface FilterChipProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
@@ -20,8 +21,9 @@ export function FilterChip({
   'aria-label': ariaLabel,
   ...props
 }: FilterChipProps) {
+  const { formatNumber } = useLocale();
   const accessibleLabel =
-    ariaLabel ?? (typeof label === 'string' ? `${label}${count != null ? ` ${count.toLocaleString()}` : ''}` : undefined);
+    ariaLabel ?? (typeof label === 'string' ? `${label}${count != null ? ` ${formatNumber(count)}` : ''}` : undefined);
 
   return (
     <button
@@ -49,7 +51,7 @@ export function FilterChip({
       <span>{label}</span>
       {count != null && (
         <span className={cn('tabular-nums', selected ? 'text-[color:var(--text-link)]/75' : 'text-[color:var(--text-3)]')}>
-          {count.toLocaleString()}
+          {formatNumber(count)}
         </span>
       )}
     </button>

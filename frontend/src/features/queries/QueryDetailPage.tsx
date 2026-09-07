@@ -1,4 +1,5 @@
 import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getQuery, listQueryResults, getQueryResultsCSVUrl, actOnQuery } from '$/api/queries';
@@ -40,7 +41,8 @@ function ResultStatusBadge({ code }: { code: number }) {
 const DEFAULT_PAGE_SIZE = 50;
 
 export function QueryDetailPage() {
-  usePageTitle('Query');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.query'));
   const { env, name } = useParams({ from: '/_app/env/$env/queries/$name' });
   const navigate = useNavigate({ from: '/_app/env/$env/queries/$name' });
   const search = useSearch({ from: '/_app/env/$env/queries/$name' });

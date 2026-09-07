@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { HeartPulse, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { getHealthStatus, type HealthComponent, type HealthStatusValue } from '$/api/health';
 import { usePageTitle } from '$/lib/usePageTitle';
+import { formatLocaleNumber, useLocale } from '$/i18n/useLocale';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { Skeleton } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
@@ -48,7 +50,7 @@ const BYTE_FIELDS = new Set([
 
 function formatValue(key: string, value: unknown): string {
   if (typeof value === 'number' && BYTE_FIELDS.has(key)) return formatBytes(value);
-  if (typeof value === 'number') return value.toLocaleString();
+  if (typeof value === 'number') return formatLocaleNumber(value);
   if (typeof value === 'boolean') return value ? 'yes' : 'no';
   if (value === null || value === undefined) return '—';
   if (typeof value === 'object') return JSON.stringify(value);
@@ -104,12 +106,20 @@ function ComponentRow({ component }: { component: HealthComponent }) {
  * debugs a memory spike against stale numbers.
  */
 function RuntimeCard({ component }: { component: HealthComponent }) {
+  const { t } = useTranslation();
+  const { formatTime } = useLocale();
   const runtime = component.details?.runtime as Record<string, unknown> | undefined;
   if (!runtime) return null;
   const reportedAt = component.details?.reported_at;
   const asOf =
     typeof reportedAt === 'string' && !Number.isNaN(Date.parse(reportedAt))
-      ? `as of ${new Date(reportedAt).toLocaleTimeString()}`
+      ? t('health.asOf', {
+          time: formatTime(new Date(reportedAt), {
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+          }),
+        })
       : 'live';
   return (
     <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)]">
@@ -125,7 +135,8 @@ function RuntimeCard({ component }: { component: HealthComponent }) {
 }
 
 export function HealthPage() {
-  usePageTitle('Health');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.health'));
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['health-status'],
     queryFn: () => getHealthStatus(),

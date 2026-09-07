@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Check, Code2, Copy, MousePointer2 } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router';
@@ -89,7 +90,8 @@ function summarizeTarget(target: TargetSelection) {
 }
 
 export function QueryRunPage() {
-  usePageTitle('New Query');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.newQuery'));
   const { env } = useParams({ from: '/_app/env/$env/queries/new' });
   const navigate = useNavigate({ from: '/_app/env/$env/queries/new' });
   const search = useSearch({ from: '/_app/env/$env/queries/new' });

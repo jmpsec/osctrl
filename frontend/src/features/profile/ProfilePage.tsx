@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -26,7 +27,8 @@ import type { EnvAccess } from '$/api/types';
 import { MFAPanel } from './MFAPanel';
 
 export function ProfilePage() {
-  usePageTitle('Profile');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.profile'));
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [fullname, setFullname] = useState('');

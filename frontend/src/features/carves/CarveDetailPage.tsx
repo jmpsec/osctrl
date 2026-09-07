@@ -1,4 +1,5 @@
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getCarve, getCarveArchiveUrl, actOnCarve } from '$/api/carves';
@@ -65,7 +66,8 @@ function hasRealTimestamp(value?: string): boolean {
 }
 
 export function CarveDetailPage() {
-  usePageTitle('Carve');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.carve'));
   const { env, name } = useParams({ from: '/_app/env/$env/carves/$name' });
   const navigate = useNavigate({ from: '/_app/env/$env/carves/$name' });
 

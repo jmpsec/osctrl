@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -27,7 +28,8 @@ const HIDDEN_SETTINGS_BY_SERVICE: Partial<Record<Service, ReadonlySet<string>>> 
 };
 
 export function SettingsPage() {
-  usePageTitle('Settings');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.settings'));
   const params = useParams({ strict: false });
   const navigate = useNavigate();
   const serviceParam = (params as { service?: string }).service ?? 'api';

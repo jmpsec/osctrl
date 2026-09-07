@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
+import { useLocale } from '$/i18n/useLocale';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -35,7 +37,8 @@ type ModalMode =
   | { kind: 'reset-pw'; user: AdminUser };
 
 export function UsersPage() {
-  usePageTitle('Users');
+  const { t } = useTranslation();
+  usePageTitle(t('pageTitle.users'));
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [modal, setModal] = useState<ModalMode>({ kind: 'closed' });
@@ -759,6 +762,8 @@ function TokenModal({
   user: AdminUser;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
+  const { formatDateTime } = useLocale();
   const [token, setToken] = useState<TokenResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -822,7 +827,7 @@ function TokenModal({
               onFocus={(e) => e.currentTarget.select()}
             />
             <p className="text-xs text-[color:var(--text-3)]">
-              Expires: {new Date(token.expires).toLocaleString()}
+              {t('users.tokenExpires', { date: formatDateTime(new Date(token.expires)) })}
             </p>
           </div>
         )}
