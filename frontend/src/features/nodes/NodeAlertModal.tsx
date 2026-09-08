@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { Button } from '$/components/atoms/Button';
 import { cn } from '$/lib/cn';
@@ -78,6 +79,7 @@ export function NodeAlertModal({
   hostname: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [kind, setKind] = useState<NodeAlertKind>('inactive');
   const [pattern, setPattern] = useState('');
@@ -174,7 +176,7 @@ export function NodeAlertModal({
           )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={onClose}>
-              Apply later
+              {t('alertModal.applyLater')}
             </Button>
             <Button
               type="button"
@@ -210,7 +212,7 @@ export function NodeAlertModal({
         </p>
 
         {/* Rule kind */}
-        <div role="radiogroup" aria-label="Alert type" className="space-y-2">
+        <div role="radiogroup" aria-label={t('alertModal.alertType')} className="space-y-2">
           {(Object.keys(NODE_ALERT_KINDS) as NodeAlertKind[]).map((k) => (
             <label
               key={k}
@@ -252,7 +254,7 @@ export function NodeAlertModal({
                 type="text"
                 value={pattern}
                 onChange={(e) => setPattern(e.target.value)}
-                placeholder="e.g. /etc/sudoers"
+                placeholder={t('alertModal.patternPlaceholder')}
                 className={cn(inputClass, 'font-mono')}
               />
             </div>
@@ -268,7 +270,7 @@ export function NodeAlertModal({
                 type="text"
                 value={matchField}
                 onChange={(e) => setMatchField(e.target.value)}
-                placeholder="e.g. path, username"
+                placeholder={t('alertModal.fieldPlaceholder')}
                 className={inputClass}
               />
             </div>
@@ -300,7 +302,7 @@ export function NodeAlertModal({
         {/* Channels */}
         <div>
           <span className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
-            Channels
+            {t('alertModal.channels')}
           </span>
           {(channels ?? []).length === 0 ? (
             <p className="text-xs text-[color:var(--text-3)]">

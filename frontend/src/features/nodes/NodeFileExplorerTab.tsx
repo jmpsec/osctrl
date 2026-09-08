@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { Archive, ChevronDown, ChevronRight, ExternalLink, File, Folder, Loader2, RefreshCw } from 'lucide-react';
 import { formatLocaleDateTime } from '$/i18n/useLocale';
@@ -32,6 +33,7 @@ const heartbeatMs = 10000;
 const maxPolls = 30;
 
 export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }) {
+  const { t } = useTranslation();
   const sessionRef = useRef<FileExplorerSession | null>(null);
   const loadingPathsRef = useRef<Set<string>>(new Set());
   const [session, setSession] = useState<FileExplorerSession | null>(null);
@@ -217,14 +219,14 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
       <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] px-3 py-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-[color:var(--text-1)]">File Explorer</h2>
+            <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('fileExplorer.title')}</h2>
             {primingRequest && (
               <span
                 className="inline-flex items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] px-1.5 py-0.5 text-xs leading-none text-[color:var(--text-3)]"
-                title="Warming file explorer metadata"
+                title={t('fileExplorer.warming')}
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                warming
+                {t('fileExplorer.warmingState')}
               </span>
             )}
           </div>
@@ -271,7 +273,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
           {rootLoading && rootEntries.length === 0 ? (
             <LoadingRow depth={0} />
           ) : (
-            <div role="tree" aria-label="Node files" className="py-1">
+            <div role="tree" aria-label={t('fileExplorer.nodeFiles')} className="py-1">
               {renderEntries(rootEntries, 0, expanded, loadingPaths, entriesByDirectory, selected?.path, onEntryClick)}
             </div>
           )}
@@ -360,6 +362,7 @@ function FileDetails({
   carveStatus: CarveStatus | null;
   onCarveSelected: () => void;
 }) {
+  const { t } = useTranslation();
   const rows = useMemo(() => {
     if (!entry) return [];
     return [
@@ -377,14 +380,14 @@ function FileDetails({
 
   return (
     <aside
-      aria-label="File details"
+      aria-label={t('fileExplorer.details')}
       className={cn(
         'border-t border-[color:var(--border)] bg-[color:var(--bg-0)] p-3',
         'lg:sticky lg:top-3 lg:self-start lg:border-l lg:border-t-0',
         'lg:max-h-[calc(100vh-1.5rem)] lg:overflow-auto',
       )}
     >
-      <h3 className="mb-2 text-xs font-semibold text-[color:var(--text-1)]">Details</h3>
+      <h3 className="mb-2 text-xs font-semibold text-[color:var(--text-1)]">{t('commonExt.details')}</h3>
       {entry ? (
         <dl className="space-y-2">
           {rows.map(([label, value]) => (
@@ -395,10 +398,10 @@ function FileDetails({
           ))}
         </dl>
       ) : (
-        <div className="text-xs text-[color:var(--text-3)]">No selection</div>
+        <div className="text-xs text-[color:var(--text-3)]">{t('fileExplorer.noSelection')}</div>
       )}
       <div className="mt-4 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-2)] p-3">
-        <h4 className="text-xs font-semibold text-[color:var(--text-1)]">Carve</h4>
+        <h4 className="text-xs font-semibold text-[color:var(--text-1)]">{t('fileExplorer.carve')}</h4>
         <p className="mt-1 break-all font-mono-tabular text-xs text-[color:var(--text-3)]">
           {entry?.path ?? 'No path selected'}
         </p>

@@ -40,13 +40,16 @@ function CarveStatusBadge({
   return <StatusBadge variant="dim" label="Unknown" />;
 }
 
-const CARVE_STATUS_TABS: StatusTab<CarveTarget>[] = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'deleted', label: 'Deleted' },
-];
+function carveStatusTabs(t: ReturnType<typeof useTranslation>['t']): StatusTab<CarveTarget>[] {
+  return [
+    { value: 'all', label: t('commonExt.all') },
+    { value: 'active', label: t('commonExt.active') },
+    { value: 'completed', label: t('commonExt.completed') },
+    { value: 'expired', label: t('commonExt.expired') },
+    { value: 'deleted', label: t('commonExt.deleted') },
+  ];
+}
+
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
@@ -170,7 +173,7 @@ export function CarvesListPage() {
           Carves
         </h1>
         <StatusTabs
-          tabs={CARVE_STATUS_TABS}
+          tabs={carveStatusTabs(t)}
           value={target}
           onChange={(v) => updateSearch({ target: v, page: 1 })}
         />
@@ -179,7 +182,7 @@ export function CarvesListPage() {
           <SearchInput
             value={q}
             onChange={(v) => updateSearch({ q: v || undefined, page: 1 })}
-            placeholder="Search carves…"
+            placeholder={t('carvesPage.searchPlaceholder')}
           />
         </div>
 
@@ -195,7 +198,7 @@ export function CarvesListPage() {
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
-            aria-label="Refresh carves"
+            aria-label={t('carvesPage.refresh')}
           >
             Refresh
           </button>
@@ -205,10 +208,10 @@ export function CarvesListPage() {
             params={{ env }}
             className={buttonClasses()}
           >
-            New carve
+            {t('carvesPage.newCarve')}
           </Link>
 
-          <label htmlFor="carves-page-size" className="sr-only">Rows per page</label>
+          <label htmlFor="carves-page-size" className="sr-only">{t('commonExt.rowsPerPage')}</label>
           <select
             id="carves-page-size"
             value={pageSize}
@@ -227,7 +230,7 @@ export function CarvesListPage() {
           {isFetching && !isLoading && (
             <span
               aria-live="polite"
-              aria-label="Refreshing data"
+              aria-label={t('commonExt.refreshingData')}
               className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
@@ -246,7 +249,7 @@ export function CarvesListPage() {
                   checked={allChecked}
                   ref={(el) => { if (el) el.indeterminate = someChecked && !allChecked; }}
                   onChange={toggleAll}
-                  aria-label="Select all visible carves"
+                  aria-label={t('carvesPage.selectAll')}
                   className="accent-[color:var(--signal)]"
                 />
               </th>
@@ -342,7 +345,7 @@ export function CarvesListPage() {
                           params={{ env }}
                           className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                         >
-                          Start first carve
+                          {t('carvesPage.startFirst')}
                         </Link>
                       )
                     }
@@ -426,7 +429,7 @@ export function CarvesListPage() {
       {selectedNames.size > 0 && (
         <div
           role="toolbar"
-          aria-label="Bulk actions"
+          aria-label={t('commonExt.bulkActions')}
           className={cn(
             'fixed bottom-6 left-1/2 -translate-x-1/2',
             'flex items-center gap-3 px-4 py-2.5 rounded-xl',
@@ -448,7 +451,7 @@ export function CarvesListPage() {
           <button
             type="button"
             disabled={bulkMutation.isPending}
-            aria-label="Complete selected carves"
+            aria-label={t('carvesPage.bulk.complete')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
@@ -462,7 +465,7 @@ export function CarvesListPage() {
           <button
             type="button"
             disabled={bulkMutation.isPending}
-            aria-label="Expire selected carves"
+            aria-label={t('carvesPage.bulk.expire')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--warning)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
@@ -476,7 +479,7 @@ export function CarvesListPage() {
           <button
             type="button"
             disabled={bulkMutation.isPending}
-            aria-label="Delete selected carves"
+            aria-label={t('carvesPage.bulk.delete')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
@@ -490,7 +493,7 @@ export function CarvesListPage() {
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
           <button
             type="button"
-            aria-label="Clear selection"
+            aria-label={t('commonExt.clearSelection')}
             onClick={() => setSelectedNames(new Set())}
             className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >

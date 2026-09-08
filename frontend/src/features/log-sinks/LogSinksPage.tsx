@@ -296,10 +296,10 @@ export function LogSinksPage() {
       <div className="flex flex-col h-full min-h-0">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
           <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
-            Log Sinks
+            {t('pageTitle.logSinks')}
           </h1>
           <p className="text-xs text-[color:var(--text-3)]">
-            Super-admin view. Manage osquery log destinations per environment.
+            {t('logSinksPage.superAdminView')}
           </p>
         </div>
         <div className="flex-1 overflow-auto min-h-0">
@@ -310,7 +310,7 @@ export function LogSinksPage() {
                 <path d="M12 8v4M12 16h.01" />
               </svg>
             }
-            title="Log Sinks API is disabled"
+            title={t('logSinksPage.disabled')}
             description={
               'osctrl-api runs with service.serviceConfigEnabled = false, so the /api/v1/log-sinks endpoints are not registered. osctrl-tls still seeds its YAML logger section into the log_sinks table at startup, so sinks can be changed directly in the database and are picked up on the next restart. Set serviceConfigEnabled: true and restart osctrl-api to manage them here.'
             }
@@ -340,7 +340,7 @@ export function LogSinksPage() {
           {isFetching && !isLoading && (
             <span
               aria-live="polite"
-              aria-label="Refreshing data"
+              aria-label={t('commonExt.refreshingData')}
               className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
@@ -403,7 +403,7 @@ export function LogSinksPage() {
           id="log-sinks-env"
           value={selectedEnv}
           onChange={(e) => setSelectedEnv(Number(e.target.value))}
-          aria-label="Select environment whose sinks to show"
+          aria-label={t('logSinksPage.envSelect')}
           className={cn(
             'px-2 py-1 rounded tabular-nums',
             'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-1)]',
@@ -439,7 +439,7 @@ export function LogSinksPage() {
             type="button"
             onClick={() => setApplyErr(null)}
             className="ml-auto text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
-            aria-label="Dismiss"
+            aria-label={t('commonExt.dismiss')}
           >
             ×
           </button>
@@ -593,16 +593,16 @@ export function LogSinksPage() {
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {s.enabled ? (
-                      <StatusBadge variant="success" label="Enabled" />
+                      <StatusBadge variant="success" label={t('commonExt.enabled')} />
                     ) : (
-                      <StatusBadge variant="dim" label="Disabled" />
+                      <StatusBadge variant="dim" label={t('commonExt.disabled')} />
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {s.source === 'db' ? (
-                      <MetadataBadge>Edited</MetadataBadge>
+                      <MetadataBadge>{t('logSinksPage.edited')}</MetadataBadge>
                     ) : (
-                      <MetadataBadge className="cursor-help" title={`Seeded from service configuration (source: ${s.source})`}>Seeded</MetadataBadge>
+                      <MetadataBadge className="cursor-help" title={`Seeded from service configuration (source: ${s.source})`}>{t('logSinksPage.seeded')}</MetadataBadge>
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right tabular-nums" title={`${s.exports_count} exports`}>
@@ -628,7 +628,7 @@ export function LogSinksPage() {
                             revertMutation.mutate(s.id);
                           }
                         }}
-                        title="Reset this sink back to the service configuration values. Takes effect on the next Apply."
+                        title={t('logSinksPage.resetHint')}
                         className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
                       >
                         Revert
@@ -732,9 +732,10 @@ function SinkTypePicker({
   onPick: (sinkType: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <ModalShell
-      title="New log sink"
+      title={t('logSinksPage.newSink')}
       titleId="log-sink-type-picker-title"
       onClose={onClose}
       panelClassName="max-w-lg"
@@ -807,6 +808,7 @@ function SinkEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [name, setName] = useState(existing?.name ?? '');
   const [enabled, setEnabled] = useState(existing?.enabled ?? true);
@@ -936,11 +938,11 @@ function SinkEditor({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. prod-splunk"
+            placeholder={t('logSinksPage.namePlaceholder')}
             className={inputClass}
           />
           <p className="mt-1 text-xs text-[color:var(--text-3)]">
-            Unique label for this sink within its environment.
+            {t('logSinksPage.nameHint')}
           </p>
         </div>
 
@@ -1441,6 +1443,7 @@ function CloneModal({
   }) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [source, setSource] = useState<number>(GLOBAL_ENV_ID);
   const [target, setTarget] = useState<number>(targetEnv);
   const [overwrite, setOverwrite] = useState(false);
@@ -1453,7 +1456,7 @@ function CloneModal({
 
   return (
     <ModalShell
-      title="Clone log sinks"
+      title={t('logSinksPage.cloneTitle')}
       titleId="log-sinks-clone-title"
       onClose={onClose}
       panelClassName="max-w-md"
@@ -1581,9 +1584,10 @@ function ApplyConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <ModalShell
-      title="Apply sink changes"
+      title={t('logSinksPage.applyChanges')}
       titleId="log-sinks-apply-title"
       onClose={onCancel}
       panelClassName="max-w-md"

@@ -112,7 +112,7 @@ export function SavedQueriesPage() {
           <SearchInput
             value={q}
             onChange={(v) => updateSearch({ q: v || undefined, page: 1 })}
-            placeholder="Search saved queries…"
+            placeholder={t('savedQueriesPage.searchPlaceholder')}
           />
         </div>
 
@@ -125,7 +125,7 @@ export function SavedQueriesPage() {
             New saved query
           </Button>
 
-          <label htmlFor="sq-page-size" className="sr-only">Rows per page</label>
+          <label htmlFor="sq-page-size" className="sr-only">{t('commonExt.rowsPerPage')}</label>
           <select
             id="sq-page-size"
             value={pageSize}
@@ -144,7 +144,7 @@ export function SavedQueriesPage() {
           {isFetching && !isLoading && (
             <span
               aria-live="polite"
-              aria-label="Refreshing data"
+              aria-label={t('commonExt.refreshingData')}
               className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
@@ -160,14 +160,14 @@ export function SavedQueriesPage() {
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
               <SortableHeader
                 column={'name' as SavedQuerySortColumn}
-                label="Name"
+                label={t('commonExt.name')}
                 currentSort={sort}
                 currentDir={dir}
                 onSortChange={handleSortChange}
               />
               <SortableHeader
                 column={'creator' as SavedQuerySortColumn}
-                label="Creator"
+                label={t('commonExt.creator')}
                 currentSort={sort}
                 currentDir={dir}
                 onSortChange={handleSortChange}
@@ -180,7 +180,7 @@ export function SavedQueriesPage() {
               </th>
               <SortableHeader
                 column={'updated' as SavedQuerySortColumn}
-                label="Updated"
+                label={t('savedQueriesPage.updated')}
                 currentSort={sort}
                 currentDir={dir}
                 defaultDir="desc"
@@ -239,7 +239,7 @@ export function SavedQueriesPage() {
                           onClick={() => updateSearch({ q: undefined, page: 1 })}
                           className="text-xs"
                         >
-                          Clear search
+                          {t('savedQueriesPage.clearSearch')}
                         </Button>
                       ) : (
                         <Button
@@ -248,7 +248,7 @@ export function SavedQueriesPage() {
                           onClick={() => setModal({ kind: 'create' })}
                           className="text-xs"
                         >
-                          Save your first query
+                          {t('savedQueriesPage.createFirst')}
                         </Button>
                       )
                     }
@@ -381,6 +381,7 @@ function SavedQueryFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initial?.name ?? '');
   const [sql, setSql] = useState(initial?.query ?? 'SELECT * FROM osquery_info;');
   const [err, setErr] = useState<string | null>(null);
@@ -437,7 +438,7 @@ function SavedQueryFormModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={mode === 'edit'}
-            placeholder="e.g. linux_processes_with_listening_ports"
+            placeholder={t('savedQueriesPage.namePlaceholder')}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
               'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
@@ -447,7 +448,7 @@ function SavedQueryFormModal({
           />
           {mode === 'edit' && (
             <p className="mt-1 text-xs text-[color:var(--text-3)]">
-              Names can't be changed after creation.
+              {t('savedQueriesPage.nameHint')}
             </p>
           )}
         </div>
@@ -513,6 +514,7 @@ function DeleteConfirmModal({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const [err, setErr] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -532,7 +534,7 @@ function DeleteConfirmModal({
 
   return (
     <ModalShell
-      title="Delete saved query"
+      title={t('savedQueriesPage.deleteSaved')}
       titleId="sq-delete-modal-title"
       onClose={onClose}
     >

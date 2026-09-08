@@ -75,7 +75,7 @@ export function SettingsPage() {
         {fetching && !loading && (
           <span
             aria-live="polite"
-            aria-label="Refreshing data"
+            aria-label={t('commonExt.refreshingData')}
             className="ml-auto text-xs text-[color:var(--text-3)] tabular-nums"
           >
             refreshing…
@@ -88,7 +88,7 @@ export function SettingsPage() {
           surfaces read with one visual voice. */}
       <div
         role="tablist"
-        aria-label="Settings service tabs"
+        aria-label={t('settingsPage.sections')}
         className="flex items-center gap-1 px-2 border-b border-[color:var(--border)] overflow-x-auto"
       >
         {SERVICES.map((s) => (
@@ -187,6 +187,7 @@ function SettingRow({
   service: string;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [pendingString, setPendingString] = useState(setting.String);
   const [pendingBool, setPendingBool] = useState(setting.Boolean);
   const [pendingInt, setPendingInt] = useState(setting.Integer);
@@ -257,7 +258,7 @@ function SettingRow({
           </p>
         )}
         {!setting.Info && <div className="flex-1" />}
-        {dirty && <StatusBadge variant="warning" label="Pending" />}
+        {dirty && <StatusBadge variant="warning" label={t('settingsPage.pending')} />}
         <span className="text-xs tnum text-[color:var(--text-3)] whitespace-nowrap" title={setting.UpdatedAt}>
           updated {formatRelative(setting.UpdatedAt)}
         </span>

@@ -162,16 +162,16 @@ export function UsersPage() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
-          Operators
+          {t('pageTitle.users')}
         </h1>
         <p className="text-xs text-[color:var(--text-3)] flex-1">
-          Super-admin view. Per-env permissions and API token management.
+          {t('usersPage.superAdminView')}
         </p>
         <Button
           type="button"
           onClick={() => setModal({ kind: 'create' })}
         >
-          Add user
+          {t('usersPage.addOperator')}
         </Button>
       </div>
 
@@ -182,7 +182,7 @@ export function UsersPage() {
               <th scope="col" className="px-4 py-3 w-10">
                 <input
                   type="checkbox"
-                  aria-label="Select all deletable users"
+                  aria-label={t('usersPage.selectDeletable')}
                   checked={allChecked}
                   disabled={deletableUsernames.length === 0}
                   ref={(el) => {
@@ -193,10 +193,10 @@ export function UsersPage() {
                 />
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
-                Username
+                {t('login.username')}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
-                Email
+                {t('usersPage.email')}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
                 Role
@@ -246,7 +246,7 @@ export function UsersPage() {
                         <path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" />
                       </svg>
                     }
-                    title="No users."
+                    title={t('usersPage.noUsers')}
                   />
                 </td>
               </tr>
@@ -295,16 +295,16 @@ export function UsersPage() {
                   </td>
                   <td className="px-4 py-3 text-xs">
                     <div className="flex flex-wrap items-center gap-1">
-                      {u.admin && <MetadataBadge>Admin</MetadataBadge>}
-                      {u.service && <MetadataBadge>Service</MetadataBadge>}
-                      {!u.admin && !u.service && <MetadataBadge>Operator</MetadataBadge>}
+                      {u.admin && <MetadataBadge>{t('usersPage.admin')}</MetadataBadge>}
+                      {u.service && <MetadataBadge>{t('usersPage.service')}</MetadataBadge>}
+                      {!u.admin && !u.service && <MetadataBadge>{t('usersPage.operator')}</MetadataBadge>}
                       {u.auth_source === 'oidc' && (
-                        <MetadataBadge className="cursor-help" title="JIT-provisioned via federated login (OIDC)">
+                        <MetadataBadge className="cursor-help" title={t('usersPage.jitOidc')}>
                           OIDC
                         </MetadataBadge>
                       )}
                       {u.auth_source === 'saml' && (
-                        <MetadataBadge className="cursor-help" title="JIT-provisioned via federated login (SAML)">
+                        <MetadataBadge className="cursor-help" title={t('usersPage.jitSaml')}>
                           SAML
                         </MetadataBadge>
                       )}
@@ -319,21 +319,21 @@ export function UsersPage() {
                       onClick={() => setModal({ kind: 'permissions', user: u })}
                       className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
-                      Permissions…
+                      {t('usersPage.permissions')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'token', user: u })}
                       className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
-                      Token…
+                      {t('usersPage.token')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'reset-pw', user: u })}
                       className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
-                      Reset password…
+                      {t('usersPage.resetPassword')}
                     </button>
                     {me?.username !== u.username && (
                       <button
@@ -341,7 +341,7 @@ export function UsersPage() {
                         onClick={() => setModal({ kind: 'delete', user: u })}
                         className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.10)] transition-colors"
                       >
-                        Delete…
+                        {t('commonExt.delete')}…
                       </button>
                     )}
                   </td>
@@ -356,7 +356,7 @@ export function UsersPage() {
       {selectedUsernames.size > 0 && (
         <div
           role="toolbar"
-          aria-label="Bulk actions"
+          aria-label={t('commonExt.bulkActions')}
           className={cn(
             'fixed bottom-6 left-1/2 -translate-x-1/2',
             'flex items-center gap-3 px-4 py-2.5 rounded-xl',
@@ -376,7 +376,7 @@ export function UsersPage() {
           <button
             type="button"
             disabled={bulkDeleteMut.isPending}
-            aria-label="Delete selected users"
+            aria-label={t('usersPage.deleteUsers')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={handleBulkDelete}
           >
@@ -385,7 +385,7 @@ export function UsersPage() {
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
           <button
             type="button"
-            aria-label="Clear selection"
+            aria-label={t('commonExt.clearSelection')}
             onClick={() => setSelectedUsernames(new Set())}
             className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
@@ -411,7 +411,7 @@ export function UsersPage() {
             type="button"
             onClick={() => setBulkError(null)}
             className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
-            aria-label="Dismiss"
+            aria-label={t('commonExt.dismiss')}
           >
             ×
           </button>
@@ -467,6 +467,7 @@ function PermissionsModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [envUuid, setEnvUuid] = useState('');
   const [access, setAccess] = useState<EnvAccess>({
     user: true,
@@ -604,7 +605,7 @@ function PermissionsModal({
                 )}
               />
               <p className="mt-1 text-xs text-[color:var(--text-3)]">
-                Couldn't load environments — paste a UUID manually.
+                {t('usersPage.pasteUuidHint')}
               </p>
             </>
           ) : (
@@ -729,9 +730,9 @@ function PermissionsModal({
               disabled={!envs || envs.length === 0 || envsLoading}
               onClick={() => setBulkConfirm(true)}
               className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Grant the selected access to every environment in the system"
+              title={t('usersPage.grantAllEnvs')}
             >
-              Apply to all envs…
+              {t('usersPage.applyToAllEnvs')}
             </button>
           )}
           <button
@@ -882,7 +883,7 @@ function TokenModal({
               onClick={() => setConfirmDelete(true)}
               className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors"
             >
-              Delete token…
+              {t('usersPage.deleteToken')}
             </button>
           )}
         </div>
@@ -904,6 +905,7 @@ function CreateUserModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
@@ -962,7 +964,7 @@ function CreateUserModal({
   });
 
   return (
-    <ModalShell title="Add operator" titleId="create-user-modal-title" onClose={onClose}>
+    <ModalShell title={t('usersPage.addOperator')} titleId="create-user-modal-title" onClose={onClose}>
       <form
         onSubmit={(ev) => {
           ev.preventDefault();
@@ -981,7 +983,7 @@ function CreateUserModal({
             onChange={(e) => setUsername(e.target.value)}
             autoFocus
             required
-            placeholder="e.g. alice"
+            placeholder={t('usersPage.usernamePlaceholder')}
             className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
@@ -995,17 +997,17 @@ function CreateUserModal({
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
-            placeholder="At least 8 characters"
+            placeholder={t('usersPage.passwordHint')}
             className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">Email</label>
+          <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">{t('usersPage.email')}</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="optional"
+            placeholder={t('usersPage.optional')}
             className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
@@ -1017,7 +1019,7 @@ function CreateUserModal({
             type="text"
             value={fullname}
             onChange={(e) => setFullname(e.target.value)}
-            placeholder="optional"
+            placeholder={t('usersPage.optional')}
             className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
@@ -1084,6 +1086,7 @@ function DeleteUserModal({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const [err, setErr] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -1109,7 +1112,7 @@ function DeleteUserModal({
     >
       <div className="space-y-4">
         <p className="text-sm text-[color:var(--text-1)]">
-          This will permanently remove <strong>{user.username}</strong> and all
+          {t('usersPage.deleteWarning')} <strong>{user.username}</strong> and all
           their per-environment permissions. The user&apos;s API token (if any)
           will stop working immediately.
         </p>
@@ -1170,6 +1173,7 @@ function ResetPasswordModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [err, setErr] = useState<string | null>(null);
@@ -1214,7 +1218,7 @@ function ResetPasswordModal({
         </p>
         <div>
           <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
-            New password
+            {t('usersPage.newPassword')}
           </label>
           <input
             type="password"
@@ -1223,13 +1227,13 @@ function ResetPasswordModal({
             autoFocus
             required
             minLength={8}
-            placeholder="At least 8 characters"
+            placeholder={t('usersPage.passwordHint')}
             className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
         <div>
           <label className="block text-xs font-medium text-[color:var(--text-2)] mb-1">
-            Confirm new password
+            {t('usersPage.confirmNewPassword')}
           </label>
           <input
             type="password"

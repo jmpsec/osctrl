@@ -35,14 +35,16 @@ function QueryStatusBadge({
 // Status tabs config
 // ---------------------------------------------------------------------------
 // Note: 'saved' is omitted intentionally — saved-query CRUD ships in //       The route enum still accepts it for forward-compat / deep-linking.
-const QUERY_STATUS_TABS: StatusTab<QueryTarget>[] = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'deleted', label: 'Deleted' },
-  { value: 'hidden', label: 'Hidden' },
-];
+function queryStatusTabs(t: ReturnType<typeof useTranslation>['t']): StatusTab<QueryTarget>[] {
+  return [
+    { value: 'all', label: t('commonExt.all') },
+    { value: 'active', label: t('commonExt.active') },
+    { value: 'completed', label: t('commonExt.completed') },
+    { value: 'expired', label: t('commonExt.expired') },
+    { value: 'deleted', label: t('commonExt.deleted') },
+    { value: 'hidden', label: t('queriesPage.hidden') },
+  ];
+}
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
@@ -185,7 +187,7 @@ export function QueriesListPage() {
 
         {/* Status tabs */}
         <StatusTabs
-          tabs={QUERY_STATUS_TABS}
+          tabs={queryStatusTabs(t)}
           value={target}
           onChange={(v) => updateSearch({ target: v, page: 1 })}
         />
@@ -195,7 +197,7 @@ export function QueriesListPage() {
           <SearchInput
             value={q}
             onChange={(v) => updateSearch({ q: v || undefined, page: 1 })}
-            placeholder="Search queries…"
+            placeholder={t('queriesPage.searchPlaceholder')}
           />
         </div>
 
@@ -211,7 +213,7 @@ export function QueriesListPage() {
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
-            aria-label="Refresh queries"
+            aria-label={t('queriesPage.refresh')}
           >
             Refresh
           </button>
@@ -226,7 +228,7 @@ export function QueriesListPage() {
           </Link>
 
           {/* Page size */}
-          <label htmlFor="ql-page-size" className="sr-only">Rows per page</label>
+          <label htmlFor="ql-page-size" className="sr-only">{t('commonExt.rowsPerPage')}</label>
           <select
             id="ql-page-size"
             value={pageSize}
@@ -246,7 +248,7 @@ export function QueriesListPage() {
           {isFetching && !isLoading && (
             <span
               aria-live="polite"
-              aria-label="Refreshing data"
+              aria-label={t('commonExt.refreshingData')}
               className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
@@ -264,7 +266,7 @@ export function QueriesListPage() {
               <th scope="col" className="px-4 py-3 w-10">
                 <input
                   type="checkbox"
-                  aria-label="Select all visible queries"
+                  aria-label={t('queriesPage.selectAll')}
                   checked={allChecked}
                   ref={(el) => {
                     if (el) el.indeterminate = someChecked && !allChecked;
@@ -358,7 +360,7 @@ export function QueriesListPage() {
                         <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
                       </svg>
                     }
-                    title="No queries match."
+                    title={t('queriesPage.noMatch')}
                     action={
                       (q || target !== 'all') ? (
                         <button
@@ -490,7 +492,7 @@ export function QueriesListPage() {
       {selectedNames.size > 0 && (
         <div
           role="toolbar"
-          aria-label="Bulk actions"
+          aria-label={t('commonExt.bulkActions')}
           className={cn(
             'fixed bottom-6 left-1/2 -translate-x-1/2',
             'flex items-center gap-3 px-4 py-2.5 rounded-xl',
@@ -512,7 +514,7 @@ export function QueriesListPage() {
           <button
             type="button"
             disabled={bulkMutation.isPending}
-            aria-label="Complete selected queries"
+            aria-label={t('queriesPage.bulk.complete')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
@@ -526,7 +528,7 @@ export function QueriesListPage() {
           <button
             type="button"
             disabled={bulkMutation.isPending}
-            aria-label="Expire selected queries"
+            aria-label={t('queriesPage.bulk.expire')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--warning)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
@@ -540,7 +542,7 @@ export function QueriesListPage() {
           <button
             type="button"
             disabled={bulkMutation.isPending}
-            aria-label="Delete selected queries"
+            aria-label={t('queriesPage.bulk.delete')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={() =>
               bulkMutation.mutate({
@@ -554,7 +556,7 @@ export function QueriesListPage() {
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
           <button
             type="button"
-            aria-label="Clear selection"
+            aria-label={t('commonExt.clearSelection')}
             onClick={() => setSelectedNames(new Set())}
             className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >

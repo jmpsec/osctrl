@@ -139,10 +139,10 @@ export function TagsPage() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
-          Tags
+          {t('pageTitle.tags')}
         </h1>
         <p className="text-xs text-[color:var(--text-3)]">
-          Environment-scoped operator tags for grouping and bulk targeting.
+          {t('tagsPage.superAdminView')}
         </p>
 
         <div className="ml-auto flex items-center gap-2">
@@ -150,13 +150,13 @@ export function TagsPage() {
             type="button"
             onClick={() => setModal({ kind: 'create' })}
           >
-            New tag
+            {t('tagsPage.newTag')}
           </Button>
 
           {isFetching && !isLoading && (
             <span
               aria-live="polite"
-              aria-label="Refreshing data"
+              aria-label={t('commonExt.refreshingData')}
               className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
               refreshing…
@@ -172,7 +172,7 @@ export function TagsPage() {
               <th scope="col" className="px-4 py-3 w-10">
                 <input
                   type="checkbox"
-                  aria-label="Select all visible tags"
+                  aria-label={t('tagsPage.selectTags')}
                   checked={allChecked}
                   ref={(el) => {
                     if (el) el.indeterminate = someChecked && !allChecked;
@@ -234,7 +234,7 @@ export function TagsPage() {
                         <path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" />
                       </svg>
                     }
-                    title="No tags in this environment yet."
+                    title={t('tagsPage.noTags')}
                     action={
                       <button
                         type="button"
@@ -315,7 +315,7 @@ export function TagsPage() {
       {selectedNames.size > 0 && (
         <div
           role="toolbar"
-          aria-label="Bulk actions"
+          aria-label={t('commonExt.bulkActions')}
           className={cn(
             'fixed bottom-6 left-1/2 -translate-x-1/2',
             'flex items-center gap-3 px-4 py-2.5 rounded-xl',
@@ -335,7 +335,7 @@ export function TagsPage() {
           <button
             type="button"
             disabled={bulkDeleteMut.isPending}
-            aria-label="Delete selected tags"
+            aria-label={t('tagsPage.deleteTags')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={handleBulkDelete}
           >
@@ -344,7 +344,7 @@ export function TagsPage() {
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
           <button
             type="button"
-            aria-label="Clear selection"
+            aria-label={t('commonExt.clearSelection')}
             onClick={() => setSelectedNames(new Set())}
             className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
@@ -372,7 +372,7 @@ export function TagsPage() {
             type="button"
             onClick={() => setBulkError(null)}
             className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
-            aria-label="Dismiss"
+            aria-label={t('commonExt.dismiss')}
           >
             ×
           </button>
@@ -424,6 +424,7 @@ function TagFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [color, setColor] = useState(initial?.color || DEFAULT_COLOR);
@@ -483,7 +484,7 @@ function TagFormModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={mode === 'edit'}
-            placeholder="e.g. production"
+            placeholder={t('environmentsPage.namePlaceholder')}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
               'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
@@ -493,7 +494,7 @@ function TagFormModal({
           />
           {mode === 'edit' && (
             <p className="mt-1 text-xs text-[color:var(--text-3)]">
-              Names can't be changed after creation.
+              {t('tagsPage.nameHint')}
             </p>
           )}
         </div>
@@ -507,7 +508,7 @@ function TagFormModal({
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What does this tag represent?"
+            placeholder={t('tagsPage.descPlaceholder')}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
               'bg-[color:var(--bg-3)] text-[color:var(--text-1)]',
@@ -590,6 +591,7 @@ function DeleteTagModal({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const [err, setErr] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: () => tagsAction(env, 'remove', { name: tag.name }),
@@ -607,7 +609,7 @@ function DeleteTagModal({
   });
 
   return (
-    <ModalShell title="Delete tag" titleId="tag-delete-modal-title" onClose={onClose}>
+    <ModalShell title={t('tagsPage.deleteTag')} titleId="tag-delete-modal-title" onClose={onClose}>
       <p className="text-sm text-[color:var(--text-1)]">
         Delete <strong className="tabular-nums">{tag.name}</strong>? Any
         nodes tagged with this will become untagged. This cannot be undone.

@@ -1,4 +1,5 @@
 import * as Popover from '@radix-ui/react-popover';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -358,6 +359,7 @@ export function NoCodeQueryBuilder({
   draftKey,
   onSummaryChange,
 }: NoCodeQueryBuilderProps) {
+  const { t } = useTranslation();
   const { data: tables = [], isLoading, isError } = useQuery({
     queryKey: ['osquery-tables'],
     queryFn: getOsqueryTables,
@@ -617,21 +619,21 @@ export function NoCodeQueryBuilder({
 
   return (
     <div className="min-w-0">
-      <section className="px-4 py-4 sm:px-5" aria-label="No-code query builder">
+      <section className="px-4 py-4 sm:px-5" aria-label={t('noCode.title')}>
         {isLoading && (
-          <div className="h-12 animate-pulse rounded-lg bg-[color:var(--bg-3)]" aria-label="Loading query builder" />
+          <div className="h-12 animate-pulse rounded-lg bg-[color:var(--bg-3)]" aria-label={t('noCode.loading')} />
         )}
         {isError && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[color:var(--danger)]/5 p-3 text-sm text-[color:var(--danger)] ring-1 ring-inset ring-[color:var(--danger)]/20">
-            <p>The osquery schema could not be loaded. Use the SQL editor to continue.</p>
-            <button type="button" onClick={onEditSql} className={cn('font-medium underline', focusClass)}>Edit SQL</button>
+            <p>{t('noCode.schemaError')}</p>
+            <button type="button" onClick={onEditSql} className={cn('font-medium underline', focusClass)}>{t('noCode.editSql')}</button>
           </div>
         )}
 
         {!isLoading && !isError && (
           <div
             className="rounded-lg bg-[color:var(--bg-3)]/70 p-2 ring-1 ring-inset ring-[color:var(--border)]"
-            aria-label="Query filters"
+            aria-label={t('noCode.filters')}
           >
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Popover.Root open={tablePickerOpen} onOpenChange={setTablePickerOpen}>
@@ -645,15 +647,15 @@ export function NoCodeQueryBuilder({
                     aria-label={`Choose table, currently ${tableName}`}
                   >
                     <Table2 size={16} strokeWidth={1.8} aria-hidden className="shrink-0 text-[color:var(--text-3)]" />
-                    <span className="text-[color:var(--text-3)]">From</span>
+                    <span className="text-[color:var(--text-3)]">{t('noCode.from')}</span>
                     <span className="min-w-0 truncate font-medium">{tableName}</span>
                     <ChevronDown size={16} strokeWidth={1.8} aria-hidden className="shrink-0 text-[color:var(--text-3)]" />
                   </button>
                 </Popover.Trigger>
                 <PickerSurface>
-                  <PickerSearch id="query-table-search" name="query-table-search" value={tableSearch} onChange={setTableSearch} placeholder="Search tables" />
+                  <PickerSearch id="query-table-search" name="query-table-search" value={tableSearch} onChange={setTableSearch} placeholder={t('noCode.searchTables')} />
                   <div className="max-h-80 overflow-y-auto p-1" role="list">
-                    {recentTables.length > 0 && <PickerGroupLabel>Recent</PickerGroupLabel>}
+                    {recentTables.length > 0 && <PickerGroupLabel>{t('noCode.recentTables')}</PickerGroupLabel>}
                     {recentTables.map((table) => (
                       <TablePickerOption
                         key={`recent-${table.name}`}
@@ -662,7 +664,7 @@ export function NoCodeQueryBuilder({
                         onSelect={() => chooseTable(table)}
                       />
                     ))}
-                    {commonTables.length > 0 && <PickerGroupLabel>Common</PickerGroupLabel>}
+                    {commonTables.length > 0 && <PickerGroupLabel>{t('noCode.commonTables')}</PickerGroupLabel>}
                     {commonTables.map((table) => (
                       <TablePickerOption
                         key={`common-${table.name}`}
@@ -671,7 +673,7 @@ export function NoCodeQueryBuilder({
                         onSelect={() => chooseTable(table)}
                       />
                     ))}
-                    {(recentTables.length > 0 || commonTables.length > 0) && remainingTables.length > 0 && <PickerGroupLabel>All tables</PickerGroupLabel>}
+                    {(recentTables.length > 0 || commonTables.length > 0) && remainingTables.length > 0 && <PickerGroupLabel>{t('noCode.allTables')}</PickerGroupLabel>}
                     {remainingTables.map((table) => (
                       <TablePickerOption
                         key={table.name}
@@ -680,7 +682,7 @@ export function NoCodeQueryBuilder({
                         onSelect={() => chooseTable(table)}
                       />
                     ))}
-                    {visibleTables.length === 0 && <p className="p-3 text-sm text-[color:var(--text-3)]">No tables match that search.</p>}
+                    {visibleTables.length === 0 && <p className="p-3 text-sm text-[color:var(--text-3)]">{t('noCode.noTablesMatch')}</p>}
                   </div>
                 </PickerSurface>
               </Popover.Root>
@@ -696,13 +698,13 @@ export function NoCodeQueryBuilder({
                     aria-label={`Choose result columns, currently ${columnLabel}`}
                   >
                     <Columns3 size={16} strokeWidth={1.8} aria-hidden className="shrink-0 text-[color:var(--text-3)]" />
-                    <span className="text-[color:var(--text-3)]">Select</span>
+                    <span className="text-[color:var(--text-3)]">{t('noCode.select')}</span>
                     <span className="min-w-0 truncate font-medium">{columnLabel}</span>
                     <ChevronDown size={16} strokeWidth={1.8} aria-hidden className="shrink-0 text-[color:var(--text-3)]" />
                   </button>
                 </Popover.Trigger>
                 <PickerSurface>
-                  <PickerSearch id="query-column-search" name="query-column-search" value={columnSearch} onChange={setColumnSearch} placeholder="Search columns" />
+                  <PickerSearch id="query-column-search" name="query-column-search" value={columnSearch} onChange={setColumnSearch} placeholder={t('noCode.searchColumns')} />
                   <div className="border-b border-[color:var(--border)] p-1">
                     <button
                       type="button"
@@ -716,11 +718,11 @@ export function NoCodeQueryBuilder({
                       )}>
                         {allColumnsSelected && <Check size={14} strokeWidth={2.2} aria-hidden />}
                       </span>
-                      <span className="font-medium text-[color:var(--text-1)]">All columns</span>
+                      <span className="font-medium text-[color:var(--text-1)]">{t('noCode.allColumns')}</span>
                     </button>
                   </div>
                   <div className="max-h-72 overflow-y-auto p-1" role="list">
-                    {recentColumns.length > 0 && <PickerGroupLabel>Recent columns</PickerGroupLabel>}
+                    {recentColumns.length > 0 && <PickerGroupLabel>{t('noCode.recentColumns')}</PickerGroupLabel>}
                     {recentColumns.map((column) => (
                       <ColumnPickerOption
                         key={`recent-${column.name}`}
@@ -729,7 +731,7 @@ export function NoCodeQueryBuilder({
                         onSelect={() => toggleColumn(column.name)}
                       />
                     ))}
-                    {commonColumns.length > 0 && <PickerGroupLabel>Common columns</PickerGroupLabel>}
+                    {commonColumns.length > 0 && <PickerGroupLabel>{t('noCode.commonColumns')}</PickerGroupLabel>}
                     {commonColumns.map((column) => (
                       <ColumnPickerOption
                         key={`common-${column.name}`}
@@ -738,7 +740,7 @@ export function NoCodeQueryBuilder({
                         onSelect={() => toggleColumn(column.name)}
                       />
                     ))}
-                    {remainingColumns.length > 0 && <PickerGroupLabel>Choose specific columns</PickerGroupLabel>}
+                    {remainingColumns.length > 0 && <PickerGroupLabel>{t('noCode.chooseColumns')}</PickerGroupLabel>}
                     {remainingColumns.map((column) => (
                       <ColumnPickerOption
                         key={column.name}
@@ -747,7 +749,7 @@ export function NoCodeQueryBuilder({
                         onSelect={() => toggleColumn(column.name)}
                       />
                     ))}
-                    {visibleColumns.length === 0 && <p className="p-3 text-sm text-[color:var(--text-3)]">No columns match that search.</p>}
+                    {visibleColumns.length === 0 && <p className="p-3 text-sm text-[color:var(--text-3)]">{t('noCode.noColumnsMatch')}</p>}
                   </div>
                 </PickerSurface>
               </Popover.Root>
@@ -804,7 +806,7 @@ export function NoCodeQueryBuilder({
                           list={valueSuggestions.length > 0 ? `filter-${condition.id}-suggestions` : undefined}
                           value={condition.value}
                           onChange={(event) => updateCondition(condition.id, { value: event.target.value })}
-                          placeholder="Value"
+                          placeholder={t('noCode.value')}
                           className="h-8 min-w-20 flex-1 border-l border-[color:var(--border)] bg-transparent px-2 text-base text-[color:var(--text-1)] outline-none [appearance:textfield] placeholder:text-[color:var(--text-3)] focus:bg-[color:var(--bg-3)] max-sm:col-span-2 max-sm:col-start-1 max-sm:row-start-2 max-sm:w-full max-sm:border-l-0 max-sm:border-t sm:w-32 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                       )}
@@ -847,10 +849,10 @@ export function NoCodeQueryBuilder({
                       conditions.length === 0 ? 'gap-1.5 py-1.5 pr-2.5 pl-1.5' : 'w-8',
                       focusClass,
                     )}
-                    aria-label="Add filter"
+                    aria-label={t('noCode.addFilter')}
                   >
                     <Plus size={16} strokeWidth={2} aria-hidden className="shrink-0" />
-                    {conditions.length === 0 && <span>Add filter</span>}
+                    {conditions.length === 0 && <span>{t('noCode.addFilter')}</span>}
                     <span className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-x-1/2 -translate-y-1/2 sm:hidden" aria-hidden />
                   </button>
                 </Popover.Trigger>
@@ -864,9 +866,9 @@ export function NoCodeQueryBuilder({
                     valueInputRefs.current.get(id)?.focus();
                   }}
                 >
-                  <PickerSearch id="query-filter-search" name="query-filter-search" value={filterSearch} onChange={setFilterSearch} placeholder="Search fields" />
+                  <PickerSearch id="query-filter-search" name="query-filter-search" value={filterSearch} onChange={setFilterSearch} placeholder={t('noCode.searchFields')} />
                   <div className="max-h-72 overflow-y-auto p-1" role="list">
-                    {recentFilterColumns.length > 0 && <PickerGroupLabel>Recent fields</PickerGroupLabel>}
+                    {recentFilterColumns.length > 0 && <PickerGroupLabel>{t('noCode.recentColumns')}</PickerGroupLabel>}
                     {recentFilterColumns.map((column) => (
                       <FilterFieldOption
                         key={`recent-${column.name}`}
@@ -874,7 +876,7 @@ export function NoCodeQueryBuilder({
                         onSelect={() => addCondition(column)}
                       />
                     ))}
-                    {commonFilterColumns.length > 0 && <PickerGroupLabel>Common fields</PickerGroupLabel>}
+                    {commonFilterColumns.length > 0 && <PickerGroupLabel>{t('noCode.commonFields')}</PickerGroupLabel>}
                     {commonFilterColumns.map((column) => (
                       <FilterFieldOption
                         key={`common-${column.name}`}
@@ -892,7 +894,7 @@ export function NoCodeQueryBuilder({
                         onSelect={() => addCondition(column)}
                       />
                     ))}
-                    {visibleFilterColumns.length === 0 && <p className="p-3 text-sm text-[color:var(--text-3)]">No fields match that search.</p>}
+                    {visibleFilterColumns.length === 0 && <p className="p-3 text-sm text-[color:var(--text-3)]">{t('noCode.noFieldsMatch')}</p>}
                   </div>
                 </PickerSurface>
               </Popover.Root>
@@ -903,7 +905,7 @@ export function NoCodeQueryBuilder({
                   onClick={clearFilters}
                   className={cn('h-8 px-1 text-sm font-medium text-[color:var(--text-2)] hover:text-[color:var(--text-1)]', focusClass)}
                 >
-                  Clear filters
+                  {t('noCode.clearFilters')}
                 </button>
               )}
             </div>
@@ -922,28 +924,28 @@ export function NoCodeQueryBuilder({
                 rel="noreferrer"
                 className={cn('shrink-0 text-sm font-medium text-[color:var(--text-link)] hover:underline', focusClass)}
               >
-                Table reference
+                {t('noCode.tableRef')}
               </a>
             )}
           </div>
         )}
       </section>
 
-      <section className="flex flex-wrap items-center gap-3 border-t border-[color:var(--border)] px-4 py-3 sm:px-5" aria-label="Query result settings">
+      <section className="flex flex-wrap items-center gap-3 border-t border-[color:var(--border)] px-4 py-3 sm:px-5" aria-label={t('noCode.resultSettings')}>
         {sortOpen ? (
           <div className="flex min-w-0 items-center overflow-hidden rounded-md bg-[color:var(--bg-1)] ring-1 ring-inset ring-[color:var(--border)]">
             <div className="flex h-8 shrink-0 items-center gap-1.5 px-2 text-sm text-[color:var(--text-3)]">
               <ArrowUpDown size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
-              Sort
+              {t('noCode.sort')}
             </div>
             <CompactSelect value={orderBy} onChange={setOrderBy} name="query-builder-sort" ariaLabel="Sort results by column" className="min-w-36 border-l border-[color:var(--border)]">
-              <option value="">Choose column</option>
+              <option value="">{t('noCode.chooseColumn')}</option>
               {availableColumns.map((column) => <option key={column.name} value={column.name}>{column.name}</option>)}
             </CompactSelect>
             {orderBy && (
               <CompactSelect value={orderDirection} onChange={(value) => setOrderDirection(value as 'ASC' | 'DESC')} name="query-builder-direction" ariaLabel="Sort direction" className="min-w-32 border-l border-[color:var(--border)] bg-[color:var(--bg-3)]">
-                <option value="ASC">Ascending</option>
-                <option value="DESC">Descending</option>
+                <option value="ASC">{t('noCode.ascending')}</option>
+                <option value="DESC">{t('noCode.descending')}</option>
               </CompactSelect>
             )}
             <button
@@ -957,7 +959,7 @@ export function NoCodeQueryBuilder({
                 'relative inline-flex size-8 shrink-0 items-center justify-center border-l border-[color:var(--border)] text-[color:var(--text-3)] hover:bg-[color:var(--bg-3)] hover:text-[color:var(--danger)]',
                 focusClass,
               )}
-              aria-label="Remove sorting"
+              aria-label={t('noCode.removeSorting')}
             >
               <X size={16} strokeWidth={1.8} aria-hidden />
               <span className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-x-1/2 -translate-y-1/2 sm:hidden" aria-hidden />
@@ -973,16 +975,16 @@ export function NoCodeQueryBuilder({
             )}
           >
             <ArrowUpDown size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
-            Add sorting
+            {t('noCode.addSorting')}
           </button>
         )}
 
         <label className="flex h-8 items-center overflow-hidden rounded-md bg-[color:var(--bg-1)] text-sm ring-1 ring-inset ring-[color:var(--border)]">
-          <span className="px-2 text-[color:var(--text-3)]">Limit</span>
+          <span className="px-2 text-[color:var(--text-3)]">{t('noCode.rowLimit')}</span>
           <input
             type="number"
             name="query-builder-limit"
-            aria-label="Row limit"
+            aria-label={t('noCode.rowLimit')}
             min={1}
             max={10_000}
             value={limit}
@@ -997,20 +999,20 @@ export function NoCodeQueryBuilder({
             onClick={resetQuery}
             className={cn('h-8 px-1 text-sm font-medium text-[color:var(--text-2)] hover:text-[color:var(--text-1)]', focusClass)}
           >
-            Reset query
+            {t('noCode.resetQuery')}
           </button>
         )}
 
         {resetSnapshot && (
           <div role="status" className="flex h-8 items-center gap-2 rounded-md bg-[color:var(--bg-3)] px-2 text-sm text-[color:var(--text-2)]">
-            Query reset.
+            {t('noCode.queryReset')}
             <button
               type="button"
               onClick={undoReset}
               className={cn('inline-flex items-center gap-1 font-medium text-[color:var(--text-link)] hover:underline', focusClass)}
             >
               <Undo2 size={16} strokeWidth={1.8} aria-hidden className="shrink-0" />
-              Undo
+              {t('noCode.undo')}
             </button>
           </div>
         )}

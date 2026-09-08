@@ -24,6 +24,7 @@ const EMPTY_TARGET: TargetSelection = {
 };
 
 function GeneratedSqlReview({ sql, onEditSql }: { sql: string; onEditSql: () => void }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   async function copySql() {
@@ -46,9 +47,9 @@ function GeneratedSqlReview({ sql, onEditSql }: { sql: string; onEditSql: () => 
           <Code2 size={16} strokeWidth={1.8} aria-hidden className="shrink-0 text-[color:var(--text-3)]" />
           <div className="min-w-0">
             <h2 id="query-builder-preview" className="text-sm font-semibold text-[color:var(--text-1)]">
-              Generated SQL
+              {t('queryRun.generatedSql')}
             </h2>
-            <p className="text-xs text-[color:var(--text-3)]">Review the final statement before running it.</p>
+            <p className="text-xs text-[color:var(--text-3)]">{t('queryRun.reviewHint')}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -202,7 +203,7 @@ export function QueryRunPage() {
             queries · new
           </div>
           <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
-            Run distributed query
+            {t('queryRun.title')}
           </h1>
           <p className="text-xs text-[color:var(--text-2)] mt-0.5">
             {prefillName ? (
@@ -212,7 +213,7 @@ export function QueryRunPage() {
                 {' '}— review the SQL and targets before dispatching.
               </>
             ) : (
-              <>Dispatches to matching nodes on next check-in.</>
+              <>{t('queryRun.dispatchHint')}</>
             )}
           </p>
         </div>
@@ -227,7 +228,7 @@ export function QueryRunPage() {
             {/* Quick templates */}
             <section
               className="empty:hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
-              aria-label="Query templates"
+              aria-label={t('queryRun.templates')}
             >
               <QuickTemplates
                 onPick={(s) => {
@@ -241,7 +242,7 @@ export function QueryRunPage() {
             {/* Query composer */}
             <section
               className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
-              aria-label="Query composer"
+              aria-label={t('queryRun.composer')}
             >
               <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border)] px-4 py-2">
                 <div>
@@ -254,7 +255,7 @@ export function QueryRunPage() {
                 </div>
                 <div
                   role="tablist"
-                  aria-label="Query composer mode"
+                  aria-label={t('queryRun.composerMode')}
                   className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] p-0.5"
                 >
                   <button
@@ -297,7 +298,7 @@ export function QueryRunPage() {
               ) : (
                 <div>
                   <div className="flex items-center justify-end border-b border-[color:var(--border)] bg-[color:var(--bg-3)]/50 px-4 py-1.5 text-xs font-medium text-[color:var(--text-3)]">
-                    osquery · SELECT only
+                    {t('queryRun.selectOnly')}
                   </div>
                   <CodeEditor
                     value={sql}
@@ -314,7 +315,7 @@ export function QueryRunPage() {
 
           {/* ── Right: targeting + save-as ──────────────────────────── */}
           <aside
-            aria-label="Targeting"
+            aria-label={t('queryRun.targeting')}
             className="lg:col-span-1 space-y-4 lg:sticky lg:top-4 lg:self-start"
           >
             <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4">
@@ -325,7 +326,7 @@ export function QueryRunPage() {
             </section>
             <section
               className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
-              aria-label="Options"
+              aria-label={t('queryRun.options')}
             >
               <OptionsPanel
                 expHours={expHours}
@@ -379,7 +380,7 @@ export function QueryRunPage() {
                 <input
                   id="save-name"
                   name="save-name"
-                  aria-label="Saved query name"
+                  aria-label={t('queryRun.savedNameLabel')}
                   type="text"
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}

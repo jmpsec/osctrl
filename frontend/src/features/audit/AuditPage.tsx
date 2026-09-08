@@ -164,7 +164,7 @@ export function AuditPage() {
         {isFetching && !isLoading && (
           <span
             aria-live="polite"
-            aria-label="Refreshing data"
+            aria-label={t('commonExt.refreshingData')}
             className="ml-auto text-xs text-[color:var(--text-3)]"
           >
             refreshing…
@@ -173,7 +173,7 @@ export function AuditPage() {
       </div>
 
       <div className="px-4 py-3 border-b border-[color:var(--border)] grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end bg-[color:var(--bg-2)]">
-        <FilterField id="f-service" label="Service">
+        <FilterField id="f-service" label={t('auditPage.service')}>
           <select
             id="f-service"
             value={service}
@@ -188,7 +188,7 @@ export function AuditPage() {
           </select>
         </FilterField>
 
-        <FilterField id="f-type" label="Type">
+        <FilterField id="f-type" label={t('auditPage.type')}>
           <select
             id="f-type"
             value={String(type)}
@@ -208,12 +208,12 @@ export function AuditPage() {
             the input would let them type other names that have no
             effect — confusing. */}
         {isSuperAdmin && (
-          <FilterField id="f-username" label="Username">
+          <FilterField id="f-username" label={t('auditPage.user')}>
             <input
               id="f-username"
               type="text"
               value={usernameDraft}
-              placeholder="partial match"
+              placeholder={t('auditPage.partialMatch')}
               onChange={(e) => setUsernameDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') applyFilters();
@@ -223,7 +223,7 @@ export function AuditPage() {
           </FilterField>
         )}
 
-        <FilterField id="f-env" label="Env UUID">
+        <FilterField id="f-env" label={t('auditPage.envUuid')}>
           <input
             id="f-env"
             type="text"
@@ -237,7 +237,7 @@ export function AuditPage() {
           />
         </FilterField>
 
-        <FilterField id="f-since" label="Since">
+        <FilterField id="f-since" label={t('auditPage.since')}>
           <input
             id="f-since"
             type="datetime-local"
@@ -247,7 +247,7 @@ export function AuditPage() {
           />
         </FilterField>
 
-        <FilterField id="f-until" label="Until">
+        <FilterField id="f-until" label={t('auditPage.until')}>
           <input
             id="f-until"
             type="datetime-local"
@@ -263,7 +263,7 @@ export function AuditPage() {
             onClick={resetFilters}
             className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
-            Reset
+            {t('commonExt.reset')}
           </button>
           <button
             type="button"
@@ -274,7 +274,7 @@ export function AuditPage() {
               'transition-colors',
             )}
           >
-            Apply filters
+            {t('commonExt.applyFilters')}
           </button>
         </div>
       </div>
@@ -284,22 +284,22 @@ export function AuditPage() {
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
-                When
+                {t('auditPage.when')}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
-                Service
+                {t('auditPage.service')}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
-                Type
+                {t('auditPage.type')}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
-                User
+                {t('auditPage.user')}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
-                Source IP
+                {t('auditPage.sourceIp')}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
-                Action
+                {t('auditPage.action')}
               </th>
             </tr>
           </thead>
@@ -341,7 +341,7 @@ export function AuditPage() {
                         <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
                       </svg>
                     }
-                    title="No entries match these filters."
+                    title={t('auditPage.noMatch')}
                   />
                 </td>
               </tr>

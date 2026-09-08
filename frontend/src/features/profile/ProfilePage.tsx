@@ -192,7 +192,7 @@ export function ProfilePage() {
           account · profile
         </div>
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
-          Your profile
+          {t('profilePage.yourProfile')}
         </h1>
       </div>
 
@@ -260,7 +260,7 @@ export function ProfilePage() {
                 )}
               >
                 <div className="text-xs tabular-nums uppercase tracking-[0.14em] text-[color:var(--text-3)] mb-1">
-                  Last access
+                  {t('usersPage.lastAccess')}
                 </div>
                 <div
                   className="text-xs tnum text-[color:var(--text-1)]"
@@ -286,7 +286,7 @@ export function ProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 p-6">
         {/* ─ Account ─ */}
         {isLoading || !me ? (
-          <Panel id="profile-section-title" title="Account">
+          <Panel id="profile-section-title" title={t('profilePage.account')}>
             <div className="space-y-4">
               <Skeleton className="h-9 w-full" />
               <Skeleton className="h-9 w-full" />
@@ -294,7 +294,7 @@ export function ProfilePage() {
             </div>
           </Panel>
         ) : (
-          <Panel id="profile-section-title" title="Account">
+          <Panel id="profile-section-title" title={t('profilePage.account')}>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -304,7 +304,7 @@ export function ProfilePage() {
               aria-labelledby="profile-section-title"
             >
               <div>
-                <FieldLabel htmlFor="profile-email">Email</FieldLabel>
+                <FieldLabel htmlFor="profile-email">{t('usersPage.email')}</FieldLabel>
                 <Input
                   id="profile-email"
                   type="email"
@@ -314,7 +314,7 @@ export function ProfilePage() {
                 />
               </div>
               <div>
-                <FieldLabel htmlFor="profile-fullname">Full name</FieldLabel>
+                <FieldLabel htmlFor="profile-fullname">{t('usersPage.fullName')}</FieldLabel>
                 <Input
                   id="profile-fullname"
                   type="text"
@@ -343,7 +343,7 @@ export function ProfilePage() {
 
         {/* ─ Password ─ */}
         {isLoading || !me ? (
-          <Panel title="Password">
+          <Panel title={t('profilePage.password')}>
             <div className="space-y-4">
               <Skeleton className="h-9 w-full" />
               <Skeleton className="h-9 w-full" />
@@ -352,17 +352,17 @@ export function ProfilePage() {
             </div>
           </Panel>
         ) : (
-          <Panel title="Password">
+          <Panel title={t('profilePage.password')}>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 passwordMutation.mutate();
               }}
               className="space-y-4"
-              aria-label="Change password"
+              aria-label={t('profilePage.changePassword')}
             >
               <div>
-                <FieldLabel htmlFor="pwd-current">Current password</FieldLabel>
+                <FieldLabel htmlFor="pwd-current">{t('profilePage.currentPassword')}</FieldLabel>
                 <Input
                   id="pwd-current"
                   type="password"
@@ -372,7 +372,7 @@ export function ProfilePage() {
                 />
               </div>
               <div>
-                <FieldLabel htmlFor="pwd-new">New password</FieldLabel>
+                <FieldLabel htmlFor="pwd-new">{t('profilePage.newPassword')}</FieldLabel>
                 <Input
                   id="pwd-new"
                   type="password"
@@ -382,11 +382,11 @@ export function ProfilePage() {
                   minLength={8}
                 />
                 <p className="mt-1 text-xs text-[color:var(--text-3)]">
-                  Minimum 8 characters.
+                  {t('profilePage.passwordHint')}
                 </p>
               </div>
               <div>
-                <FieldLabel htmlFor="pwd-confirm">Confirm new password</FieldLabel>
+                <FieldLabel htmlFor="pwd-confirm">{t('profilePage.confirmNewPassword')}</FieldLabel>
                 <Input
                   id="pwd-confirm"
                   type="password"
@@ -415,20 +415,20 @@ export function ProfilePage() {
         )}
 
         {/* ─ Two-factor authentication ─ */}
-        <Panel title="Two-factor authentication">
+        <Panel title={t('mfa.title')}>
           <MFAPanel />
         </Panel>
 
         {/* ─ API token ─ */}
         {isLoading || !me ? (
-          <Panel title="API token">
+          <Panel title={t('profilePage.apiToken')}>
             <div className="space-y-3">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-8 w-40" />
             </div>
           </Panel>
         ) : (
-          <Panel title="API token">
+          <Panel title={t('profilePage.apiToken')}>
             <div className="space-y-3">
               <div
                 className={cn(
@@ -478,8 +478,8 @@ export function ProfilePage() {
                           'text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
                           'hover:bg-[color:var(--bg-1)] transition-colors',
                         )}
-                        aria-label="Copy token"
-                        title="Copy"
+                        aria-label={t('profilePage.copyToken')}
+                        title={t('profilePage.copy')}
                       >
                         {copied
                           ? <Check className="w-3.5 h-3.5 text-[color:var(--success)]" />
@@ -531,24 +531,24 @@ export function ProfilePage() {
 
         {/* ─ Preferences ─ */}
         {isLoading || !me ? (
-          <Panel title="Preferences">
+          <Panel title={t('profilePage.preferences')}>
             <Skeleton className="h-10 w-full" />
           </Panel>
         ) : (
-          <Panel title="Preferences">
+          <Panel title={t('profilePage.preferences')}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs text-[color:var(--text-1)] font-medium">
-                  Color theme
+                  {t('profilePage.colorTheme')}
                 </div>
                 <div className="text-xs text-[color:var(--text-3)]">
-                  Persists across reloads.
+                  {t('profilePage.themeHint')}
                 </div>
               </div>
 
               <div
                 role="group"
-                aria-label="Toggle color theme"
+                aria-label={t('profilePage.toggleTheme')}
                 className={cn(
                   'flex items-center gap-0.5 rounded-md p-0.5',
                   'bg-[color:var(--bg-3)] border border-[color:var(--border)]',
@@ -578,7 +578,7 @@ export function ProfilePage() {
         )}
 
         {isLoading || !me ? (
-          <Panel title="Permissions" className="lg:col-span-2">
+          <Panel title={t('profilePage.permissions')} className="lg:col-span-2">
             <div className="space-y-2">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
@@ -586,7 +586,7 @@ export function ProfilePage() {
             </div>
           </Panel>
         ) : (
-          <Panel title="Permissions" className="lg:col-span-2">
+          <Panel title={t('profilePage.permissions')} className="lg:col-span-2">
             <PermissionsTable
               admin={me.admin}
               permissions={me.permissions}
@@ -696,13 +696,14 @@ function Panel({
 }
 
 function RoleBadge({ admin, service }: { admin: boolean; service: boolean }) {
+  const { t } = useTranslation();
   if (admin) {
-    return <MetadataBadge>Super admin</MetadataBadge>;
+    return <MetadataBadge>{t('profilePage.superAdmin')}</MetadataBadge>;
   }
   if (service) {
-    return <MetadataBadge>Service</MetadataBadge>;
+    return <MetadataBadge>{t('usersPage.service')}</MetadataBadge>;
   }
-  return <MetadataBadge>Operator</MetadataBadge>;
+  return <MetadataBadge>{t('usersPage.operator')}</MetadataBadge>;
 }
 
 function PermissionsTable({
@@ -716,6 +717,7 @@ function PermissionsTable({
   envs: TLSEnvironment[];
   envsLoading: boolean;
 }) {
+  const { t } = useTranslation();
   const rows = buildPermissionRows(envs, permissions, admin);
 
   if (envsLoading && envs.length === 0) {
@@ -728,7 +730,7 @@ function PermissionsTable({
   }
 
   if (rows.length === 0) {
-    return <p className="text-xs text-[color:var(--text-2)]">No environment access.</p>;
+    return <p className="text-xs text-[color:var(--text-2)]">{t('profilePage.noEnvAccess')}</p>;
   }
 
   return (
@@ -775,9 +777,10 @@ function PermissionsTable({
 }
 
 function PermissionCell({ enabled }: { enabled: boolean }) {
+  const { t } = useTranslation();
   return enabled
-    ? <StatusBadge variant="signal" label="Yes" />
-    : <StatusBadge variant="dim" label="None" />;
+    ? <StatusBadge variant="signal" label={t('profilePage.yes')} />
+    : <StatusBadge variant="dim" label={t('profilePage.none')} />;
 }
 
 // ---------------------------------------------------------------------------
