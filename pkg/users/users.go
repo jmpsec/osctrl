@@ -51,6 +51,14 @@ type AdminUser struct {
 	// (an OIDC user with a password set later can log in either
 	// way, by design).
 	AuthSource string
+	// PreferredLanguage is the UI language the operator picked in
+	// the SPA (BCP-47 base tag, e.g. "en", "es", "pt"). It is
+	// cross-device state: the frontend reconciles its local
+	// preference against this value at login and mirrors every
+	// switch back via PATCH /users/me. Validation happens in the
+	// API handler against the frontend's supported-language list;
+	// anything stored here is advisory, never load-bearing.
+	PreferredLanguage string
 }
 
 // TokenClaims to hold user claims when using JWT
@@ -546,6 +554,23 @@ func (m *UserManager) ChangeFullname(username, fullname string) error {
 	}
 	if fullname != user.Fullname {
 		if err := m.DB.Model(&user).Update("fullname", fullname).Error; err != nil {
+			return fmt.Errorf("update %w", err)
+		}
+	}
+	return nil
+}
+
+// ChangePreferredLanguage records the operator's preferred UI language.
+// An empty value clears the preference (the SPA falls back to browser
+// detection). Validation of the tag against the supported-language list
+// belongs to the API layer; the manager accepts what it is given.
+func (m *UserManager) ChangePreferredLanguage(username, language string) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %w", err)
+	}
+	if language != user.PreferredLanguage {
+		if err := m.DB.Model(&user).Update("preferred_language", language).Error; err != nil {
 			return fmt.Errorf("update %w", err)
 		}
 	}

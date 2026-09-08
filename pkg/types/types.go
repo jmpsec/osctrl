@@ -399,6 +399,18 @@ type TokenResponse struct {
 // per-env check at the server layer, so the SPA hides nothing for
 // them. Envs with no permission rows are omitted from the map; the
 // SPA treats absence as "no access" (zero-value EnvAccess).
+
+// SupportedLanguages is the allowlist for preferred_language values —
+// it MUST mirror the frontend registry in frontend/src/i18n/locales.ts.
+// Adding a UI language requires updating both sides; the API rejects
+// anything else so the column cannot be used to store arbitrary data.
+var SupportedLanguages = map[string]struct{}{
+	"en": {}, "es": {}, "fr": {}, "de": {}, "pt": {},
+	"ca": {}, "it": {}, "nl": {}, "ja": {}, "ko": {},
+	"zh": {}, "pl": {}, "ru": {},
+}
+
+// UserMeResponse is the GET/PATCH /api/v1/users/me payload.
 type UserMeResponse struct {
 	Username    string                   `json:"username"`
 	Email       string                   `json:"email"`
@@ -408,7 +420,11 @@ type UserMeResponse struct {
 	UUID        string                   `json:"uuid"`
 	TokenExpire time.Time                `json:"token_expire"`
 	LastAccess  time.Time                `json:"last_access"`
-	Permissions map[string]EnvAccessView `json:"permissions"`
+	// PreferredLanguage mirrors AdminUser.PreferredLanguage — the
+	// UI language the operator picked. Empty means "no server-side
+	// preference"; the SPA falls back to its own detection.
+	PreferredLanguage string                   `json:"preferred_language"`
+	Permissions       map[string]EnvAccessView `json:"permissions"`
 }
 
 // UserMePatchRequest is the body for PATCH /api/v1/users/me — operators can
@@ -416,6 +432,11 @@ type UserMeResponse struct {
 type UserMePatchRequest struct {
 	Email    string `json:"email"`
 	Fullname string `json:"fullname"`
+	// PreferredLanguage is the UI language tag the operator picked.
+	// Validated against the supported-language list; an empty value
+	// leaves the stored preference unchanged (same semantics as the
+	// other patch fields).
+	PreferredLanguage string `json:"preferred_language"`
 }
 
 // PasswordChangeRequest is the body for POST /api/v1/users/me/password.
