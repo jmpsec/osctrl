@@ -408,7 +408,7 @@ var SupportedLanguages = map[string]struct{}{
 	"en": {}, "es": {}, "fr": {}, "de": {}, "pt": {},
 	"ca": {}, "it": {}, "nl": {}, "ja": {}, "ko": {},
 	"zh": {}, "pl": {}, "ru": {}, "fa": {}, "ar": {},
-	"hi": {},
+	"hi": {}, "he": {}, "tr": {}, "uk": {}, "el": {},
 }
 
 // UserMeResponse is the GET/PATCH /api/v1/users/me payload.

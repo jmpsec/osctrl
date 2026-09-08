@@ -30,6 +30,10 @@ import { ru } from './locales/ru/common';
 import { fa } from './locales/fa/common';
 import { ar } from './locales/ar/common';
 import { hi } from './locales/hi/common';
+import { he } from './locales/he/common';
+import { tr } from './locales/tr/common';
+import { uk } from './locales/uk/common';
+import { el } from './locales/el/common';
 
 /** Recursively collect every key path ("a.b.c") from a catalog object. */
 function keyPaths(obj: Record<string, unknown>, prefix = ''): string[] {
@@ -134,8 +138,8 @@ describe('catalog completeness', () => {
 
   it('has exactly the supported language set', () => {
     expect([...SUPPORTED_LANGUAGES].sort()).toEqual([
-      'ar', 'ca', 'de', 'en', 'es', 'fa', 'fr', 'hi', 'it', 'ja',
-      'ko', 'nl', 'pl', 'pt', 'ru', 'zh',
+      'ar', 'ca', 'de', 'el', 'en', 'es', 'fa', 'fr', 'he', 'hi',
+      'it', 'ja', 'ko', 'nl', 'pl', 'pt', 'ru', 'tr', 'uk', 'zh',
     ]);
   });
 
@@ -155,13 +159,17 @@ describe('catalog completeness', () => {
     ['fa', fa],
     ['ar', ar],
     ['hi', hi],
+    ['he', he],
+    ['tr', tr],
+    ['uk', uk],
+    ['el', el],
   ] as const)('%s catalog mirrors every English key', (_language, catalog) => {
     const paths = keyPaths(catalog);
     expect(paths.sort()).toEqual([...englishKeys].sort());
   });
 
   it('has no empty translations', () => {
-    for (const catalog of [es, fr, de, pt, ca, itCatalog, nl, ja, ko, zh, pl, ru, fa, ar, hi]) {
+    for (const catalog of [es, fr, de, pt, ca, itCatalog, nl, ja, ko, zh, pl, ru, fa, ar, hi, he, tr, uk, el]) {
       for (const path of keyPaths(catalog)) {
         const value = path
           .split('.')
