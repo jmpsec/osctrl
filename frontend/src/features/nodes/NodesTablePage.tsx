@@ -430,7 +430,7 @@ export function NodesTablePage() {
   const { env } = useParams({ from: '/_app/env/$env/nodes' });
   const search = useSearch({ from: '/_app/env/$env/nodes' });
   const navigate = useNavigate({ from: '/_app/env/$env/nodes' });
-  const inactiveHours = useInactiveHours();
+  const { data: inactivity } = useInactiveHours(env);
 
   const status: NodeStatus = search.status ?? 'all';
   const q: string = search.q ?? '';
@@ -894,7 +894,7 @@ export function NodesTablePage() {
             {!isLoading &&
               !isError &&
               nodes.map((node) => {
-                const isActive = isNodeActive(node.last_seen, inactiveHours);
+                const isActive = isNodeActive(node.last_seen, inactivity?.inactive_hours);
                 const isSelected = selectedUuids.has(node.uuid);
 
                 return (
@@ -918,10 +918,10 @@ export function NodesTablePage() {
 
                     {/* Status — pip + label */}
                     <td className="px-4 py-2.5 align-middle">
-                      <StatusBadge
+                      {isActive === undefined ? <span className="text-xs text-[color:var(--text-3)]">Unknown</span> : <StatusBadge
                         variant={isActive ? 'success' : 'dim'}
                         label={isActive ? 'Active' : 'Inactive'}
-                      />
+                      />}
                     </td>
 
                     {/* Health — server-side compact triage calculation */}

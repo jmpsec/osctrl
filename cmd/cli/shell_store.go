@@ -12,6 +12,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -43,6 +44,7 @@ type tuiPlatformCounts struct {
 }
 
 type tuiEnvStats struct {
+	InactiveHours int64             `json:"inactive_hours"`
 	UUID          string            `json:"uuid"`
 	Name          string            `json:"name"`
 	Active        int64             `json:"active"`
@@ -54,9 +56,10 @@ type tuiEnvStats struct {
 }
 
 type tuiStats struct {
-	TotalNodes         int64             `json:"total_nodes"`
-	ActiveNodes        int64             `json:"active_nodes"`
-	InactiveNodes      int64             `json:"inactive_nodes"`
+	TotalNodes    int64 `json:"total_nodes"`
+	ActiveNodes   int64 `json:"active_nodes"`
+	InactiveNodes int64 `json:"inactive_nodes"`
+	// InactiveHours is the global default only; counts use per-environment thresholds.
 	InactiveHours      int64             `json:"inactive_hours"`
 	TotalActiveQueries int               `json:"total_active_queries"`
 	TotalActiveCarves  int               `json:"total_active_carves"`
@@ -230,7 +233,7 @@ type DataStore interface {
 
 func isActive(lastSeen time.Time, hours int64) bool {
 	if hours <= 0 {
-		hours = 24
+		hours = settings.DefaultInactiveHours
 	}
 	return time.Since(lastSeen) < time.Duration(hours)*time.Hour
 }
@@ -499,9 +502,13 @@ func (s *apiStore) Nodes(env, target string) ([]nodeRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	hours, err := s.api.GetEnvironmentInactiveHours(env)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]nodeRow, 0, len(nds))
 	for _, n := range nds {
-		out = append(out, nodeToRow(n, 24))
+		out = append(out, nodeToRow(n, hours))
 	}
 	return out, nil
 }
@@ -511,7 +518,11 @@ func (s *apiStore) Node(env, identifier string) (nodeRow, error) {
 	if err != nil {
 		return nodeRow{}, err
 	}
-	return nodeToRow(n, 24), nil
+	hours, err := s.api.GetEnvironmentInactiveHours(env)
+	if err != nil {
+		return nodeRow{}, err
+	}
+	return nodeToRow(n, hours), nil
 }
 
 func (s *apiStore) Queries(env, target string) ([]queryRow, error) {
@@ -649,17 +660,11 @@ func newDBStore() DataStore { return &dbStore{} }
 
 func (s *dbStore) Mode() string { return "db" }
 
-func (s *dbStore) inactiveHours() int64 {
+func (s *dbStore) inactiveHours(envID uint) int64 {
 	if settingsmgr == nil {
-		return 24
+		return settings.DefaultInactiveHours
 	}
-	h := settingsmgr.InactiveHours(settings.NoEnvironmentID)
-	if h <= 0 {
-		// Missing/unset inactive_hours setting — default to a sane 24h so the
-		// active/inactive filter and status column aren't degenerate.
-		return 24
-	}
-	return h
+	return settingsmgr.InactiveHours(envID)
 }
 
 func (s *dbStore) Stats() (tuiStats, error) {
@@ -667,9 +672,10 @@ func (s *dbStore) Stats() (tuiStats, error) {
 	if err != nil {
 		return tuiStats{}, fmt.Errorf("envs: %w", err)
 	}
-	hours := s.inactiveHours()
+	hours := s.inactiveHours(settings.NoEnvironmentID)
 	out := tuiStats{InactiveHours: hours, Environments: make([]tuiEnvStats, 0, len(allEnvs))}
 	for _, e := range allEnvs {
+		hours := s.inactiveHours(e.ID)
 		ns, err := nodesmgr.GetStatsByEnv(e.Name, hours)
 		if err != nil {
 			continue
@@ -685,7 +691,8 @@ func (s *dbStore) Stats() (tuiStats, error) {
 			}
 		}
 		row := tuiEnvStats{
-			UUID: e.UUID, Name: e.Name,
+			InactiveHours: hours,
+			UUID:          e.UUID, Name: e.Name,
 			Active: ns.Active, Inactive: ns.Inactive, Total: ns.Total,
 			ActiveQueries: aq, ActiveCarves: ac,
 			Platforms: tuiPlatformCounts{Linux: pc.Linux, Darwin: pc.Darwin, Windows: pc.Windows, Other: pc.Other},
@@ -725,12 +732,16 @@ func (s *dbStore) EnvNames() ([]string, error) {
 }
 
 func (s *dbStore) Nodes(env, target string) ([]nodeRow, error) {
-	nds, err := nodesmgr.GetByEnv(env, target, s.inactiveHours())
+	e, err := envs.Get(env)
+	if err != nil {
+		return nil, fmt.Errorf("env: %w", err)
+	}
+	hours := s.inactiveHours(e.ID)
+	nds, err := nodesmgr.GetByEnv(e.Name, target, hours)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]nodeRow, 0, len(nds))
-	hours := s.inactiveHours()
 	for _, n := range nds {
 		out = append(out, nodeToRow(n, hours))
 	}
@@ -750,7 +761,7 @@ func (s *dbStore) Node(env, identifier string) (nodeRow, error) {
 	if err != nil {
 		return nodeRow{}, err
 	}
-	return nodeToRow(n, s.inactiveHours()), nil
+	return nodeToRow(n, s.inactiveHours(e.ID)), nil
 }
 
 func (s *dbStore) Queries(env, target string) ([]queryRow, error) {
@@ -946,15 +957,14 @@ func runDistributedQuery(req runQueryReq) (types.ApiQueriesResponse, error) {
 		return types.ApiQueriesResponse{}, fmt.Errorf("query create: %w", err)
 	}
 	data := handlers.ProcessingQuery{
-		Envs:          []string{},
-		Platforms:     req.Platforms,
-		UUIDs:         req.UUIDs,
-		Hosts:         req.Hosts,
-		Tags:          req.Tags,
-		EnvID:         e.ID,
-		InactiveHours: settingsmgr.InactiveHours(settings.NoEnvironmentID),
+		Envs:      []string{},
+		Platforms: req.Platforms,
+		UUIDs:     req.UUIDs,
+		Hosts:     req.Hosts,
+		Tags:      req.Tags,
+		EnvID:     e.ID,
 	}
-	manager := handlers.Managers{Nodes: nodesmgr, Envs: envs, Tags: tagsmgr}
+	manager := handlers.Managers{Nodes: nodesmgr, Envs: envs, Tags: tagsmgr, Settings: settingsmgr}
 	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
 	if err != nil {
 		return types.ApiQueriesResponse{}, fmt.Errorf("query targets: %w", err)
@@ -1000,15 +1010,14 @@ func runDistributedCarve(req runQueryReq) (types.ApiQueriesResponse, error) {
 		return types.ApiQueriesResponse{}, fmt.Errorf("carve create: %w", err)
 	}
 	data := handlers.ProcessingQuery{
-		Envs:          []string{},
-		Platforms:     req.Platforms,
-		UUIDs:         req.UUIDs,
-		Hosts:         req.Hosts,
-		Tags:          req.Tags,
-		EnvID:         e.ID,
-		InactiveHours: settingsmgr.InactiveHours(settings.NoEnvironmentID),
+		Envs:      []string{},
+		Platforms: req.Platforms,
+		UUIDs:     req.UUIDs,
+		Hosts:     req.Hosts,
+		Tags:      req.Tags,
+		EnvID:     e.ID,
 	}
-	manager := handlers.Managers{Nodes: nodesmgr, Envs: envs, Tags: tagsmgr}
+	manager := handlers.Managers{Nodes: nodesmgr, Envs: envs, Tags: tagsmgr, Settings: settingsmgr}
 	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
 	if err != nil {
 		return types.ApiQueriesResponse{}, fmt.Errorf("carve targets: %w", err)
@@ -1280,6 +1289,16 @@ func (s *dbStore) AddSetting(service, name, typ, value string) error {
 }
 
 func (s *dbStore) UpdateSetting(service, name, typ, value string) error {
+	if service == config.ServiceAPI && name == settings.InactiveHours {
+		if typ = strings.ToLower(typ); typ != "integer" && typ != "int" {
+			return fmt.Errorf("inactive_hours must be an integer")
+		}
+		hours, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return fmt.Errorf("integer: %w", err)
+		}
+		return settingsmgr.SetInteger(hours, service, name, settings.NoEnvironmentID)
+	}
 	// Delete-then-create keeps the value fresh without a generic setter.
 	if err := settingsmgr.DeleteValue(service, name, settings.NoEnvironmentID); err != nil {
 		return err

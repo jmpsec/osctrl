@@ -111,6 +111,30 @@ export function getEnvironment(env: string): Promise<TLSEnvironment> {
   return apiFetch<TLSEnvironment>(`/api/v1/environments/${encodeURIComponent(env)}`);
 }
 
+export interface EnvironmentInactiveHours {
+  override_hours: number | null;
+  inactive_hours: number;
+  source: 'environment' | 'global' | 'default';
+}
+
+export function getEnvironmentInactiveHours(env: string): Promise<EnvironmentInactiveHours> {
+  return apiFetch<EnvironmentInactiveHours>(`/api/v1/environments/inactive-hours/${encodeURIComponent(env)}`);
+}
+
+export function setEnvironmentInactiveHours(env: string, hours: number): Promise<EnvironmentInactiveHours> {
+  return apiFetch<EnvironmentInactiveHours>(`/api/v1/environments/inactive-hours/${encodeURIComponent(env)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inactive_hours: hours }),
+  });
+}
+
+export function resetEnvironmentInactiveHours(env: string): Promise<EnvironmentInactiveHours> {
+  return apiFetch<EnvironmentInactiveHours>(`/api/v1/environments/inactive-hours/${encodeURIComponent(env)}`, {
+    method: 'DELETE',
+  });
+}
+
 /** POST /api/v1/environments — create. */
 export function createEnvironment(body: EnvCreateRequest): Promise<TLSEnvironment> {
   return apiFetch<TLSEnvironment>('/api/v1/environments', {

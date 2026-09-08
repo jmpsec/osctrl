@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { InactiveHoursSetting } from './InactiveHoursSetting';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
@@ -390,6 +391,7 @@ export function EnvConfigPage() {
       <div className="flex-1 overflow-auto min-h-0 p-4 space-y-4">
         {activeTab === 'settings' && (
           <>
+            {envInfo && <InactiveHoursSetting key={env} env={env} envUuid={envInfo.uuid} />}
             {envInfo && (
               <IntervalsCard env={env} envInfo={envInfo} qc={qc} />
             )}

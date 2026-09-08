@@ -13,7 +13,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/queries"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v3"
 )
@@ -374,18 +373,18 @@ func runCarve(ctx context.Context, cmd *cli.Command) error {
 		}
 		// Prepare data for the handler code
 		data := handlers.ProcessingQuery{
-			Envs:          []string{},
-			Platforms:     platformList,
-			UUIDs:         uuidList,
-			Hosts:         hostList,
-			Tags:          tagList,
-			EnvID:         e.ID,
-			InactiveHours: settingsmgr.InactiveHours(settings.NoEnvironmentID),
+			Envs:      []string{},
+			Platforms: platformList,
+			UUIDs:     uuidList,
+			Hosts:     hostList,
+			Tags:      tagList,
+			EnvID:     e.ID,
 		}
 		manager := handlers.Managers{
-			Nodes: nodesmgr,
-			Envs:  envs,
-			Tags:  tagsmgr,
+			Settings: settingsmgr,
+			Nodes:    nodesmgr,
+			Envs:     envs,
+			Tags:     tagsmgr,
 		}
 		targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
 		if err != nil {

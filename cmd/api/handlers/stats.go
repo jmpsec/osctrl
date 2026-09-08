@@ -24,6 +24,8 @@ import (
 
 // EnvStats is one row in the per-env breakdown returned by /api/v1/stats.
 type EnvStats struct {
+	// InactiveHours is the effective threshold for this environment, including inheritance.
+	InactiveHours int64  `json:"inactive_hours"`
 	UUID          string `json:"uuid"`
 	Name          string `json:"name"`
 	Active        int64  `json:"active"`
@@ -45,6 +47,7 @@ type StatsResponse struct {
 	TotalNodes    int64 `json:"total_nodes"`
 	ActiveNodes   int64 `json:"active_nodes"`
 	InactiveNodes int64 `json:"inactive_nodes"`
+	// InactiveHours is the global default only; node counts use each environment's effective threshold.
 	InactiveHours int64 `json:"inactive_hours"`
 	// TotalActiveQueries counts standard query-type active queries (excludes carves).
 	TotalActiveQueries int `json:"total_active_queries"`
@@ -67,10 +70,6 @@ type StatsResponse struct {
 //   - GetActive(envID) returns ALL active rows regardless of type (union).
 //   - To avoid double-counting we call GetQueries("active", envID) for
 //     standard queries and GetCarves("active", envID) for carves separately.
-//   - Unit test for this handler is deferred: the underlying pkg/queries
-//     functions are exercised by existing tests in pkg/queries; a full
-//     integration test would require DB fixture setup that is out of scope
-//     for Track 2.
 //
 // @Summary Get dashboard stats
 // @Description Returns cross-environment dashboard statistics.
@@ -114,7 +113,8 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		ns, err := h.Nodes.GetStatsByEnv(e.Name, hours)
+		envHours := h.Settings.InactiveHours(e.ID)
+		ns, err := h.Nodes.GetStatsByEnv(e.Name, envHours)
 		if err != nil {
 			log.Warn().Err(err).Str("env", e.Name).Msg("stats: failed to get node stats, skipping env")
 			continue
@@ -144,6 +144,7 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		row := EnvStats{
+			InactiveHours:  envHours,
 			UUID:           e.UUID,
 			Name:           e.Name,
 			Active:         ns.Active,

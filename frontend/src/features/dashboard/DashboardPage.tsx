@@ -41,7 +41,6 @@ import { StatusPip } from '$/components/data/StatusPip';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
-import { DEFAULT_INACTIVE_HOURS } from '$/lib/node-status';
 import type { DistributedQuery } from '$/api/types';
 
 // ---------------------------------------------------------------------------
@@ -446,7 +445,7 @@ interface DashboardKpiSetProps {
   activeNodes: number;
   totalNodes: number;
   inactiveNodes: number;
-  inactiveHours: number;
+  inactiveHours: number | undefined;
   reportedErrors: number;
   onReportedErrorsClick?: () => void;
   activeQueries: number;
@@ -482,7 +481,7 @@ function DashboardKpiSet({
             deltaLabel={totalNodes > 0 ? t('dashboardExt.kpi.ofFleet', { pct: Math.round((activeNodes / totalNodes) * 100) }) : t('dashboardExt.kpi.noNodes')}
           />
           <KpiCard
-            label={t('dashboardExt.kpi.inactiveNodes', { hours: inactiveHours })}
+            label={inactiveHours === undefined ? t('commonExt.inactive') : t('dashboardExt.kpi.inactiveNodes', { hours: inactiveHours })}
             value={inactiveNodes}
             sparkline={chartSeries.status}
             halo="warning"
@@ -1546,11 +1545,6 @@ export function DashboardPage() {
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
-  const inactiveHours =
-    data?.inactive_hours && data.inactive_hours > 0
-      ? data.inactive_hours
-      : DEFAULT_INACTIVE_HOURS;
-
   const [palette, setPaletteEntry, resetPalette] = useChartPalette();
 
   const is401 = isError && error instanceof AuthError;
@@ -1882,10 +1876,10 @@ export function DashboardPage() {
       <section aria-label="Environment KPIs" aria-busy={isLoading}>
         <DashboardKpiSet
           loading={isLoading || (isError && !is401)}
-          activeNodes={data?.active_nodes ?? 0}
-          totalNodes={data?.total_nodes ?? 0}
-          inactiveNodes={data?.inactive_nodes ?? 0}
-          inactiveHours={inactiveHours}
+          activeNodes={envMeta?.active ?? data?.active_nodes ?? 0}
+          totalNodes={envMeta?.total ?? data?.total_nodes ?? 0}
+          inactiveNodes={envMeta?.inactive ?? data?.inactive_nodes ?? 0}
+          inactiveHours={envMeta?.inactive_hours}
           reportedErrors={reportedErrors}
           onReportedErrorsClick={
             reportedErrors > 0 && effectiveEnv

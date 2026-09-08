@@ -1,16 +1,59 @@
 package handlers
 
 import (
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
+
+func TestCreateQueryCarveEnvironmentThresholds(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	manager := Managers{Envs: environments.CreateEnvironment(db), Nodes: nodes.CreateNodes(db), Settings: settings.NewSettings(db)}
+	require.NoError(t, manager.Settings.NewIntegerValue(config.ServiceAPI, settings.InactiveHours, 24, 0))
+	var fixtures []nodes.OsqueryNode
+	var envUUIDs []string
+	for i, name := range []string{"short", "long", "inherited"} {
+		env := manager.Envs.Empty(name, name+".example.com")
+		require.NoError(t, manager.Envs.Create(&env))
+		envUUIDs = append(envUUIDs, env.UUID)
+		if i < 2 {
+			require.NoError(t, manager.Settings.NewIntegerValue(config.ServiceAPI, settings.InactiveHours, []int64{2, 168}[i], env.ID))
+		}
+		node := nodes.OsqueryNode{UUID: strings.ToUpper(name), Hostname: name, Platform: "linux", Environment: name, EnvironmentID: env.ID, LastSeen: time.Now().Add(-48 * time.Hour)}
+		require.NoError(t, db.Create(&node).Error)
+		fixtures = append(fixtures, node)
+	}
+	for _, tc := range []struct {
+		name string
+		data ProcessingQuery
+		want []uint
+	}{
+		{"environments", ProcessingQuery{EnvID: fixtures[0].EnvironmentID, Envs: []string{"short", "long", "inherited"}}, []uint{fixtures[1].ID}},
+		{"environment UUIDs", ProcessingQuery{EnvID: fixtures[0].EnvironmentID, Envs: envUUIDs}, []uint{fixtures[1].ID}},
+		{"short platform", ProcessingQuery{EnvID: fixtures[0].EnvironmentID, Platforms: []string{"linux"}}, nil},
+		{"long platform", ProcessingQuery{EnvID: fixtures[1].EnvironmentID, Platforms: []string{"linux"}}, []uint{fixtures[1].ID}},
+		{"inherited platform", ProcessingQuery{EnvID: fixtures[2].EnvironmentID, Platforms: []string{"linux"}}, nil},
+		{"explicit inactive uuid", ProcessingQuery{EnvID: fixtures[0].EnvironmentID, UUIDs: []string{fixtures[0].UUID}}, []uint{fixtures[0].ID}},
+		{"explicit inactive host", ProcessingQuery{EnvID: fixtures[0].EnvironmentID, Hosts: []string{fixtures[0].Hostname}}, []uint{fixtures[0].ID}},
+		{"no selectors includes inactive", ProcessingQuery{EnvID: fixtures[0].EnvironmentID}, []uint{fixtures[0].ID}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := CreateQueryCarve(tc.data, manager, queries.DistributedQuery{})
+			require.NoError(t, err)
+			require.ElementsMatch(t, tc.want, got)
+		})
+	}
+}
 
 func TestCreateQueryCarveWithoutTargetsIncludesAllEnvironmentNodes(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
@@ -49,8 +92,7 @@ func TestCreateQueryCarveWithoutTargetsIncludesAllEnvironmentNodes(t *testing.T)
 
 	targetNodesID, err := CreateQueryCarve(
 		ProcessingQuery{
-			EnvID:         env.ID,
-			InactiveHours: 24,
+			EnvID: env.ID,
 		},
 		Managers{
 			Envs:  envs,

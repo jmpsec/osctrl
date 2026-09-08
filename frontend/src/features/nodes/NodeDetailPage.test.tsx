@@ -13,7 +13,6 @@ import {
 import { NodeDetailPage } from './NodeDetailPage';
 import type { NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag, PostureScore } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
-import type { SettingValue } from '$/api/settings';
 import type { Features } from '$/api/features';
 
 const mockGetNode = vi.fn<() => Promise<OsqueryNode>>();
@@ -25,7 +24,7 @@ const mockGetMe = vi.fn<() => Promise<unknown>>();
 const mockListEnvironments = vi.fn<() => Promise<Array<{ id: number; name: string; uuid: string }>>>();
 const mockGetNodeActivity = vi.fn<() => Promise<NodeActivityBucket[]>>();
 const mockGetNodeActivityTiles = vi.fn<() => Promise<NodeTileSeries>>();
-const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
+const mockGetInactiveHours = vi.fn();
 const mockGetFeatures = vi.fn<() => Promise<Features>>();
 const mockListSavedQueries = vi.fn<() => Promise<SavedQueriesPagedResponse>>();
 const mockRunQuery = vi.fn<() => Promise<{ query_name: string }>>();
@@ -46,6 +45,7 @@ vi.mock('$/api/users', () => ({
 }));
 
 vi.mock('$/api/environments', () => ({
+  getEnvironmentInactiveHours: (...args: unknown[]) => mockGetInactiveHours(...args),
   listEnvironments: (...args: unknown[]) => mockListEnvironments(...(args as [])),
 }));
 
@@ -57,10 +57,6 @@ vi.mock('$/api/stats', async () => {
     getNodeActivityTiles: (...args: unknown[]) => mockGetNodeActivityTiles(...(args as [])),
   };
 });
-
-vi.mock('$/api/settings', () => ({
-  listServiceSettings: (...args: unknown[]) => mockListServiceSettings(...(args as [])),
-}));
 
 vi.mock('$/api/features', () => ({
   getFeatures: (...args: unknown[]) => mockGetFeatures(...(args as [])),
@@ -311,7 +307,7 @@ describe('NodeDetailPage', () => {
       query_write: [],
       total: [],
     });
-    mockListServiceSettings.mockResolvedValue([]);
+    mockGetInactiveHours.mockResolvedValue({ override_hours: null, inactive_hours: 72, source: 'default' });
     mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false });
     mockGetNodePostureScore.mockResolvedValue({
       node_uuid: 'abc12345-0000-0000-0000-000000000001',
@@ -367,6 +363,14 @@ describe('NodeDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Active')).toBeInTheDocument();
     });
+  });
+
+  it.each([24, 168])('uses the environment threshold %s in the detail status', async (hours) => {
+    mockGetInactiveHours.mockResolvedValue({ override_hours: hours, inactive_hours: hours, source: 'environment' });
+    mockGetNode.mockResolvedValue(makeNode({ last_seen: new Date(Date.now() - 48 * 3600_000).toISOString() }));
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByText(hours === 24 ? 'Inactive' : 'Active')).toBeInTheDocument();
+    expect(mockGetInactiveHours).toHaveBeenCalledWith('test-env');
   });
 
   it('copies the node key and refreshes the node view', async () => {

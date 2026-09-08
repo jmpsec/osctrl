@@ -1,32 +1,26 @@
-import { useQuery } from '@tanstack/react-query';
-import { listServiceSettings, type SettingValue } from '$/api/settings';
+import { useQuery, type QueryClient } from '@tanstack/react-query';
+import { getEnvironmentInactiveHours } from '$/api/environments';
 import { isWithinHours } from '$/lib/time';
 
-export const DEFAULT_INACTIVE_HOURS = 72;
-
-function normalizeSettingName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-export function getInactiveHoursFromSettings(settings?: SettingValue[]): number {
-  const match = settings?.find((setting) => normalizeSettingName(setting.Name) === 'inactivehours');
-  if (!match || match.Type !== 'integer' || !Number.isFinite(match.Integer) || match.Integer <= 0) {
-    return DEFAULT_INACTIVE_HOURS;
-  }
-  return match.Integer;
-}
-
-export function isNodeActive(lastSeen: string, inactiveHours = DEFAULT_INACTIVE_HOURS): boolean {
+export function isNodeActive(lastSeen: string, inactiveHours: number | undefined): boolean | undefined {
+  if (inactiveHours === undefined) return undefined;
   return isWithinHours(lastSeen, inactiveHours);
 }
 
-export function useInactiveHours(): number {
-  const { data } = useQuery({
-    queryKey: ['settings', 'admin'],
-    queryFn: () => listServiceSettings('admin'),
+export function useInactiveHours(env: string) {
+  return useQuery({
+    queryKey: ['inactive-hours', env],
+    queryFn: () => getEnvironmentInactiveHours(env),
+    enabled: !!env,
     staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     retry: false,
   });
+}
 
-  return getInactiveHoursFromSettings(data);
+export function invalidateNodeStatusQueries(qc: QueryClient) {
+  return Promise.all(['inactive-hours', 'nodes', 'node', 'stats'].map((key) =>
+    qc.invalidateQueries({ queryKey: [key] }),
+  ));
 }

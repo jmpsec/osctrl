@@ -405,18 +405,18 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := handlers.ProcessingQuery{
-		Envs:          c.Environments,
-		Platforms:     c.Platforms,
-		UUIDs:         c.UUIDs,
-		Hosts:         c.Hosts,
-		Tags:          c.Tags,
-		EnvID:         env.ID,
-		InactiveHours: h.Settings.InactiveHours(settings.NoEnvironmentID),
+		Envs:      c.Environments,
+		Platforms: c.Platforms,
+		UUIDs:     c.UUIDs,
+		Hosts:     c.Hosts,
+		Tags:      c.Tags,
+		EnvID:     env.ID,
 	}
 	manager := handlers.Managers{
-		Nodes: h.Nodes,
-		Envs:  h.Envs,
-		Tags:  h.Tags,
+		Settings: h.Settings,
+		Nodes:    h.Nodes,
+		Envs:     h.Envs,
+		Tags:     h.Tags,
 	}
 	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
 	if err != nil {

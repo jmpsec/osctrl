@@ -36,10 +36,19 @@ func (f *fakeBackend) GetStats() (apiclient.StatsResponse, error) {
 		InactiveNodes: 1,
 		InactiveHours: 72,
 		Environments: []apiclient.EnvStats{
-			{Name: "dev", TotalNodes: 3, ActiveNodes: 2, InactiveNodes: 1,
+			{Name: "dev", TotalNodes: 3, ActiveNodes: 2, InactiveNodes: 1, InactiveHours: 2,
 				PlatformCounts: apiclient.PlatformCounts{Linux: 2, Darwin: 1}},
 		},
 	}, f.err
+}
+
+func TestFleetStatsEnvironmentThreshold(t *testing.T) {
+	s := connect(t, &fakeBackend{})
+	var out fleetStatsOut
+	call(t, s, "fleet_stats", nil, &out)
+	if out.InactiveHours != 72 || len(out.Environments) != 1 || out.Environments[0].InactiveHours != 2 {
+		t.Fatalf("thresholds lost in MCP response: %+v", out)
+	}
 }
 
 func (f *fakeBackend) GetNodes(env, target string) ([]nodes.OsqueryNode, error) {

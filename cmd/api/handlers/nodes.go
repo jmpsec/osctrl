@@ -128,7 +128,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get nodes — scoped to this environment (resolves audit finding U-DB-2)
-	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
+	hours := h.Settings.InactiveHours(env.ID)
 	nodeList, err := h.Nodes.GetByEnv(env.Name, nodes.ActiveNodes, hours)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
@@ -185,7 +185,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get nodes — scoped to this environment (resolves audit finding U-DB-2)
-	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
+	hours := h.Settings.InactiveHours(env.ID)
 	nodeList, err := h.Nodes.GetByEnv(env.Name, nodes.InactiveNodes, hours)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
@@ -477,7 +477,7 @@ func (h *HandlersApi) projectNode(node nodes.OsqueryNode) types.NodeView {
 			nodeTags = nil
 		}
 	}
-	health := types.CalculateNodeHealth(node, h.inactiveHours(), h.PostureEnabled, postureSummary)
+	health := types.CalculateNodeHealth(node, h.inactiveHours(node.EnvironmentID), h.PostureEnabled, postureSummary)
 	return types.ProjectNodeWithCountryUptimePostureTagsAndHealth(node, countryCode, uptime, postureSummary, nodeTags, health)
 }
 
@@ -519,8 +519,13 @@ func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeVi
 		}
 	}
 	healthByNode := make(map[uint]types.NodeHealth, len(in))
-	inactiveHours := h.inactiveHours()
+	hoursByEnv := make(map[uint]int64)
 	for _, node := range in {
+		inactiveHours, ok := hoursByEnv[node.EnvironmentID]
+		if !ok {
+			inactiveHours = h.inactiveHours(node.EnvironmentID)
+			hoursByEnv[node.EnvironmentID] = inactiveHours
+		}
 		posture := postureSummaries[node.UUID]
 		if posture == nil {
 			posture = postureSummaries[strings.ToUpper(node.UUID)]
@@ -530,11 +535,11 @@ func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeVi
 	return types.ProjectNodesWithCountryUptimePostureTagsAndHealth(in, lookup, uptimes, postureSummaries, nodeTags, healthByNode)
 }
 
-func (h *HandlersApi) inactiveHours() int64 {
+func (h *HandlersApi) inactiveHours(envID uint) int64 {
 	if h.Settings == nil {
 		return settings.DefaultInactiveHours
 	}
-	return h.Settings.InactiveHours(settings.NoEnvironmentID)
+	return h.Settings.InactiveHours(envID)
 }
 
 // NodesPagedHandler returns paginated, sorted, searchable nodes for an env.
@@ -646,7 +651,7 @@ func (h *HandlersApi) NodesPagedHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	hours := h.Settings.InactiveHours(settings.NoEnvironmentID)
+	hours := h.Settings.InactiveHours(env.ID)
 	pageData, err := h.Nodes.GetByEnvPaged(env.Name, status, hours, search, page, pageSize, sortCol, desc, platformBucket)
 	if err != nil {
 		apiErrorResponse(w, "failed to query nodes", http.StatusInternalServerError, err)

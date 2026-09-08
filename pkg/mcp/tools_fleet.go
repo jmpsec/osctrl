@@ -33,6 +33,7 @@ type fleetStatsIn struct{}
 
 // EnvironmentStats is the per-environment row of fleet_stats.
 type EnvironmentStats struct {
+	InactiveHours int64  `json:"inactive_hours"`
 	Name          string `json:"name"`
 	TotalNodes    int64  `json:"total_nodes"`
 	ActiveNodes   int64  `json:"active_nodes"`
@@ -44,9 +45,10 @@ type EnvironmentStats struct {
 }
 
 type fleetStatsOut struct {
-	TotalNodes         int64              `json:"total_nodes"`
-	ActiveNodes        int64              `json:"active_nodes"`
-	InactiveNodes      int64              `json:"inactive_nodes"`
+	TotalNodes    int64 `json:"total_nodes"`
+	ActiveNodes   int64 `json:"active_nodes"`
+	InactiveNodes int64 `json:"inactive_nodes"`
+	// InactiveHours is the global default only; counts use per-environment thresholds.
 	InactiveHours      int64              `json:"inactive_hours"`
 	TotalActiveQueries int                `json:"total_active_queries"`
 	TotalActiveCarves  int                `json:"total_active_carves"`
@@ -80,7 +82,8 @@ func addFleetTools(s *sdk.Server, b Backend) {
 		Name: "fleet_stats",
 		Description: "Fleet-wide node counts: totals, active vs inactive, and a " +
 			"per-platform and per-environment breakdown. A node counts as inactive " +
-			"once it has not checked in for inactive_hours. Use this for " +
+			"once it has not checked in for that environment's inactive_hours. " +
+			"Top-level inactive_hours is the global default; environment overrides apply to counts. Use this for " +
 			"\"how many nodes\" questions instead of listing nodes and counting them.",
 	}, func(ctx context.Context, _ *sdk.CallToolRequest, _ fleetStatsIn) (*sdk.CallToolResult, fleetStatsOut, error) {
 		st, err := b.GetStats()
@@ -103,6 +106,7 @@ func envStats(in []apiclient.EnvStats) []EnvironmentStats {
 	out := make([]EnvironmentStats, 0, len(in))
 	for _, e := range in {
 		out = append(out, EnvironmentStats{
+			InactiveHours: e.InactiveHours,
 			Name:          e.Name,
 			TotalNodes:    e.TotalNodes,
 			ActiveNodes:   e.ActiveNodes,

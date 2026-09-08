@@ -78,10 +78,9 @@ function makeTestRouter(initialPath = '/_app/settings/api') {
   return createRouter({ routeTree, history });
 }
 
-function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
-  const queryClient = new QueryClient({
+function renderWithProviders(router: ReturnType<typeof makeTestRouter>, queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
-  });
+  })) {
   return render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -139,6 +138,21 @@ describe('SettingsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('No settings for api.')).toBeInTheDocument();
     });
+  });
+
+  it('invalidates environment thresholds, nodes, and stats after a global threshold write', async () => {
+    const user = userEvent.setup();
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const keys = [['inactive-hours', 'dev'], ['nodes', 'dev'], ['node', 'dev', 'uuid'], ['stats']];
+    keys.forEach((key) => qc.setQueryData(key, {}));
+    mockList.mockResolvedValue([makeSetting({ Name: 'inactive_hours', Type: 'integer', Integer: 72 })]);
+    mockPatch.mockResolvedValue(makeSetting({ Integer: 24 }));
+    renderWithProviders(makeTestRouter(), qc);
+    const input = await screen.findByRole('spinbutton');
+    await user.clear(input);
+    await user.type(input, '24');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => keys.forEach((key) => expect(qc.getQueryState(key)?.isInvalidated).toBe(true)));
   });
 
   it('patches an integer setting when Save is clicked', async () => {

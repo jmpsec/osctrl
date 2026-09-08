@@ -1048,6 +1048,15 @@ func osctrlAPIService() {
 		"PATCH "+_apiPath(apiEnvironmentsPath)+"/expiration/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentExpirationPatchHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: environment packages (multi-architecture)
+	muxAPI.Handle(
+		"GET "+_apiPath(apiEnvironmentsPath)+"/inactive-hours/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentInactiveHoursHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PUT "+_apiPath(apiEnvironmentsPath)+"/inactive-hours/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentInactiveHoursSetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiEnvironmentsPath)+"/inactive-hours/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentInactiveHoursResetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// Uses /packages/{env} shape (literal in segment 1) to avoid conflicts
 	// with /map/{target} — same pattern as /config/{env} and /intervals/{env}.
 	muxAPI.Handle(

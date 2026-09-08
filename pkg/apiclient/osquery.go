@@ -3,6 +3,7 @@ package apiclient
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path"
 
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -19,11 +20,12 @@ type PlatformCounts struct {
 
 // EnvStats is the per-environment slice of the stats response.
 type EnvStats struct {
+	InactiveHours  int64          `json:"inactive_hours"`
 	UUID           string         `json:"uuid"`
 	Name           string         `json:"name"`
-	TotalNodes     int64          `json:"total_nodes"`
-	ActiveNodes    int64          `json:"active_nodes"`
-	InactiveNodes  int64          `json:"inactive_nodes"`
+	TotalNodes     int64          `json:"total"`
+	ActiveNodes    int64          `json:"active"`
+	InactiveNodes  int64          `json:"inactive"`
 	PlatformCounts PlatformCounts `json:"platform_counts"`
 }
 
@@ -39,9 +41,10 @@ type EnvStats struct {
 // handler filters environments through Users.CheckPermissions, so a
 // restricted token gets a smaller Environments slice, not a 403.
 type StatsResponse struct {
-	TotalNodes         int64          `json:"total_nodes"`
-	ActiveNodes        int64          `json:"active_nodes"`
-	InactiveNodes      int64          `json:"inactive_nodes"`
+	TotalNodes    int64 `json:"total_nodes"`
+	ActiveNodes   int64 `json:"active_nodes"`
+	InactiveNodes int64 `json:"inactive_nodes"`
+	// InactiveHours is the global default only; counts use per-environment thresholds.
 	InactiveHours      int64          `json:"inactive_hours"`
 	TotalActiveQueries int            `json:"total_active_queries"`
 	TotalActiveCarves  int            `json:"total_active_carves"`
@@ -61,6 +64,25 @@ func (api *OsctrlAPI) GetStats() (StatsResponse, error) {
 		return s, fmt.Errorf("can not parse body - %w", err)
 	}
 	return s, nil
+}
+
+// GetEnvironmentInactiveHours returns the effective threshold, including inheritance.
+func (api *OsctrlAPI) GetEnvironmentInactiveHours(env string) (int64, error) {
+	var policy struct {
+		InactiveHours int64 `json:"inactive_hours"`
+	}
+	reqURL := fmt.Sprintf("%s%s/%s", api.Configuration.URL, path.Join(APIPath, "environments/inactive-hours"), url.PathEscape(env))
+	raw, err := api.GetGeneric(reqURL, nil)
+	if err != nil {
+		return 0, fmt.Errorf("error getting environment inactivity threshold: %w", err)
+	}
+	if err := json.Unmarshal(raw, &policy); err != nil {
+		return 0, fmt.Errorf("can not parse inactivity threshold: %w", err)
+	}
+	if policy.InactiveHours < 1 || policy.InactiveHours > 2562047 {
+		return 0, fmt.Errorf("invalid environment inactivity threshold: %d", policy.InactiveHours)
+	}
+	return policy.InactiveHours, nil
 }
 
 // GetOsqueryTables to retrieve the osquery schema osctrl was configured with

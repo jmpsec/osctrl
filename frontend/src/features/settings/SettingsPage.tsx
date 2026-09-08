@@ -16,6 +16,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { formatRelative } from '$/lib/time';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { invalidateNodeStatusQueries } from '$/lib/node-status';
 
 // Services are constant in the backend (pkg/settings.ValidServices = {tls, admin, api}).
 // The raw values are the strings the API accepts on /api/v1/settings/{service};
@@ -168,7 +169,12 @@ export function SettingsPage() {
                 key={s.ID}
                 setting={s}
                 service={service}
-                onSaved={() => qc.invalidateQueries({ queryKey: ['settings', service] })}
+                onSaved={() => {
+                  void qc.invalidateQueries({ queryKey: ['settings', service] });
+                  if (service === 'api' && s.Name === 'inactive_hours') {
+                    void invalidateNodeStatusQueries(qc);
+                  }
+                }}
               />
             ))}
           </section>

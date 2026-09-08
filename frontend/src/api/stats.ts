@@ -14,6 +14,7 @@ export interface PlatformCounts {
 }
 
 export interface EnvStats {
+  inactive_hours: number;
   uuid: string;
   name: string;
   active: number;
@@ -29,6 +30,7 @@ export interface StatsResponse {
   total_nodes: number;
   active_nodes: number;
   inactive_nodes: number;
+  /** Global default only; environments may override this threshold. */
   inactive_hours: number;
   total_active_queries: number;
   total_active_carves: number;
