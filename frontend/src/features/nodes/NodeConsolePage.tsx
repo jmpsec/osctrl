@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Terminal } from 'lucide-react';
@@ -39,6 +40,7 @@ export function NodeConsolePage() {
 }
 
 export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -294,16 +296,16 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
               <Terminal className="h-4 w-4" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-base font-semibold leading-5 text-[color:var(--text-1)]">Console</h1>
+              <h1 className="text-base font-semibold leading-5 text-[color:var(--text-1)]">{t('nodeConsole.console')}</h1>
               <p className="mt-0.5 truncate font-mono-tabular text-xs text-[color:var(--text-3)]">{uuid}</p>
             </div>
             {primingCommand && (
               <span
                 className="inline-flex shrink-0 items-center gap-1 rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] px-2 py-1 text-xs leading-none text-[color:var(--text-3)]"
-                title="Warming console metadata"
+                title={t('nodeConsole.warming')}
               >
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                warming
+                {t('nodeConsole.warmingState')}
               </span>
             )}
           </div>
@@ -327,21 +329,21 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
           className="inline-flex shrink-0 items-center gap-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-2)] px-3 py-1.5 text-xs font-medium text-[color:var(--text-2)] transition-colors hover:bg-[color:var(--bg-3)] hover:text-[color:var(--text-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          Back
+          {t('commonExt.back')}
         </Link>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded border border-[color:var(--border)] bg-[#050708] text-[#d7f8df] shadow-inner">
         <div className="min-h-0 flex-1 overflow-auto px-4 py-3 font-mono text-xs leading-5" onScroll={focusCommandInput}>
           {sessionError && <Line tone="error" text={sessionError} />}
-          {!session && !sessionError && <Line tone="muted" text="opening console..." />}
+          {!session && !sessionError && <Line tone="muted" text={t('nodeConsole.opening')} />}
           {entries.map((entry) => (
             <ConsoleEntry key={entry.id} entry={entry} />
           ))}
           {pending && (
             <div className="flex items-center gap-2 text-[#8fe8a4]" aria-live="polite">
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              <span>waiting for node</span>
+              <span>{t('nodeConsole.waitingForNode')}</span>
             </div>
           )}
           {commandError && <Line tone="error" text={commandError} />}
@@ -356,7 +358,7 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
           <span className="shrink-0 font-mono text-xs text-[#8fe8a4]">{prompt}</span>
           <input
             ref={inputRef}
-            aria-label="Console input"
+            aria-label={t('nodeConsole.input')}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             disabled={disabled}
@@ -482,8 +484,9 @@ function Line({ text, tone }: { text: string; tone?: 'error' | 'muted' }) {
 }
 
 function ResultTable({ rows }: { rows: ConsoleResultRow[] }) {
+  const { t } = useTranslation();
   if (rows.length === 0) {
-    return <Line tone="muted" text="no rows" />;
+    return <Line tone="muted" text={t('nodeConsole.noRows')} />;
   }
   const columns = Array.from(rows.reduce((set, row) => {
     Object.keys(row).forEach((key) => set.add(key));

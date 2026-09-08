@@ -738,17 +738,17 @@ export function ServiceConfigPage() {
         {fetching && !loading && (
           <span
             aria-live="polite"
-            aria-label="Refreshing data"
+            aria-label={t('commonExt.refreshingData')}
             className="ml-auto text-xs text-[color:var(--text-3)]"
           >
-            refreshing…
+            {t('commonExt.refreshing')}
           </span>
         )}
       </div>
 
       <div
         role="tablist"
-        aria-label="Service config service tabs"
+        aria-label={t('serviceConfigPage.sections')}
         className="flex items-center gap-1 px-2 border-b border-[color:var(--border)] overflow-x-auto"
       >
         {SERVICES.map((s) => (
@@ -780,7 +780,7 @@ export function ServiceConfigPage() {
                 <path d="M7 11V8a5 5 0 0 1 9.5-2M5 11h14v10H5z" />
               </svg>
             }
-            title="Service configuration is not available."
+            title={t('serviceConfigPage.unavailable')}
             description="osctrl-api runs with service.serviceConfigEnabled = false, so the /api/v1/service-config endpoints are not registered. Each service still seeds its YAML sections into the service_config table and resolves those rows at startup, so values can be changed directly in the database and are picked up on the next restart. Set serviceConfigEnabled: true (or --service-config-enabled / SERVICE_CONFIG_ENABLED=true) and restart osctrl-api to manage them here."
           />
         )}
@@ -875,6 +875,7 @@ function ConfigSectionCard({
   service: string;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const parsed = useMemo(() => parseConfigValue(section.Value), [section.Value]);
   const isArray = parsed.kind === 'array';
   const originalFields = isArray ? {} as Record<string, unknown> : parsed.fields;
@@ -1049,7 +1050,7 @@ function ConfigSectionCard({
         {/* Array-type sections (e.g. configEndpoints) */}
         {isArray && (
           arrayItems.length === 0 ? (
-            <div className="px-3.5 py-4 text-xs text-[color:var(--text-3)] italic">No items configured.</div>
+            <div className="px-3.5 py-4 text-xs text-[color:var(--text-3)] italic">{t('serviceConfigPage.noItems')}</div>
           ) : (
             arrayItems.map((item, idx) => (
               <div key={idx} className="border-b border-[color:var(--border)] last:border-b-0">
@@ -1359,6 +1360,7 @@ function RateLimitsEditor({
   dirtyKeys: string[];
   onChange: (value: Record<string, RateLimitDraft>) => void;
 }) {
+  const { t } = useTranslation();
   const updateLimit = (
     limitName: string,
     field: keyof RateLimitDraft,
@@ -1380,7 +1382,7 @@ function RateLimitsEditor({
   if (limitEntries.length === 0) {
     return (
       <div className="px-3.5 py-4 text-xs text-[color:var(--text-3)] italic">
-        No rate limits configured.
+        {t('serviceConfigPage.noRateLimits')}
       </div>
     );
   }
@@ -1705,9 +1707,10 @@ function ToggleSwitch({
 export default ServiceConfigPage;
 
 function ImpactWarningDialog({ onAcknowledge }: { onAcknowledge: () => void }) {
+  const { t } = useTranslation();
   return (
     <ModalShell
-      title="⚠ Changes here affect running services"
+      title={t('serviceConfigPage.restartWarning')}
       titleId="service-config-warning-title"
       onClose={onAcknowledge}
       panelClassName="max-w-md"
@@ -1754,9 +1757,10 @@ function ApplyConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <ModalShell
-      title="Apply & Restart"
+      title={t('serviceConfigPage.applyRestart')}
       titleId="apply-confirm-title"
       onClose={onCancel}
       panelClassName="max-w-md"

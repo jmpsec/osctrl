@@ -1,12 +1,17 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '$/lib/cn';
 
-const EXP_OPTIONS = [
-  { label: '1 hour', value: 1 },
-  { label: '4 hours', value: 4 },
-  { label: '24 hours', value: 24 },
-  { label: '7 days', value: 168 },
-  { label: 'No expiration', value: 0 },
-] as const;
+import type { TFunction } from 'i18next';
+
+function expOptions(t: TFunction): { label: string; value: number }[] {
+  return [
+    { label: t('commonExt.hour'), value: 1 },
+    { label: t('commonExt.hours4'), value: 4 },
+    { label: t('commonExt.hours24'), value: 24 },
+    { label: t('commonExt.days7'), value: 168 },
+    { label: t('commonExt.noExpiration'), value: 0 },
+  ];
+}
 
 interface OptionsPanelProps {
   expHours: number;
@@ -16,6 +21,7 @@ interface OptionsPanelProps {
 }
 
 export function OptionsPanel({ expHours, onExpChange, hidden, onHiddenChange }: OptionsPanelProps) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-3">
       <div>
@@ -23,10 +29,10 @@ export function OptionsPanel({ expHours, onExpChange, hidden, onHiddenChange }: 
           htmlFor="exp-select"
           className="block text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1.5"
         >
-          Expiration
+          {t('commonExt.expiration')}
         </label>
         <div className="flex flex-wrap gap-1">
-          {EXP_OPTIONS.map((opt) => {
+          {expOptions(t).map((opt) => {
             const active = expHours === opt.value;
             return (
               <button
@@ -57,9 +63,9 @@ export function OptionsPanel({ expHours, onExpChange, hidden, onHiddenChange }: 
           className="rounded border-[color:var(--border)] accent-[color:var(--signal)] mt-0.5"
         />
         <div>
-          <span className="text-xs text-[color:var(--text-1)]">Hidden query</span>
+          <span className="text-xs text-[color:var(--text-1)]">{t('queriesPage.hidden')}</span>
           <p className="text-xs text-[color:var(--text-3)] leading-snug mt-0.5">
-            Visible only in the hidden-active / hidden-completed tabs.
+            {t('noCode.hiddenHint')}
           </p>
         </div>
       </label>

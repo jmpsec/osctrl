@@ -135,10 +135,10 @@ export function EnvironmentsPage() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
-          Environments
+          {t('pageTitle.environments')}
         </h1>
         <p className="text-xs text-[color:var(--text-3)]">
-          Super-admin view. Create and manage osquery environments.
+          {t('environmentsPage.superAdminView')}
         </p>
 
         <div className="ml-auto flex items-center gap-2">
@@ -146,16 +146,16 @@ export function EnvironmentsPage() {
             type="button"
             onClick={() => setModal({ kind: 'create' })}
           >
-            New environment
+            {t('environmentsPage.newEnv')}
           </Button>
 
           {isFetching && !isLoading && (
             <span
               aria-live="polite"
-              aria-label="Refreshing data"
+              aria-label={t('commonExt.refreshingData')}
               className="text-xs text-[color:var(--text-3)] tabular-nums"
             >
-              refreshing…
+              {t('commonExt.refreshing')}
             </span>
           )}
         </div>
@@ -168,7 +168,7 @@ export function EnvironmentsPage() {
               <th scope="col" className="px-4 py-3 w-10">
                 <input
                   type="checkbox"
-                  aria-label="Select all visible environments"
+                  aria-label={t('environmentsPage.selectEnvs')}
                   checked={allChecked}
                   ref={(el) => {
                     if (el) el.indeterminate = someChecked && !allChecked;
@@ -234,7 +234,7 @@ export function EnvironmentsPage() {
                         <path d="M3 9h18" />
                       </svg>
                     }
-                    title="No environments yet."
+                    title={t('environmentsPage.noEnvs')}
                     action={
                       <button
                         type="button"
@@ -294,9 +294,9 @@ export function EnvironmentsPage() {
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {env.accept_enrolls ? (
-                      <StatusBadge variant="success" label="Accepting" />
+                      <StatusBadge variant="success" label={t('environmentsPage.accepting')} />
                     ) : (
-                      <StatusBadge variant="dim" label="Paused" />
+                      <StatusBadge variant="dim" label={t('environmentsPage.paused')} />
                     )}
                   </td>
                   <td className="px-4 py-3 tnum text-xs text-[color:var(--text-2)] text-right">
@@ -339,7 +339,7 @@ export function EnvironmentsPage() {
       {selectedNames.size > 0 && (
         <div
           role="toolbar"
-          aria-label="Bulk actions"
+          aria-label={t('commonExt.bulkActions')}
           className={cn(
             'fixed bottom-6 left-1/2 -translate-x-1/2',
             'flex items-center gap-3 px-4 py-2.5 rounded-xl',
@@ -359,7 +359,7 @@ export function EnvironmentsPage() {
           <button
             type="button"
             disabled={bulkDeleteMut.isPending}
-            aria-label="Delete selected environments"
+            aria-label={t('environmentsPage.deleteEnvs')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50"
             onClick={handleBulkDelete}
           >
@@ -368,7 +368,7 @@ export function EnvironmentsPage() {
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
           <button
             type="button"
-            aria-label="Clear selection"
+            aria-label={t('commonExt.clearSelection')}
             onClick={() => setSelectedNames(new Set())}
             className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
@@ -394,7 +394,7 @@ export function EnvironmentsPage() {
             type="button"
             onClick={() => setBulkError(null)}
             className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
-            aria-label="Dismiss"
+            aria-label={t('commonExt.dismiss')}
           >
             ×
           </button>
@@ -435,6 +435,7 @@ function CreateEnvModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [hostname, setHostname] = useState('');
   const [type, setType] = useState('osquery');
@@ -467,7 +468,7 @@ function CreateEnvModal({
   });
 
   return (
-    <ModalShell title="Create environment" titleId="env-create-modal-title" onClose={onClose}>
+    <ModalShell title={t('environmentsPage.createEnv')} titleId="env-create-modal-title" onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -484,7 +485,7 @@ function CreateEnvModal({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. production"
+            placeholder={t('environmentsPage.namePlaceholder')}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
               'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
@@ -492,7 +493,7 @@ function CreateEnvModal({
             )}
           />
           <p className="mt-1 text-xs text-[color:var(--text-3)]">
-            Short identifier used in URLs and CLI commands.
+            {t('environmentsPage.nameHint')}
           </p>
         </div>
 
@@ -505,7 +506,7 @@ function CreateEnvModal({
             type="text"
             value={hostname}
             onChange={(e) => setHostname(e.target.value)}
-            placeholder="osctrl.example.com"
+            placeholder={t('environmentsPage.hostnamePlaceholder')}
             className={cn(
               'w-full px-3 py-2 text-sm rounded-md border border-[color:var(--border)]',
               'bg-[color:var(--bg-3)] text-[color:var(--text-1)] tabular-nums',
@@ -541,7 +542,7 @@ function CreateEnvModal({
           </label>
           <IconPicker value={icon} onChange={setIcon} id="env-icon" />
           <p className="mt-1 text-xs text-[color:var(--text-3)]">
-            Font Awesome icon shown next to the env name.
+            {t('environmentsPage.iconHint')}
           </p>
         </div>
 
@@ -592,6 +593,7 @@ function EditEnvModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(env.name);
   const [hostname, setHostname] = useState(env.hostname);
   const [type, setType] = useState(env.type);
@@ -696,7 +698,7 @@ function EditEnvModal({
           </label>
           <IconPicker value={icon} onChange={setIcon} id="edit-env-icon" />
           <p className="mt-1 text-xs text-[color:var(--text-3)]">
-            Font Awesome icon shown next to the env name.
+            {t('environmentsPage.iconHint')}
           </p>
         </div>
 
@@ -775,6 +777,7 @@ function DeleteEnvModal({
   onClose: () => void;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const [confirm, setConfirm] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const mutation = useMutation({
@@ -795,7 +798,7 @@ function DeleteEnvModal({
   const matches = confirm.trim() === env.name;
 
   return (
-    <ModalShell title="Delete environment" titleId="env-delete-modal-title" onClose={onClose}>
+    <ModalShell title={t('environmentsPage.deleteEnv')} titleId="env-delete-modal-title" onClose={onClose}>
       <p className="text-sm text-[color:var(--text-1)]">
         Delete <strong className="tabular-nums">{env.name}</strong>? Any nodes,
         tags, queries, or carves bound to it remain in the database but become
@@ -807,7 +810,7 @@ function DeleteEnvModal({
           htmlFor="delete-env-confirm"
           className="block text-xs font-semibold text-[color:var(--text-2)] mb-1"
         >
-          Type <code className="font-mono-tabular">{env.name}</code> to confirm
+          {t('environmentsPage.typeToConfirm')} <code className="font-mono-tabular">{env.name}</code>
         </label>
         <input
           id="delete-env-confirm"

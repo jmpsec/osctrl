@@ -250,7 +250,7 @@ export function AlertsPage() {
       {/* Sticky header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
-          Alerts
+          {t('pageTitle.alerts')}
         </h1>
         <p className="text-xs text-[color:var(--text-3)]">
           Rules match ingested logs and node state; channels deliver the
@@ -265,12 +265,12 @@ export function AlertsPage() {
                 : setRuleModal({ kind: 'create' })
             }
           >
-            {tab === 'channels' ? 'New channel' : 'New rule'}
+            {tab === 'channels' ? t('alertsPage.newChannel') : t('alertsPage.newRule')}
           </Button>
           <button
             type="button"
             disabled={reloading}
-            title="Hot-reload osctrl-tls with the current rule and channel rows"
+            title={t('alertsPage.hotReload')}
             onClick={() => {
               setApplyErr(null);
               applyMutation.mutate();
@@ -303,43 +303,46 @@ export function AlertsPage() {
 
       {/* Tabs + env selector */}
       <div className="flex items-center gap-4 px-4 py-2 border-b border-[color:var(--border)] text-xs">
-        <div role="tablist" aria-label="Alert sections" className="flex items-center gap-1">
-          {(['rules', 'channels', 'history'] as const).map((t) => (
+        <div role="tablist" aria-label={t('alertsPage.sections')} className="flex items-center gap-1">
+          {(['rules', 'channels', 'history'] as const).map((tabKey) => (
             <button
-              key={t}
+              key={tabKey}
               role="tab"
-              aria-selected={tab === t}
+              aria-selected={tab === tabKey}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => setTab(tabKey)}
               className={cn(
                 'px-3 py-1.5 rounded-md font-medium capitalize transition-colors',
-                tab === t
+                tab === tabKey
                   ? 'bg-[color:var(--bg-3)] text-[color:var(--text-1)]'
                   : 'text-[color:var(--text-3)] hover:text-[color:var(--text-2)] hover:bg-[color:var(--bg-2)]',
               )}
             >
-              {t}
+              {tabKey === 'rules' ? t('alertsPage.rulesTab') : tabKey === 'channels' ? t('alertsPage.channelsTab') : t('alertsPage.historyTab')}
             </button>
           ))}
         </div>
+        {/* Tabs render localized labels (e.g. "Channels"), which can collide
+            with same-named table headers in text-based test queries; tests
+            should select tabs by role, not text. */}
         {tab !== 'history' && (
           <div className="ml-auto flex items-center gap-2">
             <label htmlFor="alerts-env" className="text-[color:var(--text-2)] font-semibold">
-              Environment
+              {t('commonExt.environment')}
             </label>
             <select
               id="alerts-env"
               value={selectedEnv}
               onChange={(e) => setSelectedEnv(Number(e.target.value))}
-              aria-label="Select environment whose alerts to show"
+              aria-label={t('alertsPage.envSelect')}
               className={cn(
                 'px-2 py-1 rounded tabular-nums',
                 'bg-[color:var(--bg-3)] border border-[color:var(--border)] text-[color:var(--text-1)]',
                 'focus:outline focus:outline-2 focus:outline-[color:var(--signal)]',
               )}
             >
-              <option value={ALL_ENVS}>All environments</option>
-              <option value={GLOBAL_ENV_ID}>Global rules only</option>
+              <option value={ALL_ENVS}>{t('alertsPage.allEnvironments')}</option>
+              <option value={GLOBAL_ENV_ID}>{t('alertsPage.globalOnly')}</option>
               {envs?.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.name}
@@ -413,14 +416,15 @@ export function AlertsPage() {
 // ---------------------------------------------------------------------------
 
 function FeatureDisabledShell() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
-          Alerts
+          {t('pageTitle.alerts')}
         </h1>
         <p className="text-xs text-[color:var(--text-3)]">
-          Super-admin view. Alert rules, channels, and dispatch history.
+          {t('alertsPage.superAdminView')}
         </p>
       </div>
       <div className="flex-1 overflow-auto min-h-0">
@@ -431,7 +435,7 @@ function FeatureDisabledShell() {
               <path d="M13.7 21a2 2 0 01-3.4 0" />
             </svg>
           }
-          title="Alerting is disabled"
+          title={t('alertsPage.disabled')}
           description={
             'osctrl-api runs with service.alertsEnabled = false, so the alerting subsystem is fully inert: no alert tables, no rule evaluation in osctrl-tls, and no /api/v1/alerts endpoints. Set alertsEnabled: true and restart osctrl-api and osctrl-tls to manage alerts here.'
           }
@@ -455,7 +459,7 @@ const CHANNELS_GRID =
 // Column titles, in the same style as the <th> rows on the other admin
 // pages. The last column holds the status badge and row actions, so it is
 // right-aligned to match.
-function TableHeader({ grid, columns }: { grid: string; columns: string[] }) {
+function TableHeader({ grid, columns }: { grid: string; columns: React.ReactNode[] }) {
   return (
     <div
       className={cn(
@@ -465,8 +469,8 @@ function TableHeader({ grid, columns }: { grid: string; columns: string[] }) {
       )}
     >
       {columns.map((label, i) => (
-        <div key={label || i} className={cn('truncate', i === columns.length - 1 && 'text-right')}>
-          {label}
+        <div key={i} className={cn('truncate', i === columns.length - 1 && 'text-right')}>
+          {label || '\u200b'}
         </div>
       ))}
     </div>
@@ -488,6 +492,7 @@ function RulesTable({
   onEdit: (rule: AlertRule) => void;
   onDelete: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div className="divide-y divide-[color:var(--border)]">
@@ -501,7 +506,7 @@ function RulesTable({
     return (
       <EmptyState
         icon={<RuleIcon />}
-        title="No alert rules"
+        title={t('alertsPage.noRules')}
         description="Rules match ingested logs and node state. Create one to start alerting — global rules apply to every environment."
       />
     );
@@ -512,7 +517,15 @@ function RulesTable({
     <div className="divide-y divide-[color:var(--border)]">
       <TableHeader
         grid={RULES_GRID}
-        columns={['Rule', 'Source', 'Match', 'Pattern', 'Cooldown', 'Channels', 'Status']}
+        columns={[
+          t('alertsPage.colRule'),
+          t('alertsPage.colSource'),
+          t('alertsPage.colMatch'),
+          t('alertsPage.colPattern'),
+          t('alertsPage.colCooldown'),
+          t('alertsPage.channelsTab'),
+          t('commonExt.status'),
+        ]}
       />
       {rules.map((rule) => (
         <div
@@ -590,6 +603,7 @@ function ChannelsTable({
   onEdit: (channel: AlertChannel) => void;
   onDelete: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div className="divide-y divide-[color:var(--border)]">
@@ -603,8 +617,8 @@ function ChannelsTable({
     return (
       <EmptyState
         icon={<BellIcon />}
-        title="No alert channels"
-        description="Channels deliver notifications — a webhook, an email relay. Rules reference channels by name."
+        title={t('alertsPage.noChannels')}
+        description={t('alertsPage.channelsHint')}
       />
     );
   }
@@ -614,7 +628,12 @@ function ChannelsTable({
     <div className="divide-y divide-[color:var(--border)]">
       <TableHeader
         grid={CHANNELS_GRID}
-        columns={['Channel', 'Type', 'Description', 'Status']}
+        columns={[
+          t('alertsPage.colChannel'),
+          t('commonExt.type'),
+          t('alertsPage.colDescription'),
+          t('commonExt.status'),
+        ]}
       />
       {channels.map((channel) => (
         <div
@@ -661,6 +680,7 @@ function HistoryTable({
   entries: AlertHistoryEntry[];
   loading: boolean;
 }) {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div className="divide-y divide-[color:var(--border)]">
@@ -674,8 +694,8 @@ function HistoryTable({
     return (
       <EmptyState
         icon={<BellIcon />}
-        title="No alerts dispatched yet"
-        description="History records every notification the system sent, per channel. It fills in as rules match."
+        title={t('alertsPage.noHistory')}
+        description={t('alertsPage.historyHint')}
       />
     );
   }
@@ -724,6 +744,7 @@ function RuleEditorModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const existing = mode.kind === 'edit' ? mode.rule : null;
   const [name, setName] = useState(existing?.name ?? '');
   const [envID, setEnvID] = useState<number>(existing?.environment_id ?? GLOBAL_ENV_ID);
@@ -839,7 +860,7 @@ function RuleEditorModal({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. sudoers-modified"
+            placeholder={t('alertsPage.namePlaceholder')}
             className={inputClass}
           />
         </div>
@@ -898,8 +919,8 @@ function RuleEditorModal({
                   onChange={(e) => setMatchType(e.target.value)}
                   className={inputClass}
                 >
-                  <option value="substring">Substring (case-insensitive)</option>
-                  <option value="regex">Regex</option>
+                  <option value="substring">{t('alertsPage.substring')}</option>
+                  <option value="regex">{t('alertsPage.regex')}</option>
                 </select>
               </div>
               <div>
@@ -911,7 +932,7 @@ function RuleEditorModal({
                   type="text"
                   value={matchField}
                   onChange={(e) => setMatchField(e.target.value)}
-                  placeholder="e.g. path, username, message"
+                  placeholder={t('alertsPage.fieldPlaceholder')}
                   className={inputClass}
                 />
               </div>
@@ -948,9 +969,9 @@ function RuleEditorModal({
               onChange={(e) => setStatusSeverity(e.target.value)}
               className={inputClass}
             >
-              <option value="any">Any</option>
-              <option value="warning">Warning and above</option>
-              <option value="error">Error only</option>
+              <option value="any">{t('alertsPage.any')}</option>
+              <option value="warning">{t('alertsPage.warningAndAbove')}</option>
+              <option value="error">{t('alertsPage.errorOnly')}</option>
             </select>
           </div>
         )}
@@ -980,7 +1001,7 @@ function RuleEditorModal({
                 onChange={(e) => setEnabled(e.target.checked)}
                 className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
               />
-              <span className="tabular-nums">enabled</span>
+              <span className="tabular-nums">{t('alertsPage.enabledLabel')}</span>
             </label>
           </fieldset>
         </div>
@@ -1049,6 +1070,7 @@ function ChannelEditorModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const existing = mode.kind === 'edit' ? mode.channel : null;
   const [name, setName] = useState(existing?.name ?? '');
   const [type, setType] = useState(existing?.type ?? 'webhook');
@@ -1138,7 +1160,7 @@ function ChannelEditorModal({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. soc-webhook"
+            placeholder={t('alertsPage.channelPlaceholder')}
             className={inputClass}
           />
         </div>

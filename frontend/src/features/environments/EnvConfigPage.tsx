@@ -335,12 +335,12 @@ export function EnvConfigPage() {
           pending edits without clicking through every tab. */}
       <div
         role="tablist"
-        aria-label="Configuration sections"
+        aria-label={t('envConfig.sections')}
         className="flex items-center gap-1 px-2 border-b border-[color:var(--border)] overflow-x-auto"
       >
         <TabButton
           id="settings"
-          label="Settings"
+          label={t('nav.settings')}
           active={activeTab === 'settings'}
           onClick={() => setActiveTab('settings')}
         />
@@ -357,7 +357,7 @@ export function EnvConfigPage() {
         {postureEnabled && (
           <TabButton
             id="posture"
-            label="Posture"
+            label={t('nodeDetail.posture')}
             active={activeTab === 'posture'}
             dirty={dirty.has('schedule')}
             onClick={() => setActiveTab('posture')}
@@ -365,7 +365,7 @@ export function EnvConfigPage() {
         )}
         <TabButton
           id="assembled"
-          label="Full Configuration"
+          label={t('envConfig.fullConfiguration')}
           active={activeTab === 'assembled'}
           onClick={() => {
             if (activeTab === 'assembled') {
@@ -433,7 +433,7 @@ export function EnvConfigPage() {
                 </h2>
                 <DocsLink href={docsUrl} label={`${label.toLowerCase()} docs`} />
                 <p className="text-xs text-[color:var(--text-3)] truncate flex-1">{help}</p>
-                {isDirty && <StatusBadge variant="warning" label="Pending" />}
+                {isDirty && <StatusBadge variant="warning" label={t('settingsPage.pending')} />}
                 <button
                   type="button"
                   disabled={!isDirty}

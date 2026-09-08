@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { listEnvTags } from '$/api/tags';
 import { listNodes } from '$/api/nodes';
@@ -32,6 +33,7 @@ function parseList(raw: string): string[] {
  *   - TargetPreview (one-line summary of what will fire)
  */
 export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
+  const { t } = useTranslation();
   const [uuidRaw, setUuidRaw] = useState(value.uuids.join(', '));
 
   const { data: envTags } = useQuery({
@@ -87,7 +89,7 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
     <div className="space-y-4">
       {/* ── Platforms ─────────────────────────────────────────────────── */}
       <div>
-        <SectionLabel>Select Platforms</SectionLabel>
+        <SectionLabel>{t('targeting.selectPlatforms')}</SectionLabel>
         <div className="flex flex-wrap gap-1.5">
           {PLATFORM_OPTIONS.map((p) => {
             const active = value.platforms.includes(p.id);
@@ -106,7 +108,7 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
 
       {/* ── Tags ──────────────────────────────────────────────────────── */}
       <div>
-        <SectionLabel>Select Tags</SectionLabel>
+        <SectionLabel>{t('targeting.selectTags')}</SectionLabel>
         {envTags && envTags.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {envTags.map((t) => {
@@ -124,7 +126,7 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
           </div>
         ) : (
           <p className="text-xs text-[color:var(--text-3)] italic">
-            No tags in this environment.
+            {t('targeting.noTags')}
           </p>
         )}
       </div>
@@ -136,7 +138,7 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
           UUID-based (immutable, unambiguous); we just don't make
           the operator know that. */}
       <div>
-        <SectionLabel>Nodes</SectionLabel>
+        <SectionLabel>{t('targeting.nodes')}</SectionLabel>
         <TypeaheadInput
           inputId="target-uuids"
           value={uuidRaw}
@@ -155,7 +157,7 @@ export function TargetingPanel({ value, onChange, env }: TargetingPanelProps) {
             setUuidRaw(next.join(', ') + ', ');
             onChange({ ...value, uuids: next });
           }}
-          placeholder="type hostname or uuid"
+          placeholder={t('targeting.searchPlaceholder')}
         />
         {value.uuids.length > 0 && (
           <NodeChipList
@@ -386,6 +388,7 @@ interface TargetPreviewProps {
 }
 
 function TargetPreview({ value, total }: TargetPreviewProps) {
+  const { t } = useTranslation();
   // Compose a 1-line summary of the union of all target selectors.
   const parts: string[] = [];
   if (value.platforms.length) parts.push(`${value.platforms.length} platform${value.platforms.length === 1 ? '' : 's'}`);
@@ -404,15 +407,15 @@ function TargetPreview({ value, total }: TargetPreviewProps) {
       )}
     >
       <div className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--text-3)] mb-1">
-        Target preview
+        {t('targeting.preview')}
       </div>
       {total === 0 ? (
         <p className="text-xs text-[color:var(--warning)]">
-          No targets selected — the query will fire against <strong>all nodes</strong> in this env.
+          {t('targeting.noTargets')} <strong>{t('targeting.allNodes')}</strong> {t('targeting.inThisEnv')}
         </p>
       ) : (
         <p className="text-xs text-[color:var(--text-1)]">
-          Will fire against <span className="text-[color:var(--signal)] font-medium">{parts.join(' · ')}</span>.
+          {t('targeting.willFire')} <span className="text-[color:var(--signal)] font-medium">{parts.join(' · ')}</span>.
         </p>
       )}
     </div>

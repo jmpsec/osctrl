@@ -91,6 +91,7 @@ interface QuickFilter {
 }
 
 function QuickFiltersGroup({ filters }: { filters: QuickFilter[] }) {
+  const { t } = useTranslation();
   const { formatNumber } = useLocale();
   // Same StatusTabs-style segmented pad as before, but without the
   // surrounding row chrome — meant to slot into the main toolbar
@@ -99,7 +100,7 @@ function QuickFiltersGroup({ filters }: { filters: QuickFilter[] }) {
   return (
     <div
       role="toolbar"
-      aria-label="Quick filters"
+      aria-label={t('nodesTable.quickFilters')}
       className="flex items-center gap-1 rounded-md bg-[color:var(--bg-3)] p-0.5 border border-[color:var(--border)]"
     >
       {filters.map((f) => (
@@ -298,6 +299,7 @@ interface HeatmapCellProps {
  * Per-cell tooltip shows the hour + 5-category breakdown.
  */
 function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
+  const { t } = useTranslation();
   // Redis tile series are UTC-day aligned. The table requests two day blobs
   // so the visual can always slice the trailing 24 hourly buckets across the
   // UTC midnight boundary.
@@ -356,11 +358,11 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
   }
 
   const CATEGORIES = [
-    { key: 'status', label: 'Status logs', baseVar: '--info' },
-    { key: 'result', label: 'Result logs', baseVar: '--signal' },
-    { key: 'config', label: 'Config fetches', baseVar: '--warning' },
-    { key: 'query', label: 'Queries', baseVar: '--success' },
-    { key: 'error', label: 'Errors', baseVar: '--error-bright' },
+    { key: 'status', label: t('nodesTable.statusLogs'), baseVar: '--info' },
+    { key: 'result', label: t('nodesTable.resultLogs'), baseVar: '--signal' },
+    { key: 'config', label: t('nodesTable.configFetches'), baseVar: '--warning' },
+    { key: 'query', label: t('nav.queries'), baseVar: '--success' },
+    { key: 'error', label: t('nodesTable.errors'), baseVar: '--error-bright' },
   ] as const;
 
   function tintForStep(baseVar: string, step: 0 | 1 | 2 | 3 | 4): string {
@@ -393,7 +395,7 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
           ? `Node activity over the last 24 hours, ${totalEvents} events total, ${errorEvents} errors`
           : `Node activity over the last 24 hours, ${totalEvents} events total`
       }
-      title="Node activity · last 24h"
+      title={t('nodesTable.nodeActivity24h')}
     >
       {CATEGORIES.map((cat, catIdx) =>
         categoryHourly[catIdx].map((v, h) => {
@@ -627,49 +629,49 @@ export function NodesTablePage() {
   const quickFilters: QuickFilter[] = [
     {
       key: 'all',
-      label: 'All',
+      label: t('commonExt.all'),
       count: envStat?.total,
       active: status === 'all' && !platform,
       onClick: () => updateSearch({ status: undefined, platform: undefined, page: 1 }),
     },
     {
       key: 'active',
-      label: 'Active',
+      label: t('commonExt.active'),
       count: envStat?.active,
       active: status === 'active' && !platform,
       onClick: () => updateSearch({ status: 'active', platform: undefined, page: 1 }),
     },
     {
       key: 'inactive',
-      label: 'Inactive',
+      label: t('commonExt.inactive'),
       count: envStat?.inactive,
       active: status === 'inactive' && !platform,
       onClick: () => updateSearch({ status: 'inactive', platform: undefined, page: 1 }),
     },
     {
       key: 'linux',
-      label: 'Linux',
+      label: t('nodesTable.linux'),
       count: platformCounts?.linux,
       active: platform === 'linux',
       onClick: () => updateSearch({ platform: 'linux', page: 1 }),
     },
     {
       key: 'darwin',
-      label: 'macOS',
+      label: t('nodesTable.macos'),
       count: platformCounts?.darwin,
       active: platform === 'darwin',
       onClick: () => updateSearch({ platform: 'darwin', page: 1 }),
     },
     {
       key: 'windows',
-      label: 'Windows',
+      label: t('nodesTable.windows'),
       count: platformCounts?.windows,
       active: platform === 'windows',
       onClick: () => updateSearch({ platform: 'windows', page: 1 }),
     },
     {
       key: 'other',
-      label: 'Other',
+      label: t('commonExt.other'),
       count: platformCounts?.other,
       active: platform === 'other',
       onClick: () => updateSearch({ platform: 'other', page: 1 }),
@@ -688,7 +690,7 @@ export function NodesTablePage() {
           chrome and matches the env's other list pages. ── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">
-          Nodes
+          {t('pageTitle.nodes')}
         </h1>
 
         <QuickFiltersGroup filters={quickFilters} />
@@ -697,12 +699,12 @@ export function NodesTablePage() {
           <SearchInput
             value={q}
             onChange={(v) => updateSearch({ q: v || undefined, page: 1 })}
-            placeholder="Search nodes…"
+            placeholder={t('nodesTable.searchPlaceholder')}
           />
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <label htmlFor="page-size" className="sr-only">Rows per page</label>
+          <label htmlFor="page-size" className="sr-only">{t('commonExt.rowsPerPage')}</label>
           <select
             id="page-size"
             value={pageSize}
@@ -723,7 +725,7 @@ export function NodesTablePage() {
           {isFetching && !isLoading && (
             <span
               aria-live="polite"
-              aria-label="Refreshing data"
+              aria-label={t('commonExt.refreshingData')}
               className="text-xs text-[color:var(--text-3)]"
             >
               refreshing…
@@ -755,7 +757,7 @@ export function NodesTablePage() {
               <th scope="col" className="px-4 py-2.5">
                 <input
                   type="checkbox"
-                  aria-label="Select all visible nodes"
+                  aria-label={t('nodesTable.selectAllVisible')}
                   checked={allChecked}
                   ref={(el) => {
                     if (el) el.indeterminate = someChecked && !allChecked;
@@ -768,17 +770,17 @@ export function NodesTablePage() {
                 scope="col"
                 className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
               >
-                Status
+                {t('commonExt.status')}
               </th>
               <th
                 scope="col"
                 className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
               >
-                Health
+                {t('nodesTable.health')}
               </th>
               <SortableHeader
                 column="hostname"
-                label="Hostname"
+                label={t('commonExt.hostname')}
                 currentSort={sort}
                 currentDir={dir}
                 onSortChange={handleSortChange}
@@ -787,7 +789,7 @@ export function NodesTablePage() {
                 scope="col"
                 className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
               >
-                Tags
+                {t('commonExt.tags')}
               </th>
               {/*
                 We surface a single "UUID" header — invisible to the eye, but
@@ -797,14 +799,14 @@ export function NodesTablePage() {
               */}
               <SortableHeader
                 column="platform"
-                label="System"
+                label={t('commonExt.system')}
                 currentSort={sort}
                 currentDir={dir}
                 onSortChange={handleSortChange}
               />
               <SortableHeader
                 column="lastseen"
-                label="Activity"
+                label={t('nodesTable.activity')}
                 currentSort={sort}
                 currentDir={dir}
                 defaultDir="desc"
@@ -815,7 +817,7 @@ export function NodesTablePage() {
                   scope="col"
                   className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]"
                 >
-                  Posture
+                  {t('nodesTable.posture')}
                 </th>
               )}
               <th
@@ -847,7 +849,7 @@ export function NodesTablePage() {
                         onClick={() => void refetch()}
                         className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                       >
-                        Retry
+                        {t('common.retry')}
                       </button>
                     }
                   />
@@ -865,7 +867,7 @@ export function NodesTablePage() {
                         <path d="M3 10h18" />
                       </svg>
                     }
-                    title="No nodes match."
+                    title={t('nodesTable.noMatch')}
                     action={
                       (q || status !== 'all' || platform) ? (
                         <button
@@ -880,7 +882,7 @@ export function NodesTablePage() {
                           }
                           className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors"
                         >
-                          Clear filters
+                          {t('commonExt.clearFilters')}
                         </button>
                       ) : null
                     }
@@ -992,7 +994,7 @@ export function NodesTablePage() {
       {selectedUuids.size > 0 && (
         <div
           role="toolbar"
-          aria-label="Bulk actions"
+          aria-label={t('commonExt.bulkActions')}
           className={cn(
             'fixed bottom-6 left-1/2 -translate-x-1/2',
             'flex items-center gap-3 px-4 py-2.5 rounded-xl',
@@ -1008,16 +1010,16 @@ export function NodesTablePage() {
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
           <button
             type="button"
-            aria-label="Tag selected nodes"
+            aria-label={t('nodesTable.tagSelected')}
             className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
             onClick={() => setTagModalOpen(true)}
           >
-            Tag…
+            {t('commonExt.tag')}…
           </button>
           {canDeleteNodes && (
             <button
               type="button"
-              aria-label="Archive selected nodes"
+              aria-label={t('nodesTable.archiveSelected')}
               disabled={bulkArchiveMut.isPending}
               className={cn(
                 'px-3 py-1 text-xs font-medium rounded text-[color:var(--danger)]',
@@ -1032,7 +1034,7 @@ export function NodesTablePage() {
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
           <button
             type="button"
-            aria-label="Clear selection"
+            aria-label={t('commonExt.clearSelection')}
             onClick={() => setSelectedUuids(new Set())}
             className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-3)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
           >
@@ -1072,7 +1074,7 @@ export function NodesTablePage() {
             type="button"
             onClick={() => setBulkError(null)}
             className="text-[color:var(--text-3)] hover:text-[color:var(--text-1)]"
-            aria-label="Dismiss"
+            aria-label={t('commonExt.dismiss')}
           >
             ×
           </button>
@@ -1086,6 +1088,7 @@ export function NodesTablePage() {
 // Tag-selected-nodes modal
 // ---------------------------------------------------------------------------
 function TagSelectedNodesModal({
+
   env,
   uuids,
   onClose,
@@ -1098,6 +1101,7 @@ function TagSelectedNodesModal({
 }) {
   const [chosen, setChosen] = useState<string>('');
   const [err, setErr] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const { data: tags, isLoading: tagsLoading } = useQuery({
     queryKey: ['tags', env],
@@ -1181,7 +1185,7 @@ function TagSelectedNodesModal({
           </select>
           {!tagsLoading && list.length === 0 && (
             <p className="mt-1 text-xs text-[color:var(--text-3)]">
-              Create a tag from the Tags page first.
+              {t('nodesTable.createTagHint')}
             </p>
           )}
         </div>

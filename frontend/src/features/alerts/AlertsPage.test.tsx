@@ -216,7 +216,9 @@ describe('AlertsPage', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
     // column titles above the rows
     for (const title of ['Rule', 'Source', 'Match', 'Pattern', 'Cooldown', 'Channels', 'Status']) {
-      expect(screen.getByText(title)).toBeInTheDocument();
+      // The localized "Channels" tab also matches by text, so at least
+      // one element (the column header) must exist.
+      expect(screen.getAllByText(title).length).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -224,7 +226,7 @@ describe('AlertsPage', () => {
     const user = userEvent.setup();
     mockListChannels.mockResolvedValue([makeChannel()]);
     renderPage();
-    await user.click(await screen.findByRole('tab', { name: 'channels' }));
+    await user.click(await screen.findByRole('tab', { name: 'Channels' }));
     expect(await screen.findByText('soc-webhook')).toBeInTheDocument();
     expect(screen.getByText('HTTP POST to a URL with the alert as JSON')).toBeInTheDocument();
     for (const title of ['Channel', 'Type', 'Description', 'Status']) {
@@ -249,7 +251,7 @@ describe('AlertsPage', () => {
       },
     ]);
     renderPage();
-    await user.click(await screen.findByRole('tab', { name: 'history' }));
+    await user.click(await screen.findByRole('tab', { name: 'History' }));
     expect(await screen.findByText('sudoers-write')).toBeInTheDocument();
     expect(screen.getByText('soc-webhook')).toBeInTheDocument();
     expect(mockHistory).toHaveBeenCalled();
@@ -328,7 +330,7 @@ describe('AlertsPage', () => {
     const user = userEvent.setup();
     mockCreateChannel.mockResolvedValue(makeChannel());
     renderPage();
-    await user.click(await screen.findByRole('tab', { name: 'channels' }));
+    await user.click(await screen.findByRole('tab', { name: 'Channels' }));
     await user.click(await screen.findByRole('button', { name: 'New channel' }));
 
     await user.type(screen.getByLabelText('Name'), 'soc-webhook');
@@ -355,7 +357,7 @@ describe('AlertsPage', () => {
     const user = userEvent.setup();
     mockTestChannel.mockResolvedValue({ message: 'Test notification sent through the webhook channel' });
     renderPage();
-    await user.click(await screen.findByRole('tab', { name: 'channels' }));
+    await user.click(await screen.findByRole('tab', { name: 'Channels' }));
     await user.click(await screen.findByRole('button', { name: 'New channel' }));
     await user.type(screen.getByLabelText('URL'), 'https://hooks.example.com/x');
     await user.click(screen.getByRole('button', { name: 'Send test' }));
@@ -379,7 +381,7 @@ describe('AlertsPage', () => {
     mockTestChannel.mockRejectedValue(new Error('webhook delivery failed after 3 attempts'));
     mockListChannels.mockResolvedValue([makeChannel()]);
     renderPage();
-    await user.click(await screen.findByRole('tab', { name: 'channels' }));
+    await user.click(await screen.findByRole('tab', { name: 'Channels' }));
     await user.click(await screen.findByRole('button', { name: 'Edit' }));
     await user.click(screen.getByRole('button', { name: 'Send test' }));
 

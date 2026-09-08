@@ -16,11 +16,12 @@ import { StatusBadge } from '$/components/data/StatusBadge';
 // Status badge
 // ---------------------------------------------------------------------------
 function QueryStatusBadge({ q }: { q: { active: boolean; completed: boolean; expired: boolean; deleted: boolean } }) {
-  if (q.deleted) return <StatusBadge variant="danger" label="Deleted" />;
-  if (q.expired) return <StatusBadge variant="warning" label="Expired" />;
-  if (q.completed) return <StatusBadge variant="success" label="Completed" />;
-  if (q.active) return <StatusBadge variant="info" label="Active" live />;
-  return <StatusBadge variant="dim" label="Unknown" />;
+  const { t } = useTranslation();
+  if (q.deleted) return <StatusBadge variant="danger" label={t('commonExt.deleted')} />;
+  if (q.expired) return <StatusBadge variant="warning" label={t('commonExt.expired')} />;
+  if (q.completed) return <StatusBadge variant="success" label={t('commonExt.completed')} />;
+  if (q.active) return <StatusBadge variant="info" label={t('commonExt.active')} live />;
+  return <StatusBadge variant="dim" label={t('commonExt.unknown')} />;
 }
 
 // osquery distributed result `status` codes:
@@ -29,9 +30,10 @@ function QueryStatusBadge({ q }: { q: { active: boolean; completed: boolean; exp
 //   2 → other     (osquery has used this for transient state in past versions)
 // Anything else gets a neutral "code N" rendering so we don't silently hide it.
 function ResultStatusBadge({ code }: { code: number }) {
-  if (code === 0) return <StatusBadge variant="success" label="Ok" />;
-  if (code === 1) return <StatusBadge variant="danger" label="Error" />;
-  if (code === 2) return <StatusBadge variant="warning" label="Other" />;
+  const { t } = useTranslation();
+  if (code === 0) return <StatusBadge variant="success" label={t('queryDetail.ok')} />;
+  if (code === 1) return <StatusBadge variant="danger" label={t('nodeDetail.severity.error')} />;
+  if (code === 2) return <StatusBadge variant="warning" label={t('commonExt.other')} />;
   return <StatusBadge variant="dim" label={`Code ${code}`} />;
 }
 
@@ -193,7 +195,7 @@ export function QueryDetailPage() {
 
         {query && (
           <div className="mt-2 flex flex-wrap gap-4 text-xs text-[color:var(--text-2)]">
-            <span>Creator: <strong className="text-[color:var(--text-1)]">{query.creator}</strong></span>
+            <span>{t('queryDetail.creator')} <strong className="text-[color:var(--text-1)]">{query.creator}</strong></span>
             <span>
               Progress:{' '}
               <strong className="tabular-nums text-[color:var(--text-1)]">
@@ -203,8 +205,8 @@ export function QueryDetailPage() {
                 <span className="ml-1 text-[color:var(--danger)]">({query.errors} errors)</span>
               )}
             </span>
-            <span>Type: <strong className="text-[color:var(--text-1)]">{query.type}</strong></span>
-            <span>Created: <strong className="text-[color:var(--text-1)]" title={query.created_at}>{formatRelative(query.created_at)}</strong></span>
+            <span>{t('queryDetail.typeLabel')} <strong className="text-[color:var(--text-1)]">{query.type}</strong></span>
+            <span>{t('queryDetail.created')} <strong className="text-[color:var(--text-1)]" title={query.created_at}>{formatRelative(query.created_at)}</strong></span>
             <span>
               Expires:{' '}
               <strong
@@ -231,7 +233,7 @@ export function QueryDetailPage() {
                 'transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
-              aria-label="Complete query"
+              aria-label={t('queryDetail.completeQuery')}
             >
               {completeMutation.isPending ? 'Completing…' : 'Complete query'}
             </button>
@@ -257,7 +259,7 @@ export function QueryDetailPage() {
             </div>
             {query.targets.length === 0 ? (
               <div className="text-xs text-[color:var(--text-3)] italic">
-                No targets recorded.
+                {t('commonExt.noTargetsRecorded')}
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5">
@@ -309,8 +311,8 @@ export function QueryDetailPage() {
               'hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
             )}
-            aria-label="Refresh query results"
-            title="Refresh now"
+            aria-label={t('queryDetail.refresh')}
+            title={t('queryDetail.refreshNow')}
           >
             Refresh
           </button>
@@ -326,7 +328,7 @@ export function QueryDetailPage() {
               )}
               aria-label={`Download CSV of ${name} results`}
             >
-              Download CSV
+              {t('queryDetail.downloadCsv')}
             </a>
           )}
         </div>
@@ -399,7 +401,7 @@ export function QueryDetailPage() {
                         <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
                       </svg>
                     }
-                    title="No results yet."
+                    title={t('queryDetail.noResultsYet')}
                   />
                 </td>
               </tr>
@@ -480,6 +482,7 @@ function ResultPayload({
   results: Array<Record<string, unknown>>;
   parseError: string | null;
 }) {
+  const { t } = useTranslation();
   if (parseError) {
     return (
       <div className="text-xs text-[color:var(--danger)]">
@@ -489,7 +492,7 @@ function ResultPayload({
   }
   if (results.length === 0) {
     return (
-      <div className="text-xs text-[color:var(--text-3)] italic">No rows.</div>
+      <div className="text-xs text-[color:var(--text-3)] italic">{t('queryDetail.noRows')}</div>
     );
   }
   // Union of all keys in this result set, preserving first-seen order so

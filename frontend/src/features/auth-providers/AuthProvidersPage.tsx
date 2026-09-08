@@ -148,12 +148,12 @@ export function AuthProvidersPage() {
     return (
       <div className="flex flex-col h-full min-h-0">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
-          <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">Auth Providers</h1>
-          <p className="text-xs text-[color:var(--text-3)]">Manage OIDC and SAML federated login providers.</p>
+          <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">{t('pageTitle.authProviders')}</h1>
+          <p className="text-xs text-[color:var(--text-3)]">{t('authProvidersPage.superAdminView')}</p>
         </div>
         <div className="flex-1 overflow-auto min-h-0">
           <EmptyState icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>}
-            title="Auth Providers API is disabled"
+            title={t('authProvidersPage.disabled')}
             description="Set serviceConfigEnabled: true and restart osctrl-api to manage providers here." />
         </div>
       </div>
@@ -165,7 +165,7 @@ export function AuthProvidersPage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
-        <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">Auth Providers</h1>
+        <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)] mr-2">{t('pageTitle.authProviders')}</h1>
         <p className="text-xs text-[color:var(--text-3)]">OIDC and SAML federated login. One button per enabled provider on the login page.</p>
         <div className="ml-auto flex items-center gap-2">
           {isFetching && !isLoading && (
@@ -188,7 +188,7 @@ export function AuthProvidersPage() {
       {applyErr && (
         <div role="alert" className={cn('flex items-center gap-3 px-4 py-2.5 border-b', 'border-[color:var(--danger)]/40 bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)]', 'text-xs text-[color:var(--danger)]')}>
           <span>{applyErr}</span>
-          <button type="button" onClick={() => setApplyErr(null)} className="ml-auto text-[color:var(--text-3)] hover:text-[color:var(--text-1)]" aria-label="Dismiss">×</button>
+          <button type="button" onClick={() => setApplyErr(null)} className="ml-auto text-[color:var(--text-3)] hover:text-[color:var(--text-1)]" aria-label={t('commonExt.dismiss')}>×</button>
         </div>
       )}
 
@@ -200,7 +200,7 @@ export function AuthProvidersPage() {
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">Type</th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide w-24">Enabled</th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide w-24">Source</th>
-              <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">Updated</th>
+              <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">{t('authProvidersPage.updated')}</th>
               <th scope="col" className="px-2 py-3 w-1" />
             </tr>
           </thead>
@@ -216,8 +216,8 @@ export function AuthProvidersPage() {
             {!isLoading && !isError && rows.length === 0 && (
               <tr><td colSpan={6}>
                 <EmptyState icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z" /></svg>}
-                  title="No auth providers configured." description="Add an OIDC or SAML provider to enable federated login."
-                  action={<button type="button" onClick={() => setModal({ kind: 'create' })} className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors">Add a provider</button>} />
+                  title={t('authProvidersPage.noProviders')} description={t('authProvidersPage.empty')}
+                  action={<button type="button" onClick={() => setModal({ kind: 'create' })} className="px-3 py-1.5 text-xs font-medium rounded bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)] transition-colors">{t('authProvidersPage.addProvider')}</button>} />
               </td></tr>
             )}
             {!isLoading && !isError && rows.map((p) => (
@@ -234,16 +234,16 @@ export function AuthProvidersPage() {
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {p.enabled ? (
-                    <StatusBadge variant="success" label="Enabled" />
+                    <StatusBadge variant="success" label={t('commonExt.enabled')} />
                   ) : (
-                    <StatusBadge variant="dim" label="Disabled" />
+                    <StatusBadge variant="dim" label={t('commonExt.disabled')} />
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {p.source === 'db' ? (
-                    <MetadataBadge>Edited</MetadataBadge>
+                    <MetadataBadge>{t('authProvidersPage.edited')}</MetadataBadge>
                   ) : (
-                    <MetadataBadge className="cursor-help" title={`Seeded from service config (source: ${p.source})`}>Seeded</MetadataBadge>
+                    <MetadataBadge className="cursor-help" title={`Seeded from service config (source: ${p.source})`}>{t('authProvidersPage.seeded')}</MetadataBadge>
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs text-[color:var(--text-2)] text-right tabular-nums">
@@ -255,7 +255,7 @@ export function AuthProvidersPage() {
                   {p.source === 'db' && (
                     <button type="button" disabled={revertMutation.isPending}
                       onClick={() => { if (confirm(`Revert "${p.name}" to service config?`)) revertMutation.mutate(p.id); }}
-                      title="Reset back to service configuration values. Takes effect on the next Apply."
+                      title={t('authProvidersPage.resetHint')}
                       className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50">Revert</button>
                   )}
                   <button type="button" disabled={deleteMutation.isPending}
@@ -289,10 +289,11 @@ export function AuthProvidersPage() {
 }
 
 function ProviderTypePicker({ types, onPick, onClose }: { types: AuthProviderTypeSpec[]; onPick: (t: string) => void; onClose: () => void; }) {
+  const { t: translate } = useTranslation();
   return (
-    <ModalShell title="New auth provider" titleId="auth-provider-type-picker-title" onClose={onClose} panelClassName="max-w-lg">
+    <ModalShell title={translate('authProvidersPage.newProvider')} titleId="auth-provider-type-picker-title" onClose={onClose} panelClassName="max-w-lg">
       <div className="space-y-3">
-        <p className="text-xs text-[color:var(--text-3)]">Choose a provider type. The next step configures its fields.</p>
+        <p className="text-xs text-[color:var(--text-3)]">{translate('authProvidersPage.typeHint')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {types.map((t) => (
             <button key={t.type} type="button" onClick={() => onPick(t.type)}
@@ -316,6 +317,7 @@ function ProviderTypePicker({ types, onPick, onClose }: { types: AuthProviderTyp
 function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved }: {
   mode: 'create' | 'edit'; types: AuthProviderTypeSpec[]; providerType: string; existing?: AuthProvider; onClose: () => void; onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [name, setName] = useState(existing?.name ?? '');
   const [enabled, setEnabled] = useState(existing?.enabled ?? true);
@@ -324,7 +326,7 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const [testing, setTesting] = useState(false);
 
-  const spec = useMemo(() => types.find((t) => t.type === providerType), [types, providerType]);
+  const spec = useMemo(() => types.find((tp) => tp.type === providerType), [types, providerType]);
 
   // Field values are a flat map keyed by the field's Name. buildConfig
   // builds the JSON object from them on submit. Initial values come
@@ -393,8 +395,8 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
       <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="space-y-4">
         <div>
           <label htmlFor="provider-name" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">Name</label>
-          <input id="provider-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. github-oidc" className={inputClass} />
-          <p className="mt-1 text-xs text-[color:var(--text-3)]">Unique label shown on the login page button.</p>
+          <input id="provider-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('authProvidersPage.namePlaceholder')} className={inputClass} />
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('authProvidersPage.nameHint')}</p>
         </div>
         <div>
           <span className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">Type</span>
@@ -449,8 +451,9 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
 }
 
 function ApplyConfirmDialog({ isPending, onConfirm, onCancel }: { isPending: boolean; onConfirm: () => void; onCancel: () => void; }) {
+  const { t } = useTranslation();
   return (
-    <ModalShell title="Apply auth provider changes" titleId="auth-providers-apply-title" onClose={onCancel} panelClassName="max-w-md">
+    <ModalShell title={t('authProvidersPage.applyChanges')} titleId="auth-providers-apply-title" onClose={onCancel} panelClassName="max-w-md">
       <div className="space-y-4">
         <p className="text-sm text-[color:var(--text-1)]">
           This will hot-reload osctrl-api with the current provider rows. The service is not restarted, but{' '}

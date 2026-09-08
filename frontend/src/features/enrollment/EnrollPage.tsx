@@ -194,7 +194,7 @@ export function EnrollPage() {
         {e && (
           <StatusBadge
             variant={e.accept_enrolls ? 'success' : 'danger'}
-            label={e.accept_enrolls ? 'Accepting enrollments' : 'Enrollments closed'}
+            label={e.accept_enrolls ? t('enrollPage.accepting') : t('enrollPage.notAccepting')}
             title={
               e.accept_enrolls
                 ? 'New nodes can enroll right now.'
@@ -207,24 +207,24 @@ export function EnrollPage() {
       {/* ── Page tab bar ──────────────────────────────────────────────── */}
       <div
         role="tablist"
-        aria-label="Enrollment sections"
+        aria-label={t('enrollPage.sections')}
         className="flex items-center gap-1 px-4 border-b border-[color:var(--border)] overflow-x-auto"
       >
         <PageTabButton
           id="install"
-          label="Install"
+          label={t('enrollPage.install')}
           active={pageTab === 'install'}
           onClick={() => setPageTab('install')}
         />
         <PageTabButton
           id="configuration"
-          label="Configuration"
+          label={t('nav.configuration')}
           active={pageTab === 'configuration'}
           onClick={() => setPageTab('configuration')}
         />
         <PageTabButton
           id="lifecycle"
-          label="Lifecycle"
+          label={t('enrollPage.lifecycle')}
           active={pageTab === 'lifecycle'}
           onClick={() => setPageTab('lifecycle')}
           warn={notAccepting}
@@ -246,7 +246,7 @@ export function EnrollPage() {
               <div className="flex items-center justify-end -mt-2">
                 <DocsLink
                   href="https://osquery.readthedocs.io/en/latest/deployment/remote/"
-                  label="enrollment docs"
+                  label={t('enrollPage.docs.enrollment')}
                 />
               </div>
               {notAccepting && (
@@ -276,8 +276,8 @@ export function EnrollPage() {
                 <Collapsible
                   open={pkgOpen}
                   onToggle={() => setPkgOpen((v) => !v)}
-                  title="Pre-built package URLs"
-                  subtitle="optional · DEB · RPM · PKG · MSI · per-architecture"
+                  title={t('enrollPage.docs.secret')}
+                  subtitle={t('enrollPage.packageHint')}
                 >
                   <PackageListCard envName={env} />
                 </Collapsible>
@@ -291,11 +291,11 @@ export function EnrollPage() {
               <div className="flex items-center justify-end -mt-2 gap-3">
                 <DocsLink
                   href="https://osquery.readthedocs.io/en/latest/installation/cli-flags/"
-                  label="flags docs"
+                  label={t('enrollPage.docs.flags')}
                 />
                 <DocsLink
                   href="https://osquery.readthedocs.io/en/latest/deployment/configuration/"
-                  label="config docs"
+                  label={t('enrollPage.docs.config')}
                 />
               </div>
               <FlagsCard env={env} />
@@ -309,20 +309,20 @@ export function EnrollPage() {
               <div className="flex items-center justify-end -mt-2">
                 <DocsLink
                   href="https://osquery.readthedocs.io/en/latest/deployment/remote/#tls-server"
-                  label="enroll/cert docs"
+                  label={t('enrollPage.docs.cert')}
                 />
               </div>
               {/* 2-col @ lg: secret cards next to each other; certificate
                   full-width below (Replace textarea needs the room). */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <LifecycleCard
-                  label="Enroll secret"
+                  label={t('enrollPage.secret')}
                   expireValue={e?.enroll_expire}
                   onAction={(a) => enrollMut.mutate(a as EnrollAction)}
                   isPending={enrollMut.isPending}
                 />
                 <LifecycleCard
-                  label="Remove secret"
+                  label={t('enrollPage.remove')}
                   expireValue={e?.remove_expire}
                   onAction={(a) => removeMut.mutate(a as RemoveAction)}
                   isPending={removeMut.isPending}
@@ -357,6 +357,7 @@ function PageTabButton({
   warn?: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -378,7 +379,7 @@ function PageTabButton({
         <span
           aria-hidden
           className="w-1.5 h-1.5 rounded-full bg-[color:var(--warning)]"
-          title="Needs attention"
+          title={t('enrollPage.needsAttention')}
         />
       )}
     </button>
@@ -395,6 +396,7 @@ function SecretField({
   envName: string;
   envDisplayName: string;
 }) {
+  const { t } = useTranslation();
   const [secret, setSecret] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -439,7 +441,7 @@ function SecretField({
   return (
     <section
       className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
-      aria-label="Enroll secret"
+      aria-label={t('enrollPage.secret')}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)]">
@@ -447,7 +449,7 @@ function SecretField({
         </h2>
         <span
           className="text-xs text-[color:var(--text-3)] cursor-help"
-          title="The enroll secret authenticates osquery agents to osctrl-tls. Keep it secure — anyone with this secret can enroll nodes."
+          title={t('enrollPage.secretHint')}
         >
           ⓘ
         </span>
@@ -518,6 +520,7 @@ function SecretField({
 // will reopen them. Replaces the old full-bleed NotAcceptingBanner.
 // ---------------------------------------------------------------------------
 function NotAcceptingHint({ onJumpToLifecycle }: { onJumpToLifecycle: () => void }) {
+  const { t } = useTranslation();
   return (
     <div
       role="alert"
@@ -532,9 +535,9 @@ function NotAcceptingHint({ onJumpToLifecycle }: { onJumpToLifecycle: () => void
         <path d="M12 8v4M12 16h.01" />
       </svg>
       <div className="flex-1 text-xs">
-        <p className="font-semibold">This environment is not accepting enrolls.</p>
+        <p className="font-semibold">{t('enrollPage.notAccepting')}</p>
         <p className="text-[color:var(--danger)]/90 mt-0.5">
-          Install scripts are disabled until enrollment reopens.
+          {t('enrollPage.scriptsDisabled')}
         </p>
       </div>
       <button
@@ -546,7 +549,7 @@ function NotAcceptingHint({ onJumpToLifecycle }: { onJumpToLifecycle: () => void
           'hover:bg-[color:var(--danger)] hover:text-white transition-colors',
         )}
       >
-        Open Lifecycle →
+        {t('enrollPage.openLifecycle')}
       </button>
     </div>
   );
@@ -624,14 +627,15 @@ function ScriptViewToggle({
   value: Direction;
   onChange: (v: Direction) => void;
 }) {
+  const { t } = useTranslation();
   const options: { id: Direction; label: string }[] = [
-    { id: 'install', label: 'Install' },
-    { id: 'remove', label: 'Remove' },
+    { id: 'install', label: t('enrollPage.install') },
+    { id: 'remove', label: t('commonExt.remove') },
   ];
   return (
     <div
       role="radiogroup"
-      aria-label="Script direction"
+      aria-label={t('enrollPage.scriptDirection')}
       className="grid grid-cols-2 gap-0.5 rounded-md bg-[color:var(--bg-3)] border border-[color:var(--border)] p-0.5"
     >
       {options.map((opt) => {
@@ -669,21 +673,22 @@ function PlatformTabs({
   value: Platform;
   onChange: (v: Platform) => void;
 }) {
+  const { t } = useTranslation();
   const tabs: { id: Platform; label: string }[] = [
-    { id: 'sh', label: 'Linux / macOS' },
-    { id: 'ps1', label: 'Windows' },
+    { id: 'sh', label: t('enrollPage.linuxMacos') },
+    { id: 'ps1', label: t('enrollPage.windows') },
   ];
   return (
-    <div role="tablist" aria-label="Target platform" className="flex items-center gap-4">
-      {tabs.map((t) => {
-        const active = value === t.id;
+    <div role="tablist" aria-label={t('enrollPage.targetPlatform')} className="flex items-center gap-4">
+      {tabs.map((tb) => {
+        const active = value === tb.id;
         return (
           <button
-            key={t.id}
+            key={tb.id}
             type="button"
             role="tab"
             aria-selected={active}
-            onClick={() => onChange(t.id)}
+            onClick={() => onChange(tb.id)}
             className={cn(
               'pb-1.5 text-xs transition-colors border-b-2',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
@@ -692,7 +697,7 @@ function PlatformTabs({
                 : 'border-transparent text-[color:var(--text-3)] hover:text-[color:var(--text-1)]',
             )}
           >
-            {t.label}
+            {tb.label}
           </button>
         );
       })}
@@ -728,6 +733,7 @@ function ScriptPanel({
   copied: string | null;
   onCopy: (target: string, text: string) => void;
 }) {
+  const { t } = useTranslation();
   // Resolve which of the 4 queries to surface.
   const activeQuery: DataResult =
     scriptView === 'install'
@@ -742,7 +748,7 @@ function ScriptPanel({
   return (
     <section
       className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
-      aria-label="Install / remove scripts"
+      aria-label={t('enrollPage.installRemove')}
     >
       <div className="px-4 pt-4 pb-3 space-y-3 border-b border-[color:var(--border)]">
         <ScriptViewToggle value={scriptView} onChange={setScriptView} />
@@ -873,6 +879,7 @@ const PACKAGE_TYPES = [
 const ARCH_OPTIONS = ['amd64', 'arm64', 'x86_64', 'aarch64', 'universal'];
 
 function PackageListCard({ envName }: { envName: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: packages, isLoading } = useQuery({
     queryKey: ['env-packages', envName],
@@ -911,11 +918,11 @@ function PackageListCard({ envName }: { envName: string }) {
   return (
     <section
       className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4 mt-3"
-      aria-label="Multi-architecture packages"
+      aria-label={t('enrollPage.packages')}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-[12px] font-display font-semibold text-[color:var(--text-1)]">
-          Multi-architecture packages{' '}
+          {t('enrollPage.packages')}{' '}
           <span className="text-[color:var(--text-3)] font-normal">· per-arch URLs</span>
         </h2>
         <span

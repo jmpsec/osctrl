@@ -386,16 +386,17 @@ function KpiCard({
   onClick,
   actionLabel,
 }: KpiCardProps) {
+  const { t } = useTranslation();
   const pct = computeDeltaPct(sparkline);
   const tone = deltaTone(pct, polarity);
   const { formatNumber } = useLocale();
   const text =
     deltaLabel ??
     (pct == null
-      ? 'no trend'
+      ? t('dashboardExt.kpi.noTrend')
       : pct === 0
-        ? 'steady'
-        : `${pct > 0 ? '+' : ''}${pct}% vs prior`);
+        ? t('dashboardExt.kpi.steady')
+        : t('dashboardExt.kpi.vsPrior', { pct: `${pct > 0 ? '+' : ''}${pct}` }));
   const interactive = !!onClick;
   const Tag = interactive ? 'button' : 'div';
   return (
@@ -463,6 +464,7 @@ function DashboardKpiSet({
   activeQueries,
   chartSeries,
 }: DashboardKpiSetProps) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--border)] lg:grid-cols-4">
       {loading ? (
@@ -472,38 +474,38 @@ function DashboardKpiSet({
       ) : (
         <>
           <KpiCard
-            label="Active Nodes"
+            label={t('dashboardExt.kpi.activeNodes')}
             value={activeNodes}
             sparkline={chartSeries.config}
             halo="success"
             polarity="up-good"
-            deltaLabel={totalNodes > 0 ? `${Math.round((activeNodes / totalNodes) * 100)}% of fleet` : 'no nodes'}
+            deltaLabel={totalNodes > 0 ? t('dashboardExt.kpi.ofFleet', { pct: Math.round((activeNodes / totalNodes) * 100) }) : t('dashboardExt.kpi.noNodes')}
           />
           <KpiCard
-            label={`Inactive ≥ ${inactiveHours}h`}
+            label={t('dashboardExt.kpi.inactiveNodes', { hours: inactiveHours })}
             value={inactiveNodes}
             sparkline={chartSeries.status}
             halo="warning"
             polarity="up-bad"
-            deltaLabel={totalNodes > 0 ? `${Math.round((inactiveNodes / totalNodes) * 100)}% of fleet` : 'no nodes'}
+            deltaLabel={totalNodes > 0 ? t('dashboardExt.kpi.ofFleet', { pct: Math.round((inactiveNodes / totalNodes) * 100) }) : t('dashboardExt.kpi.noNodes')}
           />
           <KpiCard
-            label="Reported errors (24h)"
+            label={t('dashboardExt.kpi.reportedErrors')}
             value={reportedErrors}
             sparkline={chartSeries.statusError}
             halo={reportedErrors > 0 ? 'danger' : 'success'}
             polarity="up-bad"
-            deltaLabel={reportedErrors === 0 ? 'all clear' : `${reportedErrors} in 24h — see nodes`}
+            deltaLabel={reportedErrors === 0 ? t('dashboardExt.kpi.allClear') : t('dashboardExt.kpi.errorsIn24h', { count: reportedErrors })}
             onClick={onReportedErrorsClick}
-            actionLabel="Show the nodes reporting errors"
+            actionLabel={t('dashboardExt.kpi.showErrorNodes')}
           />
           <KpiCard
-            label="Active Queries"
+            label={t('dashboardExt.kpi.activeQueries')}
             value={activeQueries}
             sparkline={chartSeries.query}
             halo="signal"
             polarity="up-good"
-            deltaLabel={`${activeQueries} executing`}
+            deltaLabel={t('dashboardExt.kpi.executing', { count: activeQueries })}
           />
         </>
       )}
@@ -647,12 +649,12 @@ function OperationalWorkloadCards({
   const workloads: WorkloadEntry[] = [
     {
       kind: 'query',
-      title: t('nav.queries'),
-      description: 'Active fleet investigations',
+      title: t('dashboardExt.workload.queriesTitle'),
+      description: t('dashboardExt.workload.queriesDesc'),
       count: activeQueries,
       statusVariant: activeQueries > 0 ? 'success' : 'dim',
-      statusLabel: activeQueries > 0 ? 'Executing' : 'Idle',
-      emptyLabel: 'View query history',
+      statusLabel: activeQueries > 0 ? t('dashboardExt.workload.executing') : t('dashboardExt.workload.idle'),
+      emptyLabel: t('dashboardExt.workload.queryHistory'),
       name: featuredQuery?.name,
       linkEnv: featuredQuery?.envUuid ?? env,
       progress: queryProgress,
@@ -666,18 +668,18 @@ function OperationalWorkloadCards({
     },
     {
       kind: 'carve',
-      title: t('nav.carves'),
-      description: 'File collections in flight',
+      title: t('dashboardExt.workload.carvesTitle'),
+      description: t('dashboardExt.workload.carvesDesc'),
       count: activeCarves,
       statusVariant: activeCarves > 0 ? 'info' : 'dim',
-      statusLabel: activeCarves > 0 ? 'In flight' : 'Idle',
-      emptyLabel: 'View carve history',
+      statusLabel: activeCarves > 0 ? t('dashboardExt.workload.inFlight') : t('dashboardExt.workload.idle'),
+      emptyLabel: t('dashboardExt.workload.carveHistory'),
       name: recentCarve?.name,
       linkEnv: env,
       progress: carveReady ? 100 : carveProgress,
       progressMeta: recentCarve
         ? carveReady
-          ? 'Archive ready'
+          ? t('dashboardExt.workload.archiveReady')
           : t('dashboard.nodes', {
               executions: formatNumber(recentCarve.executions),
               expected: formatNumber(recentCarve.expected),
@@ -690,7 +692,7 @@ function OperationalWorkloadCards({
   return (
     <div
       role="group"
-      aria-label="Operational workload"
+      aria-label={t('dashboardExt.workload.operationalWorkload')}
       className="grid min-h-[240px] grid-rows-2 overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)]"
     >
       {workloads.map((entry, index) => (
@@ -718,7 +720,7 @@ function OperationalWorkloadCards({
 
           <div className="flex min-w-0 flex-col border-l border-[color:var(--border)] pl-4">
             <div className="text-[13px] font-medium text-[color:var(--text-3)]">
-              {entry.kind === 'query' ? 'Query in progress' : 'Latest carve'}
+              {entry.kind === 'query' ? t('dashboardExt.workload.queryInProgress') : t('dashboardExt.workload.latestCarve')}
             </div>
             <WorkloadRouteLink
               entry={entry}
@@ -774,12 +776,12 @@ function TopPlatformsPanel({ counts, total }: { counts: PlatformCounts; total: n
     .sort((a, b) => b.count - a.count);
   return (
     <section
-      aria-label="Hosts by platform"
+      aria-label={t('dashboardExt.panels.hostsByPlatform')}
       className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] p-4"
     >
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)]">
-          Hosts by platform
+          {t('dashboardExt.panels.hostsByPlatform')}
         </h2>
         <span className="text-xs font-medium text-[color:var(--text-3)] tabular-nums">
           {t('dashboard.total', { count: formatNumber(total) })}
@@ -897,12 +899,13 @@ function ErrorNodesDialog({
     staleTime: 30_000,
     retry: 1,
   });
+  const { t } = useTranslation();
   const { formatNumber } = useLocale();
   const rows = data ?? [];
 
   return (
     <ModalShell
-      title="Nodes reporting errors (24h)"
+      title={t('dashboardExt.panels.errorsDialogTitle')}
       titleId="error-nodes-title"
       onClose={onClose}
       panelClassName="max-w-lg"
@@ -915,11 +918,11 @@ function ErrorNodesDialog({
         </div>
       ) : isError ? (
         <p className="text-sm text-[color:var(--danger)]">
-          Could not load the erroring nodes.
+          {t('dashboardExt.panels.couldNotLoad')}
         </p>
       ) : rows.length === 0 ? (
         <p className="text-sm text-[color:var(--text-3)]">
-          No node reported an error in the last 24 hours.
+          {t('dashboardExt.panels.noErrorNodes')}
         </p>
       ) : (
         <>
@@ -990,6 +993,7 @@ function EndpointHealthPanel({
     return { category, total, lastSeen };
   });
   const anyActivity = rows.some((row) => row.total > 0);
+  const { t } = useTranslation();
   const { formatNumber, formatDateTime } = useLocale();
 
   return (
@@ -997,7 +1001,7 @@ function EndpointHealthPanel({
       <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
         <div>
           <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
-            Endpoint health
+            {t('dashboardExt.panels.endpointHealth')}
           </span>
           <div className="text-xs font-medium text-[color:var(--text-3)] tabular-nums">
             {intervalLabel}
@@ -1016,14 +1020,14 @@ function EndpointHealthPanel({
           ))
         ) : !hasEnvironment ? (
           <div className="py-8 text-center text-sm text-[color:var(--text-3)]">
-            No environment selected.
+            {t('dashboardExt.panels.noEnvironment')}
           </div>
         ) : (
           <>
             <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-0 h-8 items-center border-b border-[color:var(--border)] text-xs font-medium text-[color:var(--text-3)] select-none">
-              <span>Endpoint</span>
-              <span className="text-right">Events</span>
-              <span className="text-right">Last seen</span>
+              <span>{t('dashboardExt.panels.endpoint')}</span>
+              <span className="text-right">{t('dashboardExt.panels.events')}</span>
+              <span className="text-right">{t('dashboardExt.panels.lastSeen')}</span>
             </div>
             {rows.map((row) => {
               const label = TILE_CATEGORY_LABELS[row.category];
@@ -1074,7 +1078,7 @@ function EndpointHealthPanel({
                     </time>
                   ) : (
                     <span className="text-xs text-[color:var(--text-3)] tabular-nums text-right">
-                      none
+                      {t('dashboardExt.panels.none')}
                     </span>
                   )}
                 </div>
@@ -1082,7 +1086,7 @@ function EndpointHealthPanel({
             })}
             {!anyActivity && (
               <div className="py-3 text-center text-xs text-[color:var(--text-3)]">
-                No endpoint activity in this window.
+                {t('dashboardExt.panels.noActivity')}
               </div>
             )}
           </>
@@ -1159,12 +1163,13 @@ function formatExpireRelative(iso?: string): string {
 }
 
 function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
+  const { t } = useTranslation();
   const { formatNumber } = useLocale();
   return (
     <div
       className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
       role="table"
-      aria-label="Environments table"
+      aria-label={t('dashboardExt.panels.environments')}
     >
       <div
         role="row"
@@ -1174,12 +1179,12 @@ function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
           'text-xs font-medium text-[color:var(--text-3)] select-none',
         )}
       >
-        <span>Environment</span>
-        <span className="text-right">Active</span>
-        <span className="text-right">Inactive</span>
-        <span className="text-right">Queries</span>
-        <span className="text-right">Carves</span>
-        <span className="text-right">Enroll expires</span>
+        <span>{t('dashboardExt.panels.environment')}</span>
+        <span className="text-right">{t('dashboardExt.panels.active')}</span>
+        <span className="text-right">{t('dashboardExt.panels.inactive')}</span>
+        <span className="text-right">{t('dashboardExt.panels.queries')}</span>
+        <span className="text-right">{t('dashboardExt.panels.carves')}</span>
+        <span className="text-right">{t('dashboardExt.panels.enrollExpires')}</span>
         <span className="text-right">&nbsp;</span>
       </div>
       {envs.map((env) => {
@@ -1235,7 +1240,7 @@ function EnvTable({ envs }: { envs: EnvTableEnv[] }) {
                 'focus-visible:outline-[color:var(--signal)]',
               )}
             >
-              Open →
+              {t('dashboardExt.panels.open')}
             </Link>
           </div>
         );
@@ -1267,14 +1272,14 @@ function OsqueryVersionsPanel({
   const showUpToDate = total > 0 && topPct > 0.8;
   return (
     <section
-      aria-label="osquery agent versions"
+      aria-label={t('dashboardExt.panels.agentVersions')}
       className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden flex flex-col"
     >
       <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
         <h2 className="text-sm font-display font-semibold text-[color:var(--text-1)] flex items-center gap-2">
-          osquery versions
+          {t('dashboardExt.panels.osqueryVersions')}
           {showUpToDate && (
-            <StatusBadge variant="success" label="Up to date" />
+            <StatusBadge variant="success" label={t('dashboardExt.panels.upToDate')} />
           )}
         </h2>
         <span className="text-xs font-medium text-[color:var(--text-3)] tabular-nums">
@@ -1284,7 +1289,7 @@ function OsqueryVersionsPanel({
       <div className="px-4 py-3 flex-1">
         {versions.length === 0 ? (
           <div className="py-6 text-center text-sm text-[color:var(--text-3)]">
-            No agents reporting yet.
+            {t('dashboardExt.panels.noAgents')}
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -1420,12 +1425,13 @@ function RecentlySeenNodesTable({
   nodes: RecentNodeRow[];
   envUuid: string;
 }) {
+  const { t } = useTranslation();
   const { formatDateTime } = useLocale();
   return (
     <div
       className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden"
       role="table"
-      aria-label="Recently seen nodes"
+      aria-label={t('dashboardExt.panels.recentlySeenNodes')}
     >
       <div
         role="row"
@@ -1435,12 +1441,12 @@ function RecentlySeenNodesTable({
           'text-xs font-medium text-[color:var(--text-3)] select-none',
         )}
       >
-        <span>Hostname</span>
-        <span>Platform</span>
-        <span>osquery</span>
-        <span>IP</span>
-        <span>Tags</span>
-        <span className="text-right">Last seen</span>
+        <span>{t('dashboardExt.panels.hostname')}</span>
+        <span>{t('dashboardExt.panels.platform')}</span>
+        <span>{t('dashboardExt.panels.osquery')}</span>
+        <span>{t('dashboardExt.panels.ip')}</span>
+        <span>{t('dashboardExt.panels.tags')}</span>
+        <span className="text-right">{t('dashboardExt.panels.lastSeen')}</span>
       </div>
       {nodes.map((n) => {
         const display = n.hostname || n.localname || 'unknown';
@@ -1507,6 +1513,7 @@ function RecentlySeenNodesTable({
 // RefreshButton — small icon button for manual per-section refresh.
 // ---------------------------------------------------------------------------
 function RefreshButton({ onClick, isPending }: { onClick: () => void; isPending: boolean }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -1519,8 +1526,8 @@ function RefreshButton({ onClick, isPending }: { onClick: () => void; isPending:
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--signal)]',
         isPending && 'animate-spin',
       )}
-      aria-label="Refresh"
-      title="Refresh"
+      aria-label={t('commonExt.refresh')}
+      title={t('commonExt.refresh')}
     >
       <RotateCw className="w-3.5 h-3.5" />
     </button>
@@ -1777,7 +1784,7 @@ export function DashboardPage() {
 
       {/* ── Top row: time-series chart (2 cols) + 2 hero KPIs stacked ───── */}
       <section
-        aria-label="24-hour overview"
+        aria-label={t('dashboardExt.panels.overview24h')}
         aria-busy={isLoading}
         className="grid grid-cols-1 lg:grid-cols-3 gap-4"
       >
@@ -2012,8 +2019,8 @@ export function DashboardPage() {
                   <path d="M3 12h6v9H3zM15 3h6v9h-6zM3 3h6v6H3zM15 15h6v6h-6z" />
                 </svg>
               }
-              title="No environments configured."
-              description="Contact your administrator to set up an environment."
+              title={t('dashboardExt.panels.noEnvsConfigured')}
+              description={t('dashboardExt.panels.contactAdmin')}
             />
           ) : (
             <EnvTable envs={envTableRows} />
@@ -2061,12 +2068,12 @@ export function DashboardPage() {
       </section>
 
       {/* ── Activity feed + Endpoint health ────────────────────────────── */}
-      <section aria-label="Recent activity and endpoint health" className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section aria-label={t('dashboardExt.panels.activityTitle')} className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Activity feed — 2/3 width on md+ */}
         <div className="md:col-span-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 h-11 border-b border-[color:var(--border)] flex-shrink-0">
             <span className="text-[13px] font-semibold font-display text-[color:var(--text-1)]">
-              Recent activity
+              {t('dashboardExt.panels.recentActivity')}
             </span>
             <div className="flex items-center gap-2">
               <RefreshButton onClick={() => void refetchAudit()} isPending={auditLoading} />
@@ -2074,7 +2081,7 @@ export function DashboardPage() {
                 to="/_app/audit"
                 className="text-xs font-medium text-[color:var(--signal)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--signal)]"
               >
-                View all →
+                {t('dashboardExt.panels.viewAll')}
               </Link>
             </div>
           </div>
@@ -2083,7 +2090,7 @@ export function DashboardPage() {
               Array.from({ length: 5 }).map((_, i) => <ActivityRowSkeleton key={i} />)
             ) : !auditData?.items.length ? (
               <div className="py-8 text-center text-sm text-[color:var(--text-3)]">
-                No audit events yet.
+                {t('dashboardExt.panels.noEvents')}
               </div>
             ) : (
               auditData.items.map((entry) => (
@@ -2136,8 +2143,8 @@ export function DashboardPage() {
                 <path d="M3 12h6v9H3zM15 3h6v9h-6zM3 3h6v6H3zM15 15h6v6h-6z" />
               </svg>
             }
-            title="No environment available."
-            description="Recently seen nodes appear once you have at least one environment."
+            title={t('dashboardExt.panels.noEnvAvailable')}
+            description={t('dashboardExt.panels.noneYet')}
           />
         ) : recentlySeenLoading || isLoading ? (
           <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] overflow-hidden">
@@ -2157,7 +2164,7 @@ export function DashboardPage() {
           </div>
         ) : !recentlySeenNodes?.items.length ? (
           <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-2)] py-8 text-center text-sm text-[color:var(--text-3)]">
-            No nodes have reported in yet.
+            {t('dashboardExt.panels.noNodesYet')}
           </div>
         ) : (
           <RecentlySeenNodesTable
