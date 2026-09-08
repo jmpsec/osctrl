@@ -20,7 +20,10 @@ describe('LanguageMenu', () => {
     await user.click(screen.getByRole('button', { name: 'Change language' }));
 
     const menu = screen.getByRole('menu');
-    for (const name of ['English', 'Español', 'Français', 'Deutsch', 'Português', 'Català', 'Italiano', 'Nederlands', '日本語', '한국어', '中文', 'Polski', 'Русский']) {
+    for (const name of [
+      'English', 'Español', 'Français', 'Deutsch', 'Português', 'Català', 'Italiano',
+      'Nederlands', '日本語', '한국어', '中文', 'Polski', 'Русский', 'فارسی', 'العربية', 'हिन्दी',
+    ]) {
       expect(within(menu).getByText(name)).toBeInTheDocument();
     }
     // Flags render as decorated spans next to each name.
@@ -28,7 +31,27 @@ describe('LanguageMenu', () => {
     expect(within(menu).getAllByText('🇵🇹').length).toBeGreaterThanOrEqual(1);
     expect(within(menu).getAllByText('🇦🇩').length).toBeGreaterThanOrEqual(1);
     expect(within(menu).getAllByText('🇷🇺').length).toBeGreaterThanOrEqual(1);
-    expect(SUPPORTED_LANGUAGES).toHaveLength(13);
+    expect(within(menu).getAllByText('🇮🇷').length).toBeGreaterThanOrEqual(1);
+    expect(within(menu).getAllByText('🇸🇦').length).toBeGreaterThanOrEqual(1);
+    expect(within(menu).getAllByText('🇮🇳').length).toBeGreaterThanOrEqual(1);
+    expect(SUPPORTED_LANGUAGES).toHaveLength(16);
+  });
+
+  it('flips the document direction for RTL languages and back', async () => {
+    const user = userEvent.setup();
+    render(<LanguageMenu />);
+
+    await user.click(screen.getByRole('button', { name: 'Change language' }));
+    await user.click(within(screen.getByRole('menu')).getByText('العربية'));
+
+    expect(await screen.findByRole('button', { name: 'تغيير اللغة' })).toBeInTheDocument();
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+
+    await user.click(screen.getByRole('button', { name: 'تغيير اللغة' }));
+    await user.click(within(screen.getByRole('menu')).getByText('English'));
+
+    expect(await screen.findByRole('button', { name: 'Change language' })).toBeInTheDocument();
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr');
   });
 
   it('switches the active language and persists the choice', async () => {

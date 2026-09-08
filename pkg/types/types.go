@@ -407,7 +407,8 @@ type TokenResponse struct {
 var SupportedLanguages = map[string]struct{}{
 	"en": {}, "es": {}, "fr": {}, "de": {}, "pt": {},
 	"ca": {}, "it": {}, "nl": {}, "ja": {}, "ko": {},
-	"zh": {}, "pl": {}, "ru": {},
+	"zh": {}, "pl": {}, "ru": {}, "fa": {}, "ar": {},
+	"hi": {},
 }
 
 // UserMeResponse is the GET/PATCH /api/v1/users/me payload.

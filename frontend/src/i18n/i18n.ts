@@ -18,6 +18,7 @@ import { en } from './locales/en/common';
 import {
   DEFAULT_LANGUAGE,
   isSupportedLanguage,
+  isRTL,
   matchLanguage,
   type SupportedLanguage,
 } from './locales';
@@ -39,6 +40,9 @@ type CatalogModule = {
   zh?: unknown;
   pl?: unknown;
   ru?: unknown;
+  fa?: unknown;
+  ar?: unknown;
+  hi?: unknown;
 };
 
 const catalogs: Record<SupportedLanguage, () => Promise<CatalogModule>> = {
@@ -55,6 +59,9 @@ const catalogs: Record<SupportedLanguage, () => Promise<CatalogModule>> = {
   zh: () => import('./locales/zh/common'),
   pl: () => import('./locales/pl/common'),
   ru: () => import('./locales/ru/common'),
+  fa: () => import('./locales/fa/common'),
+  ar: () => import('./locales/ar/common'),
+  hi: () => import('./locales/hi/common'),
 };
 
 /** Languages whose catalog is already loaded (or being loaded). */
@@ -178,6 +185,9 @@ export async function setLanguageEphemeral(language: SupportedLanguage): Promise
 function applyLanguageSideEffects(language: SupportedLanguage): void {
   if (typeof document === 'undefined') return;
   document.documentElement.setAttribute('lang', language);
+  // RTL languages mirror the entire UI; anything else resets to LTR
+  // so switching back does not leave a stale direction behind.
+  document.documentElement.setAttribute('dir', isRTL(language) ? 'rtl' : 'ltr');
 }
 
 const initial = getInitialLanguage();
