@@ -2,7 +2,7 @@
  * i18n.ts — i18next instance and language lifecycle.
  *
  * Resolution order (mirrors lib/theme.ts so both preferences behave the
- * same at boot, with no flash of wrong language):
+ * same at boot):
  *   1. localStorage["osctrl.language"]   — user's explicit choice
  *   2. navigator.languages                 — browser preference (base match)
  *   3. "en"                                — fallback/source language
@@ -72,8 +72,9 @@ const catalogs: Record<SupportedLanguage, () => Promise<CatalogModule>> = {
   el: () => import('./locales/el/common'),
 };
 
-/** Languages whose catalog is already loaded (or being loaded). */
-const loaded = new Set<SupportedLanguage>([DEFAULT_LANGUAGE]);
+/** Concurrent requests share the same catalog load, including its completion. */
+const catalogLoads = new Map<SupportedLanguage, Promise<void>>();
+let languageRequest = 0;
 
 export function getInitialLanguage(): SupportedLanguage {
   if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
@@ -91,18 +92,19 @@ export function getInitialLanguage(): SupportedLanguage {
 }
 
 async function loadCatalog(language: SupportedLanguage): Promise<void> {
-  if (loaded.has(language)) return;
-  loaded.add(language);
-  try {
-    const mod = await catalogs[language]();
-    // Every catalog module exports its bundle under a named export
-    // matching its own language code (`export const es`, etc.).
-    const bundle = (mod as Record<string, Record<string, unknown>>)[language];
-    i18next.addResourceBundle(language, 'translation', bundle, true, true);
-  } catch (err) {
-    loaded.delete(language);
-    throw err;
+  if (language === DEFAULT_LANGUAGE) return;
+  let load = catalogLoads.get(language);
+  if (!load) {
+    load = catalogs[language]().then((mod) => {
+      const bundle = (mod as Record<string, Record<string, unknown>>)[language];
+      i18next.addResourceBundle(language, 'translation', bundle, true, true);
+    }).catch((err) => {
+      catalogLoads.delete(language);
+      throw err;
+    });
+    catalogLoads.set(language, load);
   }
+  await load;
 }
 
 /**
@@ -117,9 +119,7 @@ async function loadCatalog(language: SupportedLanguage): Promise<void> {
  */
 export async function setLanguage(language: SupportedLanguage, mirror = true): Promise<void> {
   if (!isSupportedLanguage(language)) return;
-  if (i18next.language !== language) await loadCatalog(language);
-  await i18next.changeLanguage(language);
-  applyLanguageSideEffects(language);
+  if (!await ensureLanguageActive(language)) return;
   try {
     window.localStorage?.setItem(LANGUAGE_STORAGE_KEY, language);
   } catch {
@@ -159,35 +159,32 @@ async function mirrorLanguageToServer(language: SupportedLanguage): Promise<void
 export async function reconcileLanguageFromServer(
   serverLanguage: string,
 ): Promise<void> {
-  if (!serverLanguage) return;
-  let language: SupportedLanguage | undefined;
-  try {
-    const stored = window.localStorage?.getItem(LANGUAGE_STORAGE_KEY);
-    if (stored === serverLanguage) return;
-  } catch {
-    /* localStorage blocked — fall through and apply the server value */
-  }
-  language = matchLanguage(serverLanguage);
+  const language = matchLanguage(serverLanguage);
   if (!language) return;
+  if (!await ensureLanguageActive(language)) return;
   mirroredLanguage = language;
   try {
     window.localStorage?.setItem(LANGUAGE_STORAGE_KEY, language);
   } catch {
     /* localStorage blocked — session-only preference */
   }
-  if (i18next.language !== language) {
-    await loadCatalog(language);
-    await i18next.changeLanguage(language);
-    applyLanguageSideEffects(language);
-  }
+}
+
+/** Activate only the latest request, after initialization and catalog loading. */
+async function ensureLanguageActive(language: SupportedLanguage): Promise<boolean> {
+  const request = ++languageRequest;
+  await initPromise;
+  await loadCatalog(language);
+  if (request !== languageRequest) return false;
+  if (i18next.language !== language) await i18next.changeLanguage(language);
+  applyLanguageSideEffects(language);
+  return true;
 }
 
 /** Non-persisting variant used by the test setup and SSR-ish contexts. */
 export async function setLanguageEphemeral(language: SupportedLanguage): Promise<void> {
   if (!isSupportedLanguage(language)) return;
-  if (i18next.language !== language) await loadCatalog(language);
-  await i18next.changeLanguage(language);
-  applyLanguageSideEffects(language);
+  await ensureLanguageActive(language);
 }
 
 function applyLanguageSideEffects(language: SupportedLanguage): void {
@@ -202,12 +199,13 @@ const initial = getInitialLanguage();
 
 export const i18n: I18n = i18next;
 
-// initReactI18next wires the instance into useTranslation via a context.
-void i18next
+// Initialize with the bundled fallback; activate lazy languages only after
+// their catalog is ready so React and ICU never treat fallback text as loaded.
+const initPromise = i18next
   .use(initReactI18next)
   .use(ICU)
   .init({
-    lng: initial,
+    lng: DEFAULT_LANGUAGE,
     fallbackLng: DEFAULT_LANGUAGE,
     // The lazy-load path calls addResourceBundle manually, so i18next
     // must not try to fetch resources through a backend. The English
@@ -223,7 +221,13 @@ void i18next
     returnEmptyString: false,
   });
 
-// Ensure the html lang attribute matches even before first switch
-// (getInitialLanguage may resolve to a navigator-detected language
-// whose lazy chunk is not needed yet — the attribute is free).
-applyLanguageSideEffects(initial);
+// Load the stored/browser preference on boot, not just on explicit switches.
+if (initial !== DEFAULT_LANGUAGE) {
+  void ensureLanguageActive(initial)
+    .catch(() => {
+      // Catalog chunk failed (offline, CSP regression) — stay on the
+      // English fallback; reconcile retries on next login/switch.
+    });
+}
+
+applyLanguageSideEffects(DEFAULT_LANGUAGE);
