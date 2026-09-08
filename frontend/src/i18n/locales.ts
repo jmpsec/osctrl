@@ -27,6 +27,10 @@ const LOCALE_TAGS: Record<SupportedLanguage, string> = {
   fa: 'fa-IR',
   ar: 'ar-SA',
   hi: 'hi-IN',
+  he: 'he-IL',
+  tr: 'tr-TR',
+  uk: 'uk-UA',
+  el: 'el-GR',
 };
 
 /** UI-facing language names, written in their own language (endonyms). */
@@ -47,6 +51,10 @@ const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   fa: 'فارسی',
   ar: 'العربية',
   hi: 'हिन्दी',
+  he: 'עברית',
+  tr: 'Türkçe',
+  uk: 'Українська',
+  el: 'Ελληνικά',
 };
 
 /**
@@ -72,13 +80,17 @@ const LANGUAGE_FLAGS: Record<SupportedLanguage, string> = {
   fa: '🇮🇷',
   ar: '🇸🇦',
   hi: '🇮🇳',
+  he: '🇮🇱',
+  tr: '🇹🇷',
+  uk: '🇺🇦',
+  el: '🇬🇷',
 };
 
 /**
  * RTL-written languages. Switching to one of these flips the document
  * direction so the whole UI mirrors; anything else resets to LTR.
  */
-const RTL_LANGUAGES = new Set<SupportedLanguage>(['fa', 'ar']);
+const RTL_LANGUAGES = new Set<SupportedLanguage>(['fa', 'ar', 'he']);
 
 export const SUPPORTED_LANGUAGES = Object.freeze(
   Object.keys(LOCALE_TAGS) as SupportedLanguage[],
@@ -100,7 +112,11 @@ export type SupportedLanguage =
   | 'ru'
   | 'fa'
   | 'ar'
-  | 'hi';
+  | 'hi'
+  | 'he'
+  | 'tr'
+  | 'uk'
+  | 'el';
 
 export function isSupportedLanguage(value: string): value is SupportedLanguage {
   return SUPPORTED_LANGUAGES.includes(value as SupportedLanguage);

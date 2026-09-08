@@ -22,7 +22,8 @@ describe('LanguageMenu', () => {
     const menu = screen.getByRole('menu');
     for (const name of [
       'English', 'Español', 'Français', 'Deutsch', 'Português', 'Català', 'Italiano',
-      'Nederlands', '日本語', '한국어', '中文', 'Polski', 'Русский', 'فارسی', 'العربية', 'हिन्दी',
+      'Nederlands', '日本語', '한국어', '中文', 'Polski', 'Русский', 'فارسی', 'العربية',
+      'हिन्दी', 'עברית', 'Türkçe', 'Українська', 'Ελληνικά',
     ]) {
       expect(within(menu).getByText(name)).toBeInTheDocument();
     }
@@ -34,7 +35,11 @@ describe('LanguageMenu', () => {
     expect(within(menu).getAllByText('🇮🇷').length).toBeGreaterThanOrEqual(1);
     expect(within(menu).getAllByText('🇸🇦').length).toBeGreaterThanOrEqual(1);
     expect(within(menu).getAllByText('🇮🇳').length).toBeGreaterThanOrEqual(1);
-    expect(SUPPORTED_LANGUAGES).toHaveLength(16);
+    expect(within(menu).getAllByText('🇮🇱').length).toBeGreaterThanOrEqual(1);
+    expect(within(menu).getAllByText('🇹🇷').length).toBeGreaterThanOrEqual(1);
+    expect(within(menu).getAllByText('🇺🇦').length).toBeGreaterThanOrEqual(1);
+    expect(within(menu).getAllByText('🇬🇷').length).toBeGreaterThanOrEqual(1);
+    expect(SUPPORTED_LANGUAGES).toHaveLength(20);
   });
 
   it('flips the document direction for RTL languages and back', async () => {
@@ -47,7 +52,14 @@ describe('LanguageMenu', () => {
     expect(await screen.findByRole('button', { name: 'تغيير اللغة' })).toBeInTheDocument();
     expect(document.documentElement.getAttribute('dir')).toBe('rtl');
 
+    // Hebrew is also RTL.
     await user.click(screen.getByRole('button', { name: 'تغيير اللغة' }));
+    await user.click(within(screen.getByRole('menu')).getByText('עברית'));
+
+    expect(await screen.findByRole('button', { name: 'שינוי שפה' })).toBeInTheDocument();
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+
+    await user.click(screen.getByRole('button', { name: 'שינוי שפה' }));
     await user.click(within(screen.getByRole('menu')).getByText('English'));
 
     expect(await screen.findByRole('button', { name: 'Change language' })).toBeInTheDocument();
