@@ -549,6 +549,9 @@ export interface UserMeResponse {
   uuid: string;
   token_expire: string;
   last_access: string;
+  // UI language the operator picked (server-side, cross-device).
+  // Empty means "no server preference" — the SPA uses its own detection.
+  preferred_language: string;
   // env UUID → EnvAccess for the CURRENT user. Drives the SideNav's
   // per-env gating. Envs the user has no rows in are omitted; treat
   // absence as "no access" (zero-value EnvAccess).

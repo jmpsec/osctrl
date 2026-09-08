@@ -236,8 +236,12 @@ export function getMe(): Promise<UserMeResponse> {
   return apiFetch<UserMeResponse>('/api/v1/users/me');
 }
 
-/** PATCH /api/v1/users/me — update own email and/or fullname. */
-export function patchMe(body: { email?: string; fullname?: string }): Promise<UserMeResponse> {
+/** PATCH /api/v1/users/me — update own email, fullname, and/or UI language. */
+export function patchMe(body: {
+  email?: string;
+  fullname?: string;
+  preferred_language?: string;
+}): Promise<UserMeResponse> {
   return apiFetch<UserMeResponse>('/api/v1/users/me', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

@@ -11294,6 +11294,13 @@ components:
           type: string
         fullname:
           type: string
+        preferred_language:
+          description: |-
+            PreferredLanguage is the UI language tag the operator picked.
+            Validated against the supported-language list; an empty value
+            leaves the stored preference unchanged (same semantics as the
+            other patch fields).
+          type: string
       type: object
     types.UserMeResponse:
       properties:
@@ -11309,6 +11316,12 @@ components:
           additionalProperties:
             $ref: "#/components/schemas/types.EnvAccessView"
           type: object
+        preferred_language:
+          description: |-
+            PreferredLanguage mirrors AdminUser.PreferredLanguage — the
+            UI language the operator picked. Empty means "no server-side
+            preference"; the SPA falls back to its own detection.
+          type: string
         service:
           type: boolean
         token_expire:

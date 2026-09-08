@@ -505,15 +505,16 @@ func (h *HandlersApi) MeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	resp := types.UserMeResponse{
-		Username:    user.Username,
-		Email:       user.Email,
-		Fullname:    user.Fullname,
-		Admin:       user.Admin,
-		Service:     user.Service,
-		UUID:        user.UUID,
-		TokenExpire: user.TokenExpire,
-		LastAccess:  user.LastAccess,
-		Permissions: perms,
+		Username:          user.Username,
+		Email:             user.Email,
+		Fullname:          user.Fullname,
+		Admin:             user.Admin,
+		Service:           user.Service,
+		UUID:              user.UUID,
+		TokenExpire:       user.TokenExpire,
+		LastAccess:        user.LastAccess,
+		PreferredLanguage: user.PreferredLanguage,
+		Permissions:       perms,
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
@@ -552,6 +553,7 @@ func (h *HandlersApi) MePatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	body.Email = strings.TrimSpace(body.Email)
 	body.Fullname = strings.TrimSpace(body.Fullname)
+	body.PreferredLanguage = strings.TrimSpace(body.PreferredLanguage)
 
 	if body.Email != "" {
 		if err := h.Users.ChangeEmail(requester, body.Email); err != nil {
@@ -565,6 +567,16 @@ func (h *HandlersApi) MePatchHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if body.PreferredLanguage != "" {
+		if _, ok := types.SupportedLanguages[body.PreferredLanguage]; !ok {
+			apiErrorResponse(w, "unsupported language", http.StatusBadRequest, nil)
+			return
+		}
+		if err := h.Users.ChangePreferredLanguage(requester, body.PreferredLanguage); err != nil {
+			apiErrorResponse(w, "error updating preferred language", http.StatusInternalServerError, err)
+			return
+		}
+	}
 
 	user, err := h.Users.Get(requester)
 	if err != nil {
@@ -573,14 +585,15 @@ func (h *HandlersApi) MePatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	h.AuditLog.UserAction(requester, "updated own profile", strings.Split(r.RemoteAddr, ":")[0])
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.UserMeResponse{
-		Username:    user.Username,
-		Email:       user.Email,
-		Fullname:    user.Fullname,
-		Admin:       user.Admin,
-		Service:     user.Service,
-		UUID:        user.UUID,
-		TokenExpire: user.TokenExpire,
-		LastAccess:  user.LastAccess,
+		Username:          user.Username,
+		Email:             user.Email,
+		Fullname:          user.Fullname,
+		Admin:             user.Admin,
+		Service:           user.Service,
+		UUID:              user.UUID,
+		TokenExpire:       user.TokenExpire,
+		LastAccess:        user.LastAccess,
+		PreferredLanguage: user.PreferredLanguage,
 	})
 }
 

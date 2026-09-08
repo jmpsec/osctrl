@@ -60,6 +60,7 @@ function makeMe(): UserMeResponse {
     uuid: 'aaaa',
     token_expire: new Date(Date.now() + 86_400_000).toISOString(),
     last_access: new Date(Date.now() - 60_000).toISOString(),
+    preferred_language: '',
     permissions: {},
   };
 }

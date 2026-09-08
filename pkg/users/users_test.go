@@ -166,8 +166,8 @@ func TestCreateUser(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(
-		regexp.QuoteMeta(`INSERT INTO "admin_users" ("created_at","updated_at","deleted_at","username","email","fullname","pass_hash","api_token","token_expire","admin","service","uuid","csrf_token","last_ip_address","last_user_agent","last_access","last_token_use","environment_id","auth_source") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING "id"`)).
-		WithArgs(tt, tt, nil, user.Username, user.Email, user.Fullname, user.PassHash, user.APIToken, tt, user.Admin, user.Service, user.UUID, user.CSRFToken, user.LastIPAddress, user.LastUserAgent, tt, tt, user.EnvironmentID, user.AuthSource).
+		regexp.QuoteMeta(`INSERT INTO "admin_users" ("created_at","updated_at","deleted_at","username","email","fullname","pass_hash","api_token","token_expire","admin","service","uuid","csrf_token","last_ip_address","last_user_agent","last_access","last_token_use","environment_id","auth_source","preferred_language") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING "id"`)).
+		WithArgs(tt, tt, nil, user.Username, user.Email, user.Fullname, user.PassHash, user.APIToken, tt, user.Admin, user.Service, user.UUID, user.CSRFToken, user.LastIPAddress, user.LastUserAgent, tt, tt, user.EnvironmentID, user.AuthSource, user.PreferredLanguage).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(456))
 	mock.ExpectCommit()
 	err := manager.Create(user)
@@ -351,6 +351,45 @@ func TestUserChangeFullname(t *testing.T) {
 	mock.ExpectCommit()
 
 	err := manager.ChangeFullname("testUser", "Test User")
+
+	assert.NoError(t, err)
+}
+
+func TestUserChangePreferredLanguage(t *testing.T) {
+	manager, mock := setupTestManager(t)
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+		WithArgs("testUser", 1).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+
+	mock.ExpectBegin()
+	mock.ExpectExec(
+		regexp.QuoteMeta(`UPDATE "admin_users" SET "preferred_language"=$1,"updated_at"=$2 WHERE "admin_users"."deleted_at" IS NULL AND "id" = $3`)).
+		WithArgs("es", sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err := manager.ChangePreferredLanguage("testUser", "es")
+
+	assert.NoError(t, err)
+}
+
+func TestUserChangePreferredLanguageClear(t *testing.T) {
+	// An empty value clears the stored preference.
+	manager, mock := setupTestManager(t)
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+		WithArgs("testUser", 1).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+
+	mock.ExpectBegin()
+	mock.ExpectExec(
+		regexp.QuoteMeta(`UPDATE "admin_users" SET "preferred_language"=$1,"updated_at"=$2 WHERE "admin_users"."deleted_at" IS NULL AND "id" = $3`)).
+		WithArgs("", sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err := manager.ChangePreferredLanguage("testUser", "")
 
 	assert.NoError(t, err)
 }

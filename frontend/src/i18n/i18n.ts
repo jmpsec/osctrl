@@ -94,8 +94,13 @@ async function loadCatalog(language: SupportedLanguage): Promise<void> {
  * Switch the active language, loading its catalog chunk if needed.
  * Resolves only after the UI language has actually flipped, so callers
  * can treat failures (network) as "language unchanged".
+ *
+ * `mirror` (default true) additionally persists the choice server-side
+ * via PATCH /users/me so it follows the operator across devices.
+ * Pass false for boot-time reconciliation, where applying the server
+ * value must not echo back a redundant write.
  */
-export async function setLanguage(language: SupportedLanguage): Promise<void> {
+export async function setLanguage(language: SupportedLanguage, mirror = true): Promise<void> {
   if (!isSupportedLanguage(language)) return;
   if (i18next.language !== language) await loadCatalog(language);
   await i18next.changeLanguage(language);
@@ -104,6 +109,61 @@ export async function setLanguage(language: SupportedLanguage): Promise<void> {
     window.localStorage?.setItem(LANGUAGE_STORAGE_KEY, language);
   } catch {
     /* localStorage blocked — session-only preference */
+  }
+  if (mirror) void mirrorLanguageToServer(language);
+}
+
+/** Local cache of the last value we pushed to / saw from the server. */
+let mirroredLanguage: string | null = null;
+
+async function mirrorLanguageToServer(language: SupportedLanguage): Promise<void> {
+  if (mirroredLanguage === language) return;
+  mirroredLanguage = language;
+  try {
+    const { patchMe } = await import('$/api/users');
+    await patchMe({ preferred_language: language });
+  } catch {
+    // Offline, 401, or API unreachable — the local preference still
+    // applies for this session; retried on the next explicit switch.
+    mirroredLanguage = null;
+  }
+}
+
+/**
+ * Reconcile the local language preference with the operator's
+ * server-side PreferredLanguage (from GET /users/me).
+ *
+ * localStorage is the boot source (it is available synchronously before
+ * first paint); this runs once the profile query resolves and makes the
+ * server the tie-breaker: the server value reflects the most recent
+ * explicit choice on ANY device, because every switch mirrors to it.
+ *
+ * The applied value is recorded in `mirroredLanguage` so the switch is
+ * not echoed back as a redundant PATCH.
+ */
+export async function reconcileLanguageFromServer(
+  serverLanguage: string,
+): Promise<void> {
+  if (!serverLanguage) return;
+  let language: SupportedLanguage | undefined;
+  try {
+    const stored = window.localStorage?.getItem(LANGUAGE_STORAGE_KEY);
+    if (stored === serverLanguage) return;
+  } catch {
+    /* localStorage blocked — fall through and apply the server value */
+  }
+  language = matchLanguage(serverLanguage);
+  if (!language) return;
+  mirroredLanguage = language;
+  try {
+    window.localStorage?.setItem(LANGUAGE_STORAGE_KEY, language);
+  } catch {
+    /* localStorage blocked — session-only preference */
+  }
+  if (i18next.language !== language) {
+    await loadCatalog(language);
+    await i18next.changeLanguage(language);
+    applyLanguageSideEffects(language);
   }
 }
 
