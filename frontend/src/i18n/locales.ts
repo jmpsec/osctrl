@@ -24,6 +24,9 @@ const LOCALE_TAGS: Record<SupportedLanguage, string> = {
   zh: 'zh-CN',
   pl: 'pl-PL',
   ru: 'ru-RU',
+  fa: 'fa-IR',
+  ar: 'ar-SA',
+  hi: 'hi-IN',
 };
 
 /** UI-facing language names, written in their own language (endonyms). */
@@ -41,6 +44,9 @@ const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   zh: '中文',
   pl: 'Polski',
   ru: 'Русский',
+  fa: 'فارسی',
+  ar: 'العربية',
+  hi: 'हिन्दी',
 };
 
 /**
@@ -63,7 +69,16 @@ const LANGUAGE_FLAGS: Record<SupportedLanguage, string> = {
   zh: '🇨🇳',
   pl: '🇵🇱',
   ru: '🇷🇺',
+  fa: '🇮🇷',
+  ar: '🇸🇦',
+  hi: '🇮🇳',
 };
+
+/**
+ * RTL-written languages. Switching to one of these flips the document
+ * direction so the whole UI mirrors; anything else resets to LTR.
+ */
+const RTL_LANGUAGES = new Set<SupportedLanguage>(['fa', 'ar']);
 
 export const SUPPORTED_LANGUAGES = Object.freeze(
   Object.keys(LOCALE_TAGS) as SupportedLanguage[],
@@ -82,7 +97,10 @@ export type SupportedLanguage =
   | 'ko'
   | 'zh'
   | 'pl'
-  | 'ru';
+  | 'ru'
+  | 'fa'
+  | 'ar'
+  | 'hi';
 
 export function isSupportedLanguage(value: string): value is SupportedLanguage {
   return SUPPORTED_LANGUAGES.includes(value as SupportedLanguage);
@@ -99,6 +117,11 @@ export function languageName(language: SupportedLanguage): string {
 /** Flag emoji for the language menu (see LANGUAGE_FLAGS rationale). */
 export function languageFlag(language: SupportedLanguage): string {
   return LANGUAGE_FLAGS[language];
+}
+
+/** Whether the language is written right-to-left. */
+export function isRTL(language: SupportedLanguage): boolean {
+  return RTL_LANGUAGES.has(language);
 }
 
 /**
