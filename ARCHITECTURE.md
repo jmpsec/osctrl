@@ -189,6 +189,34 @@ Patterns in the current implementation:
 - Sensitive or connection-bearing sections are read-only through the service-config API. Log sinks and federated auth providers have dedicated tables and APIs.
 - `osctrl-tls` reads its settings map through `RedisSettingsCache`; the normal cache TTL is five minutes unless a TLS-scoped `refresh_settings` row is present. The API reads scalar settings directly from the database.
 
+Node inactivity uses `api/inactive_hours`: an environment override, then the
+global row (`EnvironmentID = 0`), then 72 hours. Values are positive whole hours,
+bounded at 2,562,047 to avoid overflowing Go durations. Missing or invalid legacy
+rows inherit; new invalid values are rejected. Existing installations keep their
+global value without a migration or per-environment backfill.
+
+Environment Settings exposes an override and a "Use global default" control.
+`GET /api/v1/environments/inactive-hours/{env}` returns `override_hours` (nullable),
+effective `inactive_hours`, and `source` (`environment`, `global`, or `default`).
+Environment users can read; environment admins can `PUT {"inactive_hours": 2}`
+or `DELETE` to restore inheritance. Global settings remain global-admin-only.
+Override writes serialize on the environment row; deleting an environment also
+removes its inactivity override.
+
+Node filters, health, dashboard counts, CLI, active query/carve selectors, and TLS
+inactivity alerts use the node's environment threshold. Per-environment stats
+include their effective `inactive_hours`; the top-level field is retained as the
+global default, not a universal fleet cutoff. A node is inactive at or before
+`now - inactive_hours`, including never-seen nodes.
+
+Inactivity thresholds are read directly from SQL by API and TLS (not the TLS
+settings cache), so no restart is needed. Browser views refresh on their normal
+polling interval and invalidate relevant queries after saves. Alert sweeps use
+the new threshold on their next pass: shortening it may emit inactive alerts;
+lengthening it may emit recovery alerts even without a new check-in. Existing
+alert transition deduplication remains in effect. Update all service/client
+consumers before configuring overrides during a rolling deployment.
+
 ## Logs / Activity Data
 
 There are three different operational data streams:
@@ -370,7 +398,7 @@ Redis-only state such as activity rollups, query-dispatch hints, and alert coold
 - The API and TLS services share tables and packages directly. API config restart is signaled in-process; restart/reload/persist requests targeting TLS use the database-backed `service_commands` queue rather than a service-to-service API.
 - Database-backed auth-provider activation is incomplete. Provider discovery advertises ID-scoped login URLs, but the API registers only the legacy YAML-gated OIDC/SAML public routes. In addition, `POST /api/v1/auth-providers/apply` targets `osctrl-tls` with `reload-auth-providers`; the TLS watcher does not handle that action and the API has no command consumer. Use YAML/flag providers for working federated login until the ID-scoped routes and API-side reload path are completed.
 - Authentication is centralized in route wrappers, but environment authorization remains a handler-by-handler `CheckPermissions` responsibility. There is no declarative policy layer to prevent permission drift between related endpoints.
-- Scalar-setting changes do not explicitly invalidate `osctrl-tls`'s Redis settings entry, so TLS can observe them only after its cache TTL. Environment mutations do invalidate the shared Redis environment cache.
+- Scalar-setting changes do not explicitly invalidate `osctrl-tls`'s Redis settings entry, so cached TLS settings change after its cache TTL. Inactivity thresholds bypass this cache. Environment mutations do invalidate the shared Redis environment cache.
 - Retention is feature-specific: activity rollups expire in Redis and alert history is pruned daily when alerting is enabled, but osquery log rows, distributed-query/carve records, and console/file-explorer rows have no uniform background retention policy. Query expiration changes lifecycle state rather than deleting rows.
 - Relationships mostly use indexed numeric IDs, UUIDs, or names without database foreign-key constraints. External routes also mix environment names/UUIDs, node UUIDs/names, and numeric configuration IDs, which matters when integrating or troubleshooting.
 - SAML assertion replay protection uses a per-process TTL cache. In a multi-replica API deployment, the same assertion can be presented once to each replica within its validity window unless a shared replay layer is added.

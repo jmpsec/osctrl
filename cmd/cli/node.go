@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
-	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v3"
@@ -63,7 +62,11 @@ func listNodes(ctx context.Context, cmd *cli.Command) error {
 	// Retrieve data
 	var nds []nodes.OsqueryNode
 	if dbFlag {
-		nds, err = nodesmgr.Gets(target, settingsmgr.InactiveHours(settings.NoEnvironmentID))
+		e, lookupErr := envs.Get(env)
+		if lookupErr != nil {
+			return fmt.Errorf("error getting environment - %w", lookupErr)
+		}
+		nds, err = nodesmgr.GetByEnv(e.Name, target, settingsmgr.InactiveHours(e.ID))
 		if err != nil {
 			return fmt.Errorf("error getting nodes - %w", err)
 		}

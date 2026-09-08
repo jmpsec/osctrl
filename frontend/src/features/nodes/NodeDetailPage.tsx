@@ -169,7 +169,7 @@ interface HeroStripProps {
     last_seen: string;
     bytes_received: number;
   };
-  isActive: boolean;
+  isActive: boolean | undefined;
 }
 
 function HeroStrip({ node, isActive }: HeroStripProps) {
@@ -178,14 +178,14 @@ function HeroStrip({ node, isActive }: HeroStripProps) {
       label: 'Status',
       value: (
         <span className="inline-flex items-center gap-1.5">
-          <StatusPip variant={isActive ? 'success' : 'dim'} live={isActive} />
+          {isActive !== undefined && <StatusPip variant={isActive ? 'success' : 'dim'} live={isActive} />}
           <span
             className={cn(
               'text-xs font-medium',
               isActive ? 'text-[color:var(--success)]' : 'text-[color:var(--text-3)]',
             )}
           >
-            {isActive ? 'Active' : 'Inactive'}
+            {isActive === undefined ? 'Unknown' : isActive ? 'Active' : 'Inactive'}
           </span>
         </span>
       ),
@@ -682,7 +682,7 @@ export function NodeDetailPage() {
   usePageTitle(t('pageTitle.node'));
   const { env, uuid } = useParams({ from: '/_app/env/$env/nodes/$uuid' as const });
   const navigate = useNavigate();
-  const inactiveHours = useInactiveHours();
+  const { data: inactivity } = useInactiveHours(env);
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [activityInterval, setActivityInterval] = useState<ActivityInterval>('6h');
   const [copiedNodeKey, setCopiedNodeKey] = useState(false);
@@ -888,7 +888,7 @@ export function NodeDetailPage() {
     return null;
   }
 
-  const isActive = node ? isNodeActive(node.last_seen, inactiveHours) : false;
+  const isActive = node ? isNodeActive(node.last_seen, inactivity?.inactive_hours) : undefined;
 
   return (
     <div className="flex flex-col h-full min-h-0 px-6 py-4 max-w-5xl mx-auto w-full">

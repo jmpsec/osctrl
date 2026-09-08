@@ -197,18 +197,18 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Prepare data for the handler code
 	data := handlers.ProcessingQuery{
-		Envs:          q.Environments,
-		Platforms:     q.Platforms,
-		UUIDs:         q.UUIDs,
-		Hosts:         q.Hosts,
-		Tags:          q.Tags,
-		EnvID:         env.ID,
-		InactiveHours: h.Settings.InactiveHours(settings.NoEnvironmentID),
+		Envs:      q.Environments,
+		Platforms: q.Platforms,
+		UUIDs:     q.UUIDs,
+		Hosts:     q.Hosts,
+		Tags:      q.Tags,
+		EnvID:     env.ID,
 	}
 	manager := handlers.Managers{
-		Nodes: h.Nodes,
-		Envs:  h.Envs,
-		Tags:  h.Tags,
+		Settings: h.Settings,
+		Nodes:    h.Nodes,
+		Envs:     h.Envs,
+		Tags:     h.Tags,
 	}
 	targetNodesID, err := handlers.CreateQueryCarve(data, manager, queries.DistributedQuery{})
 	if err != nil {

@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatRelative, formatTimeUntil, formatBucketAgo } from './time';
+import { formatRelative, formatTimeUntil, formatBucketAgo, isWithinHours } from './time';
 import { setLanguageEphemeral } from '$/i18n/i18n';
+
+it('treats the exact inactivity cutoff and never-seen nodes as inactive', () => {
+  const now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+  expect(isWithinHours(new Date(now - 24 * 3600_000).toISOString(), 24)).toBe(false);
+  expect(isWithinHours(new Date(now - 24 * 3600_000 + 1).toISOString(), 24)).toBe(true);
+  expect(isWithinHours('', 24)).toBe(false);
+  expect(isWithinHours('0001-01-01T00:00:00Z', 2562047)).toBe(false);
+  expect(isWithinHours('invalid', 24)).toBe(false);
+  clock.mockRestore();
+});
 
 describe('formatRelative', () => {
   const NOW = new Date('2024-03-14T15:09:26.000Z').getTime();

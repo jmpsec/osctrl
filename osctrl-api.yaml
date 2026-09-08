@@ -3161,6 +3161,152 @@ paths:
       summary: Update environment expiration
       tags:
         - environments
+  "/api/v1/environments/inactive-hours/{env}":
+    delete:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/settings.InactivityPolicy"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Reset environment inactivity threshold
+      tags:
+        - environments
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/settings.InactivityPolicy"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get environment inactivity threshold
+      tags:
+        - environments
+    put:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.InactiveHoursRequest"
+        description: Positive whole hours (1 to 2562047)
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/settings.InactivityPolicy"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Set environment inactivity threshold
+      tags:
+        - environments
   "/api/v1/environments/intervals/{env}":
     patch:
       description: Updates osquery interval settings for an environment.
@@ -9435,6 +9581,10 @@ components:
           type: integer
         inactive:
           type: integer
+        inactive_hours:
+          description: InactiveHours is the effective threshold for this environment,
+            including inheritance.
+          type: integer
         name:
           type: string
         platform_counts:
@@ -9464,6 +9614,15 @@ components:
           type: string
         uuid:
           type: string
+      type: object
+    handlers.InactiveHoursRequest:
+      properties:
+        inactive_hours:
+          maximum: 2562047
+          minimum: 1
+          type: integer
+      required:
+        - inactive_hours
       type: object
     handlers.LogoutResponse:
       properties:
@@ -9611,6 +9770,8 @@ components:
             $ref: "#/components/schemas/handlers.EnvStats"
           type: array
         inactive_hours:
+          description: InactiveHours is the global default only; node counts use each
+            environment's effective threshold.
           type: integer
         inactive_nodes:
           type: integer
@@ -10106,6 +10267,24 @@ components:
         updatedAt:
           type: string
         value:
+          type: string
+      type: object
+    settings.InactivityPolicy:
+      properties:
+        inactive_hours:
+          maximum: 2562047
+          minimum: 1
+          type: integer
+        override_hours:
+          maximum: 2562047
+          minimum: 1
+          type: integer
+          nullable: true
+        source:
+          enum:
+            - environment
+            - global
+            - default
           type: string
       type: object
     settings.SettingValue:

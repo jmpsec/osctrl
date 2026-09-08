@@ -85,6 +85,7 @@ function makeStatsResponse(overrides: Partial<StatsResponse> = {}): StatsRespons
       {
         uuid: 'env-uuid-1',
         name: 'prod',
+        inactive_hours: 72,
         active: 5,
         inactive: 2,
         total: 7,
@@ -95,6 +96,7 @@ function makeStatsResponse(overrides: Partial<StatsResponse> = {}): StatsRespons
       {
         uuid: 'env-uuid-2',
         name: 'staging',
+        inactive_hours: 24,
         active: 2,
         inactive: 1,
         total: 3,
@@ -393,13 +395,16 @@ describe('DashboardPage', () => {
     expect(errorColor).toHaveValue('#ff4d4f');
   });
 
-  it('uses the backend stats threshold for inactive labeling', async () => {
-    mockGetStats.mockResolvedValue(makeStatsResponse({ inactive_hours: 168 }));
+  it('uses the selected environment threshold instead of the global default', async () => {
+    const stats = makeStatsResponse({ inactive_hours: 168 });
+    stats.environments[0].inactive_hours = 48;
+    mockGetStats.mockResolvedValue(stats);
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => expect(screen.getByText('Active Nodes')).toBeInTheDocument());
 
-    expect(screen.getByText('Inactive ≥ 168h')).toBeInTheDocument();
+    expect(screen.getByText('Inactive ≥ 48h')).toBeInTheDocument();
+    expect(screen.queryByText('Inactive ≥ 168h')).not.toBeInTheDocument();
   });
 
   it('renders one tile per environment', async () => {
@@ -457,16 +462,13 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Retry')).toBeInTheDocument();
   });
 
-  // Regression: when the backend returns inactive_hours: 0 (e.g. setting
-  // missing from DB), the dashboard must fall back to the default 72h
-  // label rather than showing "Inactive >= 0h".
-  it('falls back to default inactive threshold when API returns 0', async () => {
-    mockGetStats.mockResolvedValue(makeStatsResponse({ inactive_hours: 0 }));
+  it('does not imply a universal cutoff for fleet-wide counts', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse({ environments: [] }));
     renderWithProviders(makeTestRouter());
 
     await waitFor(() => expect(screen.getByText('Active Nodes')).toBeInTheDocument());
 
-    expect(screen.getByText('Inactive \u2265 72h')).toBeInTheDocument();
-    expect(screen.queryByText('Inactive \u2265 0h')).not.toBeInTheDocument();
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
+    expect(screen.queryByText(/Inactive ≥/)).not.toBeInTheDocument();
   });
 });

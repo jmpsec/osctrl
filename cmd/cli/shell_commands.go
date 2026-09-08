@@ -147,15 +147,15 @@ func (s *shellState) cmdStats(_ *shellState, _ []string) {
 		errf("%v", err)
 		return
 	}
-	fmt.Printf("%s %s\n", paint(cCyan, "🖥️  Nodes"), fmt.Sprintf("total %s · active %s · inactive %s (offline after %dh)", paint(cBold, itoa(st.TotalNodes)), paint(cGreen, itoa(st.ActiveNodes)), paint(cRed, itoa(st.InactiveNodes)), st.InactiveHours))
+	fmt.Printf("%s %s\n", paint(cCyan, "🖥️  Nodes"), fmt.Sprintf("total %s · active %s · inactive %s", paint(cBold, itoa(st.TotalNodes)), paint(cGreen, itoa(st.ActiveNodes)), paint(cRed, itoa(st.InactiveNodes))))
 	fmt.Printf("%s queries %s · carves %s\n", paint(cCyan, "🔍 Active"), paint(cBold, itoa(int64(st.TotalActiveQueries))), paint(cBold, itoa(int64(st.TotalActiveCarves))))
 	fmt.Printf("%s linux %s · darwin %s · windows %s · other %s\n", paint(cCyan, "💻 Platforms"), itoa(st.Platforms.Linux), itoa(st.Platforms.Darwin), itoa(st.Platforms.Windows), itoa(st.Platforms.Other))
 	fmt.Println()
 	rows := make([][]string, 0, len(st.Environments))
 	for _, e := range st.Environments {
-		rows = append(rows, []string{e.Name, itoa(e.Active), itoa(e.Inactive), itoa(e.Total), itoa(int64(e.ActiveQueries)), itoa(int64(e.ActiveCarves))})
+		rows = append(rows, []string{e.Name, itoa(e.Active), itoa(e.Inactive), itoa(e.Total), itoa(e.InactiveHours), itoa(int64(e.ActiveQueries)), itoa(int64(e.ActiveCarves))})
 	}
-	printTable([]string{"Env", "Active", "Inactive", "Total", "Queries", "Carves"}, rows)
+	printTable([]string{"Env", "Active", "Inactive", "Total", "Inactive hours", "Queries", "Carves"}, rows)
 }
 
 func itoa(i int64) string {

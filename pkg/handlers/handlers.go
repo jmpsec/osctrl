@@ -6,24 +6,25 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
 type ProcessingQuery struct {
-	Envs          []string
-	Platforms     []string
-	UUIDs         []string
-	Hosts         []string
-	Tags          []string
-	EnvID         uint
-	InactiveHours int64
+	Envs      []string
+	Platforms []string
+	UUIDs     []string
+	Hosts     []string
+	Tags      []string
+	EnvID     uint
 }
 
 type Managers struct {
-	Envs  *environments.EnvManager
-	Nodes *nodes.NodeManager
-	Tags  *tags.TagManager
+	Settings *settings.Settings
+	Envs     *environments.EnvManager
+	Nodes    *nodes.NodeManager
+	Tags     *tags.TagManager
 }
 
 type QueryTargetRecord struct {
@@ -41,7 +42,7 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 		if err != nil {
 			return targetNodesID, fmt.Errorf("error getting environment by ID: %w", err)
 		}
-		allNodes, err := manager.Nodes.GetByEnv(env.Name, nodes.AllNodes, data.InactiveHours)
+		allNodes, err := manager.Nodes.GetByEnv(env.Name, nodes.AllNodes, 0)
 		if err != nil {
 			return targetNodesID, fmt.Errorf("error getting all nodes: %w", err)
 		}
@@ -51,12 +52,25 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 		return targetNodesID, nil
 	}
 	// Environments target
+	hoursByEnv := make(map[uint]int64)
+	inactiveHours := func(envID uint) int64 {
+		if hours, ok := hoursByEnv[envID]; ok {
+			return hours
+		}
+		hours := manager.Settings.InactiveHours(envID)
+		hoursByEnv[envID] = hours
+		return hours
+	}
 	if len(data.Envs) > 0 {
 		expected = []uint{}
 		for _, e := range data.Envs {
 			// TODO: Check if user has permissions to query the environment
 			if (e != "") && manager.Envs.Exists(e) {
-				nodes, err := manager.Nodes.GetByEnv(e, nodes.ActiveNodes, data.InactiveHours)
+				env, err := manager.Envs.Get(e)
+				if err != nil {
+					return targetNodesID, fmt.Errorf("error getting environment: %w", err)
+				}
+				nodes, err := manager.Nodes.GetByEnv(env.Name, nodes.ActiveNodes, inactiveHours(env.ID))
 				if err != nil {
 					return targetNodesID, fmt.Errorf("error getting nodes by environment: %w", err)
 				}
@@ -73,7 +87,7 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 		platforms, _ := manager.Nodes.GetEnvIDPlatforms(data.EnvID)
 		for _, p := range data.Platforms {
 			if (p != "") && utils.Contains(platforms, p) {
-				nodes, err := manager.Nodes.GetByPlatform(data.EnvID, p, nodes.ActiveNodes, data.InactiveHours)
+				nodes, err := manager.Nodes.GetByPlatform(data.EnvID, p, nodes.ActiveNodes, inactiveHours(data.EnvID))
 				if err != nil {
 					return targetNodesID, fmt.Errorf("error getting nodes by platform: %w", err)
 				}

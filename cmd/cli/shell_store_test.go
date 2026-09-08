@@ -20,6 +20,7 @@ func TestNodeToRowActiveInactive(t *testing.T) {
 		{"just_within", now.Add(-23 * time.Hour), 24, true},
 		{"stale", now.Add(-48 * time.Hour), 24, false},
 		{"zero_hours_defaults_active", now.Add(-1 * time.Hour), 0, true},
+		{"zero_hours_defaults_to_72", now.Add(-48 * time.Hour), 0, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

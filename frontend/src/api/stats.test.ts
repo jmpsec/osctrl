@@ -26,6 +26,7 @@ const STUB_RESPONSE: StatsResponse = {
     {
       uuid: 'env-uuid-1',
       name: 'prod',
+      inactive_hours: 24,
       active: 7,
       inactive: 3,
       total: 10,
@@ -64,6 +65,7 @@ describe('getStats — URL construction', () => {
     expect(result.environments).toHaveLength(1);
     expect(result.environments[0].uuid).toBe('env-uuid-1');
     expect(result.environments[0].name).toBe('prod');
+    expect(result.environments[0].inactive_hours).toBe(24);
   });
 
   it('propagates errors from apiFetch', async () => {

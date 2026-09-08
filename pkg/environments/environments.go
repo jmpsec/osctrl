@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -355,10 +356,13 @@ func (environment *EnvManager) Delete(identifier string) error {
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
 	}
-	if err := environment.DB.Unscoped().Delete(&env).Error; err != nil {
-		return fmt.Errorf("delete %w", err)
-	}
-	return nil
+	return environment.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Delete(&env).Error; err != nil {
+			return fmt.Errorf("delete %w", err)
+		}
+		return tx.Unscoped().Where("service = ? AND name = ? AND environment_id = ?", config.ServiceAPI, settings.InactiveHours, env.ID).
+			Delete(&settings.SettingValue{}).Error
+	})
 }
 
 // Update TLS Environment

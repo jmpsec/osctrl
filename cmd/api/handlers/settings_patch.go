@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -101,6 +102,12 @@ func (h *HandlersApi) SettingPatchHandler(w http.ResponseWriter, r *http.Request
 			apiErrorResponse(w, "setting is integer — provide `integer` in body", http.StatusBadRequest, nil)
 			return
 		}
+		if service == config.ServiceAPI && name == settings.InactiveHours {
+			if err := settings.ValidateInactiveHours(*body.Integer); err != nil {
+				apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+				return
+			}
+		}
 		if err := h.Settings.SetInteger(*body.Integer, service, name, settings.NoEnvironmentID); err != nil {
 			apiErrorResponse(w, "error updating setting", http.StatusInternalServerError, err)
 			return
@@ -124,7 +131,11 @@ func (h *HandlersApi) SettingPatchHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "error reading updated setting", http.StatusInternalServerError, err)
 		return
 	}
-	h.AuditLog.SettingsAction(ctx[ctxUser], fmt.Sprintf("patch %s/%s", service, name), strings.Split(r.RemoteAddr, ":")[0])
+	action := fmt.Sprintf("patch %s/%s", service, name)
+	if service == config.ServiceAPI && name == settings.InactiveHours {
+		action += fmt.Sprintf(": %d -> %d", existing.Integer, updated.Integer)
+	}
+	h.AuditLog.SettingsAction(ctx[ctxUser], action, strings.Split(r.RemoteAddr, ":")[0])
 	log.Debug().Msgf("Patched setting %s/%s", service, name)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, updated)
 }

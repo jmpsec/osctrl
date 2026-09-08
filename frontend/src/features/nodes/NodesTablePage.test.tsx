@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -13,7 +13,6 @@ import {
 import { NodesTablePage } from './NodesTablePage';
 import { nodesSearchSchema } from '$/routes/_app/env/$env/nodes';
 import type { NodesPagedResponse } from '$/api/types';
-import type { SettingValue } from '$/api/settings';
 import type { Features } from '$/api/features';
 import type { NodeTileSeries, StatsResponse } from '$/api/stats';
 
@@ -21,7 +20,7 @@ import type { NodeTileSeries, StatsResponse } from '$/api/stats';
 // Mock the nodes API module
 // ---------------------------------------------------------------------------
 const mockListNodes = vi.fn<() => Promise<NodesPagedResponse>>();
-const mockListServiceSettings = vi.fn<() => Promise<SettingValue[]>>();
+const mockGetInactiveHours = vi.fn();
 const mockGetFeatures = vi.fn<() => Promise<Features>>();
 const mockGetStats = vi.fn<() => Promise<StatsResponse>>();
 const mockGetNodeActivityTilesBatch = vi.fn<() => Promise<Record<string, NodeTileSeries>>>();
@@ -30,8 +29,9 @@ vi.mock('$/api/nodes', () => ({
   listNodes: (...args: unknown[]) => mockListNodes(...(args as [])),
 }));
 
-vi.mock('$/api/settings', () => ({
-  listServiceSettings: (...args: unknown[]) => mockListServiceSettings(...(args as [])),
+vi.mock('$/api/environments', () => ({
+  getEnvironmentInactiveHours: (...args: unknown[]) => mockGetInactiveHours(...args),
+  listEnvironments: () => Promise.resolve([]),
 }));
 
 vi.mock('$/api/features', () => ({
@@ -122,6 +122,7 @@ function makeStatsResponse(overrides: Partial<StatsResponse> = {}): StatsRespons
       {
         uuid: 'test-env',
         name: 'test-env',
+        inactive_hours: 72,
         active: 1,
         inactive: 0,
         total: 1,
@@ -226,7 +227,7 @@ describe('NodesTablePage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockListServiceSettings.mockResolvedValue([]);
+    mockGetInactiveHours.mockResolvedValue({ override_hours: null, inactive_hours: 72, source: 'default' });
     mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false });
     mockGetStats.mockResolvedValue(makeStatsResponse());
     mockGetNodeActivityTilesBatch.mockResolvedValue({
@@ -419,6 +420,30 @@ describe('NodesTablePage', () => {
     });
 
     expect(screen.getAllByText('Active').length).toBeGreaterThan(1);
+  });
+
+  it.each([24, 168])('uses the environment threshold %s for node badges', async (hours) => {
+    mockGetInactiveHours.mockResolvedValue({ override_hours: hours, inactive_hours: hours, source: 'environment' });
+    const response = makeResponse();
+    response.items[0].last_seen = new Date(Date.now() - 48 * 3600_000).toISOString();
+    mockListNodes.mockResolvedValue(response);
+    renderWithProviders(makeTestRouter());
+    const row = (await screen.findByText('web-server-01')).closest('tr')!;
+    await waitFor(() => expect(within(row).getByText(hours === 24 ? 'Inactive' : 'Active')).toBeInTheDocument());
+    expect(mockGetInactiveHours).toHaveBeenCalledWith('test-env');
+  });
+
+  it('does not guess a node status while its threshold loads or fails', async () => {
+    let reject!: (error: Error) => void;
+    mockGetInactiveHours.mockReturnValue(new Promise((_, fail) => { reject = fail; }));
+    mockListNodes.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    const row = (await screen.findByText('web-server-01')).closest('tr')!;
+    expect(within(row).queryByText('Active')).not.toBeInTheDocument();
+    expect(within(row).queryByText('Inactive')).not.toBeInTheDocument();
+    await act(async () => reject(new Error('Unavailable')));
+    expect(within(row.children[1] as HTMLElement).getByText('Unknown')).toBeInTheDocument();
+    expect(within(row.children[1] as HTMLElement).queryByRole('img', { name: 'inactive' })).not.toBeInTheDocument();
   });
 
   it('shows uptime and posture risk badge when posture is enabled', async () => {

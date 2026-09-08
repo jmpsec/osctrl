@@ -548,6 +548,9 @@ export function resolveMockApiRequest(path: string, init: RequestInit = {}): Moc
   }
 
   // Dashboard and activity surfaces.
+  if (method === 'GET' && pathname.startsWith('/api/v1/environments/inactive-hours/')) {
+    return hit({ override_hours: null, inactive_hours: 72, source: 'default' });
+  }
   if (method === 'GET' && pathname === '/api/v1/stats') {
     const active = mockNodes.filter(activeNode).length;
     const activeQueries = mockQueries.filter((query) => query.active).length;
@@ -563,6 +566,7 @@ export function resolveMockApiRequest(path: string, init: RequestInit = {}): Moc
       environments: [{
         uuid: 'dev',
         name: 'dev',
+        inactive_hours: 72,
         active,
         inactive: mockNodes.length - active,
         total: mockNodes.length,

@@ -23,6 +23,10 @@ const {
   mockPatchExpiration,
   mockGetPostureProfiles,
   mockGetFeatures,
+  mockGetInactiveHours,
+  mockSetInactiveHours,
+  mockResetInactiveHours,
+  mockGetMe,
 } = vi.hoisted(() => ({
   mockGetEnvironment: vi.fn<() => Promise<TLSEnvironment>>(),
   mockGetConfig: vi.fn<() => Promise<EnvConfigResponse>>(),
@@ -32,16 +36,25 @@ const {
   mockPatchExpiration: vi.fn(),
   mockGetPostureProfiles: vi.fn(),
   mockGetFeatures: vi.fn<() => Promise<Features>>(),
+  mockGetInactiveHours: vi.fn(),
+  mockSetInactiveHours: vi.fn(),
+  mockResetInactiveHours: vi.fn(),
+  mockGetMe: vi.fn(),
 }));
 
 vi.mock('$/api/environments', () => ({
   getEnvironment: mockGetEnvironment,
+  getEnvironmentInactiveHours: mockGetInactiveHours,
+  setEnvironmentInactiveHours: mockSetInactiveHours,
+  resetEnvironmentInactiveHours: mockResetInactiveHours,
   getEnvironmentConfig: mockGetConfig,
   getEnvironmentAssembledConfig: mockGetAssembledConfig,
   patchEnvironmentConfig: (...args: unknown[]) => mockPatchConfig(...args),
   patchEnvironmentIntervals: (...args: unknown[]) => mockPatchIntervals(...args),
   patchEnvironmentExpiration: (...args: unknown[]) => mockPatchExpiration(...args),
 }));
+
+vi.mock('$/api/users', () => ({ getMe: mockGetMe }));
 
 vi.mock('$/api/client', () => ({
   AuthError: class AuthError extends Error {
@@ -152,10 +165,9 @@ function makeRouter(initialPath = '/_app/env/dev/config') {
   return createRouter({ routeTree, history });
 }
 
-function renderWithProviders() {
-  const queryClient = new QueryClient({
+function renderWithProviders(queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
-  });
+  })) {
   const router = makeRouter();
   return render(
     <QueryClientProvider client={queryClient}>
@@ -168,6 +180,8 @@ describe('EnvConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetEnvironment.mockResolvedValue(makeEnv());
+    mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
+    mockGetInactiveHours.mockResolvedValue({ override_hours: null, inactive_hours: 168, source: 'global' });
     mockGetConfig.mockResolvedValue({
       options: '{"logger_plugin":"tls"}',
       schedule: '{}',
@@ -181,6 +195,108 @@ describe('EnvConfigPage', () => {
     });
     mockGetPostureProfiles.mockResolvedValue([]);
     mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false });
+  });
+
+  it('inherits the global value, saves an override, and resets to inheritance', async () => {
+    const user = userEvent.setup();
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const keys = [['inactive-hours', 'other-env'], ['nodes', 'dev'], ['node', 'dev', 'uuid'], ['stats']];
+    keys.forEach((key) => qc.setQueryData(key, {}));
+    const override = { override_hours: 24, inactive_hours: 24, source: 'environment' };
+    mockSetInactiveHours.mockImplementation(async () => {
+      mockGetInactiveHours.mockResolvedValue(override);
+      return override;
+    });
+    mockResetInactiveHours.mockImplementation(async () => {
+      const inherited = { override_hours: null, inactive_hours: 168, source: 'global' };
+      mockGetInactiveHours.mockResolvedValue(inherited);
+      return inherited;
+    });
+    renderWithProviders(qc);
+    const checkbox = await screen.findByRole('checkbox', { name: 'Use global default' });
+    const hours = screen.getByRole('spinbutton', { name: 'Inactive hours' });
+    const save = screen.getByRole('button', { name: 'Save inactive hours' });
+    expect(checkbox).toBeChecked();
+    expect(hours).toHaveValue(168);
+    expect(hours).toBeDisabled();
+    expect(save).toBeDisabled();
+    await user.click(checkbox);
+    await user.clear(hours);
+    await user.type(hours, '24');
+    await user.click(save);
+    await waitFor(() => expect(mockSetInactiveHours).toHaveBeenCalledWith('dev', 24));
+    await waitFor(() => expect(save).toBeDisabled());
+    expect(checkbox).not.toBeChecked();
+    keys.forEach((key) => expect(qc.getQueryState(key)?.isInvalidated).toBe(true));
+    keys.forEach((key) => qc.setQueryData(key, {}));
+    await user.click(checkbox);
+    await user.click(save);
+    await waitFor(() => expect(mockResetInactiveHours).toHaveBeenCalledWith('dev'));
+    await waitFor(() => expect(hours).toHaveValue(168));
+    expect(checkbox).toBeChecked();
+    keys.forEach((key) => expect(qc.getQueryState(key)?.isInvalidated).toBe(true));
+  });
+
+  it('locks the form while saving and adopts the returned effective default', async () => {
+    const user = userEvent.setup();
+    mockGetInactiveHours.mockResolvedValue({ override_hours: 24, inactive_hours: 24, source: 'environment' });
+    let finish!: (value: unknown) => void;
+    mockResetInactiveHours.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    renderWithProviders();
+    const checkbox = await screen.findByRole('checkbox', { name: 'Use global default' });
+    await user.click(checkbox);
+    const save = screen.getByRole('button', { name: 'Save inactive hours' });
+    await user.click(save);
+    expect(checkbox).toBeDisabled();
+    expect(save).toBeDisabled();
+    expect(save).toHaveTextContent('Saving');
+    const inherited = { override_hours: null, inactive_hours: 72, source: 'default' };
+    mockGetInactiveHours.mockResolvedValue(inherited);
+    finish(inherited);
+    await waitFor(() => expect(screen.getByRole('spinbutton', { name: 'Inactive hours' })).toHaveValue(72));
+    expect(checkbox).toBeChecked();
+  });
+
+  it('validates override hours and preserves edits after a failed save', async () => {
+    const user = userEvent.setup();
+    mockSetInactiveHours.mockRejectedValue(new Error('Save unavailable'));
+    renderWithProviders();
+    await user.click(await screen.findByRole('checkbox', { name: 'Use global default' }));
+    const hours = screen.getByRole('spinbutton', { name: 'Inactive hours' });
+    const save = screen.getByRole('button', { name: 'Save inactive hours' });
+    for (const value of ['', '0', '-1', '1.5', '2562048']) {
+      await user.clear(hours);
+      if (value) await user.type(hours, value);
+      expect(save).toBeDisabled();
+    }
+    await user.clear(hours);
+    await user.type(hours, '2562047');
+    await user.click(save);
+    expect(await screen.findByText('Save unavailable')).toBeInTheDocument();
+    expect(hours).toHaveValue(2562047);
+    expect(save).toBeEnabled();
+  });
+
+  it('shows fetch errors with retry and no guessed threshold', async () => {
+    const user = userEvent.setup();
+    mockGetInactiveHours.mockRejectedValueOnce(new Error('Threshold unavailable'));
+    renderWithProviders();
+    expect(await screen.findByText('Threshold unavailable')).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Inactive hours' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Retry inactive hours' }));
+    expect(await screen.findByRole('spinbutton', { name: 'Inactive hours' })).toHaveValue(168);
+  });
+
+  it.each([false, true])('uses environment admin permission: %s', async (admin) => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue({ admin: false, permissions: { [makeEnv().uuid]: { admin, user: true } } });
+    renderWithProviders();
+    const checkbox = await screen.findByRole('checkbox', { name: 'Use global default' });
+    await waitFor(() => expect(checkbox).toHaveProperty('disabled', !admin));
+    if (admin) {
+      await user.click(checkbox);
+      expect(screen.getByRole('button', { name: 'Save inactive hours' })).toBeEnabled();
+    }
   });
 
   it('loads the fully rendered tab from the assembled config endpoint', async () => {

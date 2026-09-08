@@ -88,10 +88,7 @@ const (
 )
 
 // DefaultInactiveHours is the fallback threshold (in hours) for classifying
-// nodes as active vs inactive when the inactive_hours setting is absent or
-// invalid. Keeps every service — including the API, which does not seed the
-// setting itself — from treating all nodes as inactive when the DB row is
-// missing.
+// nodes as active vs inactive when no valid environment or global value exists.
 const DefaultInactiveHours int64 = 72
 
 // DefaultAlertHistoryRetentionDays is the fallback retention (in days) for
@@ -154,6 +151,15 @@ func (conf *Settings) EmptyValue(service, name, typeValue string, envID uint) Se
 
 // NewValue creates a new settings value
 func (conf *Settings) NewValue(service, name, typeValue string, value interface{}, envID uint) error {
+	if service == config.ServiceAPI && name == InactiveHours {
+		hours, ok := value.(int64)
+		if typeValue != TypeInteger || !ok {
+			return fmt.Errorf("inactive_hours must be an integer")
+		}
+		if err := ValidateInactiveHours(hours); err != nil {
+			return err
+		}
+	}
 	// Empty new value
 	entry := conf.EmptyValue(service, name, typeValue, envID)
 	switch typeValue {
@@ -246,6 +252,11 @@ func (conf *Settings) GetMap(service string, envID uint) (MapSettings, error) {
 
 // SetInteger sets a numeric settings value by service and name
 func (conf *Settings) SetInteger(intValue int64, service, name string, envID uint) error {
+	if service == config.ServiceAPI && name == InactiveHours {
+		if err := ValidateInactiveHours(intValue); err != nil {
+			return err
+		}
+	}
 	// Retrieve current value
 	value, err := conf.RetrieveValue(service, name, envID)
 	if err != nil {
@@ -327,19 +338,14 @@ func (conf *Settings) RefreshSettings(service string) int64 {
 	return value.Integer
 }
 
-// InactiveHours gets the value in hours for a node to be inactive by service.
-// Returns DefaultInactiveHours when the setting is absent or invalid so that
-// callers never receive a zero threshold (which would make every node appear
-// inactive).
+// InactiveHours resolves an environment override, then the global setting.
 func (conf *Settings) InactiveHours(envID uint) int64 {
-	value, err := conf.RetrieveValue(config.ServiceAPI, InactiveHours, envID)
+	policy, err := conf.InactivityPolicy(envID)
 	if err != nil {
+		log.Error().Err(err).Uint("environment_id", envID).Msg("failed to resolve inactive_hours")
 		return DefaultInactiveHours
 	}
-	if value.Integer <= 0 {
-		return DefaultInactiveHours
-	}
-	return value.Integer
+	return policy.InactiveHours
 }
 
 // OnelinerExpiration checks if enrolling links will expire
