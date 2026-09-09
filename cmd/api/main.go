@@ -450,8 +450,11 @@ func osctrlAPIService() {
 	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, 0)
 	log.Info().Msg("Initialize console")
 	consolemgr = console.NewManager(db.Conn, queriesmgr)
+	sessionHints := cache.NewSessionHints(redis.Client)
+	consolemgr.SessionHints = sessionHints
 	log.Info().Msg("Initialize file explorer")
 	fileexplorermgr = fileexplorer.NewManager(db.Conn, queriesmgr)
+	fileexplorermgr.SessionHints = sessionHints
 	// Construct the log reader. When the TLS logger ships logs to S3 the
 	// osquery_*_data tables are empty, so the API/console/file-explorer
 	// read logs back from S3 instead. For every other logger the data

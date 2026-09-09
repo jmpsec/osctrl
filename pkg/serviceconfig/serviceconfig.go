@@ -359,6 +359,12 @@ func (m *ServiceConfigManager) UpdateSection(service, name, value string, envID 
 	if !json.Valid([]byte(value)) {
 		return ServiceConfig{}, fmt.Errorf("value is not valid JSON")
 	}
+	if name == "osquery" {
+		var osquery config.YAMLConfigurationOsquery
+		if err := json.Unmarshal([]byte(value), &osquery); err != nil {
+			return ServiceConfig{}, fmt.Errorf("unmarshal osquery: %w", err)
+		}
+	}
 	if name == "rateLimits" {
 		var limits config.YAMLConfigurationRateLimits
 		if err := json.Unmarshal([]byte(value), &limits); err != nil {

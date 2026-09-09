@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/filequery"
 	"github.com/jmpsec/osctrl/pkg/logging"
@@ -30,9 +31,10 @@ const (
 )
 
 type Manager struct {
-	DB        *gorm.DB
-	Queries   *queries.Queries
-	LogReader logging.LogReader
+	DB           *gorm.DB
+	Queries      *queries.Queries
+	LogReader    logging.LogReader
+	SessionHints *cache.SessionHints
 }
 
 func NewManager(db *gorm.DB, queryManager *queries.Queries) *Manager {
@@ -70,6 +72,7 @@ func (m *Manager) CreateSession(env environments.TLSEnvironment, node nodes.Osqu
 	if err := m.DB.Create(&session).Error; err != nil {
 		return Session{}, err
 	}
+	m.invalidateSessionHint(session)
 	return session, nil
 }
 
@@ -87,12 +90,26 @@ func (m *Manager) TouchSession(sessionID uint) (Session, error) {
 		UpdateColumn("updated_at", time.Now()).Error; err != nil {
 		return Session{}, err
 	}
-	return m.GetSession(sessionID)
+	session, err := m.GetSession(sessionID)
+	if err == nil {
+		m.invalidateSessionHint(session)
+	}
+	return session, err
+}
+
+func (m *Manager) invalidateSessionHint(session Session) {
+	m.SessionHints.Invalidate(context.Background(), "fileexplorer", session.EnvironmentID, session.NodeID, session.NodeUUID)
 }
 
 func (m *Manager) CloseSession(sessionID uint) error {
 	now := time.Now()
-	return m.DB.Transaction(func(tx *gorm.DB) error {
+	var session Session
+	err := m.DB.Transaction(func(tx *gorm.DB) error {
+		if m.SessionHints != nil {
+			if err := tx.Where("id = ?", sessionID).Find(&session).Error; err != nil {
+				return err
+			}
+		}
 		if err := tx.Model(&Session{}).Where("id = ?", sessionID).
 			Updates(map[string]any{"active": false, "closed_at": &now}).Error; err != nil {
 			return err
@@ -101,6 +118,10 @@ func (m *Manager) CloseSession(sessionID uint) error {
 			Where("session_id = ? AND status = ?", sessionID, StatusQueued).
 			Updates(map[string]any{"status": StatusExpired, "expired_at": &now}).Error
 	})
+	if err == nil && session.ID != 0 {
+		m.invalidateSessionHint(session)
+	}
+	return err
 }
 
 func (m *Manager) ListDirectory(sessionID uint, target string, timeout time.Duration) (Request, error) {
