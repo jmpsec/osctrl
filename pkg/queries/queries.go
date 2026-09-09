@@ -172,51 +172,40 @@ func CreateQueries(backend *gorm.DB) *Queries {
 }
 
 func (q *Queries) NodeQueries(node nodes.OsqueryNode) (QueryReadQueries, bool, error) {
-	// Fast path: check the Redis cache. If we recently determined this
-	// node has no pending queries, skip the DB entirely. This eliminates
-	// ~99% of DB lookups at scale (10K+ nodes checking in every 60s).
-	if q.Cache != nil {
-		cached, err := q.Cache.HasNoPendingQueries(context.Background(), node.ID)
+	return q.Cache.read(context.Background(), node.ID, func() (QueryReadQueries, bool, error) {
+		var results []struct {
+			Name  string
+			Query string
+			Type  string
+		}
+
+		now := time.Now()
+		err := q.DB.Table("distributed_queries dq").
+			Select("dq.name, dq.query, dq.type").
+			Joins("JOIN node_queries nq ON dq.id = nq.query_id").
+			Where("nq.node_id = ? AND nq.status = ?", node.ID, DistributedQueryStatusPending).
+			Where("dq.active = ? AND dq.completed = ? AND dq.deleted = ? AND dq.expired = ?", true, false, false, false).
+			Where("(dq.expiration = ? OR dq.expiration > ?)", time.Time{}, now).
+			Scan(&results).Error
 		if err != nil {
-			log.Debug().Err(err).Uint("node_id", node.ID).Msg("query dispatch cache: read error, falling through to DB")
-		} else if cached {
+			return nil, false, err
+		}
+
+		if len(results) == 0 {
 			return QueryReadQueries{}, false, nil
 		}
-	}
 
-	var results []struct {
-		Name  string
-		Query string
-		Type  string
-	}
-
-	now := time.Now()
-	q.DB.Table("distributed_queries dq").
-		Select("dq.name, dq.query, dq.type").
-		Joins("JOIN node_queries nq ON dq.id = nq.query_id").
-		Where("nq.node_id = ? AND nq.status = ?", node.ID, DistributedQueryStatusPending).
-		Where("dq.active = ? AND dq.completed = ? AND dq.deleted = ? AND dq.expired = ?", true, false, false, false).
-		Where("(dq.expiration = ? OR dq.expiration > ?)", time.Time{}, now).
-		Scan(&results)
-
-	if len(results) == 0 {
-		// Cache the empty result so subsequent check-ins skip the DB.
-		if q.Cache != nil {
-			q.Cache.SetNoPendingQueries(context.Background(), node.ID)
+		qs := make(QueryReadQueries)
+		accelerate := false
+		for _, _q := range results {
+			qs[_q.Name] = _q.Query
+			if IsInternalQueryType(_q.Type) {
+				accelerate = true
+			}
 		}
-		return QueryReadQueries{}, false, nil
-	}
 
-	qs := make(QueryReadQueries)
-	accelerate := false
-	for _, _q := range results {
-		qs[_q.Name] = _q.Query
-		if IsInternalQueryType(_q.Type) {
-			accelerate = true
-		}
-	}
-
-	return qs, accelerate, nil
+		return qs, accelerate, nil
+	})
 }
 
 func IsInternalQueryType(qtype string) bool {

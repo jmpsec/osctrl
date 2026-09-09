@@ -179,6 +179,8 @@ rateLimits:
 
 # osquery remote API feature switches.
 osquery:
+  # Empty-query dispatch cache lifetime; <=0 uses 2m. New queries invalidate it.
+  queryDispatchTTL: 2m
   # osquery schema version used for table metadata.
   version: 5.23.1
   # JSON schema file with osquery table metadata.

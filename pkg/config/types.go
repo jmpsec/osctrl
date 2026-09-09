@@ -237,6 +237,8 @@ type YAMLConfigurationOsquery struct {
 	Console      bool   `yaml:"console"`
 	FileExplorer bool   `yaml:"fileExplorer"`
 	ReadOnly     bool   `yaml:"readOnly"`
+
+	QueryDispatchTTL time.Duration `yaml:"queryDispatchTTL" mapstructure:"queryDispatchTTL"`
 }
 
 // YAMLConfigurationEndpoints to hold the configuration endpoints that will receive osquery configuration updates

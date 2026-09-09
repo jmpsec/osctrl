@@ -2,6 +2,7 @@ package queries
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -26,17 +27,25 @@ import (
 // ──────────────────────────────────────────────────────────────────────────────
 
 type fakeRedisStore struct {
-	mu     sync.Mutex
-	values map[string]string
+	mu       sync.Mutex
+	values   map[string]string
+	versions map[string]int
+	expires  map[string]time.Duration
+	now      time.Duration
 }
 
 func newFakeRedisClient(t *testing.T) *redis.Client {
+	client, _ := newFakeRedis(t)
+	return client
+}
+
+func newFakeRedis(t *testing.T) (*redis.Client, *fakeRedisStore) {
 	t.Helper()
-	store := &fakeRedisStore{values: make(map[string]string)}
+	store := &fakeRedisStore{values: make(map[string]string), versions: make(map[string]int), expires: make(map[string]time.Duration)}
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     "fake-redis",
-		PoolSize: 1,
+		PoolSize: 4,
 		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			serverConn, clientConn := net.Pipe()
 			go serveFakeRedis(serverConn, store)
@@ -44,12 +53,15 @@ func newFakeRedisClient(t *testing.T) *redis.Client {
 		},
 	})
 	t.Cleanup(func() { _ = client.Close() })
-	return client
+	return client, store
 }
 
 func serveFakeRedis(conn net.Conn, store *fakeRedisStore) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
+	watched := make(map[string]int)
+	var queued [][]string
+	inTransaction := false
 	for {
 		args, err := readRESPArray(reader)
 		if err != nil {
@@ -58,37 +70,89 @@ func serveFakeRedis(conn net.Conn, store *fakeRedisStore) {
 		if len(args) == 0 {
 			return
 		}
-		handleFakeRedisCmd(conn, store, args)
+		store.mu.Lock()
+		for key, expires := range store.expires {
+			if store.now >= expires {
+				delete(store.values, key)
+				delete(store.expires, key)
+				store.versions[key]++
+			}
+		}
+		var response bytes.Buffer
+		switch strings.ToUpper(args[0]) {
+		case "WATCH":
+			for _, key := range args[1:] {
+				watched[key] = store.versions[key]
+			}
+			response.WriteString("+OK\r\n")
+		case "UNWATCH":
+			clear(watched)
+			response.WriteString("+OK\r\n")
+		case "MULTI":
+			inTransaction = true
+			response.WriteString("+OK\r\n")
+		case "EXEC":
+			conflict := false
+			for key, version := range watched {
+				conflict = conflict || store.versions[key] != version
+			}
+			if conflict {
+				response.WriteString("*-1\r\n")
+			} else {
+				fmt.Fprintf(&response, "*%d\r\n", len(queued))
+				for _, command := range queued {
+					handleFakeRedisCmd(&response, store, command)
+				}
+			}
+			clear(watched)
+			queued = nil
+			inTransaction = false
+		default:
+			if inTransaction {
+				queued = append(queued, args)
+				response.WriteString("+QUEUED\r\n")
+			} else {
+				handleFakeRedisCmd(&response, store, args)
+			}
+		}
+		store.mu.Unlock()
+		_, _ = conn.Write(response.Bytes())
 	}
 }
 
-func handleFakeRedisCmd(conn net.Conn, store *fakeRedisStore, args []string) {
+func handleFakeRedisCmd(conn io.Writer, store *fakeRedisStore, args []string) {
 	cmd := strings.ToUpper(args[0])
 	switch cmd {
 	case "GET":
-		store.mu.Lock()
 		val, ok := store.values[args[1]]
-		store.mu.Unlock()
 		if !ok {
 			_, _ = conn.Write([]byte("$-1\r\n"))
 		} else {
 			_, _ = fmt.Fprintf(conn, "$%d\r\n%s\r\n", len(val), val)
 		}
 	case "SET":
-		store.mu.Lock()
 		store.values[args[1]] = args[2]
-		store.mu.Unlock()
+		store.versions[args[1]]++
+		delete(store.expires, args[1])
+		if len(args) >= 5 {
+			ttl, _ := strconv.Atoi(args[4])
+			unit := time.Second
+			if strings.EqualFold(args[3], "PX") {
+				unit = time.Millisecond
+			}
+			store.expires[args[1]] = store.now + time.Duration(ttl)*unit
+		}
 		_, _ = conn.Write([]byte("+OK\r\n"))
 	case "DEL":
 		n := 0
-		store.mu.Lock()
 		for _, k := range args[1:] {
 			if _, ok := store.values[k]; ok {
 				delete(store.values, k)
+				delete(store.expires, k)
+				store.versions[k]++
 				n++
 			}
 		}
-		store.mu.Unlock()
 		_, _ = fmt.Fprintf(conn, ":%d\r\n", n)
 	case "PING":
 		_, _ = conn.Write([]byte("+PONG\r\n"))
@@ -145,6 +209,13 @@ func setupQueries(t *testing.T, db *gorm.DB) *Queries {
 	q := CreateQueries(db)
 	require.NotNil(t, q)
 	return q
+}
+
+// Prime entries through the same guarded fill used by NodeQueries.
+func (c *QueryDispatchCache) SetNoPendingQueries(ctx context.Context, nodeID uint) {
+	_, _, _ = c.read(ctx, nodeID, func() (QueryReadQueries, bool, error) {
+		return QueryReadQueries{}, false, nil
+	})
 }
 
 // NodeQueries with a nil cache should behave exactly as before — always
@@ -286,6 +357,81 @@ func TestQueryDispatchCache_MissReturnsFalse(t *testing.T) {
 	ok, err := c.HasNoPendingQueries(context.Background(), 999)
 	require.NoError(t, err)
 	assert.False(t, ok)
+}
+
+func TestNodeQueries_InvalidationDuringEmptyLookup(t *testing.T) {
+	for _, many := range []bool{false, true} {
+		t.Run(fmt.Sprintf("many=%t", many), func(t *testing.T) {
+			db := setupTestDB(t)
+			q := setupQueries(t, db)
+			q.Cache = NewQueryDispatchCache(newFakeRedisClient(t), 0)
+			node := nodes.OsqueryNode{ID: 1}
+			invalidated := false
+			require.NoError(t, db.Callback().Row().After("gorm:row").Register("test:invalidate", func(tx *gorm.DB) {
+				invalidated = true
+				if many {
+					q.Cache.InvalidateMany(context.Background(), []uint{node.ID})
+				} else {
+					q.Cache.Invalidate(context.Background(), node.ID)
+				}
+			}))
+
+			result, _, err := q.NodeQueries(node)
+			require.NoError(t, err)
+			require.Empty(t, result)
+			require.True(t, invalidated, "invalidation must occur between SQL lookup and cache refill")
+			cached, err := q.Cache.HasNoPendingQueries(context.Background(), node.ID)
+			require.NoError(t, err)
+			require.False(t, cached, "empty refill must not overwrite concurrent invalidation")
+		})
+	}
+}
+
+func TestNodeQueries_SQLFailureIsNotCached(t *testing.T) {
+	db := setupTestDB(t)
+	q := setupQueries(t, db)
+	q.Cache = NewQueryDispatchCache(newFakeRedisClient(t), 0)
+	require.NoError(t, db.Migrator().DropTable(&NodeQuery{}))
+	for range 2 {
+		_, _, err := q.NodeQueries(nodes.OsqueryNode{ID: 1})
+		require.Error(t, err)
+		cached, err := q.Cache.HasNoPendingQueries(context.Background(), 1)
+		require.NoError(t, err)
+		require.False(t, cached)
+	}
+}
+
+func TestQueryDispatchCache_DefaultAndConfiguredTTL(t *testing.T) {
+	require.Equal(t, 2*time.Minute, NewQueryDispatchCache(nil, 0).ttl)
+	require.Equal(t, 30*time.Second, NewQueryDispatchCache(nil, 30*time.Second).ttl)
+}
+
+func TestNodeQueries_CacheSurvivesPollAndExpires(t *testing.T) {
+	for _, ttl := range []time.Duration{0, 3 * time.Minute} {
+		t.Run(ttl.String(), func(t *testing.T) {
+			db := setupTestDB(t)
+			q := setupQueries(t, db)
+			client, store := newFakeRedis(t)
+			q.Cache = NewQueryDispatchCache(client, ttl)
+			node := nodes.OsqueryNode{ID: 1}
+			reads := 0
+			require.NoError(t, db.Callback().Row().After("gorm:row").Register("test:count", func(tx *gorm.DB) { reads++ }))
+			_, _, err := q.NodeQueries(node)
+			require.NoError(t, err)
+			store.mu.Lock()
+			store.now = time.Minute
+			store.mu.Unlock()
+			_, _, err = q.NodeQueries(node)
+			require.NoError(t, err)
+			require.Equal(t, 1, reads, "60s poll should reuse the empty cache")
+			store.mu.Lock()
+			store.now = q.Cache.ttl
+			store.mu.Unlock()
+			_, _, err = q.NodeQueries(node)
+			require.NoError(t, err)
+			require.Equal(t, 2, reads, "expiry should force a fresh SQL lookup")
+		})
+	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -237,9 +237,6 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Node and environment match, so we can proceed to update the node
 		ip := utils.GetIP(r)
-		if ip == node.IPAddress {
-			ip = ""
-		}
 		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip, SeenAt: time.Now()})
 		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for config update", node.UUID, node.ID)
 		h.recordActivity(env.UUID, node.UUID, activity.EventConfig)
@@ -451,21 +448,18 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "QueryRead").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryReadHandler endpoint", node.UUID, env.Name, len(body))
+		// Authentication succeeded even if dispatch SQL is temporarily unavailable.
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: utils.GetIP(r), SeenAt: time.Now()})
+		h.recordActivity(env.UUID, node.UUID, activity.EventQueryRead)
 		// Get queries and update node
 		nodeInvalid = false
 		qs, accelerate, err = h.Queries.NodeQueries(node)
 		if err != nil {
 			log.Err(err).Msg("error getting queries from db")
+			utils.HTTPResponse(w, "", http.StatusServiceUnavailable, []byte(""))
+			return
 		}
 		accelerate = h.shouldAccelerateQueryRead(node, accelerate)
-		// Refresh node last seen
-		ip := utils.GetIP(r)
-		if ip == node.IPAddress {
-			ip = ""
-		}
-		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip, SeenAt: time.Now()})
-		log.Debug().Msgf("node-uuid: %s with nodeid %d added to batch writer for query read update", node.UUID, node.ID)
-		h.recordActivity(env.UUID, node.UUID, activity.EventQueryRead)
 	} else {
 		log.Err(nodeErr).Msg("GetByKey")
 		nodeInvalid = true
@@ -566,9 +560,6 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		// Refresh node last seen
 		ip := utils.GetIP(r)
-		if ip == node.IPAddress {
-			ip = ""
-		}
 		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip, SeenAt: time.Now()})
 		// Process submitted results and mark query as processed
 		h.recordActivity(env.UUID, node.UUID, activity.EventQueryWrite)
@@ -814,9 +805,6 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// Refresh last seen
 		ip := utils.GetIP(r)
-		if ip == node.IPAddress {
-			ip = ""
-		}
 		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: ip, SeenAt: time.Now()})
 	}
 	// Prepare response

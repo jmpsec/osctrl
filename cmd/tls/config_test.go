@@ -1,13 +1,49 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/urfave/cli/v3"
 )
+
+func TestQueryDispatchTTLConfiguration(t *testing.T) {
+	cfg, err := loadYAMLConfiguration(writeTempTLSConfig(t, "service:\n  auth: none\nosquery:\n  queryDispatchTTL: 45s\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "tls.yml")
+	if got := params.Osquery.QueryDispatchTTL; got != 45*time.Second {
+		t.Fatalf("YAML queryDispatchTTL = %s, want 45s", got)
+	}
+
+	var dispatchFlag *cli.DurationFlag
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.DurationFlag); ok && f.Name == "query-dispatch-ttl" {
+			copy := *f
+			dispatchFlag = &copy
+		}
+	}
+	if dispatchFlag == nil {
+		t.Fatal("missing query-dispatch-ttl flag")
+	}
+	if dispatchFlag.Destination != &flagParams.Osquery.QueryDispatchTTL {
+		t.Fatal("query-dispatch-ttl flag has wrong destination")
+	}
+	dispatchFlag.Destination = &params.Osquery.QueryDispatchTTL
+	t.Setenv("QUERY_DISPATCH_TTL", "90s")
+	command := &cli.Command{Flags: []cli.Flag{dispatchFlag}, Action: func(context.Context, *cli.Command) error { return nil }}
+	if err := command.Run(context.Background(), []string{"tls"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := params.Osquery.QueryDispatchTTL; got != 90*time.Second {
+		t.Fatalf("environment queryDispatchTTL = %s, want 90s", got)
+	}
+}
 
 func writeTempTLSConfig(t *testing.T, body string) string {
 	t.Helper()

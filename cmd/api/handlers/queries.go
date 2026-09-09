@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -255,6 +256,8 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
+	// The commit is durable even if the HTTP request was canceled.
+	h.Queries.Cache.InvalidateMany(context.Background(), targetNodesID)
 	// Return query name as serialized response
 	log.Debug().Msgf("Created query %s with id %d", newQuery.Name, newQuery.ID)
 	h.AuditLog.NewQuery(ctx[ctxUser], newQuery.Query, strings.Split(r.RemoteAddr, ":")[0], env.ID)

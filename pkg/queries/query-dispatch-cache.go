@@ -11,10 +11,9 @@ import (
 
 // QueryDispatchCache caches the result of NodeQueries per node in Redis.
 // The primary goal is to skip the DB JOIN when a node has no pending
-// queries — which is the common case (99%+ of check-ins). A short TTL
-// (default 5s) ensures the cache doesn't serve stale queries for long;
-// when a new query is created, affected nodes' cache entries are
-// invalidated explicitly.
+// queries. When a new query is created, affected nodes' cache entries
+// are invalidated explicitly; WATCH prevents an in-flight empty lookup
+// from overwriting that invalidation.
 //
 // The cache stores a boolean: true means "no pending queries for this
 // node" (the DB returned empty). A cache miss or false falls through to
@@ -28,10 +27,9 @@ type QueryDispatchCache struct {
 const queryDispatchCachePrefix = "osctrl:tls:query-dispatch"
 
 // DefaultQueryDispatchTTL is the TTL for "no queries pending" cache
-// entries. Short enough that a newly created query is visible within a
-// few seconds, long enough to absorb repeated check-ins from the same
-// node within the osquery distributed_interval (default 60s).
-const DefaultQueryDispatchTTL = 5 * time.Second
+// entries. It spans the default 60s poll interval and bounds staleness
+// if explicit invalidation fails.
+const DefaultQueryDispatchTTL = 2 * time.Minute
 
 // NewQueryDispatchCache creates a Redis-backed cache for query dispatch.
 // Pass nil to disable caching (tests, standalone mode).
@@ -59,27 +57,68 @@ func (c *QueryDispatchCache) HasNoPendingQueries(ctx context.Context, nodeID uin
 	return string(val) == "1", nil
 }
 
-// SetNoPendingQueries caches that this node currently has no pending
-// queries. Called after a DB lookup returns empty.
-func (c *QueryDispatchCache) SetNoPendingQueries(ctx context.Context, nodeID uint) {
+// read caches only successful empty lookups. Redis failures fall back to SQL;
+// an invalidated lookup still returns its SQL result but cannot refill the cache.
+func (c *QueryDispatchCache) read(ctx context.Context, nodeID uint, lookup func() (QueryReadQueries, bool, error)) (QueryReadQueries, bool, error) {
 	if c == nil || c.client == nil {
-		return
+		return lookup()
 	}
-	if err := c.client.Set(ctx, cacheKey(nodeID), "1", c.ttl).Err(); err != nil {
-		log.Debug().Err(err).Uint("node_id", nodeID).Msg("query dispatch cache: failed to set")
+	cached, err := c.HasNoPendingQueries(ctx, nodeID)
+	if err != nil {
+		log.Debug().Err(err).Uint("node_id", nodeID).Msg("query dispatch cache: read error")
+		return lookup()
 	}
+	if cached {
+		return QueryReadQueries{}, false, nil
+	}
+
+	var result QueryReadQueries
+	var accelerate, loaded bool
+	var lookupErr error
+	key := cacheKey(nodeID)
+	err = c.client.Watch(ctx, func(tx *redis.Tx) error {
+		value, err := tx.Get(ctx, key).Result()
+		if err != nil && !errors.Is(err, redis.Nil) {
+			return err
+		}
+		if value == "1" {
+			result, loaded = QueryReadQueries{}, true
+			return nil
+		}
+		result, accelerate, lookupErr = lookup()
+		loaded = true
+		if lookupErr != nil || len(result) != 0 {
+			return nil
+		}
+		_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			pipe.Set(ctx, key, "1", c.ttl)
+			return nil
+		})
+		return err
+	}, key)
+	if err != nil && !errors.Is(err, redis.TxFailedErr) {
+		log.Debug().Err(err).Uint("node_id", nodeID).Msg("query dispatch cache: fill error")
+	}
+	if !loaded {
+		return lookup()
+	}
+	return result, accelerate, lookupErr
 }
 
-// Invalidate removes the cache entry for a single node. Called when a
+// Invalidate clears the empty hint for a single node. Called when a
 // new query is created that targets this node.
 func (c *QueryDispatchCache) Invalidate(ctx context.Context, nodeID uint) {
 	if c == nil || c.client == nil {
 		return
 	}
-	c.client.Del(ctx, cacheKey(nodeID))
+	// DEL on an absent key does not invalidate WATCH. SET also fences readers
+	// that started their SQL lookup with a cache miss.
+	if err := c.client.Set(ctx, cacheKey(nodeID), "0", c.ttl).Err(); err != nil {
+		log.Debug().Err(err).Uint("node_id", nodeID).Msg("query dispatch cache: invalidate failed")
+	}
 }
 
-// InvalidateMany removes cache entries for multiple nodes. Called when a
+// InvalidateMany clears empty hints for multiple nodes. Called when a
 // new query is created targeting many nodes. Uses pipelining to avoid
 // N round-trips.
 func (c *QueryDispatchCache) InvalidateMany(ctx context.Context, nodeIDs []uint) {
@@ -88,7 +127,7 @@ func (c *QueryDispatchCache) InvalidateMany(ctx context.Context, nodeIDs []uint)
 	}
 	pipe := c.client.Pipeline()
 	for _, id := range nodeIDs {
-		pipe.Del(ctx, cacheKey(id))
+		pipe.Set(ctx, cacheKey(id), "0", c.ttl)
 	}
 	if _, err := pipe.Exec(ctx); err != nil {
 		log.Debug().Err(err).Int("count", len(nodeIDs)).Msg("query dispatch cache: invalidate many failed")

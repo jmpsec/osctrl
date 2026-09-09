@@ -304,8 +304,6 @@ func osctrlService() {
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
-	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, 0)
-	log.Info().Msg("Query dispatch cache wired to Redis")
 	log.Info().Msg("Initialize carves")
 	filecarves = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, carvers3)
 	log.Info().Msg("Loading service settings")
@@ -322,6 +320,12 @@ func osctrlService() {
 	if err := serviceConfigMgr.Resolve(config.ServiceTLS, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error resolving service config - %v", err)
 	}
+	var queryDispatchTTL time.Duration
+	if flagParams.Osquery != nil {
+		queryDispatchTTL = flagParams.Osquery.QueryDispatchTTL
+	}
+	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, queryDispatchTTL)
+	log.Info().Msg("Query dispatch cache wired to Redis")
 	// Report whether this process can write its own config file. Only this
 	// process can know — osctrl-api runs elsewhere and cannot stat it.
 	if err := serviceConfigMgr.ReportFile(config.ServiceTLS, flagParams.ConfigFilePath()); err != nil {
@@ -472,6 +476,7 @@ func osctrlService() {
 		handlers.WithCarves(filecarves),
 		handlers.WithSettings(settingsmgr),
 		handlers.WithSettingsCache(settingsCache),
+		handlers.WithSessionHints(cache.NewSessionHints(redis.Client)),
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 		handlers.WithActivityWriter(activityWriter),

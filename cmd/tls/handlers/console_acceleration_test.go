@@ -25,7 +25,7 @@ func TestShouldAccelerateQueryReadForActiveConsoleSession(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(&console.Session{}))
 	queryManager := queries.CreateQueries(db)
-	handler := &HandlersTLS{Queries: queryManager, OsqueryValues: &config.YAMLConfigurationOsquery{Console: true}}
+	handler := &HandlersTLS{Queries: queryManager, OsqueryValues: &config.YAMLConfigurationOsquery{Accelerated: true, Console: true}}
 	node := nodes.OsqueryNode{ID: 7, UUID: "NODE-UUID", EnvironmentID: 1}
 	otherNode := nodes.OsqueryNode{ID: 8, UUID: "OTHER-NODE-UUID", EnvironmentID: 1}
 
@@ -96,7 +96,7 @@ func TestShouldNotAccelerateQueryReadForConsoleWhenConsoleDisabled(t *testing.T)
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(&console.Session{}))
 	queryManager := queries.CreateQueries(db)
-	handler := &HandlersTLS{Queries: queryManager, OsqueryValues: &config.YAMLConfigurationOsquery{}}
+	handler := &HandlersTLS{Queries: queryManager, OsqueryValues: &config.YAMLConfigurationOsquery{Accelerated: true}}
 	node := nodes.OsqueryNode{ID: 7, UUID: "NODE-UUID", EnvironmentID: 1}
 
 	require.NoError(t, db.Create(&console.Session{
@@ -130,7 +130,7 @@ func TestShouldAccelerateQueryReadForActiveFileExplorerSession(t *testing.T) {
 	}).Error)
 
 	require.False(t, handler.shouldAccelerateQueryRead(node, false))
-	handler.OsqueryValues = &config.YAMLConfigurationOsquery{FileExplorer: true}
+	handler.OsqueryValues = &config.YAMLConfigurationOsquery{Accelerated: true, FileExplorer: true}
 	require.True(t, handler.shouldAccelerateQueryRead(node, false))
 }
 
@@ -203,4 +203,19 @@ func queryReadResponse(t *testing.T, handler *HandlersTLS, envUUID, nodeKey stri
 	var resp map[string]any
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	return resp
+}
+
+func TestDisabledAccelerationSkipsSessionSQL(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&console.Session{}, &fileexplorer.Session{}))
+	reads := 0
+	require.NoError(t, db.Callback().Query().Before("gorm:query").Register("count_session_reads", func(*gorm.DB) { reads++ }))
+	h := &HandlersTLS{Queries: &queries.Queries{DB: db}, OsqueryValues: &config.YAMLConfigurationOsquery{Console: true, FileExplorer: true}}
+	node := nodes.OsqueryNode{ID: 7, UUID: "NODE-UUID", EnvironmentID: 1}
+	require.False(t, h.shouldAccelerateQueryRead(node, false))
+	require.False(t, h.shouldAccelerateQueryRead(node, true))
+	require.Zero(t, reads, "disabled acceleration must not query session tables")
+	h.OsqueryValues = nil
+	require.False(t, h.shouldAccelerateQueryRead(node, true))
 }

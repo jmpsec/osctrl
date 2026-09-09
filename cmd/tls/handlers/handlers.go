@@ -9,6 +9,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
+	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
@@ -38,7 +39,7 @@ var validAction = map[string]bool{
 	settings.ScriptRemove: true,
 }
 
-const consoleSessionFreshness = 30 * time.Second
+const consoleSessionFreshness = cache.SessionFreshness
 
 // Valid values for enroll packages
 var validEnrollPackage = map[string]bool{
@@ -65,6 +66,7 @@ type HandlersTLS struct {
 	Carves          *carves.Carves
 	Settings        *settings.Settings
 	SettingsCache   *settings.RedisSettingsCache
+	SessionHints    *cache.SessionHints
 	Logs            *logging.LoggerTLS
 	WriteHandler    *batchWriter
 	ActivityWriter  *activityWriter
@@ -124,6 +126,13 @@ func WithSettings(settings *settings.Settings) Option {
 func WithSettingsCache(settingsCache *settings.RedisSettingsCache) Option {
 	return func(h *HandlersTLS) {
 		h.SettingsCache = settingsCache
+	}
+}
+
+// WithSessionHints shares interactive session polling hints with the API.
+func WithSessionHints(hints *cache.SessionHints) Option {
+	return func(h *HandlersTLS) {
+		h.SessionHints = hints
 	}
 }
 
@@ -286,6 +295,9 @@ func (h *HandlersTLS) allowsAcceleratedQueries(queryAccelerated bool) bool {
 }
 
 func (h *HandlersTLS) shouldAccelerateQueryRead(node nodes.OsqueryNode, queryAccelerated bool) bool {
+	if h.OsqueryValues == nil || !h.OsqueryValues.Accelerated {
+		return false
+	}
 	if queryAccelerated {
 		return true
 	}
@@ -296,34 +308,32 @@ func (h *HandlersTLS) hasActiveConsoleSession(node nodes.OsqueryNode) bool {
 	if h.OsqueryValues == nil || !h.OsqueryValues.Console {
 		return false
 	}
-	if node.ID == 0 || node.UUID == "" || node.EnvironmentID == 0 || h.Queries == nil || h.Queries.DB == nil {
-		return false
-	}
-	var count int64
-	if err := h.Queries.DB.Model(&console.Session{}).
-		Where("node_id = ? AND node_uuid = ? AND environment_id = ? AND active = ? AND updated_at >= ?", node.ID, node.UUID, node.EnvironmentID, true, time.Now().Add(-consoleSessionFreshness)).
-		Count(&count).Error; err != nil {
-		log.Debug().Err(err).Msg("error checking active console session for accelerated query read")
-		return false
-	}
-	return count > 0
+	return h.hasActiveSession(node, "console", &console.Session{})
 }
 
 func (h *HandlersTLS) hasActiveFileExplorerSession(node nodes.OsqueryNode) bool {
 	if h.OsqueryValues == nil || !h.OsqueryValues.FileExplorer {
 		return false
 	}
+	return h.hasActiveSession(node, "fileexplorer", &fileexplorer.Session{})
+}
+
+func (h *HandlersTLS) hasActiveSession(node nodes.OsqueryNode, kind string, model any) bool {
 	if node.ID == 0 || node.UUID == "" || node.EnvironmentID == 0 || h.Queries == nil || h.Queries.DB == nil {
 		return false
 	}
-	var count int64
-	if err := h.Queries.DB.Model(&fileexplorer.Session{}).
-		Where("node_id = ? AND node_uuid = ? AND environment_id = ? AND active = ? AND updated_at >= ?", node.ID, node.UUID, node.EnvironmentID, true, time.Now().Add(-consoleSessionFreshness)).
-		Count(&count).Error; err != nil {
-		log.Debug().Err(err).Msg("error checking active file explorer session for accelerated query read")
+	active, err := h.SessionHints.Active(context.Background(), kind, node.EnvironmentID, node.ID, node.UUID, func() (time.Time, error) {
+		var session struct{ UpdatedAt time.Time }
+		err := h.Queries.DB.Model(model).Select("updated_at").
+			Where("node_id = ? AND node_uuid = ? AND environment_id = ? AND active = ? AND updated_at >= ?", node.ID, node.UUID, node.EnvironmentID, true, time.Now().Add(-consoleSessionFreshness)).
+			Order("updated_at DESC").Limit(1).Find(&session).Error
+		return session.UpdatedAt, err
+	})
+	if err != nil {
+		log.Debug().Err(err).Str("kind", kind).Msg("error checking active session for accelerated query read")
 		return false
 	}
-	return count > 0
+	return active
 }
 
 func (h *HandlersTLS) acceleratedSeconds(ctx context.Context) int {

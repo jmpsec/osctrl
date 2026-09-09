@@ -103,6 +103,12 @@ func initAuthFlag(params *ServiceParameters, defaultValue string, usage string) 
 // InitTLSFlags initializes all the flags needed for the TLS service
 func InitTLSFlags(params *ServiceParameters) []cli.Flag {
 	var allFlags []cli.Flag
+	allFlags = append(allFlags, &cli.DurationFlag{
+		Name:        "query-dispatch-ttl",
+		Usage:       "Empty distributed-query cache TTL; non-positive values use the 2m default",
+		Sources:     cli.EnvVars("QUERY_DISPATCH_TTL"),
+		Destination: &params.Osquery.QueryDispatchTTL,
+	})
 	// Add flags by category
 	allFlags = append(allFlags, initConfigFlags(params, ServiceTLS)...)
 	allFlags = append(allFlags, initServiceFlags(params)...)

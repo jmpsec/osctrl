@@ -278,6 +278,14 @@ Concrete example for config:
 6. It queues a `lastSeenUpdate` in the batch writer.
 7. It returns `env.Configuration` as the osquery config payload.
 
+### Steady-state database load
+
+- Node check-ins are coalesced per TLS process and persisted in parameterized bulk updates of at most 100 nodes. Each node retains its observation timestamp, normalized to database precision; older observations cannot replace newer timestamps or IPs. Equal stored timestamps keep the first persisted IP. The existing writer batch size, timeout, and buffer settings still control collection. The queue remains process-local and best-effort on shutdown or database errors; it is not a durable heartbeat store.
+- Empty distributed-query results are cached in Redis for two minutes by default, configurable through `osquery.queryDispatchTTL`, `--query-dispatch-ttl`, or `QUERY_DISPATCH_TTL`. Non-positive values select the default. Query creation invalidates targeted nodes; Redis `WATCH` prevents an in-flight empty SQL result from refilling an invalidated entry. SQL errors are not cached, and TLS returns HTTP 503 so agents can retry.
+- When acceleration is disabled, query reads skip session checks entirely. Otherwise, shared console/file-explorer hints cache absence for two minutes and presence for at most five seconds, bounded by the existing 30-second session freshness window. Session mutations invalidate hints after committing; token-checked refills reject obsolete lookups. These hints control polling only, never authorization.
+- Redis failures fall back to SQL. Failed invalidations can delay query discovery by the configured dispatch TTL or session acceleration by two minutes. Direct-database CLI mode has no Redis connection and also relies on dispatch TTL expiry; use API-mode query/carve submission for immediate invalidation. Upgrade all API/TLS replicas before relying on race-safe invalidation; old replicas do not implement the new refill protocol. Longer TTLs trade fewer SQL reads for a larger failure-time staleness window.
+- Real-engine regression tests are opt-in: `OSCTRL_TEST_POSTGRES_DSN` and `OSCTRL_TEST_MYSQL_DSN` exercise bulk updates using temporary prefixed tables. `OSCTRL_TEST_REDIS_ADDR` exercises query/session cache races against a disposable Redis instance; the optional `OSCTRL_TEST_REDIS_CONTAINER` test restarts that disposable container and requires a fixed host port.
+
 ### operator/API flow
 
 ```text
