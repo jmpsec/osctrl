@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { HealthPage } from './HealthPage';
 import type { HealthStatus } from '$/api/health';
+import { setLanguageEphemeral } from '$/i18n/i18n';
 
 const mockGetHealth = vi.fn<() => Promise<HealthStatus>>();
 vi.mock('$/api/health', () => ({
@@ -49,6 +50,65 @@ describe('HealthPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetHealth.mockResolvedValue(makeStatus());
+  });
+
+  afterEach(async () => {
+    await act(() => setLanguageEphemeral('en'));
+  });
+
+  it('updates translated headings, statuses, details, and numbers when the language changes', async () => {
+    const user = userEvent.setup();
+    mockGetHealth.mockResolvedValue(makeStatus({
+      components: [{
+        id: 'database', name: 'Database', status: 'operational', summary: 'reachable in 2ms',
+        details: {
+          degraded: false, latency_ms: 2.5, diagnostic_code: 'DB_OK',
+          reported_at: '2026-09-09T10:00:00.000Z',
+        },
+      }],
+    }));
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: /Database/ }));
+    await act(() => setLanguageEphemeral('es'));
+
+    expect(screen.getByRole('heading', { name: 'Estado de salud' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Servicios' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Estado de actualización' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Estado del sistema' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Actualizar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Base de datos/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Operativo')).toBeInTheDocument();
+    expect(screen.getByText('Latencia (ms)')).toBeInTheDocument();
+    expect(screen.getByText('2,5')).toBeInTheDocument();
+    expect(screen.getByText(new Intl.DateTimeFormat('es-ES', {
+      dateStyle: 'medium', timeStyle: 'medium',
+    }).format(new Date('2026-09-09T10:00:00.000Z')))).toBeInTheDocument();
+    expect(screen.getByText('sí')).toBeInTheDocument();
+    expect(screen.getByText('DB_OK')).toBeInTheDocument();
+    expect(screen.getByText('reachable in 2ms')).toBeInTheDocument();
+    expect(screen.getByText('Diagnostic code')).toBeInTheDocument();
+    expect(mockGetHealth).toHaveBeenCalledTimes(1);
+  });
+
+  it('translates runtime labels and interpolates version warnings in Catalan', async () => {
+    await setLanguageEphemeral('ca');
+    mockGetHealth.mockResolvedValue(makeStatus({
+      upgrade: { current: '0.5.8', up_to_date: false, checked: false, skew: true, api_version: '0.5.8', tls_version: '0.5.7' },
+    }));
+    renderPage();
+    expect(await screen.findByText('en directe')).toBeInTheDocument();
+    expect(screen.getByText('Heap assignat')).toBeInTheDocument();
+    expect(screen.getByText('La comprovació de noves versions encara no s’ha executat')).toBeInTheDocument();
+    expect(screen.getByText('Versions diferents — osctrl-api 0.5.8 / osctrl-tls 0.5.7')).toBeInTheDocument();
+    expect(screen.queryByText('Health Status')).not.toBeInTheDocument();
+  });
+
+  it('translates the error heading while preserving the API diagnostic', async () => {
+    await setLanguageEphemeral('es');
+    mockGetHealth.mockRejectedValue(new Error('health reporting not enabled'));
+    renderPage();
+    expect(await screen.findByText('Datos de salud no disponibles')).toBeInTheDocument();
+    expect(screen.getByText('health reporting not enabled')).toBeInTheDocument();
   });
 
   it('lists every component with its status', async () => {
