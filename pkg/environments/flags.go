@@ -11,12 +11,16 @@ import (
 const (
 	// CarverBlockSizeValue to configure size in bytes for carver blocks
 	CarverBlockSizeValue string = "5120000"
+	// ReadMaxValue to configure the read_max value for osquery, 1GB = 1073741824 bytes
+	ReadMaxValue string = "1073741824"
 	// FlagGenericValue to use as generator for generic flags
 	FlagGenericValue string = `--{{ .FlagName }}={{ .FlagValue }}`
 	// FlagTLSServerCerts for the --tls_server_certs flag
 	FlagNameTLSServerCerts string = `tls_server_certs`
 	// FlagCarverBlockSize for the --carver_block_size flag
 	FlagNameCarverBlockSize string = `carver_block_size`
+	// FlagReadMax to use as generator for the --read_max flag
+	FlagReadMax string = `read_max`
 	// FlagsConfigPlugin to configure the config plugin
 	FlagsConfigPlugin string = `
 --config_plugin=tls
@@ -53,6 +57,7 @@ const (
 --host_identifier=uuid
 --force=true
 --utc=true
+{{ .FlagReadMaxValue }}
 --enroll_secret_path={{ .SecretFile }}
 --enroll_tls_endpoint=/{{ .Environment.UUID }}/{{ .Environment.EnrollPath }}
 {{ .FlagsConfigPlugin }}
@@ -80,6 +85,7 @@ type flagData struct {
 	FlagsCarverPlugin string
 	FlagServerCerts   string
 	FlagCarverBlock   string
+	FlagReadMaxValue  string
 }
 
 // GenServerCertsFlag to generate the --tls_server_certs flag
@@ -96,6 +102,14 @@ func GenCarveBlockSizeFlag(blockSize string) string {
 		return ""
 	}
 	return GenSingleFlag("blocksize", FlagNameCarverBlockSize, blockSize)
+}
+
+// GenReadMaxFlag to generate the --read_max flag
+func GenReadMaxFlag(readMax string) string {
+	if readMax == "" {
+		return ""
+	}
+	return GenSingleFlag("readmax", FlagReadMax, readMax)
 }
 
 // GenSingleFlag to generate a generic flag to be used by osquery
@@ -191,6 +205,7 @@ func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, cer
 		FlagsQueryPlugin:  queryFlags,
 		FlagsCarverPlugin: carverFlags,
 		FlagServerCerts:   flagServerCerts,
+		FlagReadMaxValue:  GenReadMaxFlag(ReadMaxValue),
 	}
 	return ParseFlagTemplate("flags", FlagsTemplate, data), nil
 }
