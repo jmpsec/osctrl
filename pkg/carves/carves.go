@@ -421,6 +421,6 @@ func (c *Carves) ArchiveLocal(destPath string, carve CarvedFile, blocks []Carved
 
 func (c *Carves) notifyChange(carve CarvedFile) {
 	if c.Events != nil {
-		c.Events.Publish(events.Hint{EnvironmentID: carve.EnvironmentID, Topic: events.Carves, Name: carve.QueryName})
+		c.Events.Publish(events.Hint{EnvironmentID: carve.EnvironmentID, Topic: events.Carves, Name: carve.QueryName, Change: events.ChangeFiles})
 	}
 }

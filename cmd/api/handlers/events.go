@@ -19,6 +19,7 @@ type ResourceChanged struct {
 	EnvironmentUUID string `json:"environment_uuid"`
 	Topic           string `json:"topic"`
 	Name            string `json:"name"`
+	Change          string `json:"change,omitempty"`
 }
 
 // EventsHandler streams authorized query/carve invalidations.
@@ -162,7 +163,11 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for hint := range pending {
-				if err := write("resource.changed", ResourceChanged{1, env.UUID, hint.Topic, hint.Name}); err != nil {
+				change := hint.Change
+				if change == "" {
+					change = events.ChangeMetadata
+				}
+				if err := write("resource.changed", ResourceChanged{SchemaVersion: 1, EnvironmentUUID: env.UUID, Topic: hint.Topic, Name: hint.Name, Change: change}); err != nil {
 					return
 				}
 				delete(pending, hint)

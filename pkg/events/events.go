@@ -24,6 +24,9 @@ var (
 const (
 	Queries            = "queries"
 	Carves             = "carves"
+	ChangeMetadata     = "metadata"
+	ChangeResults      = "results"
+	ChangeFiles        = "files"
 	maxConnections     = 1000
 	maxUserConnections = 8
 	queueSize          = 64
@@ -35,10 +38,14 @@ type Hint struct {
 	EnvironmentID uint   `json:"environment_id"`
 	Topic         string `json:"topic"`
 	Name          string `json:"name"`
+	Change        string `json:"change,omitempty"`
 }
 
 func (h Hint) Valid() bool {
-	return h.EnvironmentID != 0 && (h.Topic == Queries || h.Topic == Carves) && len(h.Name) > 0 && len(h.Name) <= 256
+	validChange := h.Change == "" || h.Change == ChangeMetadata ||
+		(h.Topic == Queries && h.Change == ChangeResults) ||
+		(h.Topic == Carves && (h.Change == ChangeResults || h.Change == ChangeFiles))
+	return h.EnvironmentID != 0 && (h.Topic == Queries || h.Topic == Carves) && len(h.Name) > 0 && len(h.Name) <= 256 && validChange
 }
 
 type Publisher interface{ Publish(Hint) }

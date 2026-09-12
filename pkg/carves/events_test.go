@@ -29,8 +29,8 @@ func TestCarveNotificationsFollowSuccessfulPersistence(t *testing.T) {
 	require.Equal(t, 1, stored.CompletedBlocks)
 	require.Equal(t, StatusCompleted, stored.Status)
 	require.Equal(t, []events.Hint{
-		{EnvironmentID: 1, Topic: events.Carves, Name: file.QueryName},
-		{EnvironmentID: 1, Topic: events.Carves, Name: file.QueryName},
+		{EnvironmentID: 1, Topic: events.Carves, Name: file.QueryName, Change: events.ChangeFiles},
+		{EnvironmentID: 1, Topic: events.Carves, Name: file.QueryName, Change: events.ChangeFiles},
 	}, recorder.hints)
 	recorder.hints = nil
 	require.NoError(t, db.Migrator().DropTable(&CarvedFile{}))

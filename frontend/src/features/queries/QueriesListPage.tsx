@@ -1,4 +1,4 @@
-import { useResourceUpdates } from '$/lib/live-updates';
+import { resourceRefetchInterval, useResourceUpdates } from '$/lib/live-updates';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
@@ -53,7 +53,7 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 // QueriesListPage
 // ---------------------------------------------------------------------------
 export function QueriesListPage() {
-  useResourceUpdates('queries');
+  const queriesLive = useResourceUpdates('queries');
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.queries'));
   const { env } = useParams({ from: '/_app/env/$env/queries' });
@@ -99,7 +99,7 @@ export function QueriesListPage() {
         pageSize,
       }),
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    refetchInterval: resourceRefetchInterval(queriesLive),
     placeholderData: (prev: QueriesPagedResponse | undefined) => prev,
   });
 
