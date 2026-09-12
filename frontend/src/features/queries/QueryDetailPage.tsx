@@ -1,4 +1,4 @@
-import { useResourceUpdates } from '$/lib/live-updates';
+import { resourceRefetchInterval, useResourceUpdates } from '$/lib/live-updates';
 import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
@@ -44,7 +44,7 @@ function ResultStatusBadge({ code }: { code: number }) {
 const DEFAULT_PAGE_SIZE = 50;
 
 export function QueryDetailPage() {
-  useResourceUpdates('queries');
+  const queriesLive = useResourceUpdates('queries');
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.query'));
   const { env, name } = useParams({ from: '/_app/env/$env/queries/$name' });
@@ -65,7 +65,7 @@ export function QueryDetailPage() {
     queryKey: ['query', env, name],
     queryFn: () => getQuery(env, name),
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    refetchInterval: ({ state }) => resourceRefetchInterval(queriesLive, state.data),
   });
 
   const qc = useQueryClient();
@@ -88,7 +88,7 @@ export function QueryDetailPage() {
     queryKey: ['query-results', env, name, page, pageSize, since],
     queryFn: () => listQueryResults({ env, name, page, pageSize, since }),
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    refetchInterval: () => resourceRefetchInterval(queriesLive, query),
     enabled: !!query,
   });
 
@@ -296,10 +296,9 @@ export function QueryDetailPage() {
           )}
         </h2>
         <div className="ml-auto flex items-center gap-2">
-          {/* Refresh button — mirrors the legacy admin's "Refresh table" control.
-              The page also polls every 15s via TanStack Query's refetchInterval,
-              but an explicit button gives operators the same control they had
-              in legacy when watching a long-running distributed query land. */}
+          {/* Refresh button mirrors the legacy admin's "Refresh table" control.
+              Automatic refresh is adaptive, and the explicit button keeps the
+              same operator control when watching a distributed query land. */}
           <button
             type="button"
             // Refresh everything: the query, its results, the queries list,

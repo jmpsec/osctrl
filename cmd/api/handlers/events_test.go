@@ -98,8 +98,10 @@ func TestEventStreamRevocationAndCleanup(t *testing.T) {
 				}
 			}
 			require.Contains(t, frame(), "stream.ready")
-			source.ch <- events.Hint{EnvironmentID: env.ID, Topic: events.Queries, Name: "query-1"}
-			require.Contains(t, frame(), "query-1")
+			source.ch <- events.Hint{EnvironmentID: env.ID, Topic: events.Queries, Name: "query-1", Change: events.ChangeResults}
+			queryFrame := frame()
+			require.Contains(t, queryFrame, "query-1")
+			require.Contains(t, queryFrame, `"change":"results"`)
 			if revokeToken {
 				valid.Store(false)
 			} else {

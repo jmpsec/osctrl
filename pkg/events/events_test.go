@@ -26,7 +26,7 @@ func TestSubscriptionIsolationAndReset(t *testing.T) {
 	other, closeOther, err := b.Subscribe("bob", 2, []string{Queries})
 	require.NoError(t, err)
 	defer closeOther()
-	hint := Hint{1, Queries, "q"}
+	hint := Hint{EnvironmentID: 1, Topic: Queries, Name: "q"}
 	b.deliver(hint)
 	require.Equal(t, hint, <-queries)
 	select {
@@ -60,7 +60,7 @@ func TestConnectionLimitAndSlowSubscriber(t *testing.T) {
 	_, _, err := b.Subscribe("alice", 1, []string{Queries})
 	require.ErrorIs(t, err, ErrLimit)
 	for i := 0; i <= queueSize; i++ {
-		b.deliver(Hint{1, Queries, "q"})
+		b.deliver(Hint{EnvironmentID: 1, Topic: Queries, Name: "q"})
 	}
 	require.Empty(t, b.subs)
 	require.EqualValues(t, maxUserConnections, b.Dropped())
@@ -77,7 +77,7 @@ func TestConcurrentSubscriptionCleanup(t *testing.T) {
 			if err != nil {
 				return
 			}
-			b.deliver(Hint{1, Queries, "q"})
+			b.deliver(Hint{EnvironmentID: 1, Topic: Queries, Name: "q"})
 			cancel()
 			cancel()
 		}(i)
@@ -93,7 +93,13 @@ func TestConfigurationAndHintValidation(t *testing.T) {
 		_, err := New(client, namespace, false)
 		require.Error(t, err)
 	}
-	for _, hint := range []Hint{{0, Queries, "q"}, {1, "console", "q"}, {1, Queries, ""}} {
+	for _, hint := range []Hint{
+		{EnvironmentID: 0, Topic: Queries, Name: "q"},
+		{EnvironmentID: 1, Topic: "console", Name: "q"},
+		{EnvironmentID: 1, Topic: Queries, Name: ""},
+		{EnvironmentID: 1, Topic: Queries, Name: "q", Change: "other"},
+		{EnvironmentID: 1, Topic: Queries, Name: "q", Change: ChangeFiles},
+	} {
 		require.False(t, hint.Valid())
 	}
 }
@@ -132,7 +138,7 @@ func TestRedisFanoutAndNamespaceIsolation(t *testing.T) {
 		return ch
 	}
 	a, b, other := subscribe(first), subscribe(second), subscribe(isolated)
-	want := Hint{1, Queries, "q"}
+	want := Hint{EnvironmentID: 1, Topic: Queries, Name: "q"}
 	writer.Publish(want)
 	for _, ch := range []<-chan Hint{a, b} {
 		select {
@@ -212,7 +218,7 @@ func TestRedisReconnectResetsExistingStreams(t *testing.T) {
 		}
 		return err == nil
 	}, 3*time.Second, 10*time.Millisecond)
-	want := Hint{1, Queries, "after-reconnect"}
+	want := Hint{EnvironmentID: 1, Topic: Queries, Name: "after-reconnect"}
 	b.Publish(want)
 	select {
 	case got := <-stream:
