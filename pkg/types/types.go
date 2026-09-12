@@ -57,6 +57,21 @@ type VerifyResponse struct {
 	Flags          string `json:"flags"`
 	Certificate    string `json:"certificate"`
 	OsqueryVersion string `json:"osquery_version"`
+	// OsquerySHA256 is the expected SHA-256 of the osquery package osctrld
+	// should install. osctrld refuses to install an unverified package
+	// unless it is given a digest another way, so an empty value here is a
+	// safe default rather than a silent downgrade in security: the node
+	// falls back to its own --osquery-sha256, or refuses.
+	//
+	// One digest covers one artifact, and osquery ships a different package
+	// per format and architecture (deb amd64/arm64, rpm x86_64/aarch64, the
+	// macOS pkg, the Windows msi). osctrld picks its URL from its own
+	// runtime.GOOS/GOARCH and does not tell the server which one it will
+	// fetch, so osctrl can only answer this correctly for a deployment that
+	// installs a single package. Mixed fleets leave it unset and configure
+	// the digest on the node until the verify request carries the node's
+	// package format.
+	OsquerySHA256 string `json:"osquery_sha256"`
 }
 
 // ScriptRequest to retrieve script
@@ -413,14 +428,14 @@ var SupportedLanguages = map[string]struct{}{
 
 // UserMeResponse is the GET/PATCH /api/v1/users/me payload.
 type UserMeResponse struct {
-	Username    string                   `json:"username"`
-	Email       string                   `json:"email"`
-	Fullname    string                   `json:"fullname"`
-	Admin       bool                     `json:"admin"`
-	Service     bool                     `json:"service"`
-	UUID        string                   `json:"uuid"`
-	TokenExpire time.Time                `json:"token_expire"`
-	LastAccess  time.Time                `json:"last_access"`
+	Username    string    `json:"username"`
+	Email       string    `json:"email"`
+	Fullname    string    `json:"fullname"`
+	Admin       bool      `json:"admin"`
+	Service     bool      `json:"service"`
+	UUID        string    `json:"uuid"`
+	TokenExpire time.Time `json:"token_expire"`
+	LastAccess  time.Time `json:"last_access"`
 	// PreferredLanguage mirrors AdminUser.PreferredLanguage — the
 	// UI language the operator picked. Empty means "no server-side
 	// preference"; the SPA falls back to its own detection.

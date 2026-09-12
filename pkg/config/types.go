@@ -231,7 +231,14 @@ type YAMLConfigurationRedis struct {
 
 // YAMLConfigurationOsquery to hold the osquery configuration values
 type YAMLConfigurationOsquery struct {
-	Version      string `yaml:"version"`
+	Version string `yaml:"version"`
+	// SHA256 is the expected SHA-256 of the osquery package nodes install,
+	// handed to osctrld through the verify response so it can check what it
+	// downloaded. Only meaningful when every node installs the same package:
+	// osquery publishes a different artifact per format and architecture, and
+	// the verify request does not say which one the node will fetch. Leave it
+	// empty on a mixed fleet and set the digest on the node instead.
+	SHA256       string `yaml:"sha256"`
 	TablesFile   string `yaml:"tablesFile"`
 	Logger       bool   `yaml:"logger"`
 	Config       bool   `yaml:"config"`

@@ -191,6 +191,31 @@ func WithPosture(pm *posture.PostureManager) Option {
 	}
 }
 
+// osqueryVersion returns the osquery version this deployment wants nodes to
+// run: the configured one when set, otherwise the version osctrl was built
+// against. The --osquery-version flag ("Version of osquery to be used") had no
+// reader at all, so pinning a version in the config changed nothing and nodes
+// were told the compile-time value regardless.
+func (h *HandlersTLS) osqueryVersion() string {
+	if h.OsqueryValues != nil {
+		if v := strings.TrimSpace(h.OsqueryValues.Version); v != "" {
+			return v
+		}
+	}
+	return defOsqueryVersion
+}
+
+// osquerySHA256 returns the configured digest of the osquery package, or an
+// empty string when none is set. Empty is deliberate and safe: osctrld then
+// falls back to its own --osquery-sha256 and, failing that, refuses to install
+// an unverified package.
+func (h *HandlersTLS) osquerySHA256() string {
+	if h.OsqueryValues == nil {
+		return ""
+	}
+	return strings.TrimSpace(h.OsqueryValues.SHA256)
+}
+
 // WithOsqueryValues to pass osquery configuration values
 func WithOsqueryValues(values *config.YAMLConfigurationOsquery) Option {
 	return func(h *HandlersTLS) {
