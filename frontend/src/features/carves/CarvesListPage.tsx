@@ -1,4 +1,4 @@
-import { useResourceUpdates } from '$/lib/live-updates';
+import { resourceRefetchInterval, useResourceUpdates } from '$/lib/live-updates';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
@@ -55,7 +55,7 @@ function carveStatusTabs(t: ReturnType<typeof useTranslation>['t']): StatusTab<C
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
 export function CarvesListPage() {
-  useResourceUpdates('carves');
+  const carvesLive = useResourceUpdates('carves');
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.carves'));
   const { env } = useParams({ from: '/_app/env/$env/carves' });
@@ -100,7 +100,7 @@ export function CarvesListPage() {
         pageSize,
       }),
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    refetchInterval: resourceRefetchInterval(carvesLive),
     placeholderData: (prev: CarvesPagedResponse | undefined) => prev,
   });
 

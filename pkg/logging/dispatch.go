@@ -45,8 +45,8 @@ func (l *LoggerTLS) DispatchQueries(queryData types.QueryWriteData, node nodes.O
 		queryData.Status,
 		debug)
 	// Export completion is only an invalidation hint. Some sinks do not
-	// acknowledge persistence, so clients must retain result polling.
+	// acknowledge persistence, so clients must retain result reconciliation.
 	if l.Queries != nil {
-		l.Queries.NotifyChange(queryData.Name, node.EnvironmentID)
+		l.Queries.NotifyResults(queryData.Name, node.EnvironmentID)
 	}
 }

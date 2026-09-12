@@ -615,7 +615,7 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 			return err
 		}
 	}
-	q.notifyChange(query)
+	q.notifyChange(query, events.ChangeMetadata)
 	return nil
 }
 
@@ -705,19 +705,28 @@ func (q *Queries) GetByEnvTargetPaged(envID uint, target, qtype, search string, 
 	return QueryListPage{Items: items, TotalItems: total}, nil
 }
 
-// NotifyChange sends a best-effort invalidation after a caller's write/commit.
+// NotifyChange sends a best-effort metadata invalidation after a caller's write/commit.
 // Interactive/hidden query types are deliberately excluded from broad topics.
 func (q *Queries) NotifyChange(name string, environmentID uint) {
+	q.notifyChangeByName(name, environmentID, events.ChangeMetadata)
+}
+
+// NotifyResults sends a best-effort result invalidation after a query log writer runs.
+func (q *Queries) NotifyResults(name string, environmentID uint) {
+	q.notifyChangeByName(name, environmentID, events.ChangeResults)
+}
+
+func (q *Queries) notifyChangeByName(name string, environmentID uint, change string) {
 	if q.Events == nil {
 		return
 	}
 	query, err := q.Get(name, environmentID)
 	if err == nil {
-		q.notifyChange(query)
+		q.notifyChange(query, change)
 	}
 }
 
-func (q *Queries) notifyChange(query DistributedQuery) {
+func (q *Queries) notifyChange(query DistributedQuery, change string) {
 	if q.Events == nil {
 		return
 	}
@@ -730,5 +739,5 @@ func (q *Queries) notifyChange(query DistributedQuery) {
 	default:
 		return
 	}
-	q.Events.Publish(events.Hint{EnvironmentID: query.EnvironmentID, Topic: topic, Name: query.Name})
+	q.Events.Publish(events.Hint{EnvironmentID: query.EnvironmentID, Topic: topic, Name: query.Name, Change: change})
 }

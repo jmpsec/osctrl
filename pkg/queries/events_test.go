@@ -25,6 +25,7 @@ func TestQueryEventsExcludeInteractiveAndHiddenTypes(t *testing.T) {
 				require.Len(t, recorder.hints, 1)
 				require.Equal(t, query.Name, recorder.hints[0].Name)
 				require.Equal(t, uint(1), recorder.hints[0].EnvironmentID)
+				require.Equal(t, events.ChangeMetadata, recorder.hints[0].Change)
 			} else {
 				require.Empty(t, recorder.hints)
 			}

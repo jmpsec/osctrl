@@ -1,4 +1,4 @@
-import { useResourceUpdates } from '$/lib/live-updates';
+import { resourceRefetchInterval, useResourceUpdates } from '$/lib/live-updates';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getCarve, getCarveArchiveUrl, actOnCarve } from '$/api/carves';
 import { listNodes } from '$/api/nodes';
 import { AuthError } from '$/api/client';
-import type { CarveFile } from '$/api/types';
+import type { CarveDetail, CarveFile } from '$/api/types';
 import { formatRelative } from '$/lib/time';
 import { cn } from '$/lib/cn';
 import { EmptyState } from '$/components/data/EmptyState';
@@ -66,8 +66,20 @@ function hasRealTimestamp(value?: string): boolean {
   return typeof value === 'string' && value.length > 0 && !value.startsWith('0001-01-01');
 }
 
+function carveRefetchInterval(live: boolean, detail?: CarveDetail) {
+  const query = detail?.query;
+  if (!query) return resourceRefetchInterval(live);
+  const status = (query.carve_status || '').toUpperCase();
+  return resourceRefetchInterval(live, {
+    active: query.active || status === 'PENDING' || status === 'ACTIVE',
+    completed: query.completed || status === 'COMPLETED',
+    expired: query.expired || status === 'EXPIRED',
+    deleted: query.deleted || status === 'DELETED',
+  });
+}
+
 export function CarveDetailPage() {
-  useResourceUpdates('carves');
+  const carvesLive = useResourceUpdates('carves');
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.carve'));
   const { env, name } = useParams({ from: '/_app/env/$env/carves/$name' });
@@ -77,7 +89,7 @@ export function CarveDetailPage() {
     queryKey: ['carve', env, name],
     queryFn: () => getCarve(env, name),
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    refetchInterval: ({ state }) => carveRefetchInterval(carvesLive, state.data),
   });
   const qc = useQueryClient();
   const completeMutation = useMutation({
@@ -223,10 +235,9 @@ export function CarveDetailPage() {
             )}
           </h2>
           <div className="ml-auto flex items-center gap-2">
-            {/* Refresh button — mirrors the query detail page. Reloads the
+            {/* Refresh button mirrors the query detail page. Reloads the
             carve, its carved files, the carves list, and the node lookup so
-            an operator watching blocks land can pull the latest state now
-            instead of waiting for the 15s poll. */}
+            an operator watching blocks land can pull the latest state now. */}
             <button
               type="button"
               onClick={() => {
