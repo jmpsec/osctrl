@@ -93,8 +93,24 @@ func main() {
 				Sources:     cli.EnvVars("OSCTRL_LOG_LEVEL"),
 				Destination: &logLevel,
 			},
+			// Same output as the other binaries. Printing to stdout is safe
+			// here even though stdout is the MCP transport: this exits before
+			// the transport is ever created.
+			&cli.BoolFlag{
+				Name:    "version",
+				Aliases: []string{"v"},
+				Usage:   "Print version information",
+				Action: func(ctx context.Context, cmd *cli.Command, b bool) error {
+					if b {
+						fmt.Printf("%s version=%s commit=%s date=%s\n", serviceName, buildVersion, buildCommit, buildDate)
+						os.Exit(0)
+					}
+					return nil
+				},
+			},
 		},
-		Action: run,
+		HideVersion: true,
+		Action:      run,
 	}
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		// stderr, never stdout: stdout is the MCP transport and any stray
@@ -123,7 +139,8 @@ func run(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("error reaching osctrl-api at %s - %w", cfg.URL, err)
 	}
 
-	log.Info().Str("api", cfg.URL).Str("version", buildVersion).Bool("writes", allowWrites).
+	log.Info().Str("api", cfg.URL).Str("version", buildVersion).
+		Str("commit", buildCommit).Str("date", buildDate).Bool("writes", allowWrites).
 		Msgf("%s starting on stdio", serviceName)
 	opts := []osctrlmcp.Option{}
 	if allowWrites {
