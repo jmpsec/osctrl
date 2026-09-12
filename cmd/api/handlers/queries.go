@@ -261,6 +261,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	// Return query name as serialized response
 	log.Debug().Msgf("Created query %s with id %d", newQuery.Name, newQuery.ID)
 	h.AuditLog.NewQuery(ctx[ctxUser], newQuery.Query, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	h.Queries.NotifyChange(newQuery.Name, env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiQueriesResponse{Name: newQuery.Name})
 }
 
@@ -351,6 +352,7 @@ func (h *HandlersApi) QueriesActionHandler(w http.ResponseWriter, r *http.Reques
 	// Return message as serialized response
 	log.Debug().Msgf("Returned message %s", msgReturn)
 	h.AuditLog.QueryAction(ctx[ctxUser], actionVar+" query "+nameVar, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	h.Queries.NotifyChange(nameVar, env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }
 

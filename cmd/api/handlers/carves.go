@@ -447,6 +447,7 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debug().Msgf("Created carve %s", newQuery.Name)
 	h.AuditLog.NewCarve(ctx[ctxUser], newQuery.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	h.Queries.NotifyChange(newQuery.Name, env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, types.ApiQueriesResponse{Name: newQuery.Name})
 }
 
@@ -529,6 +530,7 @@ func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request
 	}
 	log.Debug().Msgf("%s", msgReturn)
 	h.AuditLog.CarveAction(ctx[ctxUser], actionVar+" carve "+nameVar, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	h.Queries.NotifyChange(nameVar, env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: msgReturn})
 }
 

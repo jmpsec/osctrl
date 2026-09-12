@@ -1,3 +1,4 @@
+import { useResourceUpdates } from '$/lib/live-updates';
 import { useParams, useNavigate, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
@@ -66,6 +67,7 @@ function hasRealTimestamp(value?: string): boolean {
 }
 
 export function CarveDetailPage() {
+  useResourceUpdates('carves');
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.carve'));
   const { env, name } = useParams({ from: '/_app/env/$env/carves/$name' });

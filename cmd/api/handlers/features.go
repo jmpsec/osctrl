@@ -8,7 +8,9 @@ import (
 
 // FeaturesResponse advertises server-side feature switches consumed by the SPA.
 type FeaturesResponse struct {
-	Posture bool `json:"posture"`
+	Posture     bool     `json:"posture"`
+	Events      bool     `json:"events"`
+	EventTopics []string `json:"event_topics"`
 	// ServiceConfig gates the whole Service Config section in the SPA. When
 	// false the /api/v1/service-config routes are not registered at all.
 	ServiceConfig bool `json:"service_config"`
@@ -30,12 +32,21 @@ type FeaturesResponse struct {
 }
 
 // FeaturesHandler — GET /api/v1/features.
+// @Summary Get enabled API features
+// @Tags Features
+// @Produce json
+// @Success 200 {object} FeaturesResponse
+// @Failure 401 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/features [get]
 func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, FeaturesResponse{
 		Posture:       h.PostureEnabled,
+		Events:        h.Events != nil,
+		EventTopics:   h.eventTopics(),
 		ServiceConfig: h.ServiceConfigEnabled,
 		LogSinks:      h.LogSinksEnabled,
 		AuthProviders: h.AuthProvidersEnabled,
@@ -45,4 +56,11 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 		FileExplorer:  h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,
 		Health:        h.Health != nil,
 	})
+}
+
+func (h *HandlersApi) eventTopics() []string {
+	if h.Events == nil {
+		return []string{}
+	}
+	return []string{"queries", "carves"}
 }

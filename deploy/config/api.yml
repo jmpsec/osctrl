@@ -10,6 +10,10 @@ version: 3
 
 # Main HTTP service behavior and shared service-level features.
 service:
+  # Optional live query/carve notifications. Enable on both API and TLS.
+  eventsEnabled: false
+  # Set a shared deployment-unique Redis channel namespace before enabling.
+  eventsNamespace: ""
   # Address to bind. Use 0.0.0.0 inside containers or behind a proxy.
   listener: 127.0.0.1
   # TCP port for osctrl-api.

@@ -21,6 +21,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
@@ -467,6 +468,17 @@ func osctrlService() {
 
 	// Initialize TLS handlers before router
 	log.Info().Msg("Initializing handlers")
+	var eventBus *events.Bus
+	if flagParams.Service.EventsEnabled {
+		eventBus, err = events.New(redis.Client, flagParams.Service.EventsNamespace, false)
+		if err != nil {
+			log.Fatal().Err(err).Msg("invalid events configuration")
+		}
+		defer eventBus.Close()
+		queriesmgr.Events = eventBus
+		filecarves.Events = eventBus
+	}
+
 	handlersTLS = handlers.CreateHandlersTLS(
 		handlers.WithEnvs(envs),
 		handlers.WithEnvCache(envCache),

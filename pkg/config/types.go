@@ -142,6 +142,10 @@ type YAMLConfigurationService struct {
 	// service_status table is never created, osctrl-tls writes no
 	// heartbeat, and the /api/v1/health routes are not registered.
 	HealthEnabled bool `yaml:"healthEnabled"`
+	// EventsEnabled enables best-effort SSE invalidation notifications.
+	EventsEnabled bool `yaml:"eventsEnabled"`
+	// EventsNamespace must be shared by API/TLS and unique within Redis.
+	EventsNamespace string `yaml:"eventsNamespace"`
 	// ServiceConfigEnabled controls whether the service-config API and the
 	// matching SPA section exist. It does not change how configuration is
 	// loaded: every boot seeds the YAML sections into the database and

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"github.com/jmpsec/osctrl/pkg/events"
+	"net/http"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/alerts"
@@ -36,7 +38,9 @@ const errorContent = "❌"
 const okContent = "✅"
 
 type HandlersApi struct {
-	DB *gorm.DB
+	DB                 *gorm.DB
+	Events             events.Subscriber
+	EventsAuthenticate func(*http.Request) bool
 	// LogReader is the read side of the status/result/query log store.
 	// When the TLS logger writes to S3, this is the S3-backed reader so
 	// the API can still surface logs to the frontend. When the logger

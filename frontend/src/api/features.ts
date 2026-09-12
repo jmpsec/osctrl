@@ -1,6 +1,8 @@
 import { apiFetch } from './client';
 
 export interface Features {
+  events?: boolean;
+  event_topics?: string[];
   posture: boolean;
   service_config: boolean;
   log_sinks?: boolean;

@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
@@ -23,6 +25,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/health"
@@ -602,6 +605,17 @@ func osctrlAPIService() {
 		return serviceConfigMgr.PersistToFile(config.ServiceAPI, path, loadedYAMLToServiceParams(loaded, path), settings.NoEnvironmentID)
 	}
 
+	var eventBus *events.Bus
+	if flagParams.Service.EventsEnabled {
+		eventBus, err = events.New(redis.Client, flagParams.Service.EventsNamespace, true)
+		if err != nil {
+			log.Fatal().Err(err).Msg("invalid events configuration")
+		}
+		defer eventBus.Close()
+		queriesmgr.Events = eventBus
+		filecarves.Events = eventBus
+	}
+
 	handlersApi = handlers.CreateHandlersApi(
 		handlers.WithDB(db.Conn),
 		handlers.WithLogReader(logReader),
@@ -646,10 +660,20 @@ func osctrlAPIService() {
 		handlers.WithRestartCh(restartCh),
 	)
 
+	if eventBus != nil {
+		handlersApi.Events = eventBus
+	}
+	handlersApi.EventsAuthenticate = func(r *http.Request) bool {
+		return eventSessionValid(r, flagParams.Service.Auth, flagParams.JWT.JWTSecret)
+	}
+
 	// ///////////////////////// API
 	log.Info().Msg("Initializing router")
 	// Create router for API endpoint
 	muxAPI := http.NewServeMux()
+	if eventBus != nil {
+		muxAPI.Handle("GET /api/v1/events", handlerAuthCheck(http.HandlerFunc(handlersApi.EventsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	}
 	// API: root
 	muxAPI.HandleFunc("GET /", handlersApi.RootHandler)
 	// API: testing
@@ -1347,13 +1371,29 @@ func osctrlAPIService() {
 			serverErr <- srv.ListenAndServe()
 		}
 	}()
+	// Stop live streams before draining on process shutdown or restart.
+	shutdownSignals := make(chan os.Signal, 1)
+	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(shutdownSignals)
 	// Wait for either a server error or a restart signal.
 	select {
 	case err := <-serverErr:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
+	case <-shutdownSignals:
+		if eventBus != nil {
+			eventBus.Close()
+		}
+		drainCtx, cancelDrain := context.WithTimeout(context.Background(), restartDrainTimeout)
+		defer cancelDrain()
+		if err := srv.Shutdown(drainCtx); err != nil {
+			log.Err(err).Msg("error draining HTTP server")
+		}
 	case <-restartCh:
+		if eventBus != nil {
+			eventBus.Close()
+		}
 		log.Info().Msg("Service config apply triggered — draining requests before restart")
 		// Drain first. Exiting straight off the signal raced the apply
 		// handler's own 202: the handler had written the response but the
