@@ -1050,7 +1050,8 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		response = types.VerifyResponse{
 			Certificate:    env.Certificate,
 			Flags:          flagsStr,
-			OsqueryVersion: defOsqueryVersion,
+			OsqueryVersion: h.osqueryVersion(),
+			OsquerySHA256:  h.osquerySHA256(),
 		}
 	} else {
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
@@ -1257,7 +1258,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		fDesc = "Enrolling MSI Package for Windows"
-		fName = genPackageFilename(env.Name, settings.PackageMsi, defOsqueryVersion, version.OsctrlVersion)
+		fName = genPackageFilename(env.Name, settings.PackageMsi, version.OsqueryVersion, version.OsctrlVersion)
 		fPath, err = environments.PackageFilePath(enrollPackagesPath, env.Name, env.MsiPackage)
 	}
 	if err != nil {

@@ -185,6 +185,12 @@ rateLimits:
 osquery:
   # Empty-query dispatch cache lifetime; <=0 uses 2m. New queries invalidate it.
   queryDispatchTTL: 2m
+  # Expected SHA-256 of the osquery package nodes install. osctrld checks what
+  # it downloaded against this. Only set it when every node installs the same
+  # package: osquery ships a different artifact per format and architecture,
+  # and the verify request does not say which one a node will fetch. On a mixed
+  # fleet leave it empty and set --osquery-sha256 on the node instead.
+  sha256: ""
   # osquery schema version used for table metadata.
   version: 5.23.1
   # JSON schema file with osquery table metadata.
