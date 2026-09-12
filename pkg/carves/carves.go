@@ -9,6 +9,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/dbutil"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -63,6 +64,7 @@ type Carves struct {
 	DB     *gorm.DB
 	S3     *CarverS3
 	Carver string
+	Events events.Publisher
 }
 
 // CreateFileCarves to initialize the carves struct and tables
@@ -293,6 +295,7 @@ func (c *Carves) ChangeStatus(status, sessionid string) error {
 			return fmt.Errorf("update %w", err)
 		}
 	}
+	c.notifyChange(carve)
 	return nil
 }
 
@@ -305,6 +308,7 @@ func (c *Carves) CompleteBlock(sessionid string) error {
 	if err := c.DB.Model(&carve).Update("completed_blocks", carve.CompletedBlocks+1).Error; err != nil {
 		return fmt.Errorf("update %w", err)
 	}
+	c.notifyChange(carve)
 	return nil
 }
 
@@ -413,4 +417,10 @@ func (c *Carves) ArchiveLocal(destPath string, carve CarvedFile, blocks []Carved
 		res.Size += int64(len(toFile))
 	}
 	return res, nil
+}
+
+func (c *Carves) notifyChange(carve CarvedFile) {
+	if c.Events != nil {
+		c.Events.Publish(events.Hint{EnvironmentID: carve.EnvironmentID, Topic: events.Carves, Name: carve.QueryName})
+	}
 }

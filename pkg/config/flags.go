@@ -293,6 +293,18 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Service.AlertsEnabled,
 		},
 		&cli.BoolFlag{
+			Name:        "events-enabled",
+			Usage:       "Enable best-effort query/carve change notifications (API and TLS).",
+			Sources:     cli.EnvVars("SERVICE_EVENTS_ENABLED"),
+			Destination: &params.Service.EventsEnabled,
+		},
+		&cli.StringFlag{
+			Name:        "events-namespace",
+			Usage:       "Shared API/TLS event namespace, unique per deployment within Redis (required when enabled).",
+			Sources:     cli.EnvVars("SERVICE_EVENTS_NAMESPACE"),
+			Destination: &params.Service.EventsNamespace,
+		},
+		&cli.BoolFlag{
 			Name:        "health-enabled",
 			Value:       false,
 			Usage:       "Enable the health/system-status subsystem: component health, service heartbeats and runtime stats in the SPA. Disabled by default; when enabled osctrl-tls writes a heartbeat row every 60s and osctrl-api serves /api/v1/health/status. Requires a service restart to change.",

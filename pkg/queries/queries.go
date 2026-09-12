@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/dbutil"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -143,8 +144,9 @@ type QueryReadQueries map[string]string
 
 // Queries to handle on-demand queries
 type Queries struct {
-	DB    *gorm.DB
-	Cache *QueryDispatchCache
+	DB     *gorm.DB
+	Cache  *QueryDispatchCache
+	Events events.Publisher
 }
 
 // CreateQueries to initialize the queries struct
@@ -613,6 +615,7 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 			return err
 		}
 	}
+	q.notifyChange(query)
 	return nil
 }
 
@@ -700,4 +703,32 @@ func (q *Queries) GetByEnvTargetPaged(envID uint, target, qtype, search string, 
 		return QueryListPage{}, err
 	}
 	return QueryListPage{Items: items, TotalItems: total}, nil
+}
+
+// NotifyChange sends a best-effort invalidation after a caller's write/commit.
+// Interactive/hidden query types are deliberately excluded from broad topics.
+func (q *Queries) NotifyChange(name string, environmentID uint) {
+	if q.Events == nil {
+		return
+	}
+	query, err := q.Get(name, environmentID)
+	if err == nil {
+		q.notifyChange(query)
+	}
+}
+
+func (q *Queries) notifyChange(query DistributedQuery) {
+	if q.Events == nil {
+		return
+	}
+	topic := ""
+	switch query.Type {
+	case StandardQueryType:
+		topic = events.Queries
+	case CarveQueryType:
+		topic = events.Carves
+	default:
+		return
+	}
+	q.Events.Publish(events.Hint{EnvironmentID: query.EnvironmentID, Topic: topic, Name: query.Name})
 }

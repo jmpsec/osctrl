@@ -34,6 +34,9 @@ func TestFeaturesHandlerReportsPostureDisabledByDefault(t *testing.T) {
 	if resp.Alerts {
 		t.Fatalf("alerts feature: got true want false with nil manager")
 	}
+	if resp.Events || len(resp.EventTopics) != 0 {
+		t.Fatal("events must default off with no advertised topics")
+	}
 }
 
 func TestFeaturesHandlerReportsServiceConfigEnabled(t *testing.T) {

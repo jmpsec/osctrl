@@ -108,7 +108,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 			// Set middleware values
 			token := extractHeaderToken(r)
 			if token == "" {
-				if utils.AcceptsJSON(r) {
+				if utils.AcceptsJSON(r) || r.URL.Path == "/api/v1/events" {
 					utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusUnauthorized,
 						types.ApiErrorResponse{Error: "unauthorized", Code: "unauthorized"})
 					return
@@ -120,7 +120,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 			}
 			claims, valid := apiUsers.CheckToken(jwtSecret, token)
 			if !valid {
-				if utils.AcceptsJSON(r) {
+				if utils.AcceptsJSON(r) || r.URL.Path == "/api/v1/events" {
 					utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusUnauthorized,
 						types.ApiErrorResponse{Error: "unauthorized", Code: "unauthorized"})
 					return
@@ -139,7 +139,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 			tokenMatches := uerr == nil && user.APIToken != "" &&
 				subtle.ConstantTimeCompare([]byte(user.APIToken), []byte(token)) == 1
 			if !tokenMatches {
-				if utils.AcceptsJSON(r) {
+				if utils.AcceptsJSON(r) || r.URL.Path == "/api/v1/events" {
 					utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusUnauthorized,
 						types.ApiErrorResponse{Error: "unauthorized", Code: "unauthorized"})
 					return
@@ -167,4 +167,23 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 			h.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
+}
+
+// eventSessionValid repeats the authoritative token check for an open stream.
+// It intentionally does not update last-login IP metadata on every event.
+func eventSessionValid(r *http.Request, auth, secret string) bool {
+	if auth == config.AuthNone {
+		return true
+	}
+	if auth != config.AuthJWT {
+		return false
+	}
+	token := extractHeaderToken(r)
+	claims, valid := apiUsers.CheckToken(secret, token)
+	if !valid {
+		return false
+	}
+	user, err := apiUsers.Get(claims.Username)
+	ctx, ok := r.Context().Value(handlers.ContextKey(contextAPI)).(handlers.ContextValue)
+	return ok && ctx["user"] == claims.Username && err == nil && user.APIToken != "" && subtle.ConstantTimeCompare([]byte(user.APIToken), []byte(token)) == 1
 }

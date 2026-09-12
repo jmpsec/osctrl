@@ -139,6 +139,26 @@ Request controls are composed at route registration:
 
 There is no global middleware chain or declarative authorization policy. Authentication wrappers, rate limits, feature gates, and permission checks are attached explicitly to routes and handlers.
 
+Optional live updates use `GET /api/v1/events?env=<name-or-uuid>&topic=queries`
+(also `topic=carves`, repeatable). Enable `service.eventsEnabled` / `--events-enabled`
+on API and TLS and set `service.eventsNamespace` / `--events-namespace` to the same
+deployment-unique value. Both default to disabled/unset. The equivalent environment
+variables are `SERVICE_EVENTS_ENABLED` and `SERVICE_EVENTS_NAMESPACE`. Namespaces
+use 1–64 letters, digits, underscores, or hyphens and isolate deployments sharing
+Redis, including deployments using different Redis database numbers.
+
+`pkg/events` publishes bounded, best-effort Redis Pub/Sub invalidation hints and
+fans them out to API subscribers. Each connection is scoped to an environment
+and authorized query/carve topics; interactive query types are excluded. The API
+rechecks token validity and permissions before each batch and during idle
+heartbeats. Broker reconnects and slow-subscriber overflow close streams so the
+frontend obtains fresh REST snapshots. The environment layout shares one
+fetch-based SSE stream between query/carve views and keeps their existing polling
+as reconciliation and mixed-version fallback. Hints do not guarantee result
+persistence, operation completion, replay, or download availability. Commands,
+pagination, result data, and downloads continue through REST. The first release
+does not change console/file-explorer sessions or add WebSocket transport.
+
 ## Authentication / Session Model
 
 ### API
@@ -410,5 +430,5 @@ Redis-only state such as activity rollups, query-dispatch hints, and alert coold
 - Retention is feature-specific: activity rollups expire in Redis and alert history is pruned daily when alerting is enabled, but osquery log rows, distributed-query/carve records, and console/file-explorer rows have no uniform background retention policy. Query expiration changes lifecycle state rather than deleting rows.
 - Relationships mostly use indexed numeric IDs, UUIDs, or names without database foreign-key constraints. External routes also mix environment names/UUIDs, node UUIDs/names, and numeric configuration IDs, which matters when integrating or troubleshooting.
 - SAML assertion replay protection uses a per-process TTL cache. In a multi-replica API deployment, the same assertion can be presented once to each replica within its validity window unless a shared replay layer is added.
-- Graceful shutdown is limited. `osctrl-api` drains HTTP requests for an internally requested config restart, while `osctrl-tls` exits for its restart command; neither service currently installs a general OS-signal shutdown path.
+- Graceful shutdown is limited. `osctrl-api` closes event streams and drains HTTP requests for config restart, SIGINT, or SIGTERM. `osctrl-tls` exits for its restart command and has no general OS-signal drain path.
 - Health reporting needs `--health-enabled` on both services to show a complete picture: with only `osctrl-api` enabled, the page shows `osctrl-tls` as "not reporting" (unknown), never "down", since there is no heartbeat row to compare against. Multiple `osctrl-tls` replicas share the single `service_status` row for `"tls"` — the last writer wins, so overall liveness stays correct but per-replica detail (which instance, how many) is lost. The health page is a point-in-time snapshot with no history.

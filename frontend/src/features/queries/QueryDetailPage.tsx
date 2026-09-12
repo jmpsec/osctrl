@@ -1,3 +1,4 @@
+import { useResourceUpdates } from '$/lib/live-updates';
 import { useParams, useNavigate, useSearch, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
@@ -43,6 +44,7 @@ function ResultStatusBadge({ code }: { code: number }) {
 const DEFAULT_PAGE_SIZE = 50;
 
 export function QueryDetailPage() {
+  useResourceUpdates('queries');
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.query'));
   const { env, name } = useParams({ from: '/_app/env/$env/queries/$name' });
