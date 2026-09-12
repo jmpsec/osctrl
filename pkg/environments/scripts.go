@@ -75,7 +75,7 @@ installOsquery() {
 			local _OSQUERY_RPM=$(osquery_downloadable $_OSQUERY_VER rpm)
       local _RPM="$(echo $_OSQUERY_RPM | cut -d"/" -f5)"
       sudo curl -# "$_OSQUERY_RPM" -o "/tmp/$_RPM"
-      sudo rpm -ivh "/tmp/$_RPM"
+      sudo rpm -Uvh "/tmp/$_RPM"
     else
       log "DEB based system detected"
 			local _OSQUERY_DEB=$(osquery_downloadable $_OSQUERY_VER deb)
@@ -97,6 +97,30 @@ installOsquery() {
   fi
 }
 
+# osqueryNeedsInstall prints "install" when the installed version is missing or
+# older than the required one, and "skip" otherwise. A node that is AHEAD is
+# left alone: silently downgrading a fleet is worse than running newer than
+# asked. Kept as a named function so the decision can be extracted and tested
+# without running the whole script — see scripts_test.go.
+osqueryNeedsInstall() {
+  _required="$1"
+  _installed="$2"
+  if [ -z "$_installed" ]; then
+    echo "install"
+    return
+  fi
+  if [ "$_installed" = "$_required" ]; then
+    echo "skip"
+    return
+  fi
+  _highest=$(printf '%s\n%s\n' "$_required" "$_installed" | sort -rV | head -n 1)
+  if [ "$_highest" = "$_required" ]; then
+    echo "install"
+  else
+    echo "skip"
+  fi
+}
+
 verifyOsquery() {
   which osqueryi
   if [ "$?" != "0" ]; then
@@ -110,8 +134,8 @@ verifyOsquery() {
     installOsquery
   else
     local osquery_version=$(osqueryi -version | cut -d' ' -f3)
-    if [ "$(echo "$_OSQUERY_VER:$osquery_version" | tr ':' '\n' | sort -rV | head -n 1)" != "$_OSQUERY_VER" ]; then
-      log "Installed version of osquery is $osquery_version, needs to upgrade to $_OSQUERY_VER"
+    if [ "$(osqueryNeedsInstall "$_OSQUERY_VER" "$osquery_version")" = "install" ]; then
+      log "Installed version of osquery is $osquery_version, needs osquery $_OSQUERY_VER"
       installOsquery
     else
       log "Installed version of osquery is $osquery_version"
