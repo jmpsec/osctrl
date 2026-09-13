@@ -14,6 +14,7 @@ import { AuthError } from '$/api/client';
 import { countryFlag } from '$/lib/flags';
 import type { NodeSort, SortDir, NodeStatus, NodesPagedResponse, AdminTag, NodeUptime, NodePostureSummary } from '$/api/types';
 import { formatRelative, formatBytes } from '$/lib/time';
+import { useFleetUpdates } from '$/lib/live-updates';
 import { isNodeActive, useInactiveHours } from '$/lib/node-status';
 import { cn } from '$/lib/cn';
 import { StatusBadge } from '$/components/data/StatusBadge';
@@ -427,6 +428,7 @@ function HeatmapCell({ tiles, globalMax, lastSeen }: HeatmapCellProps) {
 export function NodesTablePage() {
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.nodes'));
+  useFleetUpdates();
   const { env } = useParams({ from: '/_app/env/$env/nodes' });
   const search = useSearch({ from: '/_app/env/$env/nodes' });
   const navigate = useNavigate({ from: '/_app/env/$env/nodes' });

@@ -41,6 +41,7 @@ import { StatusPip } from '$/components/data/StatusPip';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { cn } from '$/lib/cn';
 import { formatRelative } from '$/lib/time';
+import { useFleetUpdates } from '$/lib/live-updates';
 import type { DistributedQuery } from '$/api/types';
 
 // ---------------------------------------------------------------------------
@@ -1539,6 +1540,7 @@ function RefreshButton({ onClick, isPending }: { onClick: () => void; isPending:
 export function DashboardPage() {
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.dashboard'));
+  useFleetUpdates();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['stats'],
     queryFn: getStats,

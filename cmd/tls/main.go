@@ -356,8 +356,9 @@ func osctrlService() {
 		*nodesmgr,
 	)
 	log.Info().Msg("Initializing activity writer")
+	activityStore := activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour)
 	activityWriter := handlers.NewActivityWriter(
-		activity.NewRedisStore(redis.Client, activity.DefaultPrefix, activity.DefaultRetentionDays, 8*24*time.Hour),
+		activityStore,
 		512,
 		250*time.Millisecond,
 		8192,
@@ -474,6 +475,7 @@ func osctrlService() {
 		if alertsMgr != nil {
 			alertsMgr.Events = eventBus
 		}
+		activityStore.Events = eventBus
 		serviceCommandMgr.Events = eventBus
 	}
 	if n, err := serviceCommandMgr.MarkRecovered(config.ServiceTLS, serviceName, time.Now()); err != nil {

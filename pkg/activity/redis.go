@@ -7,6 +7,7 @@ import (
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
+	"github.com/jmpsec/osctrl/pkg/events"
 )
 
 // RedisStore manages node activity rollups stored as compact Redis day blobs.
@@ -14,6 +15,7 @@ type RedisStore struct {
 	client      *redis.Client
 	prefix      string
 	expireAfter time.Duration
+	Events      events.Publisher
 }
 
 // NewRedisStore builds a Redis-backed rollup store for per-node activity tiles.
@@ -49,6 +51,7 @@ func (s *RedisStore) IncrementMany(ctx context.Context, events []Event) error {
 
 	aggregated := make(map[counterKey]uint32)
 	ranked := make(map[rankCounterKey]int64)
+	touchedEnvs := make(map[string]struct{})
 	for _, event := range events {
 		if event.EnvUUID == "" || event.Type >= EventTypeCount {
 			continue
@@ -57,6 +60,7 @@ func (s *RedisStore) IncrementMany(ctx context.Context, events []Event) error {
 		if event.Count == 0 {
 			continue
 		}
+		touchedEnvs[event.EnvUUID] = struct{}{}
 
 		offset := bitOffset(event.Type, bucketHour(event.At))
 		if event.NodeUUID != "" {
@@ -104,7 +108,20 @@ func (s *RedisStore) IncrementMany(ctx context.Context, events []Event) error {
 	}
 
 	_, err := pipe.Exec(ctx)
-	return err
+	if err != nil {
+		return err
+	}
+	s.publishFleetChanges(touchedEnvs)
+	return nil
+}
+
+func (s *RedisStore) publishFleetChanges(envUUIDs map[string]struct{}) {
+	if s == nil || s.Events == nil {
+		return
+	}
+	for envUUID := range envUUIDs {
+		s.Events.Publish(events.Hint{EnvironmentID: 0, Topic: events.Fleet, Name: envUUID, Change: events.ChangeActivity})
+	}
 }
 
 // ReadSeries returns dense node activity series for the requested day window.

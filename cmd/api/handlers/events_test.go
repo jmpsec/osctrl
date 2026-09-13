@@ -40,6 +40,7 @@ func TestEventSubscriptionValidation(t *testing.T) {
 		{"?env=env&env=other&topic=queries", "alice", 400},
 		{"?env=env&topic=queries&token=secret", "alice", 400},
 		{"?env=env&topic=service_commands", "alice", 400},
+		{"?env=env&topic=fleet", "alice", 400},
 		{"?env=env&topic=queries", "bob", 403},
 		{"?env=missing&topic=queries", "alice", 404},
 	} {
@@ -145,6 +146,44 @@ func TestEventStreamRejectsServiceCommandsForNonAdmin(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.EventsHandler(rr, req)
 	require.Equal(t, http.StatusForbidden, rr.Code)
+}
+
+func TestEventStreamAllowsFleetSubscription(t *testing.T) {
+	h := setupAlertsHandler(t)
+	source := &testEventSource{ch: make(chan events.Hint, 1)}
+	h.Events = source
+	h.EventsAuthenticate = func(*http.Request) bool { return true }
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), ContextKey(contextAPI), ContextValue{ctxUser: "alice"})
+		h.EventsHandler(w, r.WithContext(ctx))
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	r, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1/events?env=all&topic=fleet", nil)
+	require.NoError(t, err)
+	response, err := srv.Client().Do(r)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	reader := bufio.NewReader(response.Body)
+	frame := func() string {
+		var result strings.Builder
+		for {
+			line, err := reader.ReadString('\n')
+			require.NoError(t, err)
+			result.WriteString(line)
+			if line == "\n" {
+				return result.String()
+			}
+		}
+	}
+	require.Contains(t, frame(), `"environment_uuid":"all"`)
+	source.ch <- events.Hint{Topic: events.Fleet, Name: "env-uuid", Change: events.ChangeActivity}
+	got := frame()
+	require.Contains(t, got, `"topic":"fleet"`)
+	require.Contains(t, got, `"name":"env-uuid"`)
+	require.Contains(t, got, `"change":"activity"`)
 }
 
 func TestEventOriginValidation(t *testing.T) {

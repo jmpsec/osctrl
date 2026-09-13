@@ -146,7 +146,8 @@ Optional live updates use `GET /api/v1/events?env=<name-or-uuid>&topic=queries`
 `topic=alerts`; the top-level Alerts page may use `env=all` for one
 super-admin stream covering global and environment-scoped alert changes.
 Service-command status hints use `topic=service_commands` with `env=all` and
-super-admin access. Enable
+super-admin access. Fleet activity hints use `topic=fleet` with `env=all` and
+super-admin access, then coalesce dashboard and node-list refreshes. Enable
 `service.eventsEnabled` / `--events-enabled` on API and TLS and set
 `service.eventsNamespace` / `--events-namespace` to the same deployment-unique
 value. Both default to disabled/unset. The equivalent environment variables are
@@ -157,14 +158,15 @@ including deployments using different Redis database numbers.
 `pkg/events` publishes bounded, best-effort Redis Pub/Sub invalidation hints and
 fans them out to API subscribers. Each connection is scoped to an environment
 and authorized query/carve topics; console and file-explorer hints also require
-AdminLevel plus creator ownership of the selected active session, while alert
-and service-command hints require super-admin permissions. The API rechecks token validity and
+AdminLevel plus creator ownership of the selected active session, while alert,
+service-command, and fleet hints require super-admin permissions. The API rechecks token validity and
 permissions before each batch and during idle heartbeats. Broker reconnects and
 slow-subscriber overflow close streams so the frontend obtains fresh REST
 snapshots. The environment layout shares one fetch-based SSE stream between
 query/carve views; console and file explorer open session-specific streams after
 session creation; the Alerts page opens an alerts-only stream and invalidates
-rules, channels, or history snapshots. Hints do not guarantee result
+rules, channels, or history snapshots; dashboard and node-list pages open a
+fleet stream and coalesce activity invalidations. Hints do not guarantee result
 persistence, operation completion, replay, dispatch delivery, or download
 availability. Commands, pagination, result data, alert rows, and downloads
 continue through REST. No WebSocket transport is used.

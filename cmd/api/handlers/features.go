@@ -63,7 +63,7 @@ func (h *HandlersApi) eventTopics() []string {
 	if h.Events == nil {
 		return []string{}
 	}
-	topics := []string{events.Queries, events.Carves}
+	topics := []string{events.Queries, events.Carves, events.Fleet}
 	if h.OsqueryValues.Query && h.OsqueryValues.Console {
 		topics = append(topics, events.Console)
 	}

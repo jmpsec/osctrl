@@ -25,13 +25,13 @@ type ResourceChanged struct {
 	ResourceID      uint   `json:"resource_id,omitempty"`
 }
 
-// EventsHandler streams authorized query/carve/session/alert invalidations.
+// EventsHandler streams authorized query/carve/session/alert/fleet invalidations.
 // @Summary Subscribe to resource change notifications
-// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively. Alerts and service_commands require super-admin permissions and may use env=all.
+// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively. Alerts may use env=all. service_commands and fleet require super-admin permissions and env=all.
 // @Tags Events
 // @Produce text/event-stream json
-// @Param env query string true "Environment name or UUID; use all only with topic=alerts or topic=service_commands"
-// @Param topic query []string true "Topics: queries, carves, console, file_explorer, alerts, service_commands" collectionFormat(multi)
+// @Param env query string true "Environment name or UUID; use all only with topic=alerts, topic=service_commands, or topic=fleet"
+// @Param topic query []string true "Topics: queries, carves, console, file_explorer, alerts, service_commands, fleet" collectionFormat(multi)
 // @Param console_session query int false "Console session id required when subscribing to topic=console"
 // @Param file_explorer_session query int false "File explorer session id required when subscribing to topic=file_explorer"
 // @Success 200 {string} string "SSE stream: stream.ready, resource.changed, auth.expired"
@@ -57,7 +57,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selectors, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil || len(selectors["env"]) != 1 || len(selectors["env"][0]) == 0 || len(selectors["env"][0]) > 256 || len(selectors["topic"]) == 0 || len(selectors["topic"]) > 6 {
+	if err != nil || len(selectors["env"]) != 1 || len(selectors["env"][0]) == 0 || len(selectors["env"][0]) > 256 || len(selectors["topic"]) == 0 || len(selectors["topic"]) > 7 {
 		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
 		return
 	}
@@ -70,11 +70,11 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 	topics := selectors["topic"]
 	globalOnly := true
 	for _, topic := range topics {
-		if topic != events.Queries && topic != events.Carves && topic != events.Console && topic != events.FileExplorer && topic != events.Alerts && topic != events.ServiceCommands {
+		if topic != events.Queries && topic != events.Carves && topic != events.Console && topic != events.FileExplorer && topic != events.Alerts && topic != events.ServiceCommands && topic != events.Fleet {
 			apiErrorResponse(w, "invalid event topic", http.StatusBadRequest, nil)
 			return
 		}
-		if topic != events.Alerts && topic != events.ServiceCommands {
+		if topic != events.Alerts && topic != events.ServiceCommands && topic != events.Fleet {
 			globalOnly = false
 		}
 	}
@@ -93,7 +93,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	envSelector := selectors.Get("env")
-	if eventTopicSelected(topics, events.ServiceCommands) && envSelector != "all" {
+	if (eventTopicSelected(topics, events.ServiceCommands) || eventTopicSelected(topics, events.Fleet)) && envSelector != "all" {
 		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
 		return
 	}
@@ -122,7 +122,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for _, topic := range topics {
-			if topic == events.Alerts || topic == events.ServiceCommands {
+			if topic == events.Alerts || topic == events.ServiceCommands || topic == events.Fleet {
 				if !h.Users.CheckPermissions(username, users.AdminLevel, users.NoEnvironment) {
 					return false
 				}

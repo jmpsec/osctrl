@@ -100,6 +100,9 @@ func TestConfigurationAndHintValidation(t *testing.T) {
 		{EnvironmentID: 1, Topic: Queries, Name: "q", Change: "other"},
 		{EnvironmentID: 1, Topic: Queries, Name: "q", Change: ChangeFiles},
 		{EnvironmentID: 1, Topic: Alerts, Name: "q", Change: ChangeFiles},
+		{EnvironmentID: 0, Topic: Fleet, Name: "env-uuid", Change: ChangeResults},
+		{EnvironmentID: 1, Topic: Fleet, Name: "env-uuid", Change: ChangeActivity},
+		{EnvironmentID: 1, Topic: ServiceCommands, Name: "cmd", Change: "pending"},
 		{EnvironmentID: 1, Topic: Console, Name: "q", Change: ChangeResults, SessionID: 0, ResourceID: 2},
 	} {
 		require.False(t, hint.Valid())
@@ -109,6 +112,7 @@ func TestConfigurationAndHintValidation(t *testing.T) {
 	require.True(t, Hint{EnvironmentID: 1, Topic: FileExplorer, Name: "q", Change: ChangeResults, SessionID: 1, ResourceID: 2}.Valid())
 	require.True(t, Hint{EnvironmentID: 0, Topic: Alerts, Name: ChangeHistory, Change: ChangeHistory}.Valid())
 	require.True(t, Hint{EnvironmentID: 1, Topic: Alerts, Name: ChangeRules, Change: ChangeRules}.Valid())
+	require.True(t, Hint{EnvironmentID: 0, Topic: Fleet, Name: "env-uuid", Change: ChangeActivity}.Valid())
 }
 
 func TestAlertsFanoutIncludesGlobalSubscriptions(t *testing.T) {
@@ -136,6 +140,25 @@ func TestAlertsFanoutIncludesGlobalSubscriptions(t *testing.T) {
 	require.Equal(t, global, <-all)
 	require.Equal(t, global, <-prod)
 	require.Equal(t, global, <-dev)
+}
+
+func TestFleetFanoutRequiresGlobalSubscriptions(t *testing.T) {
+	b := localBus()
+	all, closeAll, err := b.Subscribe("alice", 0, []string{Fleet})
+	require.NoError(t, err)
+	defer closeAll()
+	envScoped, closeEnv, err := b.Subscribe("alice", 7, []string{Fleet})
+	require.NoError(t, err)
+	defer closeEnv()
+
+	hint := Hint{EnvironmentID: 0, Topic: Fleet, Name: "env-uuid", Change: ChangeActivity}
+	b.deliver(hint)
+	require.Equal(t, hint, <-all)
+	select {
+	case <-envScoped:
+		t.Fatal("global fleet event leaked to environment-scoped subscription")
+	default:
+	}
 }
 
 // Uses the same opt-in disposable Redis convention as query-dispatch tests.

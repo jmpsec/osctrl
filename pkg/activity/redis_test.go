@@ -2,8 +2,11 @@ package activity
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/jmpsec/osctrl/pkg/events"
 )
 
 func TestDayKeyUsesEnvNodeAndUTCDate(t *testing.T) {
@@ -162,6 +165,52 @@ func TestStoreReadEnvSeries(t *testing.T) {
 	}
 	if got := fake.expireFor("nodeact:v1:env:ENV1:20260615"); got != 24*time.Hour {
 		t.Fatalf("expected env key TTL to be 24h, got %s", got)
+	}
+}
+
+type recordingFleetPublisher struct {
+	mu    sync.Mutex
+	hints []events.Hint
+}
+
+func (p *recordingFleetPublisher) Publish(h events.Hint) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.hints = append(p.hints, h)
+}
+
+func (p *recordingFleetPublisher) snapshot() []events.Hint {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]events.Hint, len(p.hints))
+	copy(out, p.hints)
+	return out
+}
+
+func TestStorePublishesFleetInvalidations(t *testing.T) {
+	client, _ := newTestRedisClient(t)
+	publisher := &recordingFleetPublisher{}
+	store := NewRedisStore(client, "nodeact:v1", 7, 24*time.Hour)
+	store.Events = publisher
+
+	err := store.IncrementMany(context.Background(), []Event{
+		{EnvUUID: "ENV1", NodeUUID: "NODE1", Type: EventStatus, At: time.Date(2026, 6, 15, 11, 20, 0, 0, time.UTC), Count: 2},
+		{EnvUUID: "ENV1", NodeUUID: "NODE2", Type: EventResult, At: time.Date(2026, 6, 15, 12, 20, 0, 0, time.UTC), Count: 1},
+		{EnvUUID: "ENV2", NodeUUID: "NODE9", Type: EventConfig, At: time.Date(2026, 6, 15, 13, 20, 0, 0, time.UTC), Count: 1},
+	})
+	if err != nil {
+		t.Fatalf("increment failed: %v", err)
+	}
+
+	requireHints := map[string]bool{}
+	for _, hint := range publisher.snapshot() {
+		if hint.Topic != events.Fleet || hint.Change != events.ChangeActivity || hint.EnvironmentID != 0 {
+			t.Fatalf("unexpected hint: %+v", hint)
+		}
+		requireHints[hint.Name] = true
+	}
+	if !requireHints["ENV1"] || !requireHints["ENV2"] || len(requireHints) != 2 {
+		t.Fatalf("expected one fleet hint per environment, got %+v", publisher.snapshot())
 	}
 }
 
