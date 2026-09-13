@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
@@ -29,7 +29,7 @@ import { getFeatures } from '$/api/features';
 import { getServiceCommand } from '$/api/service-config';
 import { AuthError } from '$/api/client';
 import { formatRelative } from '$/lib/time';
-import { useAlertUpdates } from '$/lib/live-updates';
+import { useAlertUpdates, useServiceCommandUpdates } from '$/lib/live-updates';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
@@ -117,6 +117,7 @@ export function AlertsPage() {
   const [applyErr, setApplyErr] = useState<string | null>(null);
   const [applyFlash, setApplyFlash] = useState(false);
   const [reloading, setReloading] = useState(false);
+  const [reloadCommandID, setReloadCommandID] = useState<string | undefined>();
 
   const { data: features } = useQuery({
     queryKey: ['features'],
@@ -192,17 +193,20 @@ export function AlertsPage() {
     onSuccess: (resp) => {
       setApplyErr(null);
       if (!resp.command) {
+        setReloadCommandID(undefined);
         setReloading(false);
         setApplyFlash(true);
         setTimeout(() => setApplyFlash(false), 3000);
         return;
       }
+      setReloadCommandID(resp.command.command_id);
       setReloading(true);
       const poll = setInterval(() => {
         getServiceCommand(resp.command!.command_id)
           .then((cmd) => {
             if (cmd.status !== 'pending') {
               clearInterval(poll);
+              setReloadCommandID(undefined);
               setReloading(false);
               setApplyFlash(true);
               setTimeout(() => setApplyFlash(false), 3000);
@@ -210,6 +214,7 @@ export function AlertsPage() {
           })
           .catch(() => {
             clearInterval(poll);
+            setReloadCommandID(undefined);
             setReloading(false);
           });
       }, 1500);
@@ -232,6 +237,20 @@ export function AlertsPage() {
   const history = historyQuery.data ?? [];
   const alertEventEnv = selectedEnv > 0 ? envs?.find((e) => e.id === selectedEnv)?.uuid : 'all';
   useAlertUpdates(features?.alerts ? alertEventEnv : undefined);
+  const refreshReloadCommand = useCallback(() => {
+    if (!reloadCommandID) return;
+    getServiceCommand(reloadCommandID)
+      .then((cmd) => {
+        if (cmd.status !== 'pending') {
+          setReloadCommandID(undefined);
+          setReloading(false);
+          setApplyFlash(true);
+          setTimeout(() => setApplyFlash(false), 3000);
+        }
+      })
+      .catch(() => undefined);
+  }, [reloadCommandID]);
+  useServiceCommandUpdates(reloadCommandID, refreshReloadCommand);
   const envName = (id: number) =>
     id === GLOBAL_ENV_ID ? 'Global' : (envs?.find((e) => e.id === id)?.name ?? `env ${id}`);
 

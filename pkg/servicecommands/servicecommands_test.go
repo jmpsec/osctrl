@@ -3,10 +3,12 @@ package servicecommands
 import (
 	"bytes"
 	"log"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -95,4 +97,43 @@ func TestMarkRecoveredUpdatesConsumedCommands(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, StatusRecovered, stored.Status(time.Now()))
 	require.NotNil(t, stored.RecoveredAt)
+}
+
+type recordingServiceCommandPublisher struct {
+	mu    sync.Mutex
+	hints []events.Hint
+}
+
+func (p *recordingServiceCommandPublisher) Publish(h events.Hint) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.hints = append(p.hints, h)
+}
+
+func (p *recordingServiceCommandPublisher) snapshot() []events.Hint {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]events.Hint, len(p.hints))
+	copy(out, p.hints)
+	return out
+}
+
+func TestServiceCommandsPublishStatusInvalidations(t *testing.T) {
+	publisher := &recordingServiceCommandPublisher{}
+	m := &Manager{DB: setupServiceCommandsDB(t), Events: publisher}
+	now := time.Now()
+
+	created, err := m.RequestRestart(config.ServiceTLS, "alice", "127.0.0.1", time.Minute)
+	require.NoError(t, err)
+	_, ok, err := m.ConsumeNext(config.ServiceTLS, "osctrl-tls", now)
+	require.NoError(t, err)
+	require.True(t, ok)
+	_, err = m.MarkRecovered(config.ServiceTLS, "osctrl-tls", now)
+	require.NoError(t, err)
+
+	require.Equal(t, []events.Hint{
+		{EnvironmentID: 0, Topic: events.ServiceCommands, Name: created.CommandID, Change: StatusPending},
+		{EnvironmentID: 0, Topic: events.ServiceCommands, Name: created.CommandID, Change: StatusConsumed},
+		{EnvironmentID: 0, Topic: events.ServiceCommands, Name: created.CommandID, Change: StatusRecovered},
+	}, publisher.snapshot())
 }

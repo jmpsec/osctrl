@@ -617,6 +617,7 @@ func osctrlAPIService() {
 		if alertsMgr != nil {
 			alertsMgr.Events = eventBus
 		}
+		serviceCommandMgr.Events = eventBus
 	}
 
 	handlersApi = handlers.CreateHandlersApi(

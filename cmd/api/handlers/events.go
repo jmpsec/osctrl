@@ -27,11 +27,11 @@ type ResourceChanged struct {
 
 // EventsHandler streams authorized query/carve/session/alert invalidations.
 // @Summary Subscribe to resource change notifications
-// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively. Alerts require super-admin permissions and may use env=all.
+// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively. Alerts and service_commands require super-admin permissions and may use env=all.
 // @Tags Events
 // @Produce text/event-stream json
-// @Param env query string true "Environment name or UUID; use all only with topic=alerts"
-// @Param topic query []string true "Topics: queries, carves, console, file_explorer, alerts" collectionFormat(multi)
+// @Param env query string true "Environment name or UUID; use all only with topic=alerts or topic=service_commands"
+// @Param topic query []string true "Topics: queries, carves, console, file_explorer, alerts, service_commands" collectionFormat(multi)
 // @Param console_session query int false "Console session id required when subscribing to topic=console"
 // @Param file_explorer_session query int false "File explorer session id required when subscribing to topic=file_explorer"
 // @Success 200 {string} string "SSE stream: stream.ready, resource.changed, auth.expired"
@@ -57,7 +57,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selectors, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil || len(selectors["env"]) != 1 || len(selectors["env"][0]) == 0 || len(selectors["env"][0]) > 256 || len(selectors["topic"]) == 0 || len(selectors["topic"]) > 5 {
+	if err != nil || len(selectors["env"]) != 1 || len(selectors["env"][0]) == 0 || len(selectors["env"][0]) > 256 || len(selectors["topic"]) == 0 || len(selectors["topic"]) > 6 {
 		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
 		return
 	}
@@ -68,14 +68,14 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	topics := selectors["topic"]
-	alertsOnly := true
+	globalOnly := true
 	for _, topic := range topics {
-		if topic != events.Queries && topic != events.Carves && topic != events.Console && topic != events.FileExplorer && topic != events.Alerts {
+		if topic != events.Queries && topic != events.Carves && topic != events.Console && topic != events.FileExplorer && topic != events.Alerts && topic != events.ServiceCommands {
 			apiErrorResponse(w, "invalid event topic", http.StatusBadRequest, nil)
 			return
 		}
-		if topic != events.Alerts {
-			alertsOnly = false
+		if topic != events.Alerts && topic != events.ServiceCommands {
+			globalOnly = false
 		}
 	}
 	consoleSessionID, ok := eventOptionalUintSelector(selectors, "console_session")
@@ -93,9 +93,13 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	envSelector := selectors.Get("env")
+	if eventTopicSelected(topics, events.ServiceCommands) && envSelector != "all" {
+		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
+		return
+	}
 	environmentID := uint(0)
 	environmentUUID := "all"
-	if !(alertsOnly && envSelector == "all") {
+	if !(globalOnly && envSelector == "all") {
 		env, err := h.Envs.Get(envSelector)
 		if err != nil {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
@@ -118,7 +122,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for _, topic := range topics {
-			if topic == events.Alerts {
+			if topic == events.Alerts || topic == events.ServiceCommands {
 				if !h.Users.CheckPermissions(username, users.AdminLevel, users.NoEnvironment) {
 					return false
 				}

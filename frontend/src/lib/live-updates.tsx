@@ -289,6 +289,62 @@ export function useAlertUpdates(env: string | undefined) {
   return live;
 }
 
+export function useServiceCommandUpdates(commandID: string | undefined, onChange: () => void) {
+  const { data: features } = useQuery({ queryKey: ['features'], queryFn: getFeatures });
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    if (!commandID || !features?.events || !features.event_topics?.includes('service_commands')) {
+      setLive(false);
+      return undefined;
+    }
+    let active = true;
+    let forbidden = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    let ready = false;
+    const receive = ({ event, data }: StreamEvent) => {
+      if (!active || !data || typeof data !== 'object') return;
+      const value = data as Record<string, unknown>;
+      if (event === 'auth.expired') {
+        forbidden = true;
+        controller?.abort();
+        onChange();
+      } else if (event === 'stream.ready' && value.environment_uuid === 'all') {
+        ready = true;
+        attempts = 0;
+        setLive(true);
+        onChange();
+      } else if (event === 'resource.changed' && ready && value.schema_version === 1 &&
+        value.environment_uuid === 'all' && value.topic === 'service_commands' && value.name === commandID) {
+        onChange();
+      }
+    };
+    const connect = async () => {
+      if (!active || forbidden) return;
+      ready = false;
+      controller = new AbortController();
+      try { await readEvents('all', ['service_commands'], controller.signal, receive); }
+      catch (error) {
+        if (!active) return;
+        if (error instanceof AuthError) {
+          setCsrfToken(null);
+          forbidden = true;
+          onChange();
+        } else if (error instanceof ApiError && [400, 403, 404].includes(error.status)) forbidden = true;
+      }
+      if (active) setLive(false);
+      if (active && !forbidden) {
+        const delay = Math.min(30_000, 1000 * 2 ** Math.min(attempts++, 5)) * (0.8 + Math.random() * 0.4);
+        timer = setTimeout(() => { void connect(); }, delay);
+      }
+    };
+    void connect();
+    return () => { active = false; controller?.abort(); if (timer) clearTimeout(timer); setLive(false); };
+  }, [commandID, features?.events, features?.event_topics, onChange]);
+  return live;
+}
+
 export function useResourceUpdates(topic: EventTopic) {
   const status = useContext(LiveUpdatesContext);
   const resourceTopic = topic === 'queries' || topic === 'carves' ? topic : null;

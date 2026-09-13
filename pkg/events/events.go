@@ -27,6 +27,7 @@ const (
 	Console            = "console"
 	FileExplorer       = "file_explorer"
 	Alerts             = "alerts"
+	ServiceCommands    = "service_commands"
 	ChangeMetadata     = "metadata"
 	ChangeResults      = "results"
 	ChangeFiles        = "files"
@@ -54,10 +55,11 @@ func (h Hint) Valid() bool {
 		(h.Topic == Queries && h.Change == ChangeResults) ||
 		(h.Topic == Carves && (h.Change == ChangeResults || h.Change == ChangeFiles)) ||
 		((h.Topic == Console || h.Topic == FileExplorer) && (h.Change == ChangeMetadata || h.Change == ChangeResults)) ||
-		(h.Topic == Alerts && (h.Change == ChangeRules || h.Change == ChangeChannels || h.Change == ChangeHistory))
-	validTopic := h.Topic == Queries || h.Topic == Carves || h.Topic == Console || h.Topic == FileExplorer || h.Topic == Alerts
+		(h.Topic == Alerts && (h.Change == ChangeRules || h.Change == ChangeChannels || h.Change == ChangeHistory)) ||
+		(h.Topic == ServiceCommands && (h.Change == "pending" || h.Change == "consumed" || h.Change == "recovered" || h.Change == "expired"))
+	validTopic := h.Topic == Queries || h.Topic == Carves || h.Topic == Console || h.Topic == FileExplorer || h.Topic == Alerts || h.Topic == ServiceCommands
 	sessionScoped := h.Topic != Console && h.Topic != FileExplorer || h.SessionID != 0 && h.ResourceID != 0
-	environmentScoped := h.EnvironmentID != 0 || h.Topic == Alerts
+	environmentScoped := h.EnvironmentID != 0 || h.Topic == Alerts || h.Topic == ServiceCommands
 	return environmentScoped && validTopic && len(h.Name) > 0 && len(h.Name) <= 256 && validChange && sessionScoped
 }
 
@@ -244,6 +246,9 @@ func hintMatchesSubscription(h Hint, s *subscription) bool {
 	}
 	if h.Topic == Alerts {
 		return s.environmentID == 0 || h.EnvironmentID == 0 || s.environmentID == h.EnvironmentID
+	}
+	if h.Topic == ServiceCommands {
+		return s.environmentID == 0 && h.EnvironmentID == 0
 	}
 	return s.environmentID == h.EnvironmentID
 }

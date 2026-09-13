@@ -39,6 +39,7 @@ func TestEventSubscriptionValidation(t *testing.T) {
 		{"?env=env&topic=console", "alice", 400},
 		{"?env=env&env=other&topic=queries", "alice", 400},
 		{"?env=env&topic=queries&token=secret", "alice", 400},
+		{"?env=env&topic=service_commands", "alice", 400},
 		{"?env=env&topic=queries", "bob", 403},
 		{"?env=missing&topic=queries", "alice", 404},
 	} {
@@ -92,6 +93,55 @@ func TestEventStreamRejectsAlertsForNonAdmin(t *testing.T) {
 	h.Events = &testEventSource{ch: make(chan events.Hint)}
 	h.EventsAuthenticate = func(*http.Request) bool { return true }
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/events?env=all&topic=alerts", nil).WithContext(alertsCtx("bob"))
+	rr := httptest.NewRecorder()
+	h.EventsHandler(rr, req)
+	require.Equal(t, http.StatusForbidden, rr.Code)
+}
+
+func TestEventStreamAllowsServiceCommandSubscription(t *testing.T) {
+	h := setupAlertsHandler(t)
+	source := &testEventSource{ch: make(chan events.Hint, 1)}
+	h.Events = source
+	h.EventsAuthenticate = func(*http.Request) bool { return true }
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), ContextKey(contextAPI), ContextValue{ctxUser: "alice"})
+		h.EventsHandler(w, r.WithContext(ctx))
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	r, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1/events?env=all&topic=service_commands", nil)
+	require.NoError(t, err)
+	response, err := srv.Client().Do(r)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.EqualValues(t, 0, source.environmentID.Load())
+	reader := bufio.NewReader(response.Body)
+	frame := func() string {
+		var result strings.Builder
+		for {
+			line, err := reader.ReadString('\n')
+			require.NoError(t, err)
+			result.WriteString(line)
+			if line == "\n" {
+				return result.String()
+			}
+		}
+	}
+	require.Contains(t, frame(), `"environment_uuid":"all"`)
+	source.ch <- events.Hint{Topic: events.ServiceCommands, Name: "cmd-1", Change: "consumed"}
+	got := frame()
+	require.Contains(t, got, `"topic":"service_commands"`)
+	require.Contains(t, got, `"name":"cmd-1"`)
+	require.Contains(t, got, `"change":"consumed"`)
+}
+
+func TestEventStreamRejectsServiceCommandsForNonAdmin(t *testing.T) {
+	h := setupAlertsHandler(t)
+	h.Events = &testEventSource{ch: make(chan events.Hint)}
+	h.EventsAuthenticate = func(*http.Request) bool { return true }
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/events?env=all&topic=service_commands", nil).WithContext(alertsCtx("bob"))
 	rr := httptest.NewRecorder()
 	h.EventsHandler(rr, req)
 	require.Equal(t, http.StatusForbidden, rr.Code)

@@ -144,7 +144,9 @@ Optional live updates use `GET /api/v1/events?env=<name-or-uuid>&topic=queries`
 `topic=console&console_session=<id>` and
 `topic=file_explorer&file_explorer_session=<id>`. Alert administration uses
 `topic=alerts`; the top-level Alerts page may use `env=all` for one
-super-admin stream covering global and environment-scoped alert changes. Enable
+super-admin stream covering global and environment-scoped alert changes.
+Service-command status hints use `topic=service_commands` with `env=all` and
+super-admin access. Enable
 `service.eventsEnabled` / `--events-enabled` on API and TLS and set
 `service.eventsNamespace` / `--events-namespace` to the same deployment-unique
 value. Both default to disabled/unset. The equivalent environment variables are
@@ -156,7 +158,7 @@ including deployments using different Redis database numbers.
 fans them out to API subscribers. Each connection is scoped to an environment
 and authorized query/carve topics; console and file-explorer hints also require
 AdminLevel plus creator ownership of the selected active session, while alert
-hints require super-admin permissions. The API rechecks token validity and
+and service-command hints require super-admin permissions. The API rechecks token validity and
 permissions before each batch and during idle heartbeats. Broker reconnects and
 slow-subscriber overflow close streams so the frontend obtains fresh REST
 snapshots. The environment layout shares one fetch-based SSE stream between

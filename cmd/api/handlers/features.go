@@ -73,5 +73,8 @@ func (h *HandlersApi) eventTopics() []string {
 	if h.Alerts != nil {
 		topics = append(topics, events.Alerts)
 	}
+	if h.ServiceCommands != nil {
+		topics = append(topics, events.ServiceCommands)
+	}
 	return topics
 }
