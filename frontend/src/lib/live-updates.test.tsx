@@ -6,6 +6,7 @@ import {
   createInvalidator,
   resourceRefetchInterval,
   useAlertUpdates,
+  useFleetUpdates,
   useResourceUpdates,
   useServiceCommandUpdates,
 } from './live-updates';
@@ -72,6 +73,10 @@ function AlertsConsumer({ env = 'all' }: { env?: string }) {
 function ServiceCommandConsumer({ commandID, onChange }: { commandID?: string; onChange: () => void }) {
   const live = useServiceCommandUpdates(commandID, onChange);
   return <div data-testid="command-live">{live ? 'live' : 'polling'}</div>;
+}
+function FleetConsumer() {
+  const live = useFleetUpdates();
+  return <div data-testid="fleet-live">{live ? 'live' : 'polling'}</div>;
 }
 
 it('uses normal polling until the selected stream is connected', async () => {
@@ -163,6 +168,40 @@ it('wakes service command polling from a global command stream', async () => {
   expect(onChange).toHaveBeenCalledTimes(1);
   act(() => receive?.({ event: 'resource.changed', data: { schema_version: 1, environment_uuid: 'all', topic: 'service_commands', name: 'cmd-1' } }));
   expect(onChange).toHaveBeenCalledTimes(2);
+  client.clear();
+});
+
+it('coalesces fleet invalidations from a global fleet stream', async () => {
+  mocks.getFeatures.mockResolvedValue({ events: true, event_topics: ['fleet'] });
+  let receive: ((event: { event: string; data: Record<string, unknown> }) => void) | undefined;
+  mocks.readEvents.mockImplementation((_env, _topics, _signal: AbortSignal, onEvent) => {
+    receive = onEvent;
+    return new Promise<void>(() => undefined);
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const invalidate = vi.spyOn(client, 'invalidateQueries');
+  render(<QueryClientProvider client={client}><FleetConsumer /></QueryClientProvider>);
+  await waitFor(() => expect(mocks.readEvents).toHaveBeenCalledTimes(1));
+  expect(mocks.readEvents.mock.calls[0][0]).toBe('all');
+  expect(mocks.readEvents.mock.calls[0][1]).toEqual(['fleet']);
+  vi.useFakeTimers();
+  act(() => receive?.({ event: 'stream.ready', data: { environment_uuid: 'all' } }));
+  expect(screen.getByTestId('fleet-live')).toHaveTextContent('live');
+  act(() => {
+    receive?.({ event: 'resource.changed', data: { schema_version: 1, environment_uuid: 'all', topic: 'fleet', name: 'env-1', change: 'activity' } });
+    receive?.({ event: 'resource.changed', data: { schema_version: 1, environment_uuid: 'all', topic: 'fleet', name: 'env-2', change: 'activity' } });
+  });
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+    ['stats'],
+    ['dashboard-recently-seen'],
+    ['dashboard-env-list'],
+    ['dashboard-env-tiles'],
+    ['dashboard-osquery-versions'],
+    ['dashboard-error-nodes'],
+    ['nodes'],
+    ['node-tiles-batch'],
+  ]);
   client.clear();
 });
 

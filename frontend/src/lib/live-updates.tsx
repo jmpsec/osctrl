@@ -345,6 +345,88 @@ export function useServiceCommandUpdates(commandID: string | undefined, onChange
   return live;
 }
 
+export function useFleetUpdates() {
+  const client = useQueryClient();
+  const { data: features } = useQuery({ queryKey: ['features'], queryFn: getFeatures });
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    if (!features?.events || !features.event_topics?.includes('fleet')) {
+      setLive(false);
+      return undefined;
+    }
+    let active = true;
+    let forbidden = false;
+    let attempts = 0;
+    let pending = false;
+    let flushTimer: ReturnType<typeof setTimeout> | undefined;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    const invalidate = () => {
+      pending = false;
+      for (const key of [
+        'stats',
+        'dashboard-recently-seen',
+        'dashboard-env-list',
+        'dashboard-env-tiles',
+        'dashboard-osquery-versions',
+        'dashboard-error-nodes',
+        'nodes',
+        'node-tiles-batch',
+      ]) void client.invalidateQueries({ queryKey: [key] });
+    };
+    const schedule = () => {
+      if (pending || flushTimer) return;
+      pending = true;
+      flushTimer = setTimeout(() => {
+        flushTimer = undefined;
+        if (active) invalidate();
+      }, 5000);
+    };
+    const receive = ({ event, data }: StreamEvent) => {
+      if (!active || !data || typeof data !== 'object') return;
+      const value = data as Record<string, unknown>;
+      if (event === 'auth.expired') {
+        forbidden = true;
+        controller?.abort();
+        invalidate();
+      } else if (event === 'stream.ready' && value.environment_uuid === 'all') {
+        attempts = 0;
+        setLive(true);
+      } else if (event === 'resource.changed' && value.schema_version === 1 &&
+        value.environment_uuid === 'all' && value.topic === 'fleet' && value.change === 'activity') {
+        schedule();
+      }
+    };
+    const connect = async () => {
+      if (!active || forbidden) return;
+      controller = new AbortController();
+      try { await readEvents('all', ['fleet'], controller.signal, receive); }
+      catch (error) {
+        if (!active) return;
+        if (error instanceof AuthError) {
+          setCsrfToken(null);
+          forbidden = true;
+          invalidate();
+        } else if (error instanceof ApiError && [400, 403, 404].includes(error.status)) forbidden = true;
+      }
+      if (active) setLive(false);
+      if (active && !forbidden) {
+        const delay = Math.min(30_000, 1000 * 2 ** Math.min(attempts++, 5)) * (0.8 + Math.random() * 0.4);
+        retryTimer = setTimeout(() => { retryTimer = undefined; void connect(); }, delay);
+      }
+    };
+    void connect();
+    return () => {
+      active = false;
+      controller?.abort();
+      if (flushTimer) clearTimeout(flushTimer);
+      if (retryTimer) clearTimeout(retryTimer);
+      setLive(false);
+    };
+  }, [client, features?.events, features?.event_topics]);
+  return live;
+}
+
 export function useResourceUpdates(topic: EventTopic) {
   const status = useContext(LiveUpdatesContext);
   const resourceTopic = topic === 'queries' || topic === 'carves' ? topic : null;

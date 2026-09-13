@@ -28,12 +28,14 @@ const (
 	FileExplorer       = "file_explorer"
 	Alerts             = "alerts"
 	ServiceCommands    = "service_commands"
+	Fleet              = "fleet"
 	ChangeMetadata     = "metadata"
 	ChangeResults      = "results"
 	ChangeFiles        = "files"
 	ChangeRules        = "rules"
 	ChangeChannels     = "channels"
 	ChangeHistory      = "history"
+	ChangeActivity     = "activity"
 	maxConnections     = 1000
 	maxUserConnections = 8
 	queueSize          = 64
@@ -56,11 +58,15 @@ func (h Hint) Valid() bool {
 		(h.Topic == Carves && (h.Change == ChangeResults || h.Change == ChangeFiles)) ||
 		((h.Topic == Console || h.Topic == FileExplorer) && (h.Change == ChangeMetadata || h.Change == ChangeResults)) ||
 		(h.Topic == Alerts && (h.Change == ChangeRules || h.Change == ChangeChannels || h.Change == ChangeHistory)) ||
-		(h.Topic == ServiceCommands && (h.Change == "pending" || h.Change == "consumed" || h.Change == "recovered" || h.Change == "expired"))
-	validTopic := h.Topic == Queries || h.Topic == Carves || h.Topic == Console || h.Topic == FileExplorer || h.Topic == Alerts || h.Topic == ServiceCommands
+		(h.Topic == ServiceCommands && (h.Change == "pending" || h.Change == "consumed" || h.Change == "recovered" || h.Change == "expired")) ||
+		(h.Topic == Fleet && h.Change == ChangeActivity)
+	validTopic := h.Topic == Queries || h.Topic == Carves || h.Topic == Console || h.Topic == FileExplorer || h.Topic == Alerts || h.Topic == ServiceCommands || h.Topic == Fleet
 	sessionScoped := h.Topic != Console && h.Topic != FileExplorer || h.SessionID != 0 && h.ResourceID != 0
-	environmentScoped := h.EnvironmentID != 0 || h.Topic == Alerts || h.Topic == ServiceCommands
-	return environmentScoped && validTopic && len(h.Name) > 0 && len(h.Name) <= 256 && validChange && sessionScoped
+	validScope := h.EnvironmentID != 0 || h.Topic == Alerts
+	if h.Topic == ServiceCommands || h.Topic == Fleet {
+		validScope = h.EnvironmentID == 0
+	}
+	return validScope && validTopic && len(h.Name) > 0 && len(h.Name) <= 256 && validChange && sessionScoped
 }
 
 type Publisher interface{ Publish(Hint) }
@@ -248,6 +254,9 @@ func hintMatchesSubscription(h Hint, s *subscription) bool {
 		return s.environmentID == 0 || h.EnvironmentID == 0 || s.environmentID == h.EnvironmentID
 	}
 	if h.Topic == ServiceCommands {
+		return s.environmentID == 0 && h.EnvironmentID == 0
+	}
+	if h.Topic == Fleet {
 		return s.environmentID == 0 && h.EnvironmentID == 0
 	}
 	return s.environmentID == h.EnvironmentID

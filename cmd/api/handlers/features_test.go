@@ -243,6 +243,25 @@ func TestFeaturesHandlerReportsServiceCommandEventTopicWhenEnabled(t *testing.T)
 	}
 }
 
+func TestFeaturesHandlerReportsFleetEventTopicWhenEnabled(t *testing.T) {
+	h := &HandlersApi{Events: &testEventSource{}}
+	r := httptest.NewRequest(http.MethodGet, "/api/v1/features", nil)
+	w := httptest.NewRecorder()
+
+	h.FeaturesHandler(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d want 200", w.Code)
+	}
+	var resp FeaturesResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !containsFeatureTopic(resp.EventTopics, "fleet") {
+		t.Fatalf("fleet events topic missing: %v", resp.EventTopics)
+	}
+}
+
 func containsFeatureTopic(topics []string, want string) bool {
 	for _, topic := range topics {
 		if topic == want {
