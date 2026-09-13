@@ -3628,8 +3628,8 @@ paths:
         - Features
   /api/v1/health/status:
     get:
-      description: Component health, per-service runtime detail and upgrade status.
-        Admin only.
+      description: Component health, per-service runtime detail, live-update transport
+        counters, and upgrade status. Admin only.
       responses:
         "200":
           description: OK

@@ -10,6 +10,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/stretchr/testify/require"
@@ -62,11 +63,12 @@ func TestHealthStatusReturns503WhenDisabled(t *testing.T) {
 
 func TestHealthStatusReportsComponents(t *testing.T) {
 	h, mgr := setupHealthHandler(t)
+	h.Events = &testEventSource{stats: events.Stats{Enabled: true, Healthy: true, Subscribers: 2}}
 	require.NoError(t, mgr.Report(health.ServiceStatus{
 		Service: "tls", Version: "0.5.8",
 		StartedAt: time.Now().Add(-2 * time.Hour), ReportedAt: time.Now(),
 		Goroutines: 71,
-		Payload:    `{"alerts":{"enabled":true,"queue_depth":0,"queue_capacity":8192,"dispatched":9}}`,
+		Payload:    `{"alerts":{"enabled":true,"queue_depth":0,"queue_capacity":8192,"dispatched":9},"events":{"enabled":true,"healthy":true}}`,
 	}))
 
 	rr := httptest.NewRecorder()
@@ -83,7 +85,9 @@ func TestHealthStatusReportsComponents(t *testing.T) {
 	require.Contains(t, byID, "database")
 	require.Contains(t, byID, "redis")
 	require.Contains(t, byID, "api")
+	require.Contains(t, byID, "events")
 	require.Equal(t, health.StatusOperational, byID["api"].Status)
+	require.Equal(t, health.StatusOperational, byID["events"].Status)
 	require.Equal(t, health.StatusOperational, byID["tls"].Status)
 	require.Equal(t, health.StatusOperational, byID["workers"].Status)
 	require.Equal(t, "0.5.8", resp.Upgrade.Current)

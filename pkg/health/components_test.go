@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,6 +46,27 @@ func TestServiceComponentFlagsVersionSkew(t *testing.T) {
 	require.Equal(t, StatusDegraded, got.Status)
 	require.Contains(t, got.Summary, "0.5.7")
 	require.Equal(t, true, got.Details["version_mismatch"])
+}
+
+func TestEventsComponentReportsAPIDrops(t *testing.T) {
+	api := events.Stats{Enabled: true, Healthy: true, Subscribers: 2, Dropped: 1}
+	got := EventsComponent(api, ServiceStatus{}, ErrNotReporting, time.Now())
+	require.Equal(t, StatusDegraded, got.Status)
+	require.Contains(t, got.Summary, "API event bus dropped 1")
+	require.Equal(t, api, got.Details["api"])
+}
+
+func TestEventsComponentReportsTLSStatsFromHeartbeat(t *testing.T) {
+	now := time.Now()
+	api := events.Stats{Enabled: true, Healthy: true, Subscribers: 1}
+	row := ServiceStatus{
+		Service: config.ServiceTLS, ReportedAt: now, StartedAt: now.Add(-time.Hour),
+		Payload: `{"events":{"enabled":true,"healthy":true,"subscribers":0,"dropped":2}}`,
+	}
+	got := EventsComponent(api, row, nil, now)
+	require.Equal(t, StatusDegraded, got.Status)
+	require.Contains(t, got.Summary, "TLS event bus dropped 2")
+	require.NotNil(t, got.Details["tls"])
 }
 
 // TestServiceComponentSurfacesRuntime pins the contract the SPA relies on: a

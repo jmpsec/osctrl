@@ -9,6 +9,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -19,6 +20,10 @@ import (
 // or a blackholed connection must not hang the request forever — it must
 // render "down" within a fixed budget instead.
 const healthCheckTimeout = 3 * time.Second
+
+type eventStatsProvider interface {
+	Snapshot() events.Stats
+}
 
 // healthStatusResponse is the payload the SPA renders. One response carries
 // every component and its details, so the page's drill-downs are expansions
@@ -32,7 +37,7 @@ type healthStatusResponse struct {
 // HealthStatusHandler — GET /api/v1/health/status
 //
 // @Summary Deployment health
-// @Description Component health, per-service runtime detail and upgrade status. Admin only.
+// @Description Component health, per-service runtime detail, live-update transport counters, and upgrade status. Admin only.
 // @Tags health
 // @Produce json
 // @Success 200 {object} healthStatusResponse
@@ -70,6 +75,9 @@ func (h *HandlersApi) HealthStatusHandler(w http.ResponseWriter, r *http.Request
 		health.ServiceComponent(row, err, now, h.ServiceVersion),
 		health.WorkersComponent(row, err, now),
 	)
+	if provider, ok := h.Events.(eventStatsProvider); ok {
+		components = append(components, health.EventsComponent(provider.Snapshot(), row, err, now))
+	}
 
 	upgrade := health.UpgradeInfo{Current: h.ServiceVersion}
 	if h.HealthVersions != nil {

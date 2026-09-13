@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jmpsec/osctrl/pkg/events"
 )
 
 // Status values a component can report.
@@ -31,6 +33,7 @@ type Component struct {
 // disabled are omitted, so the page shows what the deployment actually runs.
 type WorkerPayload struct {
 	Alerts *AlertsWorkerStats `json:"alerts,omitempty"`
+	Events *events.Stats      `json:"events,omitempty"`
 	// Runtime is the reporting service's Go runtime state, sampled through
 	// runtime/metrics rather than ReadMemStats — see SampleRuntimeMetrics for
 	// why, and for the two fields that sampler cannot fill.
@@ -190,5 +193,60 @@ func WorkersComponent(row ServiceStatus, err error, now time.Time) Component {
 		c.Status = StatusOperational
 		c.Summary = fmt.Sprintf("alerts worker: %d dispatched, queue %d/%d", a.Dispatched, a.QueueDepth, a.QueueCapacity)
 	}
+	return c
+}
+
+func EventsComponent(api events.Stats, tlsRow ServiceStatus, tlsErr error, now time.Time) Component {
+	c := Component{
+		ID:      "events",
+		Name:    "Live updates",
+		Details: map[string]any{"api": api},
+	}
+	if !api.Enabled {
+		c.Status = StatusOperational
+		c.Summary = "event streams disabled"
+		return c
+	}
+	if !api.Healthy {
+		c.Status = StatusDegraded
+		c.Summary = "API event bus is not ready"
+		return c
+	}
+	if api.Dropped > 0 {
+		c.Status = StatusDegraded
+		c.Summary = fmt.Sprintf("API event bus dropped %d hints", api.Dropped)
+		return c
+	}
+
+	var tlsStats events.Stats
+	tlsStatsKnown := false
+	if tlsErr == nil {
+		if now.Sub(tlsRow.ReportedAt) > StaleAfter {
+			c.Status = StatusStale
+			c.Summary = "TLS event bus counters are stale"
+			return c
+		}
+		payload, err := decodePayload(tlsRow)
+		if err == nil && payload.Events != nil {
+			tlsStats = *payload.Events
+			c.Details["tls"] = tlsStats
+			tlsStatsKnown = true
+		}
+	}
+	if tlsStatsKnown {
+		if !tlsStats.Healthy {
+			c.Status = StatusDegraded
+			c.Summary = "TLS event bus is not ready"
+			return c
+		}
+		if tlsStats.Dropped > 0 {
+			c.Status = StatusDegraded
+			c.Summary = fmt.Sprintf("TLS event bus dropped %d hints", tlsStats.Dropped)
+			return c
+		}
+	}
+
+	c.Status = StatusOperational
+	c.Summary = fmt.Sprintf("event bus ready, %d active subscriber(s)", api.Subscribers)
 	return c
 }
