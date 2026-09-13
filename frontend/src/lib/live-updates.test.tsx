@@ -1,7 +1,14 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
-import { LiveUpdatesProvider, createInvalidator, resourceRefetchInterval, useResourceUpdates } from './live-updates';
+import {
+  LiveUpdatesProvider,
+  createInvalidator,
+  resourceRefetchInterval,
+  useAlertUpdates,
+  useResourceUpdates,
+  useServiceCommandUpdates,
+} from './live-updates';
 
 const mocks = vi.hoisted(() => ({ readEvents: vi.fn(), getFeatures: vi.fn() }));
 vi.mock('$/api/events', () => ({ readEvents: mocks.readEvents }));
@@ -58,6 +65,14 @@ function QueryStatusConsumer() {
   const live = useResourceUpdates('queries');
   return <div data-testid="queries-live">{live ? 'live' : 'polling'}</div>;
 }
+function AlertsConsumer({ env = 'all' }: { env?: string }) {
+  const live = useAlertUpdates(env);
+  return <div data-testid="alerts-live">{live ? 'live' : 'polling'}</div>;
+}
+function ServiceCommandConsumer({ commandID, onChange }: { commandID?: string; onChange: () => void }) {
+  const live = useServiceCommandUpdates(commandID, onChange);
+  return <div data-testid="command-live">{live ? 'live' : 'polling'}</div>;
+}
 
 it('uses normal polling until the selected stream is connected', async () => {
   mocks.getFeatures.mockResolvedValue({ events: true, event_topics: ['queries'] });
@@ -101,6 +116,53 @@ it('shares one subscription and aborts the old environment on navigation and unm
   view.unmount();
   expect((mocks.readEvents.mock.calls[1][2] as AbortSignal).aborted).toBe(true);
   await act(async () => undefined);
+  client.clear();
+});
+
+
+it('invalidates alert caches from a top-level alerts stream', async () => {
+  mocks.getFeatures.mockResolvedValue({ events: true, event_topics: ['alerts'] });
+  let receive: ((event: { event: string; data: Record<string, unknown> }) => void) | undefined;
+  mocks.readEvents.mockImplementation((_env, _topics, _signal: AbortSignal, onEvent) => {
+    receive = onEvent;
+    return new Promise<void>(() => undefined);
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const invalidate = vi.spyOn(client, 'invalidateQueries');
+  render(<QueryClientProvider client={client}><AlertsConsumer /></QueryClientProvider>);
+  await waitFor(() => expect(mocks.readEvents).toHaveBeenCalledTimes(1));
+  expect(mocks.readEvents.mock.calls[0][0]).toBe('all');
+  expect(mocks.readEvents.mock.calls[0][1]).toEqual(['alerts']);
+  act(() => receive?.({ event: 'stream.ready', data: { environment_uuid: 'all' } }));
+  expect(screen.getByTestId('alerts-live')).toHaveTextContent('live');
+  expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+    ['alert-rules'], ['alert-channels'], ['alert-history'],
+  ]);
+  act(() => receive?.({ event: 'resource.changed', data: { schema_version: 1, environment_uuid: 'all', topic: 'alerts', change: 'history' } }));
+  expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey).at(-1)).toEqual(['alert-history']);
+  client.clear();
+});
+
+it('wakes service command polling from a global command stream', async () => {
+  mocks.getFeatures.mockResolvedValue({ events: true, event_topics: ['service_commands'] });
+  let receive: ((event: { event: string; data: Record<string, unknown> }) => void) | undefined;
+  mocks.readEvents.mockImplementation((_env, _topics, _signal: AbortSignal, onEvent) => {
+    receive = onEvent;
+    return new Promise<void>(() => undefined);
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const onChange = vi.fn();
+  render(<QueryClientProvider client={client}><ServiceCommandConsumer commandID="cmd-1" onChange={onChange} /></QueryClientProvider>);
+  await waitFor(() => expect(mocks.readEvents).toHaveBeenCalledTimes(1));
+  expect(mocks.readEvents.mock.calls[0][0]).toBe('all');
+  expect(mocks.readEvents.mock.calls[0][1]).toEqual(['service_commands']);
+  act(() => receive?.({ event: 'stream.ready', data: { environment_uuid: 'all' } }));
+  expect(screen.getByTestId('command-live')).toHaveTextContent('live');
+  expect(onChange).toHaveBeenCalledTimes(1);
+  act(() => receive?.({ event: 'resource.changed', data: { schema_version: 1, environment_uuid: 'all', topic: 'service_commands', name: 'other' } }));
+  expect(onChange).toHaveBeenCalledTimes(1);
+  act(() => receive?.({ event: 'resource.changed', data: { schema_version: 1, environment_uuid: 'all', topic: 'service_commands', name: 'cmd-1' } }));
+  expect(onChange).toHaveBeenCalledTimes(2);
   client.clear();
 });
 

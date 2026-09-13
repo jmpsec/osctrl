@@ -25,13 +25,13 @@ type ResourceChanged struct {
 	ResourceID      uint   `json:"resource_id,omitempty"`
 }
 
-// EventsHandler streams authorized query/carve/session invalidations.
+// EventsHandler streams authorized query/carve/session/alert invalidations.
 // @Summary Subscribe to resource change notifications
-// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively.
+// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively. Alerts and service_commands require super-admin permissions and may use env=all.
 // @Tags Events
 // @Produce text/event-stream json
-// @Param env query string true "Environment name or UUID"
-// @Param topic query []string true "Topics: queries, carves, console, file_explorer" collectionFormat(multi)
+// @Param env query string true "Environment name or UUID; use all only with topic=alerts or topic=service_commands"
+// @Param topic query []string true "Topics: queries, carves, console, file_explorer, alerts, service_commands" collectionFormat(multi)
 // @Param console_session query int false "Console session id required when subscribing to topic=console"
 // @Param file_explorer_session query int false "File explorer session id required when subscribing to topic=file_explorer"
 // @Success 200 {string} string "SSE stream: stream.ready, resource.changed, auth.expired"
@@ -57,7 +57,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selectors, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil || len(selectors["env"]) != 1 || len(selectors["env"][0]) == 0 || len(selectors["env"][0]) > 256 || len(selectors["topic"]) == 0 || len(selectors["topic"]) > 4 {
+	if err != nil || len(selectors["env"]) != 1 || len(selectors["env"][0]) == 0 || len(selectors["env"][0]) > 256 || len(selectors["topic"]) == 0 || len(selectors["topic"]) > 6 {
 		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
 		return
 	}
@@ -68,10 +68,14 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	topics := selectors["topic"]
+	globalOnly := true
 	for _, topic := range topics {
-		if topic != events.Queries && topic != events.Carves && topic != events.Console && topic != events.FileExplorer {
+		if topic != events.Queries && topic != events.Carves && topic != events.Console && topic != events.FileExplorer && topic != events.Alerts && topic != events.ServiceCommands {
 			apiErrorResponse(w, "invalid event topic", http.StatusBadRequest, nil)
 			return
+		}
+		if topic != events.Alerts && topic != events.ServiceCommands {
+			globalOnly = false
 		}
 	}
 	consoleSessionID, ok := eventOptionalUintSelector(selectors, "console_session")
@@ -88,10 +92,21 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
 		return
 	}
-	env, err := h.Envs.Get(selectors.Get("env"))
-	if err != nil {
-		apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
+	envSelector := selectors.Get("env")
+	if eventTopicSelected(topics, events.ServiceCommands) && envSelector != "all" {
+		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
 		return
+	}
+	environmentID := uint(0)
+	environmentUUID := "all"
+	if !(globalOnly && envSelector == "all") {
+		env, err := h.Envs.Get(envSelector)
+		if err != nil {
+			apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
+			return
+		}
+		environmentID = env.ID
+		environmentUUID = env.UUID
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	username := ctx[ctxUser]
@@ -99,12 +114,20 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		if !h.EventsAuthenticate(r) {
 			return false
 		}
-		// A deleted environment must stop an existing subscription too.
-		current, err := h.Envs.GetByID(env.ID)
-		if err != nil || current.UUID != env.UUID {
-			return false
+		// A deleted environment must stop an existing environment-scoped subscription too.
+		if environmentID != 0 {
+			current, err := h.Envs.GetByID(environmentID)
+			if err != nil || current.UUID != environmentUUID {
+				return false
+			}
 		}
 		for _, topic := range topics {
+			if topic == events.Alerts || topic == events.ServiceCommands {
+				if !h.Users.CheckPermissions(username, users.AdminLevel, users.NoEnvironment) {
+					return false
+				}
+				continue
+			}
 			level := users.QueryLevel
 			if topic == events.Carves {
 				level = users.CarveLevel
@@ -112,14 +135,14 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 			if topic == events.Console || topic == events.FileExplorer {
 				level = users.AdminLevel
 			}
-			if !h.Users.CheckPermissions(username, level, env.UUID) {
+			if !h.Users.CheckPermissions(username, level, environmentUUID) {
 				return false
 			}
 		}
-		if consoleSessionID != 0 && !h.authorizedConsoleEventSession(username, env.ID, consoleSessionID) {
+		if consoleSessionID != 0 && !h.authorizedConsoleEventSession(username, environmentID, consoleSessionID) {
 			return false
 		}
-		if fileExplorerSessionID != 0 && !h.authorizedFileExplorerEventSession(username, env.ID, fileExplorerSessionID) {
+		if fileExplorerSessionID != 0 && !h.authorizedFileExplorerEventSession(username, environmentID, fileExplorerSessionID) {
 			return false
 		}
 		return true
@@ -128,7 +151,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
 	}
-	stream, unsubscribe, err := h.Events.Subscribe(username, env.ID, topics)
+	stream, unsubscribe, err := h.Events.Subscribe(username, environmentID, topics)
 	if err != nil {
 		code := http.StatusServiceUnavailable
 		if errors.Is(err, events.ErrLimit) {
@@ -161,7 +184,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return controller.Flush()
 	}
-	if err := write("stream.ready", map[string]any{"environment_uuid": env.UUID, "topics": topics, "replay": false}); err != nil {
+	if err := write("stream.ready", map[string]any{"environment_uuid": environmentUUID, "topics": topics, "replay": false}); err != nil {
 		return
 	}
 	flush := time.NewTicker(250 * time.Millisecond)
@@ -198,7 +221,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 				if change == "" {
 					change = events.ChangeMetadata
 				}
-				if err := write("resource.changed", ResourceChanged{SchemaVersion: 1, EnvironmentUUID: env.UUID, Topic: hint.Topic, Name: hint.Name, Change: change, SessionID: hint.SessionID, ResourceID: hint.ResourceID}); err != nil {
+				if err := write("resource.changed", ResourceChanged{SchemaVersion: 1, EnvironmentUUID: environmentUUID, Topic: hint.Topic, Name: hint.Name, Change: change, SessionID: hint.SessionID, ResourceID: hint.ResourceID}); err != nil {
 					return
 				}
 				delete(pending, hint)

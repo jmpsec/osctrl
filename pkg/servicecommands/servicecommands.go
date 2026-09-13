@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -90,7 +91,8 @@ func (c ServiceCommand) Status(now time.Time) string {
 
 // Manager manages service_commands.
 type Manager struct {
-	DB *gorm.DB
+	DB     *gorm.DB
+	Events events.Publisher
 }
 
 func NewManager(db *gorm.DB) *Manager {
@@ -132,6 +134,7 @@ func (m *Manager) Request(targetService, action, requestedBy, requestedFrom stri
 	if err := m.DB.Create(&cmd).Error; err != nil {
 		return ServiceCommand{}, err
 	}
+	m.publishCommandChange(cmd, StatusPending)
 	return cmd, nil
 }
 
@@ -184,6 +187,9 @@ func (m *Manager) ConsumeNext(targetService, consumedBy string, now time.Time) (
 	if err != nil {
 		return ServiceCommand{}, false, err
 	}
+	if consumed.ID != 0 {
+		m.publishCommandChange(consumed, StatusConsumed)
+	}
 	return consumed, consumed.ID != 0, nil
 }
 
@@ -191,13 +197,46 @@ func (m *Manager) MarkRecovered(targetService, recoveredBy string, now time.Time
 	if targetService != config.ServiceTLS {
 		return 0, ErrInvalidTarget
 	}
-	res := m.DB.Model(&ServiceCommand{}).
-		Where("target_service = ? AND action = ? AND consumed_at IS NOT NULL AND recovered_at IS NULL", targetService, ActionRestart).
-		Updates(map[string]any{
-			"recovered_at": &now,
-			"recovered_by": recoveredBy,
-		})
-	return res.RowsAffected, res.Error
+	var recovered []ServiceCommand
+	var rowsAffected int64
+	err := m.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("target_service = ? AND action = ? AND consumed_at IS NOT NULL AND recovered_at IS NULL", targetService, ActionRestart).
+			Find(&recovered).Error; err != nil {
+			return err
+		}
+		if len(recovered) == 0 {
+			return nil
+		}
+		ids := make([]uint, 0, len(recovered))
+		for _, cmd := range recovered {
+			ids = append(ids, cmd.ID)
+		}
+		res := tx.Model(&ServiceCommand{}).
+			Where("id IN ?", ids).
+			Updates(map[string]any{
+				"recovered_at": &now,
+				"recovered_by": recoveredBy,
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		rowsAffected = res.RowsAffected
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	for _, cmd := range recovered {
+		m.publishCommandChange(cmd, StatusRecovered)
+	}
+	return rowsAffected, nil
+}
+
+func (m *Manager) publishCommandChange(cmd ServiceCommand, status string) {
+	if m == nil || m.Events == nil {
+		return
+	}
+	m.Events.Publish(events.Hint{EnvironmentID: 0, Topic: events.ServiceCommands, Name: cmd.CommandID, Change: status})
 }
 
 func newCommandID() (string, error) {

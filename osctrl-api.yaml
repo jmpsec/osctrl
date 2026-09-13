@@ -3527,15 +3527,18 @@ paths:
         snapshots after stream.ready and retain polling. Requires the
         corresponding environment query/carve/admin permissions. Session-scoped
         console and file_explorer topics require console_session or
-        file_explorer_session respectively.
+        file_explorer_session respectively. Alerts and service_commands require
+        super-admin permissions and may use env=all.
       parameters:
-        - description: Environment name or UUID
+        - description: Environment name or UUID; use all only with topic=alerts or
+            topic=service_commands
           in: query
           name: env
           required: true
           schema:
             type: string
-        - description: "Topics: queries, carves, console, file_explorer"
+        - description: "Topics: queries, carves, console, file_explorer, alerts,
+            service_commands"
           in: query
           name: topic
           required: true

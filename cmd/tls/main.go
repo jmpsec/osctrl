@@ -455,12 +455,6 @@ func osctrlService() {
 	if err != nil {
 		log.Fatal().Msgf("error initializing audit log manager: %v", err)
 	}
-	if n, err := serviceCommandMgr.MarkRecovered(config.ServiceTLS, serviceName, time.Now()); err != nil {
-		log.Err(err).Msg("error marking TLS service commands recovered")
-	} else if n > 0 {
-		auditLog.SettingsAction("", fmt.Sprintf("tls service recovered after %d restart command(s)", n), "local")
-		log.Info().Int64("commands", n).Msg("Marked TLS service command(s) recovered")
-	}
 	restartCh := make(chan struct{}, 1)
 	// Per-IP rate limit on /enroll. Defaults to bursts of 20 per minute,
 	// idle eviction after 10 minutes.
@@ -477,6 +471,16 @@ func osctrlService() {
 		defer eventBus.Close()
 		queriesmgr.Events = eventBus
 		filecarves.Events = eventBus
+		if alertsMgr != nil {
+			alertsMgr.Events = eventBus
+		}
+		serviceCommandMgr.Events = eventBus
+	}
+	if n, err := serviceCommandMgr.MarkRecovered(config.ServiceTLS, serviceName, time.Now()); err != nil {
+		log.Err(err).Msg("error marking TLS service commands recovered")
+	} else if n > 0 {
+		auditLog.SettingsAction("", fmt.Sprintf("tls service recovered after %d restart command(s)", n), "local")
+		log.Info().Int64("commands", n).Msg("Marked TLS service command(s) recovered")
 	}
 
 	handlersTLS = handlers.CreateHandlersTLS(

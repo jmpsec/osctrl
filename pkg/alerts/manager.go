@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/events"
 	"gorm.io/gorm"
 )
 
@@ -19,7 +20,8 @@ import (
 // Manager manages the alert_rules / alert_channels / alert_history
 // tables.
 type Manager struct {
-	DB *gorm.DB
+	DB     *gorm.DB
+	Events events.Publisher
 }
 
 // NewManager initializes the manager and auto-migrates the three tables.
@@ -55,6 +57,7 @@ func (m *Manager) CreateRule(rule AlertRule) (AlertRule, error) {
 		}
 		return AlertRule{}, fmt.Errorf("create alert rule: %w", err)
 	}
+	m.publishAlertChange(row.EnvironmentID, events.ChangeRules)
 	return row, nil
 }
 
@@ -84,7 +87,12 @@ func (m *Manager) UpdateRule(id uint, rule AlertRule) (AlertRule, error) {
 	}).Error; err != nil {
 		return AlertRule{}, fmt.Errorf("update alert rule: %w", err)
 	}
-	return m.GetRule(id)
+	updated, err := m.GetRule(id)
+	if err != nil {
+		return AlertRule{}, err
+	}
+	m.publishAlertChange(updated.EnvironmentID, events.ChangeRules)
+	return updated, nil
 }
 
 // GetRule retrieves one rule by ID.
@@ -102,6 +110,10 @@ func (m *Manager) GetRule(id uint) (AlertRule, error) {
 // DeleteRule removes a rule by ID. History rows are not cascaded — they
 // keep the RuleName snapshot for the audit trail.
 func (m *Manager) DeleteRule(id uint) error {
+	row, err := m.GetRule(id)
+	if err != nil {
+		return err
+	}
 	res := m.DB.Delete(&AlertRule{}, id)
 	if res.Error != nil {
 		return res.Error
@@ -109,6 +121,7 @@ func (m *Manager) DeleteRule(id uint) error {
 	if res.RowsAffected == 0 {
 		return ErrRuleNotFound
 	}
+	m.publishAlertChange(row.EnvironmentID, events.ChangeRules)
 	return nil
 }
 
@@ -171,6 +184,7 @@ func (m *Manager) CreateChannel(ch AlertChannel) (AlertChannel, error) {
 		}
 		return AlertChannel{}, fmt.Errorf("create alert channel: %w", err)
 	}
+	m.publishAlertChange(row.EnvironmentID, events.ChangeChannels)
 	return row, nil
 }
 
@@ -200,7 +214,12 @@ func (m *Manager) UpdateChannel(id uint, ch AlertChannel) (AlertChannel, error) 
 	}).Error; err != nil {
 		return AlertChannel{}, fmt.Errorf("update alert channel: %w", err)
 	}
-	return m.GetChannel(id)
+	updated, err := m.GetChannel(id)
+	if err != nil {
+		return AlertChannel{}, err
+	}
+	m.publishAlertChange(updated.EnvironmentID, events.ChangeChannels)
+	return updated, nil
 }
 
 // GetChannel retrieves one channel by ID.
@@ -219,6 +238,10 @@ func (m *Manager) GetChannel(id uint) (AlertChannel, error) {
 // dangling ID in ChannelIDs; dispatch treats unknown channels as
 // disabled and skips them.
 func (m *Manager) DeleteChannel(id uint) error {
+	row, err := m.GetChannel(id)
+	if err != nil {
+		return err
+	}
 	res := m.DB.Delete(&AlertChannel{}, id)
 	if res.Error != nil {
 		return res.Error
@@ -226,6 +249,7 @@ func (m *Manager) DeleteChannel(id uint) error {
 	if res.RowsAffected == 0 {
 		return ErrChannelNotFound
 	}
+	m.publishAlertChange(row.EnvironmentID, events.ChangeChannels)
 	return nil
 }
 
@@ -254,6 +278,7 @@ func (m *Manager) RecordHistory(h AlertHistory) error {
 	if err := m.DB.Create(&h).Error; err != nil {
 		return fmt.Errorf("record alert history: %w", err)
 	}
+	m.publishAlertChange(NoEnvironmentID, events.ChangeHistory)
 	return nil
 }
 
@@ -290,6 +315,13 @@ func (m *Manager) PruneHistoryWithRetention(retentionDays int64, now time.Time) 
 		return 0, nil
 	}
 	return m.PruneHistory(now.AddDate(0, 0, -int(retentionDays)))
+}
+
+func (m *Manager) publishAlertChange(environmentID uint, change string) {
+	if m == nil || m.Events == nil {
+		return
+	}
+	m.Events.Publish(events.Hint{EnvironmentID: environmentID, Topic: events.Alerts, Name: change, Change: change})
 }
 
 // ─────────────────────────────── snapshot ───────────────────────────────

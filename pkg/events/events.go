@@ -26,9 +26,14 @@ const (
 	Carves             = "carves"
 	Console            = "console"
 	FileExplorer       = "file_explorer"
+	Alerts             = "alerts"
+	ServiceCommands    = "service_commands"
 	ChangeMetadata     = "metadata"
 	ChangeResults      = "results"
 	ChangeFiles        = "files"
+	ChangeRules        = "rules"
+	ChangeChannels     = "channels"
+	ChangeHistory      = "history"
 	maxConnections     = 1000
 	maxUserConnections = 8
 	queueSize          = 64
@@ -49,10 +54,13 @@ func (h Hint) Valid() bool {
 	validChange := h.Change == "" || h.Change == ChangeMetadata ||
 		(h.Topic == Queries && h.Change == ChangeResults) ||
 		(h.Topic == Carves && (h.Change == ChangeResults || h.Change == ChangeFiles)) ||
-		((h.Topic == Console || h.Topic == FileExplorer) && (h.Change == ChangeMetadata || h.Change == ChangeResults))
-	validTopic := h.Topic == Queries || h.Topic == Carves || h.Topic == Console || h.Topic == FileExplorer
+		((h.Topic == Console || h.Topic == FileExplorer) && (h.Change == ChangeMetadata || h.Change == ChangeResults)) ||
+		(h.Topic == Alerts && (h.Change == ChangeRules || h.Change == ChangeChannels || h.Change == ChangeHistory)) ||
+		(h.Topic == ServiceCommands && (h.Change == "pending" || h.Change == "consumed" || h.Change == "recovered" || h.Change == "expired"))
+	validTopic := h.Topic == Queries || h.Topic == Carves || h.Topic == Console || h.Topic == FileExplorer || h.Topic == Alerts || h.Topic == ServiceCommands
 	sessionScoped := h.Topic != Console && h.Topic != FileExplorer || h.SessionID != 0 && h.ResourceID != 0
-	return h.EnvironmentID != 0 && validTopic && len(h.Name) > 0 && len(h.Name) <= 256 && validChange && sessionScoped
+	environmentScoped := h.EnvironmentID != 0 || h.Topic == Alerts || h.Topic == ServiceCommands
+	return environmentScoped && validTopic && len(h.Name) > 0 && len(h.Name) <= 256 && validChange && sessionScoped
 }
 
 type Publisher interface{ Publish(Hint) }
@@ -219,7 +227,7 @@ func (b *Bus) deliver(h Hint) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for s := range b.subs {
-		if s.environmentID != h.EnvironmentID || !s.topics[h.Topic] {
+		if !hintMatchesSubscription(h, s) {
 			continue
 		}
 		select {
@@ -230,6 +238,19 @@ func (b *Bus) deliver(h Hint) {
 			b.dropped.Add(1)
 		}
 	}
+}
+
+func hintMatchesSubscription(h Hint, s *subscription) bool {
+	if !s.topics[h.Topic] {
+		return false
+	}
+	if h.Topic == Alerts {
+		return s.environmentID == 0 || h.EnvironmentID == 0 || s.environmentID == h.EnvironmentID
+	}
+	if h.Topic == ServiceCommands {
+		return s.environmentID == 0 && h.EnvironmentID == 0
+	}
+	return s.environmentID == h.EnvironmentID
 }
 
 func (b *Bus) Subscribe(user string, environmentID uint, topics []string) (<-chan Hint, func(), error) {
