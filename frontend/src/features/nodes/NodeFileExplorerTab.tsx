@@ -22,6 +22,7 @@ import type {
   FileExplorerSession,
 } from '$/api/types';
 import { cn } from '$/lib/cn';
+import { useSessionResourceUpdates } from '$/lib/live-updates';
 
 type EntriesByDirectory = Record<string, FileExplorerEntry[]>;
 type CarveStatus =
@@ -30,12 +31,15 @@ type CarveStatus =
 
 const terminalStatuses = new Set(['completed', 'error', 'expired']);
 const heartbeatMs = 10000;
+const requestPollMs = 1000;
+const liveReconcileMs = 60000;
 const maxPolls = 30;
 
 export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }) {
   const { t } = useTranslation();
   const sessionRef = useRef<FileExplorerSession | null>(null);
   const loadingPathsRef = useRef<Set<string>>(new Set());
+  const requestWakeupsRef = useRef<Map<number, () => void>>(new Map());
   const [session, setSession] = useState<FileExplorerSession | null>(null);
   const [primingRequest, setPrimingRequest] = useState<FileExplorerRequest | null>(null);
   const [primingMetadata, setPrimingMetadata] = useState<FileExplorerMetadataRow | null>(null);
@@ -46,6 +50,36 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
   const [carving, setCarving] = useState(false);
   const [carveStatus, setCarveStatus] = useState<CarveStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const sessionID = session?.id;
+
+  const fileExplorerLive = useSessionResourceUpdates(
+    env,
+    'file_explorer',
+    sessionID,
+    useCallback(({ resourceId }) => {
+      requestWakeupsRef.current.get(resourceId)?.();
+    }, []),
+  );
+
+  const waitForRequestChange = useCallback((requestId: number, live: boolean) => {
+    if (!live) return delay(requestPollMs);
+    return new Promise<void>((resolve) => {
+      const timer = window.setTimeout(() => {
+        requestWakeupsRef.current.delete(requestId);
+        resolve();
+      }, liveReconcileMs);
+      requestWakeupsRef.current.set(requestId, () => {
+        window.clearTimeout(timer);
+        requestWakeupsRef.current.delete(requestId);
+        resolve();
+      });
+    });
+  }, []);
+
+  useEffect(() => () => {
+    for (const wake of requestWakeupsRef.current.values()) wake();
+    requestWakeupsRef.current.clear();
+  }, []);
 
   const updateLoadingPath = useCallback((path: string, loading: boolean) => {
     const next = new Set(loadingPathsRef.current);
@@ -56,12 +90,12 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
   }, []);
 
   const runRequest = useCallback(async (activeSession: FileExplorerSession, request: FileExplorerRequest) => {
-    const completed = await waitForRequest(env, activeSession.id, request.id);
+    const completed = await waitForRequest(env, activeSession.id, request.id, fileExplorerLive, waitForRequestChange);
     if (completed.status !== 'completed') {
       throw new Error(completed.error || `Request ${completed.status}`);
     }
     return getFileExplorerRequestResults(env, activeSession.id, request.id);
-  }, [env]);
+  }, [env, fileExplorerLive, waitForRequestChange]);
 
   const loadDirectory = useCallback(async (activeSession: FileExplorerSession, path: string) => {
     if (loadingPathsRef.current.has(path)) return;
@@ -129,7 +163,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
     let alive = true;
     void (async () => {
       try {
-        const completed = await waitForRequest(env, activeSession.id, primingRequest.id);
+        const completed = await waitForRequest(env, activeSession.id, primingRequest.id, fileExplorerLive, waitForRequestChange);
         if (!alive || completed.status !== 'completed') {
           if (alive) setPrimingRequest(null);
           return;
@@ -146,10 +180,9 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
     return () => {
       alive = false;
     };
-  }, [env, primingRequest]);
+  }, [env, fileExplorerLive, primingRequest, waitForRequestChange]);
 
   useEffect(() => {
-    const sessionID = session?.id;
     if (!sessionID) return undefined;
     const interval = window.setInterval(() => {
       void getFileExplorerSession(env, sessionID)
@@ -160,7 +193,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
         .catch(() => undefined);
     }, heartbeatMs);
     return () => window.clearInterval(interval);
-  }, [env, session?.id]);
+  }, [env, sessionID]);
 
   const root = session?.root ?? '/';
   const rootEntries = entriesByDirectory[root] ?? [];
@@ -471,19 +504,25 @@ function LoadingRow({ depth }: { depth: number }) {
   );
 }
 
-async function waitForRequest(env: string, sessionId: number, requestId: number): Promise<FileExplorerRequest> {
+async function waitForRequest(
+  env: string,
+  sessionId: number,
+  requestId: number,
+  live: boolean,
+  waitForChange: (requestId: number, live: boolean) => Promise<void>,
+): Promise<FileExplorerRequest> {
   for (let i = 0; i < maxPolls; i += 1) {
     const request = await getFileExplorerRequest(env, sessionId, requestId);
     if (terminalStatuses.has(request.status)) {
       return request;
     }
-    await delay(1000);
+    await waitForChange(requestId, live);
   }
   throw new Error('file explorer request timed out');
 }
 
 function delay(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 }
 
 function sortEntries(entries: FileExplorerEntry[]) {

@@ -140,24 +140,28 @@ Request controls are composed at route registration:
 There is no global middleware chain or declarative authorization policy. Authentication wrappers, rate limits, feature gates, and permission checks are attached explicitly to routes and handlers.
 
 Optional live updates use `GET /api/v1/events?env=<name-or-uuid>&topic=queries`
-(also `topic=carves`, repeatable). Enable `service.eventsEnabled` / `--events-enabled`
-on API and TLS and set `service.eventsNamespace` / `--events-namespace` to the same
-deployment-unique value. Both default to disabled/unset. The equivalent environment
-variables are `SERVICE_EVENTS_ENABLED` and `SERVICE_EVENTS_NAMESPACE`. Namespaces
-use 1–64 letters, digits, underscores, or hyphens and isolate deployments sharing
-Redis, including deployments using different Redis database numbers.
+(also `topic=carves`, repeatable). Session-scoped topics are also supported:
+`topic=console&console_session=<id>` and
+`topic=file_explorer&file_explorer_session=<id>`. Enable
+`service.eventsEnabled` / `--events-enabled` on API and TLS and set
+`service.eventsNamespace` / `--events-namespace` to the same deployment-unique
+value. Both default to disabled/unset. The equivalent environment variables are
+`SERVICE_EVENTS_ENABLED` and `SERVICE_EVENTS_NAMESPACE`. Namespaces use 1–64
+letters, digits, underscores, or hyphens and isolate deployments sharing Redis,
+including deployments using different Redis database numbers.
 
 `pkg/events` publishes bounded, best-effort Redis Pub/Sub invalidation hints and
 fans them out to API subscribers. Each connection is scoped to an environment
-and authorized query/carve topics; interactive query types are excluded. The API
+and authorized query/carve topics; console and file-explorer hints also require
+AdminLevel plus creator ownership of the selected active session. The API
 rechecks token validity and permissions before each batch and during idle
 heartbeats. Broker reconnects and slow-subscriber overflow close streams so the
 frontend obtains fresh REST snapshots. The environment layout shares one
-fetch-based SSE stream between query/carve views and keeps their existing polling
-as reconciliation and mixed-version fallback. Hints do not guarantee result
+fetch-based SSE stream between query/carve views; console and file explorer open
+session-specific streams after session creation. Hints do not guarantee result
 persistence, operation completion, replay, or download availability. Commands,
-pagination, result data, and downloads continue through REST. The first release
-does not change console/file-explorer sessions or add WebSocket transport.
+pagination, result data, and downloads continue through REST. No WebSocket
+transport is used.
 
 ## Authentication / Session Model
 

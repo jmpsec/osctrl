@@ -141,6 +141,17 @@ func TestFeaturesHandlerReportsConsoleOnlyWhenQueryAndEnabled(t *testing.T) {
 			if resp.Console != tt.want {
 				t.Fatalf("console feature: got %t want %t", resp.Console, tt.want)
 			}
+			if tt.want {
+				h.Events = &testEventSource{}
+				w = httptest.NewRecorder()
+				h.FeaturesHandler(w, r)
+				if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+					t.Fatalf("decode events: %v", err)
+				}
+				if !containsFeatureTopic(resp.EventTopics, "console") {
+					t.Fatalf("console events topic missing: %v", resp.EventTopics)
+				}
+			}
 		})
 	}
 }
@@ -174,6 +185,26 @@ func TestFeaturesHandlerReportsFileExplorerOnlyWhenQueryAndEnabled(t *testing.T)
 			if resp.FileExplorer != tt.want {
 				t.Fatalf("file explorer feature: got %t want %t", resp.FileExplorer, tt.want)
 			}
+			if tt.want {
+				h.Events = &testEventSource{}
+				w = httptest.NewRecorder()
+				h.FeaturesHandler(w, r)
+				if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+					t.Fatalf("decode events: %v", err)
+				}
+				if !containsFeatureTopic(resp.EventTopics, "file_explorer") {
+					t.Fatalf("file explorer events topic missing: %v", resp.EventTopics)
+				}
+			}
 		})
 	}
+}
+
+func containsFeatureTopic(topics []string, want string) bool {
+	for _, topic := range topics {
+		if topic == want {
+			return true
+		}
+	}
+	return false
 }

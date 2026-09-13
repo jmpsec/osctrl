@@ -2,6 +2,7 @@ package queries
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -736,8 +737,32 @@ func (q *Queries) notifyChange(query DistributedQuery, change string) {
 		topic = events.Queries
 	case CarveQueryType:
 		topic = events.Carves
+	case ConsoleQueryType:
+		sessionID, resourceID, ok := queryResourceIDs(query.ExtraData, "command_id")
+		if !ok {
+			return
+		}
+		q.Events.Publish(events.Hint{EnvironmentID: query.EnvironmentID, Topic: events.Console, Name: query.Name, Change: change, SessionID: sessionID, ResourceID: resourceID})
+		return
+	case FileExplorerQueryType:
+		sessionID, resourceID, ok := queryResourceIDs(query.ExtraData, "request_id")
+		if !ok {
+			return
+		}
+		q.Events.Publish(events.Hint{EnvironmentID: query.EnvironmentID, Topic: events.FileExplorer, Name: query.Name, Change: change, SessionID: sessionID, ResourceID: resourceID})
+		return
 	default:
 		return
 	}
 	q.Events.Publish(events.Hint{EnvironmentID: query.EnvironmentID, Topic: topic, Name: query.Name, Change: change})
+}
+
+func queryResourceIDs(extraData, resourceKey string) (uint, uint, bool) {
+	var fields map[string]uint
+	if err := json.Unmarshal([]byte(extraData), &fields); err != nil {
+		return 0, 0, false
+	}
+	sessionID := fields["session_id"]
+	resourceID := fields[resourceKey]
+	return sessionID, resourceID, sessionID != 0 && resourceID != 0
 }

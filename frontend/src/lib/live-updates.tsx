@@ -4,18 +4,21 @@ import { ApiError, AuthError, setCsrfToken } from '$/api/client';
 import { readEvents, type EventTopic, type StreamEvent } from '$/api/events';
 import { getFeatures } from '$/api/features';
 
-type Register = (topic: EventTopic) => () => void;
+type ResourceTopic = 'queries' | 'carves';
+type SessionTopic = 'console' | 'file_explorer';
+type Register = (topic: ResourceTopic) => () => void;
 type LiveStatus = {
   register: Register;
-  live: Record<EventTopic, boolean>;
+  live: Record<ResourceTopic, boolean>;
 };
 const LiveUpdatesContext = createContext<LiveStatus | null>(null);
 const fallbackRefetchInterval = 15_000;
 const liveReconcileInterval = 60_000;
 type ChangeKind = 'metadata' | 'results' | 'files';
-type PendingInvalidation = { topic: EventTopic; name?: string; change?: ChangeKind };
+type PendingInvalidation = { topic: ResourceTopic; name?: string; change?: ChangeKind };
+export type SessionResourceChange = { resourceId: number; change?: ChangeKind };
 
-function invalidationKeys(topic: EventTopic, change?: ChangeKind) {
+function invalidationKeys(topic: ResourceTopic, change?: ChangeKind) {
   if (topic === 'queries') {
     if (change === 'metadata') return ['queries', 'query'];
     if (change === 'results') return ['query-results'];
@@ -59,7 +62,7 @@ export function createInvalidator(client: QueryClient, env: string) {
     }
   };
   return {
-    add(topic: EventTopic, name?: string, change?: ChangeKind) {
+    add(topic: ResourceTopic, name?: string, change?: ChangeKind) {
       if (!active) return;
       if (!name || pending.size >= 64) {
         for (const [key, item] of pending) if (item.topic === topic) pending.delete(key);
@@ -73,19 +76,19 @@ export function createInvalidator(client: QueryClient, env: string) {
 
 export function LiveUpdatesProvider({ env, children }: { env: string; children: ReactNode }) {
   const client = useQueryClient();
-  const [counts, setCounts] = useState<Record<EventTopic, number>>({ queries: 0, carves: 0 });
-  const [live, setLive] = useState<Record<EventTopic, boolean>>({ queries: false, carves: false });
+  const [counts, setCounts] = useState<Record<ResourceTopic, number>>({ queries: 0, carves: 0 });
+  const [live, setLive] = useState<Record<ResourceTopic, boolean>>({ queries: false, carves: false });
   const register = useCallback<Register>((topic) => {
     setCounts(current => ({ ...current, [topic]: current[topic] + 1 }));
     return () => setCounts(current => ({ ...current, [topic]: Math.max(0, current[topic] - 1) }));
   }, []);
   const { data: features } = useQuery({ queryKey: ['features'], queryFn: getFeatures });
-  const selection = (Object.keys(counts) as EventTopic[])
+  const selection = (Object.keys(counts) as ResourceTopic[])
     .filter(topic => counts[topic] > 0 && features?.event_topics?.includes(topic)).sort().join(',');
 
   useEffect(() => {
     if (!features?.events || !selection) return;
-    const topics = selection.split(',') as EventTopic[];
+    const topics = selection.split(',') as ResourceTopic[];
     const invalidator = createInvalidator(client, env);
     const setTopicsLive = (value: boolean) => {
       setLive(current => {
@@ -116,9 +119,9 @@ export function LiveUpdatesProvider({ env, children }: { env: string; children: 
         for (const topic of topics) invalidator.add(topic);
       } else if (event === 'resource.changed' && value.schema_version === 1 &&
         environmentUUID && value.environment_uuid === environmentUUID &&
-        topics.includes(value.topic as EventTopic) && typeof value.name === 'string' && value.name.length <= 256) {
+        topics.includes(value.topic as ResourceTopic) && typeof value.name === 'string' && value.name.length <= 256) {
         const change = value.change === 'metadata' || value.change === 'results' || value.change === 'files' ? value.change : undefined;
-        invalidator.add(value.topic as EventTopic, value.name, change);
+        invalidator.add(value.topic as ResourceTopic, value.name, change);
       }
     };
     const connect = async () => {
@@ -158,8 +161,73 @@ export function resourceRefetchInterval(
   return live ? liveReconcileInterval : fallbackRefetchInterval;
 }
 
+export function useSessionResourceUpdates(
+  env: string,
+  topic: SessionTopic,
+  sessionId: number | undefined,
+  receiveChanged: (change: SessionResourceChange) => void,
+) {
+  const { data: features } = useQuery({ queryKey: ['features'], queryFn: getFeatures });
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    if (!sessionId || !features?.events || !features.event_topics?.includes(topic)) {
+      setLive(false);
+      return undefined;
+    }
+    let active = true;
+    let forbidden = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    let environmentUUID: string | undefined;
+    const receive = ({ event, data }: StreamEvent) => {
+      if (!active || !data || typeof data !== 'object') return;
+      const value = data as Record<string, unknown>;
+      if (event === 'auth.expired') {
+        forbidden = true;
+        controller?.abort();
+      } else if (event === 'stream.ready' && typeof value.environment_uuid === 'string') {
+        environmentUUID = value.environment_uuid;
+        attempts = 0;
+        setLive(true);
+      } else if (event === 'resource.changed' && value.schema_version === 1 &&
+        environmentUUID && value.environment_uuid === environmentUUID &&
+        value.topic === topic && value.session_id === sessionId && typeof value.resource_id === 'number') {
+        const change = value.change === 'metadata' || value.change === 'results' || value.change === 'files' ? value.change : undefined;
+        receiveChanged({ resourceId: value.resource_id, change });
+      }
+    };
+    const connect = async () => {
+      if (!active || forbidden) return;
+      environmentUUID = undefined;
+      controller = new AbortController();
+      const options = topic === 'console' ? { consoleSessionId: sessionId } : { fileExplorerSessionId: sessionId };
+      try { await readEvents(env, [topic], controller.signal, receive, options); }
+      catch (error) {
+        if (!active) return;
+        if (error instanceof AuthError) {
+          setCsrfToken(null);
+          forbidden = true;
+        } else if (error instanceof ApiError && [400, 403, 404].includes(error.status)) forbidden = true;
+      }
+      if (active) setLive(false);
+      if (active && !forbidden) {
+        const delay = Math.min(30_000, 1000 * 2 ** Math.min(attempts++, 5)) * (0.8 + Math.random() * 0.4);
+        timer = setTimeout(() => { void connect(); }, delay);
+      }
+    };
+    void connect();
+    return () => { active = false; controller?.abort(); if (timer) clearTimeout(timer); setLive(false); };
+  }, [env, features?.events, features?.event_topics, receiveChanged, sessionId, topic]);
+  return live;
+}
+
 export function useResourceUpdates(topic: EventTopic) {
   const status = useContext(LiveUpdatesContext);
-  useEffect(() => status?.register(topic), [status?.register, topic]);
-  return status?.live[topic] ?? false;
+  const resourceTopic = topic === 'queries' || topic === 'carves' ? topic : null;
+  useEffect(() => {
+    if (!resourceTopic) return undefined;
+    return status?.register(resourceTopic);
+  }, [status?.register, resourceTopic]);
+  return resourceTopic ? status?.live[resourceTopic] ?? false : false;
 }

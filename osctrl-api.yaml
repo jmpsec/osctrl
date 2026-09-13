@@ -3525,7 +3525,9 @@ paths:
     get:
       description: Best-effort SSE invalidation hints. No replay; refetch REST
         snapshots after stream.ready and retain polling. Requires the
-        corresponding environment query/carve permissions.
+        corresponding environment query/carve/admin permissions. Session-scoped
+        console and file_explorer topics require console_session or
+        file_explorer_session respectively.
       parameters:
         - description: Environment name or UUID
           in: query
@@ -3533,7 +3535,7 @@ paths:
           required: true
           schema:
             type: string
-        - description: "Topics: queries, carves"
+        - description: "Topics: queries, carves, console, file_explorer"
           in: query
           name: topic
           required: true
@@ -3542,6 +3544,17 @@ paths:
             type: array
             items:
               type: string
+        - description: Console session id required when subscribing to topic=console
+          in: query
+          name: console_session
+          schema:
+            type: integer
+        - description: File explorer session id required when subscribing to
+            topic=file_explorer
+          in: query
+          name: file_explorer_session
+          schema:
+            type: integer
       responses:
         "200":
           description: "SSE stream: stream.ready, resource.changed, auth.expired"

@@ -24,6 +24,8 @@ var (
 const (
 	Queries            = "queries"
 	Carves             = "carves"
+	Console            = "console"
+	FileExplorer       = "file_explorer"
 	ChangeMetadata     = "metadata"
 	ChangeResults      = "results"
 	ChangeFiles        = "files"
@@ -39,13 +41,18 @@ type Hint struct {
 	Topic         string `json:"topic"`
 	Name          string `json:"name"`
 	Change        string `json:"change,omitempty"`
+	SessionID     uint   `json:"session_id,omitempty"`
+	ResourceID    uint   `json:"resource_id,omitempty"`
 }
 
 func (h Hint) Valid() bool {
 	validChange := h.Change == "" || h.Change == ChangeMetadata ||
 		(h.Topic == Queries && h.Change == ChangeResults) ||
-		(h.Topic == Carves && (h.Change == ChangeResults || h.Change == ChangeFiles))
-	return h.EnvironmentID != 0 && (h.Topic == Queries || h.Topic == Carves) && len(h.Name) > 0 && len(h.Name) <= 256 && validChange
+		(h.Topic == Carves && (h.Change == ChangeResults || h.Change == ChangeFiles)) ||
+		((h.Topic == Console || h.Topic == FileExplorer) && (h.Change == ChangeMetadata || h.Change == ChangeResults))
+	validTopic := h.Topic == Queries || h.Topic == Carves || h.Topic == Console || h.Topic == FileExplorer
+	sessionScoped := h.Topic != Console && h.Topic != FileExplorer || h.SessionID != 0 && h.ResourceID != 0
+	return h.EnvironmentID != 0 && validTopic && len(h.Name) > 0 && len(h.Name) <= 256 && validChange && sessionScoped
 }
 
 type Publisher interface{ Publish(Hint) }
