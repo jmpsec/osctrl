@@ -29,6 +29,7 @@ import { getFeatures } from '$/api/features';
 import { getServiceCommand } from '$/api/service-config';
 import { AuthError } from '$/api/client';
 import { formatRelative } from '$/lib/time';
+import { useAlertUpdates } from '$/lib/live-updates';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
@@ -229,6 +230,8 @@ export function AlertsPage() {
     [channelsQuery.data],
   );
   const history = historyQuery.data ?? [];
+  const alertEventEnv = selectedEnv > 0 ? envs?.find((e) => e.id === selectedEnv)?.uuid : 'all';
+  useAlertUpdates(features?.alerts ? alertEventEnv : undefined);
   const envName = (id: number) =>
     id === GLOBAL_ENV_ID ? 'Global' : (envs?.find((e) => e.id === id)?.name ?? `env ${id}`);
 

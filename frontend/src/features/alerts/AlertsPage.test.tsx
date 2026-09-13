@@ -61,6 +61,7 @@ vi.mock('$/api/service-config', () => ({
 
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
+  setCsrfToken: vi.fn(),
   AuthError: class AuthError extends Error {
     readonly status = 401;
     constructor() {

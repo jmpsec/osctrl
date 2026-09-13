@@ -99,6 +99,7 @@ func TestConfigurationAndHintValidation(t *testing.T) {
 		{EnvironmentID: 1, Topic: Queries, Name: ""},
 		{EnvironmentID: 1, Topic: Queries, Name: "q", Change: "other"},
 		{EnvironmentID: 1, Topic: Queries, Name: "q", Change: ChangeFiles},
+		{EnvironmentID: 1, Topic: Alerts, Name: "q", Change: ChangeFiles},
 		{EnvironmentID: 1, Topic: Console, Name: "q", Change: ChangeResults, SessionID: 0, ResourceID: 2},
 	} {
 		require.False(t, hint.Valid())
@@ -106,6 +107,35 @@ func TestConfigurationAndHintValidation(t *testing.T) {
 	require.True(t, Hint{EnvironmentID: 1, Topic: Console, Name: "q", Change: ChangeMetadata, SessionID: 1, ResourceID: 2}.Valid())
 	require.True(t, Hint{EnvironmentID: 1, Topic: Console, Name: "q", Change: ChangeResults, SessionID: 1, ResourceID: 2}.Valid())
 	require.True(t, Hint{EnvironmentID: 1, Topic: FileExplorer, Name: "q", Change: ChangeResults, SessionID: 1, ResourceID: 2}.Valid())
+	require.True(t, Hint{EnvironmentID: 0, Topic: Alerts, Name: ChangeHistory, Change: ChangeHistory}.Valid())
+	require.True(t, Hint{EnvironmentID: 1, Topic: Alerts, Name: ChangeRules, Change: ChangeRules}.Valid())
+}
+
+func TestAlertsFanoutIncludesGlobalSubscriptions(t *testing.T) {
+	b := localBus()
+	all, closeAll, err := b.Subscribe("alice", 0, []string{Alerts})
+	require.NoError(t, err)
+	defer closeAll()
+	prod, closeProd, err := b.Subscribe("alice", 7, []string{Alerts})
+	require.NoError(t, err)
+	defer closeProd()
+	dev, closeDev, err := b.Subscribe("alice", 9, []string{Alerts})
+	require.NoError(t, err)
+	defer closeDev()
+	hint := Hint{EnvironmentID: 7, Topic: Alerts, Name: ChangeRules, Change: ChangeRules}
+	b.deliver(hint)
+	require.Equal(t, hint, <-all)
+	require.Equal(t, hint, <-prod)
+	select {
+	case <-dev:
+		t.Fatal("environment-scoped alert event leaked to another environment")
+	default:
+	}
+	global := Hint{EnvironmentID: 0, Topic: Alerts, Name: ChangeHistory, Change: ChangeHistory}
+	b.deliver(global)
+	require.Equal(t, global, <-all)
+	require.Equal(t, global, <-prod)
+	require.Equal(t, global, <-dev)
 }
 
 // Uses the same opt-in disposable Redis convention as query-dispatch tests.

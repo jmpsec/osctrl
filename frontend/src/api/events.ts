@@ -1,6 +1,6 @@
 import { ApiError, AuthError } from './client';
 
-export type EventTopic = 'queries' | 'carves' | 'console' | 'file_explorer';
+export type EventTopic = 'queries' | 'carves' | 'console' | 'file_explorer' | 'alerts';
 export interface StreamEvent { event: string; data: unknown }
 
 export interface EventSelectorOptions {

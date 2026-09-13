@@ -17,11 +17,13 @@ import (
 )
 
 type testEventSource struct {
-	ch        chan events.Hint
-	cancelled atomic.Bool
+	ch            chan events.Hint
+	cancelled     atomic.Bool
+	environmentID atomic.Uint32
 }
 
-func (s *testEventSource) Subscribe(string, uint, []string) (<-chan events.Hint, func(), error) {
+func (s *testEventSource) Subscribe(_ string, environmentID uint, _ []string) (<-chan events.Hint, func(), error) {
+	s.environmentID.Store(uint32(environmentID))
 	return s.ch, func() { s.cancelled.Store(true) }, nil
 }
 
@@ -45,6 +47,54 @@ func TestEventSubscriptionValidation(t *testing.T) {
 		h.EventsHandler(w, r)
 		require.Equal(t, tc.code, w.Code, tc.query)
 	}
+}
+
+func TestEventStreamAllowsAllAlertsSubscription(t *testing.T) {
+	h := setupAlertsHandler(t)
+	source := &testEventSource{ch: make(chan events.Hint, 1)}
+	h.Events = source
+	h.EventsAuthenticate = func(*http.Request) bool { return true }
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), ContextKey(contextAPI), ContextValue{ctxUser: "alice"})
+		h.EventsHandler(w, r.WithContext(ctx))
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	r, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1/events?env=all&topic=alerts", nil)
+	require.NoError(t, err)
+	response, err := srv.Client().Do(r)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.EqualValues(t, 0, source.environmentID.Load())
+	reader := bufio.NewReader(response.Body)
+	frame := func() string {
+		var result strings.Builder
+		for {
+			line, err := reader.ReadString('\n')
+			require.NoError(t, err)
+			result.WriteString(line)
+			if line == "\n" {
+				return result.String()
+			}
+		}
+	}
+	require.Contains(t, frame(), `"environment_uuid":"all"`)
+	source.ch <- events.Hint{EnvironmentID: 42, Topic: events.Alerts, Name: events.ChangeHistory, Change: events.ChangeHistory}
+	got := frame()
+	require.Contains(t, got, `"topic":"alerts"`)
+	require.Contains(t, got, `"change":"history"`)
+}
+
+func TestEventStreamRejectsAlertsForNonAdmin(t *testing.T) {
+	h := setupAlertsHandler(t)
+	h.Events = &testEventSource{ch: make(chan events.Hint)}
+	h.EventsAuthenticate = func(*http.Request) bool { return true }
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/events?env=all&topic=alerts", nil).WithContext(alertsCtx("bob"))
+	rr := httptest.NewRecorder()
+	h.EventsHandler(rr, req)
+	require.Equal(t, http.StatusForbidden, rr.Code)
 }
 
 func TestEventOriginValidation(t *testing.T) {

@@ -614,6 +614,9 @@ func osctrlAPIService() {
 		defer eventBus.Close()
 		queriesmgr.Events = eventBus
 		filecarves.Events = eventBus
+		if alertsMgr != nil {
+			alertsMgr.Events = eventBus
+		}
 	}
 
 	handlersApi = handlers.CreateHandlersApi(

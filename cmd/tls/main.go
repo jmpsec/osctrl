@@ -477,6 +477,9 @@ func osctrlService() {
 		defer eventBus.Close()
 		queriesmgr.Events = eventBus
 		filecarves.Events = eventBus
+		if alertsMgr != nil {
+			alertsMgr.Events = eventBus
+		}
 	}
 
 	handlersTLS = handlers.CreateHandlersTLS(

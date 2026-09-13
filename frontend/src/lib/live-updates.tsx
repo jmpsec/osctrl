@@ -6,6 +6,7 @@ import { getFeatures } from '$/api/features';
 
 type ResourceTopic = 'queries' | 'carves';
 type SessionTopic = 'console' | 'file_explorer';
+type AlertChangeKind = 'rules' | 'channels' | 'history';
 type Register = (topic: ResourceTopic) => () => void;
 type LiveStatus = {
   register: Register;
@@ -219,6 +220,72 @@ export function useSessionResourceUpdates(
     void connect();
     return () => { active = false; controller?.abort(); if (timer) clearTimeout(timer); setLive(false); };
   }, [env, features?.events, features?.event_topics, receiveChanged, sessionId, topic]);
+  return live;
+}
+
+
+export function useAlertUpdates(env: string | undefined) {
+  const client = useQueryClient();
+  const { data: features } = useQuery({ queryKey: ['features'], queryFn: getFeatures });
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    if (!env || !features?.events || !features.event_topics?.includes('alerts')) {
+      setLive(false);
+      return undefined;
+    }
+    let active = true;
+    let forbidden = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    let environmentUUID: string | undefined;
+    const invalidate = (change?: AlertChangeKind) => {
+      const keys = change === 'rules' ? ['alert-rules']
+        : change === 'channels' ? ['alert-channels']
+          : change === 'history' ? ['alert-history']
+            : ['alert-rules', 'alert-channels', 'alert-history'];
+      for (const key of keys) void client.invalidateQueries({ queryKey: [key] });
+    };
+    const receive = ({ event, data }: StreamEvent) => {
+      if (!active || !data || typeof data !== 'object') return;
+      const value = data as Record<string, unknown>;
+      if (event === 'auth.expired') {
+        forbidden = true;
+        controller?.abort();
+        invalidate();
+      } else if (event === 'stream.ready' && typeof value.environment_uuid === 'string') {
+        environmentUUID = value.environment_uuid;
+        attempts = 0;
+        setLive(true);
+        invalidate();
+      } else if (event === 'resource.changed' && value.schema_version === 1 &&
+        environmentUUID && value.environment_uuid === environmentUUID && value.topic === 'alerts') {
+        const change = value.change === 'rules' || value.change === 'channels' || value.change === 'history' ? value.change : undefined;
+        invalidate(change);
+      }
+    };
+    const connect = async () => {
+      if (!active || forbidden) return;
+      environmentUUID = undefined;
+      controller = new AbortController();
+      try { await readEvents(env, ['alerts'], controller.signal, receive); }
+      catch (error) {
+        if (!active) return;
+        if (error instanceof AuthError) {
+          setCsrfToken(null);
+          forbidden = true;
+          invalidate();
+        } else if (error instanceof ApiError && [400, 403, 404].includes(error.status)) forbidden = true;
+      }
+      if (active) setLive(false);
+      if (active && !forbidden) {
+        const delay = Math.min(30_000, 1000 * 2 ** Math.min(attempts++, 5)) * (0.8 + Math.random() * 0.4);
+        timer = setTimeout(() => { void connect(); }, delay);
+      }
+    };
+    void connect();
+    return () => { active = false; controller?.abort(); if (timer) clearTimeout(timer); setLive(false); };
+  }, [client, env, features?.events, features?.event_topics]);
   return live;
 }
 

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/config"
 )
 
@@ -197,6 +198,28 @@ func TestFeaturesHandlerReportsFileExplorerOnlyWhenQueryAndEnabled(t *testing.T)
 				}
 			}
 		})
+	}
+}
+
+func TestFeaturesHandlerReportsAlertsEventTopicWhenEnabled(t *testing.T) {
+	h := &HandlersApi{Alerts: &alerts.Manager{}, Events: &testEventSource{}}
+	r := httptest.NewRequest(http.MethodGet, "/api/v1/features", nil)
+	w := httptest.NewRecorder()
+
+	h.FeaturesHandler(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d want 200", w.Code)
+	}
+	var resp FeaturesResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !resp.Alerts {
+		t.Fatalf("alerts feature: got false want true")
+	}
+	if !containsFeatureTopic(resp.EventTopics, "alerts") {
+		t.Fatalf("alerts events topic missing: %v", resp.EventTopics)
 	}
 }
 
