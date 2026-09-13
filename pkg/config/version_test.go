@@ -57,3 +57,10 @@ func TestConfigVersionWarning(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigVersionIncludesLiveUpdateFields(t *testing.T) {
+	const liveUpdateConfigVersion = 4
+	if ConfigVersion != liveUpdateConfigVersion {
+		t.Fatalf("ConfigVersion = %d, want %d for service.eventsEnabled/eventsNamespace", ConfigVersion, liveUpdateConfigVersion)
+	}
+}

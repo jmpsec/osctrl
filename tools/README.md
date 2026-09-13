@@ -118,6 +118,117 @@ $ make -C tools/fake_news_go sweep ENV_UUID=<env-uuid> SECRET=<secret>
 
 See [tools/fake_news_go/README.md](./fake_news_go/README.md) for details.
 
+## live_updates_rollout
+
+Operational checker for the SSE live-update rollout. It logs in to one or more
+API replicas, opens SSE streams through the proxy/frontend URL, verifies
+`stream.ready`, checks subscriber cleanup through `/api/v1/health/status`, and
+can verify rollback with `--expect-disabled`.
+
+```shell
+$ go run ./tools/live_updates_rollout \
+    --api-url https://api-a.example.com,https://api-b.example.com \
+    --proxy-url https://osctrl.example.com \
+    --username "$OSCTRL_USER" \
+    --password "$OSCTRL_PASS" \
+    --min-apis 2 \
+    --connections 32
+```
+
+### Live update rollout checklist
+
+Run this against a staging deployment with at least two `osctrl-api` replicas,
+two `osctrl-tls` replicas, Redis, the normal frontend/proxy path, and health
+reporting enabled.
+
+First verify the disabled baseline:
+
+```shell
+$ go run ./tools/live_updates_rollout \
+    --api-url https://api-a.example.com,https://api-b.example.com \
+    --proxy-url https://osctrl.example.com \
+    --username "$OSCTRL_USER" \
+    --password "$OSCTRL_PASS" \
+    --min-apis 2 \
+    --expect-disabled
+```
+
+Enable the same non-empty event namespace on every API and TLS replica:
+
+```yaml
+service:
+  eventsEnabled: true
+  eventsNamespace: staging-live-updates
+```
+
+Restart all API and TLS replicas, then run the fleet canary:
+
+```shell
+$ go run ./tools/live_updates_rollout \
+    --api-url https://api-a.example.com,https://api-b.example.com \
+    --proxy-url https://osctrl.example.com \
+    --username "$OSCTRL_USER" \
+    --password "$OSCTRL_PASS" \
+    --min-apis 2 \
+    --topics fleet \
+    --connections 32 \
+    --timeout 60s
+```
+
+Verify query/carve topics against one test environment UUID:
+
+```shell
+$ go run ./tools/live_updates_rollout \
+    --api-url https://api-a.example.com,https://api-b.example.com \
+    --proxy-url https://osctrl.example.com \
+    --username "$OSCTRL_USER" \
+    --password "$OSCTRL_PASS" \
+    --min-apis 2 \
+    --env "$ENV_UUID" \
+    --topics queries,carves \
+    --connections 16 \
+    --timeout 60s
+```
+
+For two API / two TLS recovery, hold streams open while restarting replicas:
+
+```shell
+$ go run ./tools/live_updates_rollout \
+    --api-url https://api-a.example.com,https://api-b.example.com \
+    --proxy-url https://osctrl.example.com \
+    --username "$OSCTRL_USER" \
+    --password "$OSCTRL_PASS" \
+    --min-apis 2 \
+    --topics fleet \
+    --connections 32 \
+    --timeout 3m \
+    --hold 90s
+```
+
+While it prints `HOLD streams open`, restart one API replica and one TLS replica,
+wait for them to become healthy, then restart the second API and TLS replicas.
+The command must finish with cleanup and health `PASS` lines. `service_status`
+currently stores one TLS heartbeat row, so confirm the two-TLS-replica part
+from the orchestrator health/readiness view during the hold window.
+
+Run a larger load and cleanup pass:
+
+```shell
+$ go run ./tools/live_updates_rollout \
+    --api-url https://api-a.example.com,https://api-b.example.com \
+    --proxy-url https://osctrl.example.com \
+    --username "$OSCTRL_USER" \
+    --password "$OSCTRL_PASS" \
+    --min-apis 2 \
+    --topics fleet \
+    --connections 64 \
+    --timeout 90s
+```
+
+Finally, disable live updates on every API and TLS replica, restart them, and
+rerun the disabled baseline command. Rollback is complete when features report
+events disabled and `/api/v1/events` returns unavailable through the proxy.
+
 ## json2yaml-config
 
 Go tool to convert old pre-0.5.0 JSON configuration into the YAML format used by `osctrl-tls` and `osctrl-api`. The converter accepts the legacy service, database, Redis, JWT, SAML, logger, and carver files, but only emits current TLS or API service configuration.
