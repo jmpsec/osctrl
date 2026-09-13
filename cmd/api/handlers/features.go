@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
@@ -62,5 +63,12 @@ func (h *HandlersApi) eventTopics() []string {
 	if h.Events == nil {
 		return []string{}
 	}
-	return []string{"queries", "carves"}
+	topics := []string{events.Queries, events.Carves}
+	if h.OsqueryValues.Query && h.OsqueryValues.Console {
+		topics = append(topics, events.Console)
+	}
+	if h.OsqueryValues.Query && h.OsqueryValues.FileExplorer {
+		topics = append(topics, events.FileExplorer)
+	}
+	return topics
 }

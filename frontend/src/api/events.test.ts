@@ -34,3 +34,16 @@ it('exposes authentication and permission failures without interpreting HTML as 
   expect(init.credentials).toBe('include');
   expect(init.headers).toEqual({ Accept: 'text/event-stream' });
 });
+
+it('adds session selectors for session-scoped topics', async () => {
+  const reader = { read: vi.fn().mockResolvedValue({ done: true }), cancel: vi.fn().mockResolvedValue(undefined), releaseLock: vi.fn() };
+  const fetch = vi.fn().mockResolvedValue({
+    status: 200,
+    ok: true,
+    headers: new Headers({ 'Content-Type': 'text/event-stream' }),
+    body: { getReader: () => reader },
+  });
+  vi.stubGlobal('fetch', fetch);
+  await readEvents('dev', ['console'], new AbortController().signal, vi.fn(), { consoleSessionId: 42 });
+  expect(fetch.mock.calls[0][0]).toBe('/api/v1/events?env=dev&topic=console&console_session=42');
+});

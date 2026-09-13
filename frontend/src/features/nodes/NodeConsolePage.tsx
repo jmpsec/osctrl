@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Terminal } from 'lucide-react';
 import {
   closeConsoleSession,
@@ -21,6 +21,7 @@ import type {
 } from '$/api/types';
 import { Button } from '$/components/atoms/Button';
 import { cn } from '$/lib/cn';
+import { useSessionResourceUpdates } from '$/lib/live-updates';
 
 type Entry =
   | { id: string; type: 'input'; prompt: string; text: string }
@@ -31,6 +32,8 @@ type NodeInfoItem = { label: string; value: string };
 
 const terminalStatuses = new Set(['completed', 'error', 'expired']);
 const consoleHeartbeatMs = 10000;
+const consolePendingPollMs = 1000;
+const consoleLiveReconcileMs = 60000;
 type PendingCommand = { command: ConsoleCommand; path?: string };
 type PrimingMetadata = Record<string, unknown>;
 
@@ -42,6 +45,7 @@ export function NodeConsolePage() {
 export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const sessionRef = useRef<ConsoleSession | null>(null);
@@ -59,6 +63,15 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [commandError, setCommandError] = useState<string | null>(null);
   const sessionID = session?.id;
+  const consoleLive = useSessionResourceUpdates(
+    env,
+    'console',
+    sessionID,
+    useCallback(({ resourceId }) => {
+      if (!sessionID) return;
+      void qc.invalidateQueries({ queryKey: ['console-command', env, sessionID, resourceId], exact: true });
+    }, [env, qc, sessionID]),
+  );
 
   useEffect(() => {
     let alive = true;
@@ -120,7 +133,7 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
     enabled: Boolean(session && primingCommand),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status && terminalStatuses.has(status) ? false : 1000;
+      return status && terminalStatuses.has(status) ? false : consoleLive ? consoleLiveReconcileMs : consolePendingPollMs;
     },
     refetchIntervalInBackground: false,
   });
@@ -206,7 +219,7 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
     enabled: Boolean(session && pending),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status && terminalStatuses.has(status) ? false : 1000;
+      return status && terminalStatuses.has(status) ? false : consoleLive ? consoleLiveReconcileMs : consolePendingPollMs;
     },
     refetchIntervalInBackground: false,
   });

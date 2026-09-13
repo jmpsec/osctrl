@@ -99,9 +99,13 @@ func TestConfigurationAndHintValidation(t *testing.T) {
 		{EnvironmentID: 1, Topic: Queries, Name: ""},
 		{EnvironmentID: 1, Topic: Queries, Name: "q", Change: "other"},
 		{EnvironmentID: 1, Topic: Queries, Name: "q", Change: ChangeFiles},
+		{EnvironmentID: 1, Topic: Console, Name: "q", Change: ChangeResults, SessionID: 0, ResourceID: 2},
 	} {
 		require.False(t, hint.Valid())
 	}
+	require.True(t, Hint{EnvironmentID: 1, Topic: Console, Name: "q", Change: ChangeMetadata, SessionID: 1, ResourceID: 2}.Valid())
+	require.True(t, Hint{EnvironmentID: 1, Topic: Console, Name: "q", Change: ChangeResults, SessionID: 1, ResourceID: 2}.Valid())
+	require.True(t, Hint{EnvironmentID: 1, Topic: FileExplorer, Name: "q", Change: ChangeResults, SessionID: 1, ResourceID: 2}.Valid())
 }
 
 // Uses the same opt-in disposable Redis convention as query-dispatch tests.

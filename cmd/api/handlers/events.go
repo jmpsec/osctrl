@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,15 +21,19 @@ type ResourceChanged struct {
 	Topic           string `json:"topic"`
 	Name            string `json:"name"`
 	Change          string `json:"change,omitempty"`
+	SessionID       uint   `json:"session_id,omitempty"`
+	ResourceID      uint   `json:"resource_id,omitempty"`
 }
 
-// EventsHandler streams authorized query/carve invalidations.
+// EventsHandler streams authorized query/carve/session invalidations.
 // @Summary Subscribe to resource change notifications
-// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve permissions.
+// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively.
 // @Tags Events
 // @Produce text/event-stream json
 // @Param env query string true "Environment name or UUID"
-// @Param topic query []string true "Topics: queries, carves" collectionFormat(multi)
+// @Param topic query []string true "Topics: queries, carves, console, file_explorer" collectionFormat(multi)
+// @Param console_session query int false "Console session id required when subscribing to topic=console"
+// @Param file_explorer_session query int false "File explorer session id required when subscribing to topic=file_explorer"
 // @Success 200 {string} string "SSE stream: stream.ready, resource.changed, auth.expired"
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 401 {object} types.ApiErrorResponse
@@ -52,22 +57,36 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selectors, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil || len(selectors["env"]) != 1 || len(selectors["env"][0]) == 0 || len(selectors["env"][0]) > 256 || len(selectors["topic"]) == 0 || len(selectors["topic"]) > 2 {
+	if err != nil || len(selectors["env"]) != 1 || len(selectors["env"][0]) == 0 || len(selectors["env"][0]) > 256 || len(selectors["topic"]) == 0 || len(selectors["topic"]) > 4 {
 		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
 		return
 	}
 	for key := range selectors {
-		if key != "env" && key != "topic" {
+		if key != "env" && key != "topic" && key != "console_session" && key != "file_explorer_session" {
 			apiErrorResponse(w, "invalid event selector", http.StatusBadRequest, nil)
 			return
 		}
 	}
 	topics := selectors["topic"]
 	for _, topic := range topics {
-		if topic != events.Queries && topic != events.Carves {
+		if topic != events.Queries && topic != events.Carves && topic != events.Console && topic != events.FileExplorer {
 			apiErrorResponse(w, "invalid event topic", http.StatusBadRequest, nil)
 			return
 		}
+	}
+	consoleSessionID, ok := eventOptionalUintSelector(selectors, "console_session")
+	if !ok {
+		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
+		return
+	}
+	fileExplorerSessionID, ok := eventOptionalUintSelector(selectors, "file_explorer_session")
+	if !ok {
+		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
+		return
+	}
+	if eventTopicSelected(topics, events.Console) != (consoleSessionID != 0) || eventTopicSelected(topics, events.FileExplorer) != (fileExplorerSessionID != 0) {
+		apiErrorResponse(w, "invalid event subscription", http.StatusBadRequest, nil)
+		return
 	}
 	env, err := h.Envs.Get(selectors.Get("env"))
 	if err != nil {
@@ -90,9 +109,18 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 			if topic == events.Carves {
 				level = users.CarveLevel
 			}
+			if topic == events.Console || topic == events.FileExplorer {
+				level = users.AdminLevel
+			}
 			if !h.Users.CheckPermissions(username, level, env.UUID) {
 				return false
 			}
+		}
+		if consoleSessionID != 0 && !h.authorizedConsoleEventSession(username, env.ID, consoleSessionID) {
+			return false
+		}
+		if fileExplorerSessionID != 0 && !h.authorizedFileExplorerEventSession(username, env.ID, fileExplorerSessionID) {
+			return false
 		}
 		return true
 	}
@@ -149,6 +177,9 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
+			if !eventHintAllowed(hint, consoleSessionID, fileExplorerSessionID) {
+				continue
+			}
 			pending[hint] = struct{}{}
 			// Bounded memory even if thousands of distinct queries change.
 			if len(pending) > 64 {
@@ -167,7 +198,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 				if change == "" {
 					change = events.ChangeMetadata
 				}
-				if err := write("resource.changed", ResourceChanged{SchemaVersion: 1, EnvironmentUUID: env.UUID, Topic: hint.Topic, Name: hint.Name, Change: change}); err != nil {
+				if err := write("resource.changed", ResourceChanged{SchemaVersion: 1, EnvironmentUUID: env.UUID, Topic: hint.Topic, Name: hint.Name, Change: change, SessionID: hint.SessionID, ResourceID: hint.ResourceID}); err != nil {
 					return
 				}
 				delete(pending, hint)
@@ -188,6 +219,57 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+func eventOptionalUintSelector(selectors url.Values, key string) (uint, bool) {
+	values := selectors[key]
+	if len(values) == 0 {
+		return 0, true
+	}
+	if len(values) != 1 || values[0] == "" {
+		return 0, false
+	}
+	value, err := strconv.ParseUint(values[0], 10, 32)
+	if err != nil || value == 0 {
+		return 0, false
+	}
+	return uint(value), true
+}
+
+func eventTopicSelected(topics []string, want string) bool {
+	for _, topic := range topics {
+		if topic == want {
+			return true
+		}
+	}
+	return false
+}
+
+func eventHintAllowed(hint events.Hint, consoleSessionID, fileExplorerSessionID uint) bool {
+	switch hint.Topic {
+	case events.Console:
+		return consoleSessionID != 0 && hint.SessionID == consoleSessionID
+	case events.FileExplorer:
+		return fileExplorerSessionID != 0 && hint.SessionID == fileExplorerSessionID
+	default:
+		return true
+	}
+}
+
+func (h *HandlersApi) authorizedConsoleEventSession(username string, environmentID, sessionID uint) bool {
+	if h.Console == nil {
+		return false
+	}
+	session, err := h.Console.GetSession(sessionID)
+	return err == nil && session.Active && session.EnvironmentID == environmentID && session.Creator == username
+}
+
+func (h *HandlersApi) authorizedFileExplorerEventSession(username string, environmentID, sessionID uint) bool {
+	if h.FileExplorer == nil {
+		return false
+	}
+	session, err := h.FileExplorer.GetSession(sessionID)
+	return err == nil && session.Active && session.EnvironmentID == environmentID && session.Creator == username
 }
 
 func eventOriginAllowed(r *http.Request) bool {

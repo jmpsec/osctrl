@@ -1,7 +1,12 @@
 import { ApiError, AuthError } from './client';
 
-export type EventTopic = 'queries' | 'carves';
+export type EventTopic = 'queries' | 'carves' | 'console' | 'file_explorer';
 export interface StreamEvent { event: string; data: unknown }
+
+export interface EventSelectorOptions {
+  consoleSessionId?: number;
+  fileExplorerSessionId?: number;
+}
 
 // Fetch-based SSE exposes 401/403/429/503 to the caller. The JSON apiFetch
 // wrapper intentionally remains unchanged for snapshots and mutations.
@@ -10,9 +15,12 @@ export async function readEvents(
   topics: EventTopic[],
   signal: AbortSignal,
   receive: (event: StreamEvent) => void,
+  options: EventSelectorOptions = {},
 ): Promise<void> {
   const params = new URLSearchParams({ env });
   for (const topic of topics) params.append('topic', topic);
+  if (options.consoleSessionId != null) params.set('console_session', String(options.consoleSessionId));
+  if (options.fileExplorerSessionId != null) params.set('file_explorer_session', String(options.fileExplorerSessionId));
   const response = await fetch(`/api/v1/events?${params}`, {
     credentials: 'include', headers: { Accept: 'text/event-stream' }, signal,
   });

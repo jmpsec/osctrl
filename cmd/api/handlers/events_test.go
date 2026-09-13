@@ -3,6 +3,7 @@ package handlers
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -114,4 +115,65 @@ func TestEventStreamRevocationAndCleanup(t *testing.T) {
 			require.Eventually(t, source.cancelled.Load, time.Second, time.Millisecond)
 		})
 	}
+}
+
+func TestEventStreamFiltersConsoleSessionHints(t *testing.T) {
+	_, h, env, node := setupConsoleHandlers(t)
+	session, err := h.Console.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	source := &testEventSource{ch: make(chan events.Hint, 2)}
+	h.Events = source
+	h.EventsAuthenticate = func(*http.Request) bool { return true }
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), ContextKey(contextAPI), ContextValue{ctxUser: "alice"})
+		h.EventsHandler(w, r.WithContext(ctx))
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	r, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/events?env=env&topic=console&console_session=%d", srv.URL, session.ID), nil)
+	require.NoError(t, err)
+	response, err := srv.Client().Do(r)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	reader := bufio.NewReader(response.Body)
+	frame := func() string {
+		var result strings.Builder
+		for {
+			line, err := reader.ReadString('\n')
+			require.NoError(t, err)
+			result.WriteString(line)
+			if line == "\n" {
+				return result.String()
+			}
+		}
+	}
+	require.Contains(t, frame(), "stream.ready")
+	source.ch <- events.Hint{EnvironmentID: env.ID, Topic: events.Console, Name: "wrong-session", Change: events.ChangeResults, SessionID: session.ID + 1, ResourceID: 11}
+	source.ch <- events.Hint{EnvironmentID: env.ID, Topic: events.Console, Name: "right-session", Change: events.ChangeResults, SessionID: session.ID, ResourceID: 12}
+	got := frame()
+	require.Contains(t, got, "right-session")
+	require.Contains(t, got, `"session_id":`)
+	require.Contains(t, got, `"resource_id":12`)
+	require.NotContains(t, got, "wrong-session")
+}
+
+func TestEventStreamRejectsConsoleSessionOwnedByAnotherUser(t *testing.T) {
+	_, h, env, node := setupConsoleHandlers(t)
+	session, err := h.Console.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	require.NoError(t, h.Users.CreatePermission(users.UserPermission{
+		Username:      "bob",
+		AccessType:    int(users.AdminLevel),
+		AccessValue:   true,
+		Environment:   env.UUID,
+		EnvironmentID: env.ID,
+	}))
+	h.Events = &testEventSource{ch: make(chan events.Hint)}
+	h.EventsAuthenticate = func(*http.Request) bool { return true }
+	req := consoleRequest(http.MethodGet, fmt.Sprintf("/api/v1/events?env=env&topic=console&console_session=%d", session.ID), nil, "bob")
+	rr := httptest.NewRecorder()
+	h.EventsHandler(rr, req)
+	require.Equal(t, http.StatusForbidden, rr.Code)
 }
