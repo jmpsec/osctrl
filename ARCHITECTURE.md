@@ -171,6 +171,10 @@ persistence, operation completion, replay, dispatch delivery, or download
 availability. Commands, pagination, result data, alert rows, and downloads
 continue through REST. No WebSocket transport is used.
 
+When health reporting is enabled, `/api/v1/health/status` includes a live
+updates component with API subscriber counts and API/TLS drop counters. The
+details intentionally omit users, environment UUIDs, query names, and payloads.
+
 ## Authentication / Session Model
 
 ### API

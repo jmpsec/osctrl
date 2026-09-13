@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/rs/zerolog/log"
 )
@@ -20,11 +21,15 @@ const heartbeatEveryNTicks = int(health.HeartbeatInterval / serviceCommandPollIn
 // out of the loop so the cadence is testable without waiting a minute.
 func shouldHeartbeat(tick int) bool { return tick%heartbeatEveryNTicks == 0 }
 
+type eventStatsProvider interface {
+	Snapshot() events.Stats
+}
+
 // buildHealthPayload renders the worker counters and runtime state carried
 // by the heartbeat.
 // Every value read here is a plain atomic or a channel length — nothing that
 // stops the world.
-func buildHealthPayload(w *alerts.Worker, processStartedAt time.Time) string {
+func buildHealthPayload(w *alerts.Worker, eventStats eventStatsProvider, processStartedAt time.Time) string {
 	// Sampled through runtime/metrics, never ReadMemStats: this runs on the
 	// 60s heartbeat inside the log-ingest service, where a stop-the-world
 	// pause is exactly what the design refuses to pay.
@@ -43,6 +48,10 @@ func buildHealthPayload(w *alerts.Worker, processStartedAt time.Time) string {
 			Failed:        snap.Failed,
 		}
 	}
+	if eventStats != nil {
+		snap := eventStats.Snapshot()
+		payload.Events = &snap
+	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return "{}"
@@ -53,7 +62,7 @@ func buildHealthPayload(w *alerts.Worker, processStartedAt time.Time) string {
 // reportHealth writes one heartbeat. A failure is logged and dropped: health
 // reporting must never take the service down, and a DB outage is exactly when
 // the write fails anyway.
-func reportHealth(mgr *health.Manager, w *alerts.Worker, startedAt time.Time, buildVersion string) {
+func reportHealth(mgr *health.Manager, w *alerts.Worker, eventStats eventStatsProvider, startedAt time.Time, buildVersion string) {
 	if mgr == nil {
 		return
 	}
@@ -63,7 +72,7 @@ func reportHealth(mgr *health.Manager, w *alerts.Worker, startedAt time.Time, bu
 		StartedAt:  startedAt,
 		ReportedAt: time.Now(),
 		Goroutines: runtimeNumGoroutine(),
-		Payload:    buildHealthPayload(w, startedAt),
+		Payload:    buildHealthPayload(w, eventStats, startedAt),
 	}); err != nil {
 		log.Err(err).Msg("error writing health heartbeat")
 	}

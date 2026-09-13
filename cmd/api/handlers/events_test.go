@@ -20,12 +20,15 @@ type testEventSource struct {
 	ch            chan events.Hint
 	cancelled     atomic.Bool
 	environmentID atomic.Uint32
+	stats         events.Stats
 }
 
 func (s *testEventSource) Subscribe(_ string, environmentID uint, _ []string) (<-chan events.Hint, func(), error) {
 	s.environmentID.Store(uint32(environmentID))
 	return s.ch, func() { s.cancelled.Store(true) }, nil
 }
+
+func (s *testEventSource) Snapshot() events.Stats { return s.stats }
 
 func TestEventSubscriptionValidation(t *testing.T) {
 	_, h, _, _ := setupConsoleHandlers(t)

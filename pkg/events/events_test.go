@@ -50,6 +50,30 @@ func TestSubscriptionIsolationAndReset(t *testing.T) {
 	cancel()
 }
 
+func TestSnapshotReportsHealthSubscribersAndDrops(t *testing.T) {
+	b := localBus()
+	stats := b.Snapshot()
+	require.True(t, stats.Enabled)
+	require.True(t, stats.Healthy)
+	require.Zero(t, stats.Subscribers)
+	require.Zero(t, stats.Dropped)
+
+	_, closeOne, err := b.Subscribe("alice", 1, []string{Queries})
+	require.NoError(t, err)
+	defer closeOne()
+	b.dropped.Add(3)
+
+	stats = b.Snapshot()
+	require.Equal(t, 1, stats.Subscribers)
+	require.EqualValues(t, 3, stats.Dropped)
+
+	b.reset(false)
+	stats = b.Snapshot()
+	require.False(t, stats.Healthy)
+	require.Zero(t, stats.Subscribers)
+	require.EqualValues(t, 3, stats.Dropped)
+}
+
 func TestConnectionLimitAndSlowSubscriber(t *testing.T) {
 	b := localBus()
 	for i := 0; i < maxUserConnections; i++ {

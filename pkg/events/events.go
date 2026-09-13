@@ -52,6 +52,15 @@ type Hint struct {
 	ResourceID    uint   `json:"resource_id,omitempty"`
 }
 
+// Stats is safe to expose to operators. It deliberately avoids user names,
+// environment UUIDs, query names, and event payload data.
+type Stats struct {
+	Enabled     bool   `json:"enabled"`
+	Healthy     bool   `json:"healthy"`
+	Subscribers int    `json:"subscribers"`
+	Dropped     uint64 `json:"dropped"`
+}
+
 func (h Hint) Valid() bool {
 	validChange := h.Change == "" || h.Change == ChangeMetadata ||
 		(h.Topic == Queries && h.Change == ChangeResults) ||
@@ -106,7 +115,7 @@ func New(client *redis.Client, namespace string, consume bool) (*Bus, error) {
 		return nil, errors.New("events require Redis and a namespace of 1-64 letters, digits, underscores or hyphens")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	b := &Bus{client: client, channel: "osctrl:" + namespace + ":events:v1", ctx: ctx, cancel: cancel, queue: make(chan Hint, 1024), subs: make(map[*subscription]struct{})}
+	b := &Bus{client: client, channel: "osctrl:" + namespace + ":events:v1", ctx: ctx, cancel: cancel, queue: make(chan Hint, 1024), healthy: !consume, subs: make(map[*subscription]struct{})}
 	b.wg.Add(1)
 	go b.publishLoop()
 	if consume {
@@ -132,6 +141,20 @@ func (b *Bus) Publish(h Hint) {
 
 // Dropped includes failed publication and slow-subscriber disconnections.
 func (b *Bus) Dropped() uint64 { return b.dropped.Load() }
+
+func (b *Bus) Snapshot() Stats {
+	if b == nil {
+		return Stats{}
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return Stats{
+		Enabled:     true,
+		Healthy:     b.healthy && !b.closed,
+		Subscribers: len(b.subs),
+		Dropped:     b.dropped.Load(),
+	}
+}
 
 func (b *Bus) publishLoop() {
 	defer b.wg.Done()
