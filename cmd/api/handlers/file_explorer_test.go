@@ -107,6 +107,58 @@ func TestFileExplorerSessionCreateDispatchesPrimingRequest(t *testing.T) {
 	require.True(t, distributed.Hidden)
 }
 
+func TestFileExplorerSessionCreatePrimingSurvivesNodePollInterval(t *testing.T) {
+	db, h, env, node := setupFileExplorerHandlers(t)
+	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
+	// The node is mid-cycle on its regular distributed interval; the
+	// priming query (and the first directory listing that follows) must
+	// still be pending when its next read arrives.
+	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-30*time.Second)).Error)
+	before := time.Now()
+
+	req := fileExplorerRequest(http.MethodPost, "/file-explorer", nil, "alice")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("uuid", node.UUID)
+	rr := httptest.NewRecorder()
+
+	h.FileExplorerSessionCreateHandler(rr, req)
+	require.Equal(t, http.StatusCreated, rr.Code)
+	var resp fileExplorerSessionResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.NotNil(t, resp.Priming)
+	require.NotNil(t, resp.Priming.ExpiresAt, "the response must expose the deadline so clients can wait it out")
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", resp.Priming.DistributedQueryName).First(&distributed).Error)
+	require.True(t, distributed.Expiration.After(before.Add(35*time.Second)), "priming must cover the node's next scheduled read")
+	require.True(t, distributed.Expiration.Before(before.Add(47*time.Second)))
+}
+
+func TestFileExplorerListRequestSurvivesNodePollInterval(t *testing.T) {
+	db, h, env, node := setupFileExplorerHandlers(t)
+	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
+	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-30*time.Second)).Error)
+	session, err := h.FileExplorer.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	before := time.Now()
+
+	req := fileExplorerRequest(http.MethodPost, "/file-explorer", []byte(`{"path":"/etc"}`), "alice")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("session_id", fmt.Sprint(session.ID))
+	rr := httptest.NewRecorder()
+
+	h.FileExplorerListHandler(rr, req)
+	require.Equal(t, http.StatusCreated, rr.Code)
+	var request fileexplorer.Request
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &request))
+	require.NotNil(t, request.ExpiresAt, "the response must expose the deadline so clients can wait it out")
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", request.DistributedQueryName).First(&distributed).Error)
+	require.True(t, distributed.Expiration.After(before.Add(35*time.Second)), "the listing must cover the node's next scheduled read")
+	require.True(t, distributed.Expiration.Before(before.Add(47*time.Second)))
+}
+
 func TestFileExplorerPrimingResultsReturnsOsqueryInfoRows(t *testing.T) {
 	db, h, env, node := setupFileExplorerHandlers(t)
 	session, err := h.FileExplorer.CreateSession(env, node, "alice")

@@ -31,9 +31,14 @@ type OsqueryNode struct {
 	BytesReceived   int            `json:"bytes_received"`
 	RawEnrollment   string         `json:"-"`
 	LastSeen        time.Time      `json:"last_seen"`
-	UserID          uint           `json:"user_id"`
-	EnvironmentID   uint           `json:"environment_id"`
-	ExtraData       string         `json:"extra_data"`
+	// LastQueryRead is when the node last polled the distributed query
+	// read endpoint. Interactive features (console, file explorer) use it
+	// to predict the node's next read and size their warmup timeouts.
+	// Hidden from JSON: it is server-side timing data, not node metadata.
+	LastQueryRead time.Time `json:"-"`
+	UserID        uint      `json:"user_id"`
+	EnvironmentID uint      `json:"environment_id"`
+	ExtraData     string    `json:"extra_data"`
 }
 
 // ArchiveOsqueryNode as abstraction of an archived node

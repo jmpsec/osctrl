@@ -287,6 +287,9 @@ export interface ConsoleCommand {
   delivered_at?: string;
   completed_at?: string;
   expired_at?: string;
+  /** When the backing distributed query expires (server-computed); used to
+   *  bound polling instead of a fixed budget. */
+  expires_at?: string;
 }
 
 export interface ParsedConsoleCommand {
@@ -350,6 +353,9 @@ export interface FileExplorerRequest {
   priming?: boolean;
   completed_at?: string;
   expired_at?: string;
+  /** When the backing distributed query expires (server-computed); used to
+   *  bound polling instead of a fixed budget. */
+  expires_at?: string;
 }
 
 export interface FileExplorerEntry {

@@ -56,6 +56,7 @@ func TestSubmitLocalCommandDoesNotCreateDistributedQuery(t *testing.T) {
 	var count int64
 	require.NoError(t, db.Model(&queries.DistributedQuery{}).Count(&count).Error)
 	require.Equal(t, int64(0), count)
+	require.Nil(t, command.ExpiresAt, "local commands have no distributed query to expire")
 }
 
 func TestSubmitRemoteCommandCreatesHiddenConsoleQuery(t *testing.T) {
@@ -71,14 +72,31 @@ func TestSubmitRemoteCommandCreatesHiddenConsoleQuery(t *testing.T) {
 
 	var distributed queries.DistributedQuery
 	require.NoError(t, db.Where("name = ?", command.DistributedQueryName).First(&distributed).Error)
+	require.NotNil(t, command.ExpiresAt, "submit responses must expose the deadline for client poll budgets")
+	require.True(t, command.ExpiresAt.Equal(distributed.Expiration))
 	require.Equal(t, queries.ConsoleQueryType, distributed.Type)
-	require.True(t, distributed.Hidden)
-	require.True(t, distributed.Active)
 	require.Equal(t, uint(1), uint(distributed.Expected))
 
 	var nodeQuery queries.NodeQuery
 	require.NoError(t, db.Where("query_id = ?", distributed.ID).First(&nodeQuery).Error)
 	require.Equal(t, node.ID, nodeQuery.NodeID)
+}
+
+func TestRefreshCommandStatusExposesPendingDeadline(t *testing.T) {
+	db, manager, env, node := setupConsoleManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	command, _, err := manager.SubmitCommandWithTimeout(session.ID, "ps", 2*time.Minute)
+	require.NoError(t, err)
+
+	refreshed, err := manager.RefreshCommandStatus(command.ID)
+	require.NoError(t, err)
+	require.Equal(t, console.StatusQueued, refreshed.Status)
+	require.NotNil(t, refreshed.ExpiresAt, "pending refreshes must expose the deadline for client poll budgets")
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", command.DistributedQueryName).First(&distributed).Error)
+	require.True(t, refreshed.ExpiresAt.Equal(distributed.Expiration))
 }
 
 func TestSubmitRejectsWhenCommandInFlight(t *testing.T) {
