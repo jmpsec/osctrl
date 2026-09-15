@@ -151,6 +151,7 @@ func (m *Manager) SubmitCommandWithTimeout(sessionID uint, input string, timeout
 		command.Status = StatusQueued
 	}
 
+	expiration := time.Now().Add(timeout)
 	err = m.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&command).Error; err != nil {
 			return err
@@ -171,7 +172,7 @@ func (m *Manager) SubmitCommandWithTimeout(sessionID uint, input string, timeout
 			Hidden:        true,
 			Type:          queries.ConsoleQueryType,
 			EnvironmentID: session.EnvironmentID,
-			Expiration:    time.Now().Add(timeout),
+			Expiration:    expiration,
 			Expected:      1,
 			ExtraData:     string(extra),
 		}
@@ -192,7 +193,9 @@ func (m *Manager) SubmitCommandWithTimeout(sessionID uint, input string, timeout
 	if err != nil {
 		return Command{}, ParsedCommand{}, err
 	}
-
+	if parsed.Kind != CommandLocal {
+		command.ExpiresAt = &expiration
+	}
 	// Invalidate the query-dispatch cache for the target node so the next
 	// QueryRead hits the DB and picks up the new pending query. Without this,
 	// a recently cached "no pending queries" entry (5s TTL) would hide the
@@ -240,6 +243,7 @@ func (m *Manager) SubmitPrimingCommand(sessionID uint, timeout time.Duration) (C
 		Priming:       true,
 	}
 
+	expiration := time.Now().Add(timeout)
 	err := m.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&command).Error; err != nil {
 			return err
@@ -256,7 +260,7 @@ func (m *Manager) SubmitPrimingCommand(sessionID uint, timeout time.Duration) (C
 			Hidden:        true,
 			Type:          queries.ConsoleQueryType,
 			EnvironmentID: session.EnvironmentID,
-			Expiration:    time.Now().Add(timeout),
+			Expiration:    expiration,
 			Expected:      1,
 			ExtraData:     string(extra),
 		}
@@ -277,6 +281,7 @@ func (m *Manager) SubmitPrimingCommand(sessionID uint, timeout time.Duration) (C
 	if err != nil {
 		return Command{}, err
 	}
+	command.ExpiresAt = &expiration
 
 	// Invalidate the query-dispatch cache so the priming query is visible
 	// to the next QueryRead immediately, warming acceleration before the
@@ -348,7 +353,7 @@ func (m *Manager) RefreshCommandStatus(commandID uint) (Command, error) {
 	if err := m.DB.Where("query_id = ?", distributed.ID).First(&nodeQuery).Error; err != nil {
 		return Command{}, err
 	}
-
+	command.ExpiresAt = &distributed.Expiration
 	now := time.Now()
 	updates := map[string]any{}
 	switch nodeQuery.Status {

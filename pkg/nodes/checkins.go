@@ -14,10 +14,16 @@ type Checkin struct {
 	NodeID uint
 	IP     string
 	SeenAt time.Time
+	// QueryRead marks the check-in as a distributed query read. The node's
+	// read cadence — not its generic last-seen — is what interactive
+	// features (console, file explorer) need to predict the next read, so
+	// flagged check-ins also stamp osquery_nodes.last_query_read.
+	QueryRead bool
 }
 
 // UpdateCheckins persists each node's latest observation without resurrecting
-// deleted nodes or allowing a delayed replica to move last_seen backwards.
+// deleted nodes or allowing a delayed replica to move last_seen (or
+// last_query_read for query-read observations) backwards.
 func (n *NodeManager) UpdateCheckins(updates map[uint]Checkin) error {
 	ids := make([]uint, 0, len(updates))
 	for id, ev := range updates {
@@ -38,10 +44,11 @@ func (n *NodeManager) UpdateCheckins(updates map[uint]Checkin) error {
 	const chunkSize = 100
 	for start := 0; start < len(ids); start += chunkSize {
 		chunk := ids[start:min(start+chunkSize, len(ids))]
-		var seen, ip strings.Builder
+		var seen, ip, qread strings.Builder
 		seen.WriteString("CASE")
 		ip.WriteString("CASE")
-		var seenArgs, ipArgs []any
+		qread.WriteString("CASE")
+		var seenArgs, ipArgs, qreadArgs []any
 		for _, id := range chunk {
 			ev := updates[id]
 			// Compare at storage precision. The first persisted observation wins
@@ -53,6 +60,10 @@ func (n *NodeManager) UpdateCheckins(updates map[uint]Checkin) error {
 				ip.WriteString(" WHEN id = ? AND (last_seen IS NULL OR last_seen < ?) THEN ?")
 				ipArgs = append(ipArgs, id, ev.SeenAt, ev.IP)
 			}
+			if ev.QueryRead {
+				qread.WriteString(" WHEN id = ? AND (last_query_read IS NULL OR last_query_read < ?) THEN ?")
+				qreadArgs = append(qreadArgs, id, ev.SeenAt, ev.SeenAt)
+			}
 		}
 		seen.WriteString(" ELSE last_seen END")
 		columns := map[string]any{"last_seen": gorm.Expr(seen.String(), seenArgs...)}
@@ -60,8 +71,11 @@ func (n *NodeManager) UpdateCheckins(updates map[uint]Checkin) error {
 			ip.WriteString(" ELSE ip_address END")
 			columns["ip_address"] = gorm.Expr(ip.String(), ipArgs...)
 		}
+		if len(qreadArgs) > 0 {
+			qread.WriteString(" ELSE last_query_read END")
+			columns["last_query_read"] = gorm.Expr(qread.String(), qreadArgs...)
+		}
 		// Each chunk is one atomic statement; avoid a BEGIN/COMMIT round trip
-		// around it. GORM keeps the soft-delete predicate and binds all values.
 		if err := n.DB.Session(&gorm.Session{SkipDefaultTransaction: true}).
 			Model(&OsqueryNode{}).Where("id IN ?", chunk).UpdateColumns(columns).Error; err != nil {
 			return fmt.Errorf("update node check-ins: %w", err)

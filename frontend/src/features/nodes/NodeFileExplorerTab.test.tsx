@@ -168,6 +168,30 @@ describe('NodeFileExplorerTab', () => {
     expect(await screen.findByRole('treeitem', { name: /services file/i })).toBeInTheDocument();
   });
 
+  it('keeps polling a warming request until the server-provided deadline', async () => {
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+    api.listFileExplorerDirectory.mockResolvedValue(
+      makeRequest({ id: 20, path: '/', status: 'queued', expires_at: expiresAt }),
+    );
+    let polls = 0;
+    api.getFileExplorerRequest.mockImplementation(() => {
+      polls += 1;
+      const status = polls < 3 ? 'queued' : 'completed';
+      return Promise.resolve(makeRequest({ id: 20, path: '/', status, expires_at: expiresAt }));
+    });
+    api.getFileExplorerRequestResults.mockResolvedValue([
+      makeEntry({ path: '/etc', filename: 'etc', directory: '/', type: 'directory' }),
+    ]);
+
+    renderExplorer();
+
+    // The node is still warming up: the request stays queued across
+    // several polls. The server-sent expires_at (not a fixed poll cap)
+    // keeps the wait alive until it completes.
+    expect(await screen.findByRole('treeitem', { name: /etc directory/i }, { timeout: 6000 })).toBeInTheDocument();
+    expect(polls).toBeGreaterThanOrEqual(3);
+  });
+
   it('shows a spinner with loading text while a directory request is pending', async () => {
     const user = userEvent.setup();
     api.listFileExplorerDirectory

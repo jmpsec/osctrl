@@ -449,7 +449,7 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		requestSize.WithLabelValues(string(env.UUID), "QueryRead").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryReadHandler endpoint", node.UUID, env.Name, len(body))
 		// Authentication succeeded even if dispatch SQL is temporarily unavailable.
-		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: utils.GetIP(r), SeenAt: time.Now()})
+		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: node.ID, IP: utils.GetIP(r), SeenAt: time.Now(), QueryRead: true})
 		h.recordActivity(env.UUID, node.UUID, activity.EventQueryRead)
 		// Get queries and update node
 		nodeInvalid = false

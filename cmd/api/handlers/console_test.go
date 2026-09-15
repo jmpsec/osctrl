@@ -112,6 +112,52 @@ func TestConsoleSessionCreateDispatchesPrimingCommand(t *testing.T) {
 	require.True(t, distributed.Hidden)
 }
 
+func TestWarmupQueryWaitSizedToNodePollingState(t *testing.T) {
+	env := environments.TLSEnvironment{QueryInterval: 60}
+	// Fresh read: nearly the whole interval remains until the next read.
+	wait := warmupQueryWait(env, nodes.OsqueryNode{LastQueryRead: time.Now()})
+	require.Greater(t, wait, 55*time.Second)
+	require.LessOrEqual(t, wait, 60*time.Second)
+	// Read 30s ago on a 60s interval: about 30s remain.
+	wait = warmupQueryWait(env, nodes.OsqueryNode{LastQueryRead: time.Now().Add(-30 * time.Second)})
+	require.Greater(t, wait, 25*time.Second)
+	require.LessOrEqual(t, wait, 35*time.Second)
+	// Overdue read: no extra wait, so dead nodes still fail fast.
+	require.Zero(t, warmupQueryWait(env, nodes.OsqueryNode{LastQueryRead: time.Now().Add(-2 * time.Minute)}))
+	// No read recorded yet: assume the next read can be a full interval away.
+	require.Equal(t, 60*time.Second, warmupQueryWait(env, nodes.OsqueryNode{}))
+	// Unset interval falls back to the environment default.
+	require.Equal(t, 60*time.Second, warmupQueryWait(environments.TLSEnvironment{}, nodes.OsqueryNode{}))
+	// Very long intervals are capped so requests cannot pend unbounded.
+	require.Equal(t, maxWarmupWait, warmupQueryWait(environments.TLSEnvironment{QueryInterval: 3600}, nodes.OsqueryNode{LastQueryRead: time.Now()}))
+}
+
+func TestConsoleSessionCreatePrimingSurvivesNodePollInterval(t *testing.T) {
+	db, h, env, node := setupConsoleHandlers(t)
+	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
+	// The node is mid-cycle on its regular distributed interval; the
+	// priming query must still be pending when its next read arrives.
+	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-30*time.Second)).Error)
+	before := time.Now()
+
+	req := consoleRequest(http.MethodPost, "/console", nil, "alice")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("uuid", node.UUID)
+	rr := httptest.NewRecorder()
+
+	h.ConsoleSessionCreateHandler(rr, req)
+	require.Equal(t, http.StatusCreated, rr.Code)
+	var resp consoleSessionResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.NotNil(t, resp.Priming)
+	require.NotNil(t, resp.Priming.ExpiresAt, "the response must expose the deadline so clients can wait it out")
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", resp.Priming.DistributedQueryName).First(&distributed).Error)
+	require.True(t, distributed.Expiration.After(before.Add(85*time.Second)), "priming must cover the node's next scheduled read")
+	require.True(t, distributed.Expiration.Before(before.Add(97*time.Second)))
+}
+
 func TestConsoleSessionCreateReturnsNodeInfo(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
 	require.NoError(t, db.Model(&node).Updates(map[string]any{
@@ -237,6 +283,9 @@ func TestConsoleCommandRejectsSecondInFlightCommand(t *testing.T) {
 func TestConsoleCommandExpirationUsesDoubleAcceleratedQueryReadInterval(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
 	require.NoError(t, h.Settings.NewIntegerValue(config.ServiceTLS, settings.AcceleratedSeconds, 7, settings.NoEnvironmentID))
+	// The node's scheduled read is overdue, so no warmup wait is added:
+	// the expiration is the doubled accelerated interval alone.
+	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-2*time.Minute)).Error)
 	session, err := h.Console.CreateSession(env, node, "alice")
 	require.NoError(t, err)
 	before := time.Now()
@@ -257,11 +306,43 @@ func TestConsoleCommandExpirationUsesDoubleAcceleratedQueryReadInterval(t *testi
 	require.True(t, distributed.Expiration.Before(before.Add(15*time.Second)))
 }
 
+func TestConsoleCommandExpirationSurvivesNodePollIntervalWhileWarmingUp(t *testing.T) {
+	db, h, env, node := setupConsoleHandlers(t)
+	require.NoError(t, h.Settings.NewIntegerValue(config.ServiceTLS, settings.AcceleratedSeconds, 7, settings.NoEnvironmentID))
+	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
+	// The node's last query read was 30s ago on a 60s interval: its next
+	// read is up to 30s away. The query must stay pending at least that
+	// long, or warmup commands expire undelivered and the operator has to
+	// keep clicking refresh until acceleration happens to kick in.
+	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-30*time.Second)).Error)
+	session, err := h.Console.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	before := time.Now()
+
+	req := consoleRequest(http.MethodPost, "/console", []byte(`{"input":"ps"}`), "alice")
+	req.SetPathValue("env", env.Name)
+	req.SetPathValue("session_id", fmt.Sprint(session.ID))
+	rr := httptest.NewRecorder()
+
+	h.ConsoleCommandCreateHandler(rr, req)
+	require.Equal(t, http.StatusCreated, rr.Code)
+
+	var resp consoleCommandResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
+	require.NotNil(t, resp.Command.ExpiresAt, "the response must expose the deadline so clients can wait it out")
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", resp.Command.DistributedQueryName).First(&distributed).Error)
+	require.True(t, distributed.Expiration.After(before.Add(40*time.Second)), "expiration must cover the node's next scheduled read")
+	require.True(t, distributed.Expiration.Before(before.Add(47*time.Second)))
+}
+
 func TestConsoleOsqueryModeSQLUsesLongerExpiration(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
 	require.NoError(t, h.Settings.NewIntegerValue(config.ServiceTLS, settings.AcceleratedSeconds, 5, settings.NoEnvironmentID))
-	session, err := h.Console.CreateSession(env, node, "alice")
-	require.NoError(t, err)
+	// Overdue read: no warmup wait, so the expiration is the long sql
+	// timeout alone.
+	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-2*time.Minute)).Error)
+	session, _ := h.Console.CreateSession(env, node, "alice")
 	before := time.Now()
 
 	req := consoleRequest(http.MethodPost, "/console", []byte(`{"input":"select * from osquery_info","osquery_mode":true}`), "alice")

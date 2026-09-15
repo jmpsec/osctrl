@@ -74,10 +74,16 @@ func (bw *batchWriter) run() {
 
 func mergeCheckin(batch map[uint]lastSeenUpdate, ev lastSeenUpdate) {
 	previous := batch[ev.NodeID]
+	// Keep the query-read marker even when a newer generic check-in wins
+	// the merge: the marker only stamps last_query_read, and a few
+	// hundred milliseconds of skew cannot mislead the warmup timeout
+	// heuristic that consumes it.
+	queryRead := previous.QueryRead || ev.QueryRead
 	if ev.SeenAt.Before(previous.SeenAt) {
+		batch[ev.NodeID] = lastSeenUpdate{NodeID: previous.NodeID, SeenAt: previous.SeenAt, IP: previous.IP, QueryRead: queryRead}
 		return
 	}
-	batch[ev.NodeID] = ev
+	batch[ev.NodeID] = lastSeenUpdate{NodeID: ev.NodeID, SeenAt: ev.SeenAt, IP: ev.IP, QueryRead: queryRead}
 }
 
 // flush performs the bulk update for a batch of events.

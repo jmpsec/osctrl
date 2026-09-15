@@ -89,7 +89,7 @@ func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http
 	// node's next QueryRead can also switch to fast polling before the
 	// operator types their first command. A priming failure is non-fatal.
 	var priming *console.Command
-	if primingCmd, primingErr := h.Console.SubmitPrimingCommand(session.ID, h.consolePrimingTimeout()); primingErr == nil {
+	if primingCmd, primingErr := h.Console.SubmitPrimingCommand(session.ID, h.consolePrimingTimeout(env, node)); primingErr == nil {
 		priming = &primingCmd
 	}
 	h.auditConsoleVisit(ctx[ctxUser], r, env.ID)
@@ -146,8 +146,11 @@ func (h *HandlersApi) ConsoleCommandCreateHandler(w http.ResponseWriter, r *http
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use console get by user %s", ctx[ctxUser]))
 		return
 	}
-
-	command, parsed, err := h.Console.SubmitCommandWithTimeout(session.ID, body.Input, h.consoleCommandTimeout(preview), body.OsqueryMode)
+	node, ok := h.sessionNode(w, env, session.NodeUUID)
+	if !ok {
+		return
+	}
+	command, parsed, err := h.Console.SubmitCommandWithTimeout(session.ID, body.Input, h.consoleCommandTimeout(env, node, preview), body.OsqueryMode)
 	if err != nil {
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 		return
@@ -228,40 +231,81 @@ func (h *HandlersApi) consoleTablesOutput(platform string) string {
 	return fmt.Sprintf("tables for %s (%d)\n%s", label, len(names), strings.Join(names, "\n"))
 }
 
-func (h *HandlersApi) consoleCommandTimeout(parsed console.ParsedCommand) time.Duration {
-	seconds := int64(defaultConsoleQueryReadSeconds)
+// maxWarmupWait caps the extra expiration granted while a node is still
+// polling at its regular distributed interval. It bounds how long an
+// undelivered console command or file explorer request can stay pending
+// in environments with very long query intervals.
+const maxWarmupWait = 10 * time.Minute
+
+// acceleratedQueryReadSeconds resolves the configured accelerated query
+// read interval (osctrl-tls settings.AcceleratedSeconds), falling back to
+// defaultConsoleQueryReadSeconds when it is unset or zero.
+func (h *HandlersApi) acceleratedQueryReadSeconds() int64 {
 	if h.Settings != nil {
 		if configured, err := h.Settings.GetInteger(config.ServiceTLS, settings.AcceleratedSeconds, settings.NoEnvironmentID); err == nil && configured > 0 {
-			seconds = configured
+			return configured
 		}
 	}
+	return defaultConsoleQueryReadSeconds
+}
+
+// warmupQueryWait returns the extra expiration a console or file explorer
+// distributed query needs so the node is guaranteed a chance to read it.
+//
+// Until the node performs its first QueryRead after a session opens (the
+// "warming up" phase), it polls at the environment's configured
+// distributed interval (--distributed_interval = env.QueryInterval), not
+// at the accelerated interval. A query expiring before the node's next
+// scheduled read is never delivered, which is what forced operators to
+// click refresh repeatedly until acceleration happened to kick in. The
+// last query read recorded for the node makes the next read predictable:
+// last read + configured interval. The wait is whatever remains of that
+// window, capped by maxWarmupWait. Once acceleration is active the last
+// read is fresh, the wait collapses to zero, and the base timeout alone
+// covers delivery on the (now fast) polling cadence.
+func warmupQueryWait(env environments.TLSEnvironment, node nodes.OsqueryNode) time.Duration {
+	interval := env.QueryInterval
+	if interval <= 0 {
+		interval = environments.DefaultQueryInterval
+	}
+	if node.LastQueryRead.IsZero() {
+		// No read recorded yet (new node or rows predating the column):
+		// assume the next read can be a full interval away.
+		return min(time.Duration(interval)*time.Second, maxWarmupWait)
+	}
+	wait := time.Duration(interval)*time.Second - time.Since(node.LastQueryRead)
+	if wait <= 0 {
+		// The scheduled read is overdue — the node is offline or asleep.
+		// Keep the base timeout so dead nodes still fail fast.
+		return 0
+	}
+	return min(wait, maxWarmupWait)
+}
+
+func (h *HandlersApi) consoleCommandTimeout(env environments.TLSEnvironment, node nodes.OsqueryNode, parsed console.ParsedCommand) time.Duration {
+	seconds := h.acceleratedQueryReadSeconds()
 	if parsed.Kind == console.CommandRemote && parsed.Command == "sql" {
 		timeout := time.Duration(seconds*12) * time.Second
 		if timeout < time.Minute {
-			return time.Minute
+			timeout = time.Minute
 		}
-		return timeout
+		return timeout + warmupQueryWait(env, node)
 	}
-	return time.Duration(seconds*2) * time.Second
+	return time.Duration(seconds*2)*time.Second + warmupQueryWait(env, node)
 }
 
 // consolePrimingTimeout is the expiration given to the priming metadata
-// query. It is intentionally generous (the accelerated interval doubled
-// plus a minute floor) so the priming query stays pending long enough for
-// the next accelerated QueryRead to deliver it even if the node's first
-// poll after session open arrives a few seconds late.
-func (h *HandlersApi) consolePrimingTimeout() time.Duration {
-	seconds := int64(defaultConsoleQueryReadSeconds)
-	if h.Settings != nil {
-		if configured, err := h.Settings.GetInteger(config.ServiceTLS, settings.AcceleratedSeconds, settings.NoEnvironmentID); err == nil && configured > 0 {
-			seconds = configured
-		}
-	}
-	timeout := time.Duration(seconds*2) * time.Second
+// query. The base is intentionally generous (the accelerated interval
+// doubled plus a minute floor) so the priming query stays pending long
+// enough for the next accelerated QueryRead to deliver it, and the warmup
+// wait extends it further while the node is still on its regular polling
+// interval.
+func (h *HandlersApi) consolePrimingTimeout(env environments.TLSEnvironment, node nodes.OsqueryNode) time.Duration {
+	timeout := time.Duration(h.acceleratedQueryReadSeconds()*2) * time.Second
 	if timeout < time.Minute {
-		return time.Minute
+		timeout = time.Minute
 	}
-	return timeout
+	return timeout + warmupQueryWait(env, node)
 }
 
 func osqueryTableSupportsPlatform(table types.OsqueryTable, platform string) bool {
@@ -370,6 +414,24 @@ func (h *HandlersApi) consoleSessionContext(w http.ResponseWriter, r *http.Reque
 		return environments.TLSEnvironment{}, nil, console.Session{}, false
 	}
 	return env, ctx, session, true
+}
+
+// sessionNode resolves the node an interactive session (console or file
+// explorer) belongs to, so submit paths can size the distributed query
+// expiration from the node's polling state. The session was created
+// against this node; if it no longer resolves, nothing submitted to it
+// can ever be delivered.
+func (h *HandlersApi) sessionNode(w http.ResponseWriter, env environments.TLSEnvironment, nodeUUID string) (nodes.OsqueryNode, bool) {
+	node, err := h.Nodes.GetByUUIDEnv(nodeUUID, env.ID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+			return nodes.OsqueryNode{}, false
+		}
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		return nodes.OsqueryNode{}, false
+	}
+	return node, true
 }
 
 func consolePathUint(w http.ResponseWriter, r *http.Request, name string) (uint, bool) {

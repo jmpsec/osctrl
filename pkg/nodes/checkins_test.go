@@ -57,7 +57,7 @@ func testUpdateCheckins(t *testing.T, db *gorm.DB) {
 	writes := 0
 	require.NoError(t, db.Callback().Update().After("gorm:update").Register("count_updates", func(*gorm.DB) { writes++ }))
 	updates := map[uint]Checkin{
-		1: {NodeID: 1, SeenAt: now.Add(time.Second), IP: "new'quoted"},
+		1: {NodeID: 1, SeenAt: now.Add(time.Second), IP: "new'quoted", QueryRead: true},
 		2: {NodeID: 2, SeenAt: now.Add(2 * time.Second)},
 		3: {NodeID: 3, SeenAt: now.Add(time.Second), IP: "must-not-change"},
 		4: {NodeID: 4, SeenAt: now.Add(time.Second)},
@@ -72,7 +72,9 @@ func testUpdateCheckins(t *testing.T, db *gorm.DB) {
 	require.Equal(t, "keep", got[1].IPAddress)
 	require.True(t, got[1].LastSeen.Equal(updates[2].SeenAt))
 	require.Equal(t, "deleted", got[2].IPAddress)
-	require.True(t, got[2].LastSeen.Equal(now))
+	require.True(t, got[0].LastQueryRead.Equal(updates[1].SeenAt), "query-read check-ins must stamp last_query_read")
+	require.True(t, got[1].LastQueryRead.IsZero(), "generic check-ins must not stamp last_query_read")
+	require.True(t, got[2].LastQueryRead.IsZero(), "missing nodes must not be touched")
 	require.True(t, got[0].UpdatedAt.Equal(rows[0].UpdatedAt), "heartbeat must not change metadata timestamp")
 
 	// A delayed replica must not move either timestamp or IP backwards.
@@ -81,6 +83,19 @@ func testUpdateCheckins(t *testing.T, db *gorm.DB) {
 	require.NoError(t, db.First(&node, 1).Error)
 	require.Equal(t, "new'quoted", node.IPAddress)
 	require.True(t, node.LastSeen.Equal(updates[1].SeenAt))
+	require.True(t, node.LastQueryRead.Equal(updates[1].SeenAt), "a generic check-in must not move last_query_read")
+
+	// A delayed replica must not move last_query_read backwards either.
+	require.NoError(t, repo.UpdateCheckins(map[uint]Checkin{1: {NodeID: 1, SeenAt: now.Add(-time.Minute), QueryRead: true}}))
+	require.NoError(t, db.First(&node, 1).Error)
+	require.True(t, node.LastQueryRead.Equal(updates[1].SeenAt))
+
+	// A newer query read observation moves it forward. Kept below the
+	// precision-check timestamps further down so that check still holds.
+	newerRead := now.Add(2 * time.Second)
+	require.NoError(t, repo.UpdateCheckins(map[uint]Checkin{1: {NodeID: 1, SeenAt: newerRead, QueryRead: true}}))
+	require.NoError(t, db.First(&node, 1).Error)
+	require.True(t, node.LastQueryRead.Equal(newerRead))
 
 	// Database timestamp precision must not allow a delayed sub-millisecond
 	// observation to overwrite the IP associated with a newer observation.

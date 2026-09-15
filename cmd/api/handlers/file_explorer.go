@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
-	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"gorm.io/gorm"
@@ -62,7 +61,7 @@ func (h *HandlersApi) FileExplorerSessionCreateHandler(w http.ResponseWriter, r 
 	// before the operator expands the first directory. Non-fatal on
 	// failure.
 	var priming *fileexplorer.Request
-	if primingReq, primingErr := h.FileExplorer.SubmitPrimingRequest(session.ID, h.fileExplorerRequestTimeout()); primingErr == nil {
+	if primingReq, primingErr := h.FileExplorer.SubmitPrimingRequest(session.ID, h.fileExplorerRequestTimeout(env, node)); primingErr == nil {
 		priming = &primingReq
 	}
 	h.auditFileExplorerAction(ctx[ctxUser], "file explorer session", r, env.ID)
@@ -108,7 +107,11 @@ func (h *HandlersApi) FileExplorerListHandler(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	request, err := h.FileExplorer.ListDirectory(session.ID, path, h.fileExplorerRequestTimeout())
+	node, ok := h.sessionNode(w, env, session.NodeUUID)
+	if !ok {
+		return
+	}
+	request, err := h.FileExplorer.ListDirectory(session.ID, path, h.fileExplorerRequestTimeout(env, node))
 	if err != nil {
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 		return
@@ -126,7 +129,11 @@ func (h *HandlersApi) FileExplorerStatHandler(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	request, err := h.FileExplorer.StatPath(session.ID, path, h.fileExplorerRequestTimeout())
+	node, ok := h.sessionNode(w, env, session.NodeUUID)
+	if !ok {
+		return
+	}
+	request, err := h.FileExplorer.StatPath(session.ID, path, h.fileExplorerRequestTimeout(env, node))
 	if err != nil {
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 		return
@@ -248,14 +255,13 @@ func fileExplorerRequestPath(w http.ResponseWriter, r *http.Request) (string, bo
 	return body.Path, true
 }
 
-func (h *HandlersApi) fileExplorerRequestTimeout() time.Duration {
-	seconds := int64(defaultConsoleQueryReadSeconds)
-	if h.Settings != nil {
-		if configured, err := h.Settings.GetInteger(config.ServiceTLS, settings.AcceleratedSeconds, settings.NoEnvironmentID); err == nil && configured > 0 {
-			seconds = configured
-		}
-	}
-	return time.Duration(seconds*2) * time.Second
+// fileExplorerRequestTimeout is the expiration given to file explorer
+// distributed queries (list, stat and priming). The base covers delivery
+// once the node polls at the accelerated interval; the warmup wait keeps
+// the query alive until the node's next regularly scheduled read while
+// acceleration has not kicked in yet.
+func (h *HandlersApi) fileExplorerRequestTimeout(env environments.TLSEnvironment, node nodes.OsqueryNode) time.Duration {
+	return time.Duration(h.acceleratedQueryReadSeconds()*2)*time.Second + warmupQueryWait(env, node)
 }
 
 func (h *HandlersApi) auditFileExplorerAction(user, action string, r *http.Request, envID uint) {

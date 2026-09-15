@@ -55,6 +55,11 @@ type Request struct {
 	Priming              bool           `gorm:"not null;default:false;index" json:"priming"`
 	CompletedAt          *time.Time     `json:"completed_at,omitempty"`
 	ExpiredAt            *time.Time     `json:"expired_at,omitempty"`
+	// ExpiresAt mirrors the expiration of the backing distributed query.
+	// It is not persisted: the submit paths and RefreshRequestStatus
+	// populate it so clients can wait out warmup delays instead of polling
+	// against a fixed budget.
+	ExpiresAt *time.Time `gorm:"-" json:"expires_at,omitempty"`
 }
 
 func (Request) TableName() string {

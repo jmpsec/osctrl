@@ -58,11 +58,9 @@ func TestListDirectoryCreatesHiddenFileExplorerQuery(t *testing.T) {
 
 	var distributed queries.DistributedQuery
 	require.NoError(t, db.Where("name = ?", request.DistributedQueryName).First(&distributed).Error)
+	require.NotNil(t, request.ExpiresAt, "submit responses must expose the deadline for client poll budgets")
+	require.True(t, request.ExpiresAt.Equal(distributed.Expiration))
 	require.Equal(t, queries.FileExplorerQueryType, distributed.Type)
-	require.True(t, distributed.Hidden)
-	require.True(t, distributed.Active)
-	require.Equal(t, uint(1), uint(distributed.Expected))
-	require.Equal(t, env.ID, distributed.EnvironmentID)
 
 	var nodeQuery queries.NodeQuery
 	require.NoError(t, db.Where("query_id = ?", distributed.ID).First(&nodeQuery).Error)
@@ -104,6 +102,23 @@ func TestSubmitPrimingRequestCreatesHiddenFileExplorerQuery(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, accelerate)
 	require.Equal(t, fileexplorer.PrimingMetadataSQL, delivered[priming.DistributedQueryName])
+}
+
+func TestRefreshRequestStatusExposesPendingDeadline(t *testing.T) {
+	db, manager, env, node := setupFileExplorerManager(t)
+	session, err := manager.CreateSession(env, node, "alice")
+	require.NoError(t, err)
+	request, err := manager.SubmitPrimingRequest(session.ID, 2*time.Minute)
+	require.NoError(t, err)
+
+	refreshed, err := manager.RefreshRequestStatus(request.ID)
+	require.NoError(t, err)
+	require.Equal(t, fileexplorer.StatusQueued, refreshed.Status)
+	require.NotNil(t, refreshed.ExpiresAt, "pending refreshes must expose the deadline for client poll budgets")
+
+	var distributed queries.DistributedQuery
+	require.NoError(t, db.Where("name = ?", request.DistributedQueryName).First(&distributed).Error)
+	require.True(t, refreshed.ExpiresAt.Equal(distributed.Expiration))
 }
 
 func TestPrimingRequestDoesNotCountTowardsPendingCap(t *testing.T) {

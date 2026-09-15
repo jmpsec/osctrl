@@ -168,7 +168,7 @@ func (m *Manager) submitRequest(sessionID uint, action, target string, timeout t
 		TranslatedSQL: sql,
 		Status:        StatusQueued,
 	}
-
+	expiration := time.Now().Add(timeout)
 	err = m.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&request).Error; err != nil {
 			return err
@@ -186,7 +186,7 @@ func (m *Manager) submitRequest(sessionID uint, action, target string, timeout t
 			Hidden:        true,
 			Type:          queries.FileExplorerQueryType,
 			EnvironmentID: session.EnvironmentID,
-			Expiration:    time.Now().Add(timeout),
+			Expiration:    expiration,
 			Expected:      1,
 			ExtraData:     string(extra),
 		}
@@ -207,6 +207,7 @@ func (m *Manager) submitRequest(sessionID uint, action, target string, timeout t
 	if err != nil {
 		return Request{}, err
 	}
+	request.ExpiresAt = &expiration
 
 	// Invalidate the query-dispatch cache for the target node so the next
 	// QueryRead hits the DB and picks up the new pending request. Without
@@ -263,6 +264,7 @@ func (m *Manager) SubmitPrimingRequest(sessionID uint, timeout time.Duration) (R
 		Priming:       true,
 	}
 
+	expiration := time.Now().Add(timeout)
 	err := m.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&request).Error; err != nil {
 			return err
@@ -279,7 +281,7 @@ func (m *Manager) SubmitPrimingRequest(sessionID uint, timeout time.Duration) (R
 			Hidden:        true,
 			Type:          queries.FileExplorerQueryType,
 			EnvironmentID: session.EnvironmentID,
-			Expiration:    time.Now().Add(timeout),
+			Expiration:    expiration,
 			Expected:      1,
 			ExtraData:     string(extra),
 		}
@@ -300,6 +302,7 @@ func (m *Manager) SubmitPrimingRequest(sessionID uint, timeout time.Duration) (R
 	if err != nil {
 		return Request{}, err
 	}
+	request.ExpiresAt = &expiration
 
 	// Invalidate the query-dispatch cache so the priming query is visible
 	// to the next QueryRead immediately, warming acceleration before the
@@ -379,6 +382,7 @@ func (m *Manager) RefreshRequestStatus(requestID uint) (Request, error) {
 			return Request{}, err
 		}
 	}
+	request.ExpiresAt = &distributed.Expiration
 	return request, nil
 }
 

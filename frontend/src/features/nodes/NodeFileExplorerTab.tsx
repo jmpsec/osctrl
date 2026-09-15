@@ -29,11 +29,16 @@ type CarveStatus =
   | { kind: 'success'; name: string }
   | { kind: 'error'; message: string };
 
-const terminalStatuses = new Set(['completed', 'error', 'expired']);
+const terminalStatuses: Record<string, true> = { completed: true, error: true, expired: true };
 const heartbeatMs = 10000;
 const requestPollMs = 1000;
 const liveReconcileMs = 60000;
-const maxPolls = 30;
+// Fallback poll budget when the backend does not send expires_at: the
+// historical 30-poll cap.
+const fallbackPolls = 30;
+// Grace beyond the server's expires_at so the last poll can still observe
+// the completion a node delivers right at the deadline.
+const expiryGraceMs = 15000;
 
 export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }) {
   const { t } = useTranslation();
@@ -90,7 +95,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
   }, []);
 
   const runRequest = useCallback(async (activeSession: FileExplorerSession, request: FileExplorerRequest) => {
-    const completed = await waitForRequest(env, activeSession.id, request.id, fileExplorerLive, waitForRequestChange);
+    const completed = await waitForRequest(env, activeSession.id, request, fileExplorerLive, waitForRequestChange);
     if (completed.status !== 'completed') {
       throw new Error(completed.error || `Request ${completed.status}`);
     }
@@ -163,7 +168,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
     let alive = true;
     void (async () => {
       try {
-        const completed = await waitForRequest(env, activeSession.id, primingRequest.id, fileExplorerLive, waitForRequestChange);
+        const completed = await waitForRequest(env, activeSession.id, primingRequest, fileExplorerLive, waitForRequestChange);
         if (!alive || completed.status !== 'completed') {
           if (alive) setPrimingRequest(null);
           return;
@@ -507,16 +512,23 @@ function LoadingRow({ depth }: { depth: number }) {
 async function waitForRequest(
   env: string,
   sessionId: number,
-  requestId: number,
+  request: FileExplorerRequest,
   live: boolean,
   waitForChange: (requestId: number, live: boolean) => Promise<void>,
 ): Promise<FileExplorerRequest> {
-  for (let i = 0; i < maxPolls; i += 1) {
-    const request = await getFileExplorerRequest(env, sessionId, requestId);
-    if (terminalStatuses.has(request.status)) {
-      return request;
+  const expiresAt = request.expires_at ? Date.parse(request.expires_at) : Number.NaN;
+  const deadline = Number.isNaN(expiresAt)
+    ? Date.now() + fallbackPolls * requestPollMs
+    : expiresAt + expiryGraceMs;
+  for (;;) {
+    const current = await getFileExplorerRequest(env, sessionId, request.id);
+    if (terminalStatuses[current.status]) {
+      return current;
     }
-    await waitForChange(requestId, live);
+    if (Date.now() >= deadline) {
+      break;
+    }
+    await waitForChange(request.id, live);
   }
   throw new Error('file explorer request timed out');
 }
