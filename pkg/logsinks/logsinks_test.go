@@ -33,7 +33,7 @@ func TestRegistryCoversAllYAMLTypes(t *testing.T) {
 		config.LoggingNone, config.LoggingStdout, config.LoggingFile,
 		config.LoggingDB, config.LoggingGraylog, config.LoggingSplunk,
 		config.LoggingLogstash, config.LoggingKinesis, config.LoggingS3,
-		config.LoggingKafka, config.LoggingElastic,
+		config.LoggingKafka, config.LoggingElastic, config.LoggingHTTP,
 	}
 	for _, w := range want {
 		if _, ok := Registry[w]; !ok {
@@ -796,5 +796,135 @@ func TestDisabledSinkNotCounted(t *testing.T) {
 	}
 	if stats[0].SinkID != 2 {
 		t.Errorf("stats sink ID: got %d want 2", stats[0].SinkID)
+	}
+}
+
+func TestRegistryHTTPSink(t *testing.T) {
+	spec, ok := Registry[config.LoggingHTTP]
+	if !ok {
+		t.Fatalf("Registry missing %q", config.LoggingHTTP)
+	}
+	if spec.Type != config.LoggingHTTP {
+		t.Errorf("spec type: got %q want %q", spec.Type, config.LoggingHTTP)
+	}
+	if spec.HasSecret {
+		t.Error("HTTP sink should not have secrets")
+	}
+	// Verify the Decode func is set.
+	if spec.Decode == nil {
+		t.Error("Decode func is nil")
+	}
+	// Verify the Build func is set.
+	if spec.Build == nil {
+		t.Error("Build func is nil")
+	}
+}
+
+func TestHTTPDecodeHeadersAsObject(t *testing.T) {
+	cfgJSON := `{"url":"http://x","method":"POST","headers":{"Authorization":"Bearer t"}}`
+	decoded, err := decodeHTTPConfig(json.RawMessage(cfgJSON))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	cfg, ok := decoded.(*config.HTTPLogger)
+	if !ok {
+		t.Fatalf("decoded type: got %T want *config.HTTPLogger", decoded)
+	}
+	if cfg.URL != "http://x" {
+		t.Errorf("url: got %q", cfg.URL)
+	}
+	if cfg.Headers["Authorization"] != "Bearer t" {
+		t.Errorf("headers: got %v", cfg.Headers)
+	}
+}
+
+func TestHTTPDecodeHeadersAsString(t *testing.T) {
+	// The frontend sends headers as a JSON string since the field is
+	// rendered as a single-line text input.
+	cfgJSON := `{"url":"http://x","headers":"{\"X-Token\":\"abc\"}"}`
+	decoded, err := decodeHTTPConfig(json.RawMessage(cfgJSON))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	cfg, ok := decoded.(*config.HTTPLogger)
+	if !ok {
+		t.Fatalf("decoded type: got %T want *config.HTTPLogger", decoded)
+	}
+	if cfg.Headers["X-Token"] != "abc" {
+		t.Errorf("headers from string: got %v", cfg.Headers)
+	}
+}
+
+func TestHTTPDecodeEmptyHeaders(t *testing.T) {
+	cfgJSON := `{"url":"http://x"}`
+	decoded, err := decodeHTTPConfig(json.RawMessage(cfgJSON))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	cfg := decoded.(*config.HTTPLogger)
+	if len(cfg.Headers) != 0 {
+		t.Errorf("headers should be nil/empty, got %v", cfg.Headers)
+	}
+}
+
+func TestHTTPDecodeDefaultsWhenEmpty(t *testing.T) {
+	decoded, err := decodeHTTPConfig(json.RawMessage(`null`))
+	if err != nil {
+		t.Fatalf("decode null: %v", err)
+	}
+	cfg := decoded.(*config.HTTPLogger)
+	if cfg.URL != "" {
+		t.Errorf("null config url: got %q want empty", cfg.URL)
+	}
+}
+
+func TestHTTPBuildExporter(t *testing.T) {
+	decoded, _ := decodeHTTPConfig(json.RawMessage(`{"url":"http://localhost:9999"}`))
+	exp, err := Registry[config.LoggingHTTP].Build(decoded, nil)
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	if exp.Name() != config.LoggingHTTP {
+		t.Errorf("exporter name: got %q want %q", exp.Name(), config.LoggingHTTP)
+	}
+	if !exp.IsEnabled() {
+		t.Error("exporter should be enabled")
+	}
+	if err := exp.Close(); err != nil {
+		t.Errorf("close: %v", err)
+	}
+}
+
+func TestSeedHTTPSink(t *testing.T) {
+	m := newTestManager(t)
+	params := &config.ServiceParameters{
+		Logger: &config.YAMLConfigurationLogger{
+			Types: []string{config.LoggingHTTP},
+			HTTP: &config.HTTPLogger{
+				URL:    "https://logs.example.com/ingest",
+				Method: "POST",
+			},
+		},
+		DB: &config.YAMLConfigurationDB{Type: "sqlite", FilePath: t.TempDir() + "/p.db"},
+	}
+	if err := m.Seed(params, 0); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	rows, err := m.ListByEnvironment(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("seed count: got %d want 1", len(rows))
+	}
+	if rows[0].Type != config.LoggingHTTP {
+		t.Errorf("seed type: got %q want %q", rows[0].Type, config.LoggingHTTP)
+	}
+	var cfg config.HTTPLogger
+	if err := json.Unmarshal([]byte(rows[0].Config), &cfg); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if cfg.URL != "https://logs.example.com/ingest" {
+		t.Errorf("seed config url: got %q", cfg.URL)
 	}
 }

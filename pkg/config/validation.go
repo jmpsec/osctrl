@@ -23,6 +23,7 @@ var validLogging = map[string]bool{
 	LoggingS3:       true,
 	LoggingKafka:    true,
 	LoggingElastic:  true,
+	LoggingHTTP:     true,
 }
 
 // Valid values for carver in configuration

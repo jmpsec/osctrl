@@ -115,6 +115,13 @@ const SINK_TYPE_ICONS: Record<string, ReactNode> = {
       <path d="M3 12h4l2-5 3 10 2-5h7" />
     </svg>
   ),
+  // http — arrow upload / send
+  http: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 19V5M5 12l7-7 7 7" />
+      <path d="M5 21h14" />
+    </svg>
+  ),
 };
 
 /** Returns the icon for a sink type, or a default document icon. */
