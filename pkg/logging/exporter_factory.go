@@ -141,6 +141,13 @@ func CreateExporter(exporterType string, cfg config.ServiceParameters, mgr *sett
 		}
 		e.Settings(mgr)
 		return e, false, nil
+	case config.LoggingHTTP:
+		h, err := CreateLoggerHTTP(cfg.Logger.HTTP)
+		if err != nil {
+			return nil, false, err
+		}
+		h.Settings(mgr)
+		return h, false, nil
 	default:
 		return nil, false, fmt.Errorf("unknown exporter type: %s", exporterType)
 	}

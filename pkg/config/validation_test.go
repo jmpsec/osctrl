@@ -17,6 +17,17 @@ func TestValidateTLSConfigValuesAcceptsKafkaAndMultipleLoggers(t *testing.T) {
 	}
 }
 
+func TestValidateTLSConfigValuesAcceptsHTTP(t *testing.T) {
+	err := ValidateTLSConfigValues(TLSConfiguration{
+		Service: YAMLConfigurationService{Auth: AuthNone},
+		Logger:  &YAMLConfigurationLogger{Types: []string{LoggingHTTP}},
+		Carver:  &YAMLConfigurationCarver{Type: CarverDB},
+	})
+	if err != nil {
+		t.Fatalf("expected http logger type to validate: %v", err)
+	}
+}
+
 func TestValidateTLSConfigValuesRejectsInvalidMultipleLogger(t *testing.T) {
 	err := ValidateTLSConfigValues(TLSConfiguration{
 		Service: YAMLConfigurationService{Auth: AuthNone},

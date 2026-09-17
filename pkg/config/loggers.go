@@ -85,6 +85,27 @@ type LogstashLogger struct {
 	Path     string `yaml:"path"`
 }
 
+// HTTPLogger holds configuration for the generic HTTP log sink. It sends
+// the raw osquery log payload (optionally wrapped with metadata) to an
+// arbitrary HTTP/HTTPS endpoint with configurable method, headers, and
+// serialization format.
+type HTTPLogger struct {
+	URL     string            `yaml:"url"     json:"url"`
+	Method  string            `yaml:"method"  json:"method"`
+	Headers map[string]string `yaml:"headers" json:"headers"`
+	// Format controls the wire encoding. "json" (the default) sends the
+	// payload as-is with a JSON content type; "ndjson" splits array
+	// payloads into newline-delimited JSON objects; "raw" sends the
+	// bytes verbatim with the configured content type.
+	Format         string `yaml:"format"        json:"format"`
+	ContentType    string `yaml:"contentType"   json:"contentType"`
+	TimeoutSeconds int    `yaml:"timeoutSeconds" json:"timeoutSeconds"`
+	// IncludeMetadata, when true, wraps each event in an envelope that
+	// adds environment, uuid, logType, and timestamp fields. When false
+	// the raw osquery payload is forwarded unchanged.
+	IncludeMetadata bool `yaml:"includeMetadata" json:"includeMetadata"`
+}
+
 // LocalLogger to hold all local logger configuration values
 type LocalLogger struct {
 	FilePath string `yaml:"filePath"`

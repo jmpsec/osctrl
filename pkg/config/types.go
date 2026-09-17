@@ -48,6 +48,7 @@ const (
 	LoggingS3       string = "s3"
 	LoggingKafka    string = "kafka"
 	LoggingElastic  string = "elastic"
+	LoggingHTTP     string = "http"
 )
 
 // Types of carver
@@ -296,6 +297,7 @@ type YAMLConfigurationLogger struct {
 	Kinesis      *KinesisLogger       `mapstructure:"kinesis"`
 	Kafka        *KafkaLogger         `mapstructure:"kafka"`
 	Local        *LocalLogger         `mapstructure:"local"`
+	HTTP         *HTTPLogger          `mapstructure:"http"`
 }
 
 // YAMLConfigurationCarver to hold the carver configuration values

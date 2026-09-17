@@ -390,6 +390,29 @@ var Registry = map[string]SinkSpec{
 			return e, nil
 		},
 	},
+	config.LoggingHTTP: {
+		Type:        config.LoggingHTTP,
+		Description: "Generic HTTP/HTTPS log sink. Forwards raw osquery payloads to any web endpoint.",
+		HasSecret:   false,
+		Fields: []FieldSpec{
+			{Name: "url", Label: "URL", Type: FieldString, Required: true, Placeholder: "https://logs.example.com/ingest", Help: "HTTP/HTTPS endpoint that will receive log payloads."},
+			{Name: "method", Label: "Method", Type: FieldSelect, Options: []string{"POST", "PUT"}, Default: "POST", Help: "HTTP method used for each request."},
+			{Name: "format", Label: "Format", Type: FieldSelect, Options: []string{"json", "ndjson", "raw"}, Default: "json", Help: "json: forward as JSON array. ndjson: one JSON object per line. raw: bytes verbatim."},
+			{Name: "contentType", Label: "Content-Type", Type: FieldString, Placeholder: "application/json", Help: "Overrides the Content-Type header derived from format when set."},
+			{Name: "headers", Label: "Custom headers", Type: FieldString, Placeholder: `{"X-Token":"abc"}`, Help: "JSON object of extra HTTP headers. Header names are case-sensitive."},
+			{Name: "includeMetadata", Label: "Include metadata", Type: FieldBoolean, Default: false, Help: "Wrap each event with environment, uuid, log_type, and timestamp fields."},
+			{Name: "timeoutSeconds", Label: "Timeout (seconds)", Type: FieldInteger, Default: 30, Help: "Per-request timeout. 0 uses the 30s default."},
+		},
+		Decode: decodeHTTPConfig,
+		Build: func(cfg any, smgr *settings.Settings) (logging.DataExporter, error) {
+			h, err := logging.CreateLoggerHTTP(cfg.(*config.HTTPLogger))
+			if err != nil {
+				return nil, err
+			}
+			h.Settings(smgr)
+			return h, nil
+		},
+	},
 }
 
 // SupportedTypes returns the Registry keys in a stable, sorted order, for
@@ -428,6 +451,56 @@ func decodeTyped[T any]() func(json.RawMessage) (any, error) {
 		}
 		return &t, nil
 	}
+}
+
+// decodeHTTPConfig unmarshals an HTTP sink config. The "headers" field
+// can arrive as a JSON object (from the API/YAML) or as a JSON string
+// (from the frontend single-line string input, e.g. `{"X-Token":"abc"}`).
+// This decoder accepts both shapes and normalizes to map[string]string.
+func decodeHTTPConfig(raw json.RawMessage) (any, error) {
+	var cfg config.HTTPLogger
+	if len(raw) == 0 || string(raw) == "null" {
+		return &cfg, nil
+	}
+	// First try a direct unmarshal — works when headers is a JSON object.
+	if err := json.Unmarshal(raw, &cfg); err == nil {
+		return &cfg, nil
+	}
+	// Fall back: decode into a map and coerce headers from string to
+	// map[string]string if necessary.
+	var generic map[string]any
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		return nil, fmt.Errorf("decode HTTPLogger: %w", err)
+	}
+	if v, ok := generic["headers"]; ok {
+		switch hv := v.(type) {
+		case string:
+			var m map[string]string
+			if hv != "" {
+				if err := json.Unmarshal([]byte(hv), &m); err != nil {
+					return nil, fmt.Errorf("decode HTTPLogger headers string: %w", err)
+				}
+			}
+			generic["headers"] = m
+		case map[string]any:
+			m := make(map[string]string, len(hv))
+			for k, val := range hv {
+				m[k] = fmt.Sprintf("%v", val)
+			}
+			generic["headers"] = m
+		case nil:
+			generic["headers"] = map[string]string{}
+		}
+	}
+	// Re-marshal and unmarshal into the typed struct.
+	normalized, err := json.Marshal(generic)
+	if err != nil {
+		return nil, fmt.Errorf("decode HTTPLogger re-marshal: %w", err)
+	}
+	if err := json.Unmarshal(normalized, &cfg); err != nil {
+		return nil, fmt.Errorf("decode HTTPLogger: %w", err)
+	}
+	return &cfg, nil
 }
 
 // ErrSinkNotFound is returned when a sink row is not found.
@@ -881,6 +954,11 @@ func (m *LogSinksManager) configRowForType(cfg *config.YAMLConfigurationLogger, 
 			return nil, nil
 		}
 		return m.marshalConfigRow(name, typ, order, envID, cfg.Elastic)
+	case config.LoggingHTTP:
+		if cfg.HTTP == nil {
+			return nil, nil
+		}
+		return m.marshalConfigRow(name, typ, order, envID, cfg.HTTP)
 	default:
 		return nil, fmt.Errorf("%w: %q", ErrInvalidSinkType, typ)
 	}

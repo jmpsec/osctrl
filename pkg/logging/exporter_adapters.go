@@ -177,3 +177,16 @@ func (logE *LoggerElastic) Export(logType string, data []byte, params ExportPara
 	logE.Send(logType, data, params.Environment, params.UUID, params.Debug)
 	return nil
 }
+
+func (l *LoggerHTTP) Name() string {
+	return config.LoggingHTTP
+}
+
+func (l *LoggerHTTP) IsEnabled() bool {
+	return l != nil && l.Enabled
+}
+
+func (l *LoggerHTTP) Export(logType string, data []byte, params ExportParams) error {
+	l.Send(logType, data, params.Environment, params.UUID, params.Debug)
+	return nil
+}
