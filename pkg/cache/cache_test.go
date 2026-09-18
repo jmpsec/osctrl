@@ -36,7 +36,7 @@ func TestRedisConnectionErrorLeavesOtherErrorsAlone(t *testing.T) {
 	baseErr := errors.New("dial tcp 127.0.0.1:6379: connect: connection refused")
 
 	err := redisConnectionError(config.YAMLConfigurationRedis{}, baseErr)
-	if err != baseErr {
+	if !errors.Is(err, baseErr) {
 		t.Fatalf("error = %v, want original error", err)
 	}
 }

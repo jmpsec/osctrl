@@ -28,7 +28,7 @@ func TestUpdateCheckinsExternalBackend(t *testing.T) {
 			if dsn == "" {
 				t.Skip("set OSCTRL_TEST_" + backend + "_DSN to test this engine")
 			}
-			var dialect gorm.Dialector = postgres.Open(dsn)
+			var dialect = postgres.Open(dsn)
 			if backend == "MYSQL" {
 				dialect = mysql.Open(dsn)
 			}

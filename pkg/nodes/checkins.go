@@ -34,7 +34,7 @@ func (n *NodeManager) UpdateCheckins(updates map[uint]Checkin) error {
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	precision := time.Nanosecond
-	switch n.DB.Dialector.Name() {
+	switch n.DB.Name() {
 	case "mysql":
 		precision = time.Millisecond // GORM's default DATETIME(3).
 	case "postgres":

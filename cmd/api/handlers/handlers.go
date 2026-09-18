@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/jmpsec/osctrl/pkg/events"
 	"net/http"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/health"

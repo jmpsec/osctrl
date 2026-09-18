@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"path"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"

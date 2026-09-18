@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/carves"

@@ -253,7 +253,7 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 	if err != nil {
 		// Wrap, don't merge — callers may want to log err
 		// server-side without exposing it to clients.
-		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %v", ErrTokenExchange, err)
+		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %w", ErrTokenExchange, err)
 	}
 
 	// (6) id_token present.
@@ -265,7 +265,7 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 	// (7) Verify signature + iss + aud + exp + nbf.
 	idToken, err := p.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %v", ErrIDTokenVerify, err)
+		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %w", ErrIDTokenVerify, err)
 	}
 
 	// (8) Nonce match.
@@ -276,7 +276,7 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 	// Decode the claims we care about.
 	var claims idTokenClaims
 	if err := idToken.Claims(&claims); err != nil {
-		return auth.ResolvedIdentity{}, fmt.Errorf("%w: claims decode: %v", ErrIDTokenVerify, err)
+		return auth.ResolvedIdentity{}, fmt.Errorf("%w: claims decode: %w", ErrIDTokenVerify, err)
 	}
 	// Also decode into a generic map so pickUsername can look up
 	// custom claim names like "nickname" (Auth0) or "upn" (Entra)

@@ -288,7 +288,7 @@ func (p *Provider) loginURLAndRequestID(state auth.State) (string, string, error
 // above. This is the security perimeter.
 func (p *Provider) HandleCallback(_ context.Context, r *http.Request, state auth.State) (auth.ResolvedIdentity, error) {
 	if err := r.ParseForm(); err != nil {
-		return auth.ResolvedIdentity{}, fmt.Errorf("%w: parse form: %v", ErrParseResponse, err)
+		return auth.ResolvedIdentity{}, fmt.Errorf("%w: parse form: %w", ErrParseResponse, err)
 	}
 
 	// (1) SAMLResponse field must be present.
@@ -326,11 +326,12 @@ func (p *Provider) HandleCallback(_ context.Context, r *http.Request, state auth
 		// the PrivateErr at WARN so operators can diagnose IdP / cert /
 		// audience mismatches; the client still sees only the sentinel.
 		logEvent := log.Warn().Err(err)
-		if ire, ok := err.(*crewjam.InvalidResponseError); ok && ire != nil && ire.PrivateErr != nil {
+		var ire *crewjam.InvalidResponseError
+		if errors.As(err, &ire) && ire != nil && ire.PrivateErr != nil {
 			logEvent = logEvent.AnErr("private", ire.PrivateErr)
 		}
 		logEvent.Msg("saml: ParseResponse failed")
-		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %v", ErrParseResponse, err)
+		return auth.ResolvedIdentity{}, fmt.Errorf("%w: %w", ErrParseResponse, err)
 	}
 
 	// (4) Replay defense — the assertion just passed signature +

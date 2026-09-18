@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/jmpsec/osctrl/pkg/apiclient"
 
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/posture"

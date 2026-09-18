@@ -611,7 +611,6 @@ func osctrlAPIService() {
 		if err != nil {
 			log.Fatal().Err(err).Msg("invalid events configuration")
 		}
-		defer eventBus.Close()
 		queriesmgr.Events = eventBus
 		filecarves.Events = eventBus
 		if alertsMgr != nil {
@@ -1352,9 +1351,8 @@ func osctrlAPIService() {
 	}
 	if tlsTermination {
 		srv.TLSConfig = &tls.Config{
-			MinVersion:               tls.VersionTLS12,
-			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-			PreferServerCipherSuites: true,
+			MinVersion:       tls.VersionTLS12,
+			CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
@@ -1378,11 +1376,13 @@ func osctrlAPIService() {
 	// Stop live streams before draining on process shutdown or restart.
 	shutdownSignals := make(chan os.Signal, 1)
 	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
-	defer signal.Stop(shutdownSignals)
 	// Wait for either a server error or a restart signal.
 	select {
 	case err := <-serverErr:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if eventBus != nil {
+				eventBus.Close()
+			}
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-shutdownSignals:
@@ -1390,10 +1390,10 @@ func osctrlAPIService() {
 			eventBus.Close()
 		}
 		drainCtx, cancelDrain := context.WithTimeout(context.Background(), restartDrainTimeout)
-		defer cancelDrain()
 		if err := srv.Shutdown(drainCtx); err != nil {
 			log.Err(err).Msg("error draining HTTP server")
 		}
+		cancelDrain()
 	case <-restartCh:
 		if eventBus != nil {
 			eventBus.Close()
