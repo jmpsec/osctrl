@@ -88,7 +88,7 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, polic
 		if existing.AuthSource != policy.authSource {
 			linkedLocal := existing.AuthSource == ""
 			if err := h.Users.ChangeAuthSource(existing.Username, policy.authSource); err != nil {
-				return users.AdminUser{}, fmt.Errorf("%w: updating auth source: %v", ErrAuthUserRejected, err)
+				return users.AdminUser{}, fmt.Errorf("%w: updating auth source: %w", ErrAuthUserRejected, err)
 			}
 			existing.AuthSource = policy.authSource
 			if linkedLocal {
@@ -135,14 +135,14 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, polic
 		false,                      // service = false
 	)
 	if err != nil {
-		return users.AdminUser{}, fmt.Errorf("%w: new user: %v", ErrAuthUserRejected, err)
+		return users.AdminUser{}, fmt.Errorf("%w: new user: %w", ErrAuthUserRejected, err)
 	}
 	// Tag the row with the provider type (oidc / saml) so the Users
 	// page can display the right badge. Purely informational; the auth
 	// flow itself doesn't gate on this field.
 	u.AuthSource = policy.authSource
 	if err := h.Users.Create(u); err != nil {
-		return users.AdminUser{}, fmt.Errorf("%w: create user: %v", ErrAuthUserRejected, err)
+		return users.AdminUser{}, fmt.Errorf("%w: create user: %w", ErrAuthUserRejected, err)
 	}
 	return u, nil
 }

@@ -29,10 +29,10 @@ import (
 // happy-path verification is already covered by the pkg-level tests,
 // so we don't need a working /token endpoint here.
 type fakeIdP struct {
-	srv     *httptest.Server
-	key     *rsa.PrivateKey
-	keyID   string
-	issuer  string // overridden after srv.URL is known
+	srv    *httptest.Server
+	key    *rsa.PrivateKey
+	keyID  string
+	issuer string // overridden after srv.URL is known
 }
 
 func newFakeIdP(t *testing.T) *fakeIdP {

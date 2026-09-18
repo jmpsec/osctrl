@@ -5,12 +5,12 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/alerts"
+	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v3"
 )

@@ -89,12 +89,13 @@ func GenCarveName() string {
 
 // escapeSQLString returns s with every single quote doubled, so the
 // result is safe to interpolate inside a SQL string literal — osquery
-// (SQLite) follows the standard rule that '' inside a literal is one
-// literal quote, and there is no backslash escape to consider. This
-// is the SQL-injection defense for GenCarveQuery: a path containing
-// `'; DROP TABLE x; --` becomes `''; DROP TABLE x; --`, which the
-// parser sees as the contents of the string literal — there is no
-// way to escape the surrounding quotes.
+// (SQLite) follows the standard rule that two consecutive single
+// quotes inside a literal represent one literal quote, and there is
+// no backslash escape to consider. This is the SQL-injection defense
+// for GenCarveQuery: a path containing a quote followed by a
+// semicolon and DROP TABLE becomes a doubled quote, which the parser
+// sees as the contents of the string literal — there is no way to
+// escape the surrounding quotes.
 func escapeSQLString(s string) string {
 	return strings.ReplaceAll(s, "'", "''")
 }

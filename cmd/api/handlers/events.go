@@ -99,7 +99,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	environmentID := uint(0)
 	environmentUUID := "all"
-	if !(globalOnly && envSelector == "all") {
+	if !globalOnly || envSelector != "all" {
 		env, err := h.Envs.Get(envSelector)
 		if err != nil {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)

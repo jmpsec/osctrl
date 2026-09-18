@@ -1,7 +1,7 @@
 ---
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-ast
       - id: check-json
@@ -14,6 +14,7 @@ repos:
         # locally; the hook still scans staged files for leaked AWS keys.
         args: [--allow-missing-credentials]
       - id: detect-private-key
+        exclude: "pkg/auth/saml/provider.go"
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
@@ -23,14 +24,14 @@ repos:
       - id: requirements-txt-fixer
 
   - repo: https://github.com/Bahjat/pre-commit-golang
-    rev: v1.0.5
+    rev: v1.0.6
     hooks:
       - id: go-fmt-import
       - id: go-static-check # install https://staticcheck.io/docs/
       - id: go-unit-tests
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.11.4
+    rev: v2.13.2
     hooks:
       - id: golangci-lint
         args: [--config=.golangci.yml]

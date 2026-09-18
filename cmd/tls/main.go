@@ -469,7 +469,6 @@ func osctrlService() {
 		if err != nil {
 			log.Fatal().Err(err).Msg("invalid events configuration")
 		}
-		defer eventBus.Close()
 		queriesmgr.Events = eventBus
 		filecarves.Events = eventBus
 		if alertsMgr != nil {
@@ -586,9 +585,8 @@ func osctrlService() {
 	if flagParams.TLS.Termination {
 		log.Info().Msg("TLS Termination is enabled")
 		srv.TLSConfig = &tls.Config{
-			MinVersion:               tls.VersionTLS12,
-			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-			PreferServerCipherSuites: true,
+			MinVersion:       tls.VersionTLS12,
+			CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
@@ -616,12 +614,18 @@ func osctrlService() {
 		sinkStatsWriter.Stop()
 		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsRetentionStop, alertsWorker)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if eventBus != nil {
+				eventBus.Close()
+			}
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-restartCh:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
 		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsRetentionStop, alertsWorker)
+		if eventBus != nil {
+			eventBus.Close()
+		}
 		log.Info().Msg("TLS service command consumed — exiting for restart")
 		os.Exit(1)
 	}

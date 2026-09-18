@@ -1323,72 +1323,6 @@ func printSummary() {
 	fmt.Printf("\n%s\n\n", strings.Repeat("=", 90))
 }
 
-// printDashboard prints a real-time dashboard
-func printDashboard() {
-	// Clear screen and move cursor to top
-	fmt.Print("\033[2J\033[H")
-
-	uptime := globalStats.GetUptime()
-
-	fmt.Printf("FAKE NEWS GENERATOR — REAL-TIME DASHBOARD\n")
-	fmt.Printf("Uptime: %s | Last Update: %s\n", uptime.Round(time.Second), time.Now().Format("15:04:05"))
-	fmt.Printf("%s\n", strings.Repeat("-", 100))
-
-	operations := []struct {
-		name string
-		op   OperationType
-	}{
-		{"Enroll", EnrollOp},
-		{"Status", StatusOp},
-		{"Result", ResultOp},
-		{"Config", ConfigOp},
-		{"Query Read", QueryReadOp},
-		{"Query Write", QueryWriteOp},
-	}
-
-	fmt.Printf("  %-14s %10s %10s %10s %10s %10s %10s %10s\n",
-		"Operation", "Count", "Success%", "Min(ms)", "Avg(ms)", "Max(ms)", "P95(ms)", "P99(ms)")
-	fmt.Printf("  %s\n", strings.Repeat("-", 96))
-
-	for _, op := range operations {
-		stats := globalStats.GetOperationStats(op.op)
-		min, max, avg, p95, p99, count, success, _ := stats.GetStats()
-
-		if count > 0 {
-			successRate := float64(success) / float64(count) * 100
-			fmt.Printf("  %-14s %10d %9.1f%% %10d %10d %10d %10d %10d\n",
-				op.name, count, successRate, min.Milliseconds(), avg.Milliseconds(), max.Milliseconds(), p95.Milliseconds(), p99.Milliseconds())
-		} else {
-			fmt.Printf("  %-14s %10d %10s %10s %10s %10s %10s %10s\n",
-				op.name, 0, "-", "-", "-", "-", "-", "-")
-		}
-	}
-	fmt.Printf("  %s\n\n", strings.Repeat("-", 96))
-
-	// URL statistics
-	fmt.Printf("URL STATISTICS\n")
-	fmt.Printf("  %s\n", strings.Repeat("-", 96))
-	fmt.Printf("  %-55s %8s %8s %8s %9s\n", "URL", "Total", "Success", "Failed", "Success%")
-	fmt.Printf("  %s\n", strings.Repeat("-", 96))
-
-	urlStats := globalStats.GetURLStats()
-	if len(urlStats) > 0 {
-		for url, stats := range urlStats {
-			_, _, _, _, _, count, success, fail := stats.GetStats()
-			if count > 0 {
-				successRate := float64(success) / float64(count) * 100
-				if len(url) > 55 {
-					url = "..." + url[len(url)-52:]
-				}
-				fmt.Printf("  %-55s %8d %8d %8d %8.1f%%\n", url, count, success, fail, successRate)
-			}
-		}
-	} else {
-		fmt.Printf("  %-55s %8s %8s %8s %9s\n", "No data yet", "-", "-", "-", "-")
-	}
-	fmt.Printf("  %s\n", strings.Repeat("-", 96))
-}
-
 // printJSONStats prints statistics in JSON format
 func printJSONStats() {
 	stats := make(map[string]interface{})
@@ -1478,21 +1412,6 @@ func logOperationWithURL(opType OperationType, nodeName string, url string, late
 	case JSONMode:
 		// JSON output (handled by JSON goroutine)
 		return
-	}
-}
-
-// summaryReporter runs periodic summary reports
-func summaryReporter(ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			printSummary()
-		}
 	}
 }
 

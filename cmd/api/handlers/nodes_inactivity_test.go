@@ -80,14 +80,15 @@ func TestNodeConsumersEnvironmentThresholds(t *testing.T) {
 			if tc.active == (i == 1) {
 				want = 1
 			}
-			if tc.paged {
+			switch {
+			case tc.paged:
 				require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
 				var page types.NodesPagedResponse
 				require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &page))
 				require.Equal(t, want, page.TotalItems)
-			} else if want == 0 {
+			case want == 0:
 				require.Equal(t, http.StatusNotFound, rr.Code, rr.Body.String())
-			} else {
+			default:
 				require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
 				var got []nodes.OsqueryNode
 				require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &got))

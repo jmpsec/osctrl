@@ -2,6 +2,7 @@ package saml
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -128,7 +129,7 @@ func TestHandleCallback_StateMismatch(t *testing.T) {
 
 	_, err := p.HandleCallback(context.Background(), r,
 		auth.State{EnvUUID: "global", Nonce: "n-the-real-nonce", OAuthState: "the-real-nonce"})
-	if err != ErrStateMismatch {
+	if !errors.Is(err, ErrStateMismatch) {
 		t.Errorf("expected ErrStateMismatch, got %v", err)
 	}
 }
@@ -147,7 +148,7 @@ func TestHandleCallback_MissingSAMLResponse(t *testing.T) {
 
 	_, err := p.HandleCallback(context.Background(), r,
 		auth.State{EnvUUID: "global", Nonce: "n-the-real-nonce", OAuthState: "the-real-nonce"})
-	if err != ErrMissingSAMLResponse {
+	if !errors.Is(err, ErrMissingSAMLResponse) {
 		t.Errorf("expected ErrMissingSAMLResponse, got %v", err)
 	}
 }
@@ -239,7 +240,7 @@ func errIs(got, target error) bool {
 	if got == nil {
 		return false
 	}
-	if got == target {
+	if errors.Is(got, target) {
 		return true
 	}
 	// fmt.Errorf("%w: ...", target) wraps the sentinel.

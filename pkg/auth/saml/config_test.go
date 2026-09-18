@@ -58,12 +58,12 @@ func TestConfigValidate_Failures(t *testing.T) {
 		},
 		{
 			name: "no entity id",
-			mut: func(c *Config) { c.EntityID = "" },
+			mut:  func(c *Config) { c.EntityID = "" },
 			want: "EntityID is required",
 		},
 		{
 			name: "no acs url",
-			mut: func(c *Config) { c.ACSURL = "" },
+			mut:  func(c *Config) { c.ACSURL = "" },
 			want: "ACSURL is required",
 		},
 		{

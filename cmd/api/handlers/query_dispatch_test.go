@@ -58,7 +58,7 @@ func TestCreateQueryInvalidatesDispatchAfterCommit(t *testing.T) {
 				require.NoError(t, err)
 				require.True(t, cached, "do not invalidate while query creation is uncommitted")
 				if rollback {
-					tx.AddError(errors.New("target write failed"))
+					_ = tx.AddError(errors.New("target write failed"))
 				}
 				if name == "canceled-request" {
 					cancel()
