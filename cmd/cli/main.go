@@ -2056,9 +2056,19 @@ func checkAPI(ctx context.Context, cmd *cli.Command) error {
 	}
 	if apiFlag {
 		if apiConfigFile != "" {
-			apiConfig, err = apiclient.LoadConfiguration(apiConfigFile)
-			if err != nil {
-				return fmt.Errorf("apiclient.LoadConfiguration - %w", err)
+			if loaded, fileErr := apiclient.LoadConfiguration(apiConfigFile); fileErr == nil {
+				apiConfig = loaded
+			} else {
+				// No configuration file (or unreadable): fall through and
+				// prompt for whatever flags/environment did not provide.
+				log.Debug().Msgf("API configuration file not loaded: %v", fileErr)
+			}
+		}
+		// A configuration file that exists still may be incomplete —
+		// ask interactively for anything that is missing.
+		if missingAPIConfiguration(apiConfig) {
+			if err := promptMissingAPIConfiguration(&apiConfig); err != nil {
+				return err
 			}
 		}
 		// Initialize API
@@ -2238,9 +2248,19 @@ func cliWrapper(action func(context.Context, *cli.Command) error) func(context.C
 		if apiFlag {
 			if apiConfigFile != "" {
 				log.Debug().Msg("Loading API configuration from file")
-				apiConfig, err = apiclient.LoadConfiguration(apiConfigFile)
-				if err != nil {
-					return fmt.Errorf("apiclient.LoadConfiguration - %w", err)
+				if loaded, fileErr := apiclient.LoadConfiguration(apiConfigFile); fileErr == nil {
+					apiConfig = loaded
+				} else {
+					// No configuration file (or unreadable): fall through and
+					// prompt for whatever flags/environment did not provide.
+					log.Debug().Msgf("API configuration file not loaded: %v", fileErr)
+				}
+			}
+			// A configuration file that exists still may be incomplete —
+			// ask interactively for anything that is missing.
+			if missingAPIConfiguration(apiConfig) {
+				if err := promptMissingAPIConfiguration(&apiConfig); err != nil {
+					return err
 				}
 			}
 			// Initialize API
