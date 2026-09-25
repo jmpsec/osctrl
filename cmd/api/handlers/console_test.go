@@ -112,32 +112,26 @@ func TestConsoleSessionCreateDispatchesPrimingCommand(t *testing.T) {
 	require.True(t, distributed.Hidden)
 }
 
-func TestWarmupQueryWaitSizedToNodePollingState(t *testing.T) {
-	env := environments.TLSEnvironment{QueryInterval: 60}
-	// Fresh read: nearly the whole interval remains until the next read.
-	wait := warmupQueryWait(env, nodes.OsqueryNode{LastQueryRead: time.Now()})
-	require.Greater(t, wait, 55*time.Second)
-	require.LessOrEqual(t, wait, 60*time.Second)
-	// Read 30s ago on a 60s interval: about 30s remain.
-	wait = warmupQueryWait(env, nodes.OsqueryNode{LastQueryRead: time.Now().Add(-30 * time.Second)})
-	require.Greater(t, wait, 25*time.Second)
-	require.LessOrEqual(t, wait, 35*time.Second)
-	// Overdue read: no extra wait, so dead nodes still fail fast.
-	require.Zero(t, warmupQueryWait(env, nodes.OsqueryNode{LastQueryRead: time.Now().Add(-2 * time.Minute)}))
-	// No read recorded yet: assume the next read can be a full interval away.
-	require.Equal(t, 60*time.Second, warmupQueryWait(env, nodes.OsqueryNode{}))
+func TestWarmupQueryWaitCoversFullPollInterval(t *testing.T) {
+	// last_query_read is stamped by osctrl-tls's batch writer and can lag
+	// the node's real poll by up to a flush window, so it must not shrink
+	// the warmup window: every warming-up command reserves a full interval
+	// regardless of how fresh or stale the recorded read looks.
+	require.Equal(t, 60*time.Second, warmupQueryWait(environments.TLSEnvironment{QueryInterval: 60}))
+	// A recorded read (fresh or stale) must not change the reservation.
+	require.Equal(t, 60*time.Second, warmupQueryWait(environments.TLSEnvironment{QueryInterval: 60}))
 	// Unset interval falls back to the environment default.
-	require.Equal(t, 60*time.Second, warmupQueryWait(environments.TLSEnvironment{}, nodes.OsqueryNode{}))
+	require.Equal(t, 60*time.Second, warmupQueryWait(environments.TLSEnvironment{}))
 	// Very long intervals are capped so requests cannot pend unbounded.
-	require.Equal(t, maxWarmupWait, warmupQueryWait(environments.TLSEnvironment{QueryInterval: 3600}, nodes.OsqueryNode{LastQueryRead: time.Now()}))
+	require.Equal(t, maxWarmupWait, warmupQueryWait(environments.TLSEnvironment{QueryInterval: 3600}))
 }
 
 func TestConsoleSessionCreatePrimingSurvivesNodePollInterval(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
 	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
-	// The node is mid-cycle on its regular distributed interval; the
-	// priming query must still be pending when its next read arrives.
-	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-30*time.Second)).Error)
+	// The node's recorded read is mid-cycle on its regular distributed
+	// interval; the priming query must still be pending when its next
+	// read arrives.
 	before := time.Now()
 
 	req := consoleRequest(http.MethodPost, "/console", nil, "alice")
@@ -154,8 +148,9 @@ func TestConsoleSessionCreatePrimingSurvivesNodePollInterval(t *testing.T) {
 
 	var distributed queries.DistributedQuery
 	require.NoError(t, db.Where("name = ?", resp.Priming.DistributedQueryName).First(&distributed).Error)
-	require.True(t, distributed.Expiration.After(before.Add(85*time.Second)), "priming must cover the node's next scheduled read")
-	require.True(t, distributed.Expiration.Before(before.Add(97*time.Second)))
+	// Base is the minute floor plus the full warmup wait (60s interval).
+	require.True(t, distributed.Expiration.After(before.Add(115*time.Second)), "priming must cover the node's next scheduled read")
+	require.True(t, distributed.Expiration.Before(before.Add(125*time.Second)))
 }
 
 func TestConsoleSessionCreateReturnsNodeInfo(t *testing.T) {
@@ -283,9 +278,8 @@ func TestConsoleCommandRejectsSecondInFlightCommand(t *testing.T) {
 func TestConsoleCommandExpirationUsesDoubleAcceleratedQueryReadInterval(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
 	require.NoError(t, h.Settings.NewIntegerValue(config.ServiceTLS, settings.AcceleratedSeconds, 7, settings.NoEnvironmentID))
-	// The node's scheduled read is overdue, so no warmup wait is added:
-	// the expiration is the doubled accelerated interval alone.
-	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-2*time.Minute)).Error)
+	// The expiration is the doubled accelerated interval plus the full
+	// warmup wait (60s default interval).
 	session, err := h.Console.CreateSession(env, node, "alice")
 	require.NoError(t, err)
 	before := time.Now()
@@ -302,19 +296,20 @@ func TestConsoleCommandExpirationUsesDoubleAcceleratedQueryReadInterval(t *testi
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	var distributed queries.DistributedQuery
 	require.NoError(t, db.Where("name = ?", resp.Command.DistributedQueryName).First(&distributed).Error)
-	require.True(t, distributed.Expiration.After(before.Add(13*time.Second)))
-	require.True(t, distributed.Expiration.Before(before.Add(15*time.Second)))
+	require.True(t, distributed.Expiration.After(before.Add(73*time.Second)))
+	require.True(t, distributed.Expiration.Before(before.Add(76*time.Second)))
 }
 
 func TestConsoleCommandExpirationSurvivesNodePollIntervalWhileWarmingUp(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
 	require.NoError(t, h.Settings.NewIntegerValue(config.ServiceTLS, settings.AcceleratedSeconds, 7, settings.NoEnvironmentID))
 	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
-	// The node's last query read was 30s ago on a 60s interval: its next
-	// read is up to 30s away. The query must stay pending at least that
-	// long, or warmup commands expire undelivered and the operator has to
-	// keep clicking refresh until acceleration happens to kick in.
-	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-30*time.Second)).Error)
+	// The node's last recorded read looks overdue, but the batch writer
+	// lag means its next real read can still be a full interval away. The
+	// query must stay pending at least that long, or warmup commands
+	// expire undelivered and the operator has to keep clicking refresh
+	// until acceleration happens to kick in.
+	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-2*time.Minute)).Error)
 	session, err := h.Console.CreateSession(env, node, "alice")
 	require.NoError(t, err)
 	before := time.Now()
@@ -332,16 +327,16 @@ func TestConsoleCommandExpirationSurvivesNodePollIntervalWhileWarmingUp(t *testi
 	require.NotNil(t, resp.Command.ExpiresAt, "the response must expose the deadline so clients can wait it out")
 	var distributed queries.DistributedQuery
 	require.NoError(t, db.Where("name = ?", resp.Command.DistributedQueryName).First(&distributed).Error)
-	require.True(t, distributed.Expiration.After(before.Add(40*time.Second)), "expiration must cover the node's next scheduled read")
-	require.True(t, distributed.Expiration.Before(before.Add(47*time.Second)))
+	require.True(t, distributed.Expiration.After(before.Add(73*time.Second)), "expiration must cover the node's next scheduled read despite stale check-in data")
+	require.True(t, distributed.Expiration.Before(before.Add(76*time.Second)))
 }
 
 func TestConsoleOsqueryModeSQLUsesLongerExpiration(t *testing.T) {
 	db, h, env, node := setupConsoleHandlers(t)
 	require.NoError(t, h.Settings.NewIntegerValue(config.ServiceTLS, settings.AcceleratedSeconds, 5, settings.NoEnvironmentID))
-	// Overdue read: no warmup wait, so the expiration is the long sql
-	// timeout alone.
-	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-2*time.Minute)).Error)
+	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
+	// The sql timeout floor is a minute; the full warmup wait (60s) is
+	// added on top so delivery is covered while still warming up.
 	session, _ := h.Console.CreateSession(env, node, "alice")
 	before := time.Now()
 
@@ -357,8 +352,8 @@ func TestConsoleOsqueryModeSQLUsesLongerExpiration(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	var distributed queries.DistributedQuery
 	require.NoError(t, db.Where("name = ?", resp.Command.DistributedQueryName).First(&distributed).Error)
-	require.True(t, distributed.Expiration.After(before.Add(59*time.Second)))
-	require.True(t, distributed.Expiration.Before(before.Add(61*time.Second)))
+	require.True(t, distributed.Expiration.After(before.Add(119*time.Second)))
+	require.True(t, distributed.Expiration.Before(before.Add(122*time.Second)))
 }
 
 func TestConsoleCommandRejectsNonAdminSessionOwner(t *testing.T) {

@@ -110,10 +110,9 @@ func TestFileExplorerSessionCreateDispatchesPrimingRequest(t *testing.T) {
 func TestFileExplorerSessionCreatePrimingSurvivesNodePollInterval(t *testing.T) {
 	db, h, env, node := setupFileExplorerHandlers(t)
 	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
-	// The node is mid-cycle on its regular distributed interval; the
-	// priming query (and the first directory listing that follows) must
-	// still be pending when its next read arrives.
-	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-30*time.Second)).Error)
+	// The node's recorded read is mid-cycle on its regular distributed
+	// interval; the priming query (and the first directory listing that
+	// follows) must still be pending when its next read arrives.
 	before := time.Now()
 
 	req := fileExplorerRequest(http.MethodPost, "/file-explorer", nil, "alice")
@@ -130,14 +129,19 @@ func TestFileExplorerSessionCreatePrimingSurvivesNodePollInterval(t *testing.T) 
 
 	var distributed queries.DistributedQuery
 	require.NoError(t, db.Where("name = ?", resp.Priming.DistributedQueryName).First(&distributed).Error)
-	require.True(t, distributed.Expiration.After(before.Add(35*time.Second)), "priming must cover the node's next scheduled read")
-	require.True(t, distributed.Expiration.Before(before.Add(47*time.Second)))
+	// Base is the doubled accelerated interval (5s default) plus the full
+	// warmup wait (60s interval).
+	require.True(t, distributed.Expiration.After(before.Add(65*time.Second)), "priming must cover the node's next scheduled read")
+	require.True(t, distributed.Expiration.Before(before.Add(75*time.Second)))
 }
 
 func TestFileExplorerListRequestSurvivesNodePollInterval(t *testing.T) {
 	db, h, env, node := setupFileExplorerHandlers(t)
 	require.NoError(t, db.Model(&env).UpdateColumn("query_interval", 60).Error)
-	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-30*time.Second)).Error)
+	// A recorded read that looks overdue must not shrink the warmup
+	// window: the batch writer stamps last_query_read late, so the next
+	// real read can still be a full interval away.
+	require.NoError(t, db.Model(&node).UpdateColumn("last_query_read", time.Now().Add(-2*time.Minute)).Error)
 	session, err := h.FileExplorer.CreateSession(env, node, "alice")
 	require.NoError(t, err)
 	before := time.Now()
@@ -155,8 +159,10 @@ func TestFileExplorerListRequestSurvivesNodePollInterval(t *testing.T) {
 
 	var distributed queries.DistributedQuery
 	require.NoError(t, db.Where("name = ?", request.DistributedQueryName).First(&distributed).Error)
-	require.True(t, distributed.Expiration.After(before.Add(35*time.Second)), "the listing must cover the node's next scheduled read")
-	require.True(t, distributed.Expiration.Before(before.Add(47*time.Second)))
+	// Base is the doubled accelerated interval (5s default) plus the full
+	// warmup wait (60s interval), despite the stale recorded read.
+	require.True(t, distributed.Expiration.After(before.Add(65*time.Second)), "the listing must cover the node's next scheduled read despite stale check-in data")
+	require.True(t, distributed.Expiration.Before(before.Add(75*time.Second)))
 }
 
 func TestFileExplorerPrimingResultsReturnsOsqueryInfoRows(t *testing.T) {

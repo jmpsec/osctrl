@@ -70,6 +70,10 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
     useCallback(({ resourceId }) => {
       if (!sessionID) return;
       void qc.invalidateQueries({ queryKey: ['console-command', env, sessionID, resourceId], exact: true });
+      // The priming poll uses its own query key; without invalidation the
+      // "warming" badge and header metadata lag up to a reconcile interval
+      // after the node delivers the priming results.
+      void qc.invalidateQueries({ queryKey: ['console-priming', env, sessionID], exact: false });
     }, [env, qc, sessionID]),
   );
 

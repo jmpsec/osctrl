@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeConsolePanel } from './NodeConsolePage';
@@ -12,6 +12,14 @@ const consoleApi = vi.hoisted(() => ({
   getConsoleCommand: vi.fn(),
   getConsoleCommandResults: vi.fn(),
 }));
+
+const liveUpdates = vi.hoisted(() => ({
+  readEvents: vi.fn(),
+  getFeatures: vi.fn(),
+}));
+
+vi.mock('$/api/events', () => ({ readEvents: liveUpdates.readEvents }));
+vi.mock('$/api/features', () => ({ getFeatures: liveUpdates.getFeatures }));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
@@ -30,6 +38,8 @@ vi.mock('$/api/console', () => ({
 describe('NodeConsolePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    liveUpdates.getFeatures.mockResolvedValue({ events: true, event_topics: ['console'] });
+    liveUpdates.readEvents.mockImplementation(() => new Promise<void>(() => undefined));
     consoleApi.createConsoleSession.mockResolvedValue({
       session: makeSession(),
       history: [],
@@ -84,6 +94,47 @@ describe('NodeConsolePanel', () => {
     const input = await screen.findByLabelText(/console input/i);
     await waitFor(() => expect(input).not.toBeDisabled());
     expect(input).toHaveFocus();
+  });
+
+  it('refetches the priming command when a live update marks it changed', async () => {
+    consoleApi.createConsoleSession.mockResolvedValue({
+      session: makeSession(),
+      history: [],
+      priming: makeCommand({ id: 99, input: 'select version from osquery_info', priming: true }),
+    });
+    let receive: ((event: { event: string; data: Record<string, unknown> }) => void) | undefined;
+    liveUpdates.readEvents.mockImplementation((_env: string, _topics: string[], _signal: AbortSignal, onEvent: typeof receive) => {
+      receive = onEvent;
+      return new Promise<void>(() => undefined);
+    });
+    let primingReads = 0;
+    consoleApi.getConsoleCommand.mockImplementation((_env: string, _sessionID: number, commandID: number) => {
+      if (commandID === 99) {
+        primingReads += 1;
+        return Promise.resolve(makeCommand({ id: 99, input: 'select version from osquery_info', priming: true, status: 'queued' }));
+      }
+      return Promise.resolve(makeCommand({ status: 'queued', input: 'ps' }));
+    });
+
+    renderConsole();
+    const input = await screen.findByLabelText(/console input/i);
+    await waitFor(() => expect(input).not.toBeDisabled());
+    // The session-scoped console stream must be connected before events
+    // can drive the priming poll.
+    await waitFor(() => expect(liveUpdates.readEvents).toHaveBeenCalled());
+    const sessionScoped = liveUpdates.readEvents.mock.calls.some(([, topics, _signal, , options]) =>
+      Array.isArray(topics) && topics.includes('console') && options?.consoleSessionId === 1,
+    );
+    expect(sessionScoped).toBe(true);
+    const readsBefore = primingReads;
+    act(() => {
+      receive?.({ event: 'stream.ready', data: { environment_uuid: 'env-uuid' } });
+      receive?.({
+        event: 'resource.changed',
+        data: { schema_version: 1, environment_uuid: 'env-uuid', topic: 'console', session_id: 1, resource_id: 99, change: 'results' },
+      });
+    });
+    await waitFor(() => expect(primingReads).toBeGreaterThan(readsBefore));
   });
 
   it('keeps the console session fresh while open', async () => {

@@ -89,7 +89,7 @@ func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http
 	// node's next QueryRead can also switch to fast polling before the
 	// operator types their first command. A priming failure is non-fatal.
 	var priming *console.Command
-	if primingCmd, primingErr := h.Console.SubmitPrimingCommand(session.ID, h.consolePrimingTimeout(env, node)); primingErr == nil {
+	if primingCmd, primingErr := h.Console.SubmitPrimingCommand(session.ID, h.consolePrimingTimeout(env)); primingErr == nil {
 		priming = &primingCmd
 	}
 	h.auditConsoleVisit(ctx[ctxUser], r, env.ID)
@@ -146,11 +146,7 @@ func (h *HandlersApi) ConsoleCommandCreateHandler(w http.ResponseWriter, r *http
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use console get by user %s", ctx[ctxUser]))
 		return
 	}
-	node, ok := h.sessionNode(w, env, session.NodeUUID)
-	if !ok {
-		return
-	}
-	command, parsed, err := h.Console.SubmitCommandWithTimeout(session.ID, body.Input, h.consoleCommandTimeout(env, node, preview), body.OsqueryMode)
+	command, parsed, err := h.Console.SubmitCommandWithTimeout(session.ID, body.Input, h.consoleCommandTimeout(env, preview), body.OsqueryMode)
 	if err != nil {
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 		return
@@ -257,55 +253,50 @@ func (h *HandlersApi) acceleratedQueryReadSeconds() int64 {
 // distributed interval (--distributed_interval = env.QueryInterval), not
 // at the accelerated interval. A query expiring before the node's next
 // scheduled read is never delivered, which is what forced operators to
-// click refresh repeatedly until acceleration happened to kick in. The
-// last query read recorded for the node makes the next read predictable:
-// last read + configured interval. The wait is whatever remains of that
-// window, capped by maxWarmupWait. Once acceleration is active the last
-// read is fresh, the wait collapses to zero, and the base timeout alone
-// covers delivery on the (now fast) polling cadence.
-func warmupQueryWait(env environments.TLSEnvironment, node nodes.OsqueryNode) time.Duration {
+// click refresh repeatedly until acceleration happened to kick in.
+//
+// The node's recorded last read is deliberately not used to shrink this
+// window. osctrl-tls stamps last_query_read through a batch writer that
+// coalesces check-ins and flushes on --writer-timeout (60s by default),
+// so the stamp can lag the node's real poll by roughly one interval —
+// the same magnitude as the window being predicted. Trusting it made
+// mid-cycle reads look overdue, granted no extra wait, and expired
+// warmup commands undelivered. Reserving the full interval keeps
+// delivery certain for live nodes; once acceleration is active the
+// command completes on the first fast poll and the extra expiration
+// only bounds how long a dead node's command stays pending.
+func warmupQueryWait(env environments.TLSEnvironment) time.Duration {
 	interval := env.QueryInterval
 	if interval <= 0 {
 		interval = environments.DefaultQueryInterval
 	}
-	if node.LastQueryRead.IsZero() {
-		// No read recorded yet (new node or rows predating the column):
-		// assume the next read can be a full interval away.
-		return min(time.Duration(interval)*time.Second, maxWarmupWait)
-	}
-	wait := time.Duration(interval)*time.Second - time.Since(node.LastQueryRead)
-	if wait <= 0 {
-		// The scheduled read is overdue — the node is offline or asleep.
-		// Keep the base timeout so dead nodes still fail fast.
-		return 0
-	}
-	return min(wait, maxWarmupWait)
+	return min(time.Duration(interval)*time.Second, maxWarmupWait)
 }
 
-func (h *HandlersApi) consoleCommandTimeout(env environments.TLSEnvironment, node nodes.OsqueryNode, parsed console.ParsedCommand) time.Duration {
+func (h *HandlersApi) consoleCommandTimeout(env environments.TLSEnvironment, parsed console.ParsedCommand) time.Duration {
 	seconds := h.acceleratedQueryReadSeconds()
 	if parsed.Kind == console.CommandRemote && parsed.Command == "sql" {
 		timeout := time.Duration(seconds*12) * time.Second
 		if timeout < time.Minute {
 			timeout = time.Minute
 		}
-		return timeout + warmupQueryWait(env, node)
+		return timeout + warmupQueryWait(env)
 	}
-	return time.Duration(seconds*2)*time.Second + warmupQueryWait(env, node)
+	return time.Duration(seconds*2)*time.Second + warmupQueryWait(env)
 }
 
 // consolePrimingTimeout is the expiration given to the priming metadata
 // query. The base is intentionally generous (the accelerated interval
 // doubled plus a minute floor) so the priming query stays pending long
-// enough for the next accelerated QueryRead to deliver it, and the warmup
-// wait extends it further while the node is still on its regular polling
-// interval.
-func (h *HandlersApi) consolePrimingTimeout(env environments.TLSEnvironment, node nodes.OsqueryNode) time.Duration {
+// enough for the next accelerated QueryRead to deliver it, and the
+// warmup wait extends it further while the node is still polling at its
+// regular interval.
+func (h *HandlersApi) consolePrimingTimeout(env environments.TLSEnvironment) time.Duration {
 	timeout := time.Duration(h.acceleratedQueryReadSeconds()*2) * time.Second
 	if timeout < time.Minute {
 		timeout = time.Minute
 	}
-	return timeout + warmupQueryWait(env, node)
+	return timeout + warmupQueryWait(env)
 }
 
 func osqueryTableSupportsPlatform(table types.OsqueryTable, platform string) bool {
@@ -414,24 +405,6 @@ func (h *HandlersApi) consoleSessionContext(w http.ResponseWriter, r *http.Reque
 		return environments.TLSEnvironment{}, nil, console.Session{}, false
 	}
 	return env, ctx, session, true
-}
-
-// sessionNode resolves the node an interactive session (console or file
-// explorer) belongs to, so submit paths can size the distributed query
-// expiration from the node's polling state. The session was created
-// against this node; if it no longer resolves, nothing submitted to it
-// can ever be delivered.
-func (h *HandlersApi) sessionNode(w http.ResponseWriter, env environments.TLSEnvironment, nodeUUID string) (nodes.OsqueryNode, bool) {
-	node, err := h.Nodes.GetByUUIDEnv(nodeUUID, env.ID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
-			return nodes.OsqueryNode{}, false
-		}
-		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
-		return nodes.OsqueryNode{}, false
-	}
-	return node, true
 }
 
 func consolePathUint(w http.ResponseWriter, r *http.Request, name string) (uint, bool) {
