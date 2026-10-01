@@ -45,10 +45,10 @@ func (logFile *LoggerFile) Settings(mgr *settings.Settings) {
 // here, so this is a no-op.
 func (logFile *LoggerFile) Close() error { return nil }
 
-// Log - Function that sends JSON result/status/query logs to stdout
+// Log - Function that sends JSON result/status logs to the file
 func (logFile *LoggerFile) Log(logType string, data []byte, environment, uuid string, debug bool) {
 	if debug {
-		log.Debug().Msgf("Sending %d bytes to stdout for %s - %s", len(data), environment, uuid)
+		log.Debug().Msgf("Sending %d bytes to file for %s - %s", len(data), environment, uuid)
 	}
 	switch logType {
 	case types.StatusLog:
@@ -58,28 +58,28 @@ func (logFile *LoggerFile) Log(logType string, data []byte, environment, uuid st
 	}
 }
 
-// Status - Function that sends JSON status logs to stdout
+// Status - Function that sends JSON status logs to the file
 func (logFile *LoggerFile) Status(data []byte, environment, uuid string, debug bool) {
 	logFile.Logger.Info().Str(
 		"type", types.StatusLog).Str(
 		"environment", environment).Str(
-		"uuid", uuid).RawJSON("data", data)
+		"uuid", uuid).RawJSON("data", data).Send()
 }
 
-// Result - Function that sends JSON result logs to stdout
+// Result - Function that sends JSON result logs to the file
 func (logFile *LoggerFile) Result(data []byte, environment, uuid string, debug bool) {
 	logFile.Logger.Info().Str(
 		"type", types.ResultLog).Str(
 		"environment", environment).Str(
-		"uuid", uuid).RawJSON("data", data)
+		"uuid", uuid).RawJSON("data", data).Send()
 }
 
-// Query - Function that sends JSON query logs to stdout
+// Query - Function that sends JSON query logs to the file
 func (logFile *LoggerFile) Query(data []byte, environment, uuid, name string, status int, debug bool) {
 	logFile.Logger.Info().Str(
 		"type", types.QueryLog).Str(
 		"environment", environment).Str(
 		"name", name).Int(
 		"status", status).Str(
-		"uuid", uuid).RawJSON("data", data)
+		"uuid", uuid).RawJSON("data", data).Send()
 }
