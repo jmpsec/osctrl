@@ -2,6 +2,16 @@
 # This service is the authenticated REST API used by the React frontend,
 # osctrl-cli, and automation.
 
+# PRECEDENCE: a field saved from the Service Config page is "pinned": the stored
+# value beats command-line flags and environment variables for that field only.
+# Fields you never changed keep following their flag, and the page marks every
+# pinned field and lets you release it. Rows saved by older releases pin EVERY
+# field in their section until released. Pinned values keep applying after
+# --service-config-enabled is switched off; that flag only controls whether the
+# page exists. If a flag such as --port seems ignored, look for "overrides flags,
+# environment and YAML" in the startup log: it names the section and the fields,
+# with both values.
+
 # Version of the configuration schema this file targets. osctrl warns at
 # startup when this differs from the version the binary supports: a lower
 # number means fields were added since this file was written, a higher

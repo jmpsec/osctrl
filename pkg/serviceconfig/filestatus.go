@@ -131,11 +131,12 @@ func (m *ServiceConfigManager) PersistToFile(service, path string, cfg *config.S
 		return fmt.Errorf("write config file %s: %w", path, err)
 	}
 	// The file now matches the database, so every section is once again
-	// sourced from YAML. Without this the UI would keep offering to write
-	// changes that are already on disk.
+	// sourced from YAML and nothing is pinned. Without this the UI would keep
+	// offering to write changes that are already on disk, and a stale pin list
+	// would outlive the edits it described.
 	if err := m.DB.Model(&ServiceConfig{}).
 		Where("service = ? AND environment_id = ? AND source = ?", service, envID, SourceDB).
-		Update("source", SourceYAML).Error; err != nil {
+		Updates(map[string]any{"source": SourceYAML, "overrides": ""}).Error; err != nil {
 		return fmt.Errorf("reset source after persist %s: %w", service, err)
 	}
 	log.Info().Msgf("Persisted service config for %s to %s", service, path)

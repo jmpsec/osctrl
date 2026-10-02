@@ -572,10 +572,22 @@ type SettingPatchRequest struct {
 }
 
 // ServiceConfigUpdateRequest is the body for PUT
-// /api/v1/service-config/{service}/{section}. Value is a raw JSON object
-// representing the new section contents.
+// /api/v1/service-config/{service}/{section}. It takes exactly one of two
+// forms.
+//
+// Value replaces the whole section, which pins EVERY field in it: stored
+// values then beat flags, environment variables and YAML at startup. Use it to
+// set a section from scratch.
+//
+// Patch and Reset change individual top-level fields. Patch pins each named
+// field to the given value; Reset releases a field so it follows the process
+// again from the next restart. Only pinned fields override anything, so a
+// field you never touched keeps following its flag. Field names match
+// case-insensitively; an unknown name is rejected.
 type ServiceConfigUpdateRequest struct {
-	Value json.RawMessage `json:"value" swaggertype:"object"`
+	Value json.RawMessage            `json:"value,omitempty" swaggertype:"object"`
+	Patch map[string]json.RawMessage `json:"patch,omitempty" swaggertype:"object"`
+	Reset []string                   `json:"reset,omitempty"`
 }
 
 // ServiceConfigApplyRequest is the optional body for POST

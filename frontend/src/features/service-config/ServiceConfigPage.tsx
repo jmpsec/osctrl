@@ -13,6 +13,7 @@ import {
   persistServiceConfig,
   type ServiceConfig,
 } from '$/api/service-config';
+import { parsePins, isPinned, NO_PINS, type PinnedFields } from './pins';
 import { getFeatures } from '$/api/features';
 import { AuthError, ApiError } from '$/api/client';
 import { cn } from '$/lib/cn';
@@ -361,7 +362,22 @@ function SectionIcon({ name }: { name: string }) {
   );
 }
 
-const FieldScope = createContext({ service: '', section: '' });
+interface FieldScopeValue {
+  service: string;
+  section: string;
+  /** Which fields of this section beat flags, environment and YAML. */
+  pins: PinnedFields;
+  /** Release one pinned field; undefined when the section is read-only. */
+  onRelease?: (key: string) => void;
+  releasing: boolean;
+}
+
+const FieldScope = createContext<FieldScopeValue>({
+  service: '',
+  section: '',
+  pins: NO_PINS,
+  releasing: false,
+});
 
 type FieldType = 'boolean' | 'number' | 'string' | 'string[]' | 'object' | 'null';
 
@@ -914,8 +930,16 @@ function ConfigSectionCard({
     setDraft((prev) => ({ ...prev, [key]: value }));
   }, []);
 
+  // Save sends ONLY the fields that changed. Sending the whole draft would
+  // store the entire section, and every field in it would then beat flags and
+  // environment variables from the next boot on — changing a log level used to
+  // silently pin the port too.
   const mutation = useMutation({
-    mutationFn: () => updateServiceConfig(service, section.Name, { value: draft }),
+    mutationFn: () => {
+      const patch: Record<string, unknown> = {};
+      for (const key of dirtyKeys) patch[key] = draft[key];
+      return updateServiceConfig(service, section.Name, { patch });
+    },
     onSuccess: () => {
       setErr(null);
       setSavedFlash(true);
@@ -932,12 +956,36 @@ function ConfigSectionCard({
         return;
       }
       if (e instanceof ApiError && e.status === 400) {
-        setErr('Invalid value.');
+        // The server says which field it did not recognise; show that rather
+        // than a bare "Invalid value".
+        setErr(e.message && e.message !== 'invalid value' ? e.message : 'Invalid value.');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Save failed');
     },
   });
+
+  const pins = useMemo(() => parsePins(section), [section]);
+  const releaseMutation = useMutation({
+    mutationFn: (keys: string[]) => updateServiceConfig(service, section.Name, { reset: keys }),
+    onSuccess: () => {
+      setErr(null);
+      onSaved();
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = '/login';
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Release failed');
+    },
+  });
+  // A section that pins everything has no explicit list; releasing "all" means
+  // naming every field the section has.
+  const pinnedNow = useMemo(
+    () => Object.keys(editableOriginalFields).filter((k) => isPinned(pins, k)),
+    [editableOriginalFields, pins],
+  );
 
   const fieldEntries = Object.entries(editableOriginalFields);
 
@@ -954,7 +1002,19 @@ function ConfigSectionCard({
 
   const hasBooleans = booleanFields.length > 0;
 
-  const scope = useMemo(() => ({ service, section: section.Name }), [service, section.Name]);
+  const scope = useMemo<FieldScopeValue>(
+    () => ({
+      service,
+      section: section.Name,
+      pins,
+      onRelease: section.Editable ? (key: string) => releaseMutation.mutate([key]) : undefined,
+      releasing: releaseMutation.isPending,
+    }),
+    // releaseMutation is a fresh object each render; mutate and isPending are
+    // the only parts the scope reads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [service, section.Name, section.Editable, pins, releaseMutation.isPending],
+  );
   const sectionHelp = SECTION_HELP[`${service}:${section.Name}`] ?? SECTION_HELP[section.Name];
 
   return (
@@ -986,6 +1046,16 @@ function ConfigSectionCard({
         >
           {section.Source}
         </span>
+        {section.Source === 'db' && (
+          <span
+            className="px-1.5 py-0.5 rounded text-xs font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]"
+            title={t('serviceConfigPage.pinnedTitle')}
+          >
+            {pins.all
+              ? t('serviceConfigPage.allPinned')
+              : t('serviceConfigPage.nPinned', { count: pins.keys.size })}
+          </span>
+        )}
         <MetadataBadge>{section.Editable ? 'Editable' : 'Read only'}</MetadataBadge>
         {dirty && (
           <StatusBadge
@@ -1008,6 +1078,20 @@ function ConfigSectionCard({
         >
           updated {formatRelative(section.UpdatedAt)}
         </span>
+        {section.Editable && section.Source === 'db' && pinnedNow.length > 0 && (
+          <button
+            type="button"
+            disabled={releaseMutation.isPending}
+            onClick={(e) => {
+              e.stopPropagation();
+              releaseMutation.mutate(pinnedNow);
+            }}
+            title={t('serviceConfigPage.releaseAllTitle')}
+            className="text-xs px-2 py-0.5 rounded font-medium border border-[color:var(--border)] text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] disabled:opacity-40"
+          >
+            {t('serviceConfigPage.releaseAll')}
+          </button>
+        )}
         {section.Editable && (
           <button
             type="button"
@@ -1541,6 +1625,9 @@ function FieldRow({
   dirty: boolean;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
+  const scope = useContext(FieldScope);
+  const pinned = isPinned(scope.pins, fieldKey);
   return (
     <div
       className={cn(
@@ -1555,6 +1642,28 @@ function FieldRow({
       <div className="flex-1 flex items-center min-w-0">
         {children}
       </div>
+      {pinned && (
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className="px-1.5 py-0.5 rounded text-xs font-medium bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.12)] text-[color:var(--warning)]"
+            title={t('serviceConfigPage.pinnedTitle')}
+          >
+            {t('serviceConfigPage.pinned')}
+          </span>
+          {scope.onRelease && (
+            <button
+              type="button"
+              disabled={scope.releasing}
+              onClick={() => scope.onRelease?.(fieldKey)}
+              title={t('serviceConfigPage.releaseTitle')}
+              aria-label={`${t('serviceConfigPage.release')} ${fieldKey}`}
+              className="text-xs text-[color:var(--text-3)] hover:text-[color:var(--text-1)] underline decoration-dotted disabled:opacity-40"
+            >
+              {t('serviceConfigPage.release')}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
