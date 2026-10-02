@@ -310,10 +310,14 @@ describe('ServiceConfigPage', () => {
     await waitFor(() => {
       expect(mockUpdate).toHaveBeenCalledTimes(1);
     });
-    const args = mockUpdate.mock.calls[0] as [string, string, { value: unknown }];
+    const args = mockUpdate.mock.calls[0] as [string, string, { value?: unknown; patch?: Record<string, unknown> }];
     expect(args[0]).toBe('api');
     expect(args[1]).toBe('debug');
-    expect(args[2].value).toEqual({ enableHttp: false, httpFile: '/var/log/debug.log' });
+    // Only the field that changed is sent. Sending the whole section would pin
+    // enableHttp too, and from then on its flag/env value would be ignored.
+    expect(args[2].patch).toEqual({ httpFile: '/var/log/debug.log' });
+    expect(args[2].patch).not.toHaveProperty('enableHttp');
+    expect(args[2].value).toBeUndefined();
   });
 
   it('edits API rate limits and omits TLS-only values when saving', async () => {
@@ -347,12 +351,16 @@ describe('ServiceConfigPage', () => {
     await waitFor(() => {
       expect(mockUpdate).toHaveBeenCalledTimes(1);
     });
-    const args = mockUpdate.mock.calls[0] as [string, string, { value: Record<string, Record<string, number>> }];
+    const args = mockUpdate.mock.calls[0] as [string, string, { patch: Record<string, Record<string, number>> }];
     expect(args[0]).toBe('api');
     expect(args[1]).toBe('rateLimits');
-    expect(args[2].value.login.period).toBe(120_000_000_000);
-    expect(args[2].value.login.burst).toBe(10);
-    expect(args[2].value.enroll).toBeUndefined();
+    // A nested limit is the unit of pinning: the edited one travels whole.
+    expect(args[2].patch.login.period).toBe(120_000_000_000);
+    expect(args[2].patch.login.burst).toBe(10);
+    // Everything the operator did not touch stays out of the request — the
+    // TLS-only limit, and the other API limits alike.
+    expect(args[2].patch.enroll).toBeUndefined();
+    expect(Object.keys(args[2].patch)).toEqual(['login']);
   });
 
   it('shows only the TLS enroll rate limit on the tls service page', async () => {
@@ -374,6 +382,149 @@ describe('ServiceConfigPage', () => {
     });
     expect(screen.getByLabelText('enroll period')).toHaveValue('1m');
     expect(screen.queryByLabelText('login period')).not.toBeInTheDocument();
+  });
+
+  // ── field-level overrides ──────────────────────────────────────────────────
+
+  const DEBUG_VALUE = '{"enableHttp":false,"httpFile":"/tmp/debug.log"}';
+
+  it('shows no pin markers on a section that follows the YAML file', async () => {
+    mockList.mockResolvedValue([
+      makeSection({ Editable: true, Name: 'debug', Source: 'yaml', Value: DEBUG_VALUE }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('/tmp/debug.log')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('pinned')).not.toBeInTheDocument();
+    expect(screen.queryByText(/fields pinned/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Release/ })).not.toBeInTheDocument();
+  });
+
+  it('marks only the pinned field, and counts it in the section header', async () => {
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true, Name: 'debug', Source: 'db',
+        Value: DEBUG_VALUE, Overrides: '["httpFile"]',
+      }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('/tmp/debug.log')).toBeInTheDocument();
+    });
+    expect(screen.getByText('1 pinned')).toBeInTheDocument();
+    // One marker, on the field that is pinned — not on its sibling.
+    expect(screen.getAllByText('pinned')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Release httpFile' })).toBeInTheDocument();
+  });
+
+  // The reporter's situation: a row from before per-field pins pins everything,
+  // and the page has to say so instead of looking like a normal edited section.
+  it('says every field is pinned on a legacy row with no pin list', async () => {
+    mockList.mockResolvedValue([
+      makeSection({ Editable: true, Name: 'debug', Source: 'db', Value: DEBUG_VALUE }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('/tmp/debug.log')).toBeInTheDocument();
+    });
+    expect(screen.getByText('all fields pinned')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Release httpFile' })).toBeInTheDocument();
+  });
+
+  it('releases one field by naming only that field', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true, Name: 'debug', Source: 'db',
+        Value: DEBUG_VALUE, Overrides: '["httpFile","enableHttp"]',
+      }),
+    ]);
+    mockUpdate.mockResolvedValue(makeSection({ Name: 'debug', Source: 'db' }));
+    renderWithProviders(makeTestRouter());
+
+    await user.click(await screen.findByRole('button', { name: 'Release httpFile' }));
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+    });
+    const args = mockUpdate.mock.calls[0] as [string, string, { reset?: string[]; patch?: unknown; value?: unknown }];
+    expect(args[1]).toBe('debug');
+    expect(args[2].reset).toEqual(['httpFile']);
+    expect(args[2].patch).toBeUndefined();
+    expect(args[2].value).toBeUndefined();
+  });
+
+  it('releases every pinned field from the section header', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({
+        Editable: true, Name: 'debug', Source: 'db',
+        Value: DEBUG_VALUE, Overrides: '["httpFile"]',
+      }),
+    ]);
+    mockUpdate.mockResolvedValue(makeSection({ Name: 'debug', Source: 'yaml' }));
+    renderWithProviders(makeTestRouter());
+
+    await user.click(await screen.findByRole('button', { name: 'Release all' }));
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+    });
+    const args = mockUpdate.mock.calls[0] as [string, string, { reset: string[] }];
+    // Only what is actually pinned is named, never the section's other fields.
+    expect(args[2].reset).toEqual(['httpFile']);
+  });
+
+  it('releasing a legacy row names every field it pinned', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([
+      makeSection({ Editable: true, Name: 'debug', Source: 'db', Value: DEBUG_VALUE }),
+    ]);
+    mockUpdate.mockResolvedValue(makeSection({ Name: 'debug', Source: 'yaml' }));
+    renderWithProviders(makeTestRouter());
+
+    await user.click(await screen.findByRole('button', { name: 'Release all' }));
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+    });
+    const args = mockUpdate.mock.calls[0] as [string, string, { reset: string[] }];
+    expect([...args[2].reset].sort()).toEqual(['enableHttp', 'httpFile']);
+  });
+
+  it('offers no release controls on a read-only section', async () => {
+    mockList.mockResolvedValue([
+      makeSection({ Editable: false, Name: 'debug', Source: 'db', Value: DEBUG_VALUE }),
+    ]);
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByText('debug')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /^Release/ })).not.toBeInTheDocument();
+  });
+
+  it('shows the field the server rejected instead of a bare "Invalid value"', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('$/api/client');
+    mockList.mockResolvedValue([
+      makeSection({ Editable: true, Name: 'debug', Value: DEBUG_VALUE }),
+    ]);
+    mockUpdate.mockRejectedValue(new ApiError('unknown field: "httpFile"', 400));
+    renderWithProviders(makeTestRouter());
+
+    const input = await screen.findByDisplayValue('/tmp/debug.log');
+    await user.clear(input);
+    await user.type(input, '/changed');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('unknown field: "httpFile"')).toBeInTheDocument();
+    });
   });
 
   it('shows an error when the PUT returns 409 (not editable)', async () => {
@@ -784,9 +935,10 @@ describe('ServiceConfigPage', () => {
     await waitFor(() => {
       expect(mockUpdate).toHaveBeenCalledTimes(1);
     });
-    const args = mockUpdate.mock.calls[0] as [string, string, { value: unknown }];
+    const args = mockUpdate.mock.calls[0] as [string, string, { patch: Record<string, unknown> }];
     expect(args[1]).toBe('service');
-    expect(args[2].value).toEqual({ LogLevel: 'warn', LogFormat: 'json' });
+    // LogFormat shares the section but was not touched, so it is not pinned.
+    expect(args[2].patch).toEqual({ LogLevel: 'warn' });
   });
 
   it('offers the api-documented Auth values on the api tab', async () => {

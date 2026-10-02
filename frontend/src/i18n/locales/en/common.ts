@@ -842,6 +842,16 @@ export const en = {
     changed: 'changed',
     empty: 'empty',
     csvHint: 'comma-separated values',
+    pinned: 'pinned',
+    pinnedTitle:
+      'Pinned: this stored value overrides flags, environment variables and the YAML file. Fields that are not pinned keep following them.',
+    allPinned: 'all fields pinned',
+    nPinned: '{count} pinned',
+    release: 'Release',
+    releaseTitle: 'Stop overriding this field: it follows flags, environment and YAML again after the next restart',
+    releaseAll: 'Release all',
+    releaseAllTitle:
+      'Stop overriding every field in this section: they follow flags, environment and YAML again after the next restart',
   },
   language: {
     /** aria/title for the language selector button. */

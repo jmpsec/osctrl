@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -229,26 +230,61 @@ func (h *HandlersApi) ServiceConfigUpdateHandler(w http.ResponseWriter, r *http.
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
 		return
 	}
-	if len(body.Value) == 0 {
-		apiErrorResponse(w, "missing value in request body", http.StatusBadRequest, nil)
+	// Exactly one form: a whole-section value, or a field-level patch/reset.
+	// Accepting both would leave it ambiguous which one the caller meant.
+	fieldLevel := len(body.Patch) > 0 || len(body.Reset) > 0
+	switch {
+	case len(body.Value) > 0 && fieldLevel:
+		apiErrorResponse(w, "send either value or patch/reset, not both", http.StatusBadRequest, nil)
+		return
+	case len(body.Value) == 0 && !fieldLevel:
+		apiErrorResponse(w, "missing value, patch or reset in request body", http.StatusBadRequest, nil)
 		return
 	}
 
-	updated, err := h.ServiceConfig.UpdateSection(service, section, string(body.Value), serviceconfig.NoEnvironmentID)
+	var (
+		updated serviceconfig.ServiceConfig
+		err     error
+		action  string
+	)
+	if fieldLevel {
+		updated, err = h.ServiceConfig.PatchSection(service, section, body.Patch, body.Reset, serviceconfig.NoEnvironmentID)
+		action = fmt.Sprintf("patch service-config %s/%s (set %s, reset %s)", service, section, sortedKeys(body.Patch), strings.Join(body.Reset, ","))
+	} else {
+		updated, err = h.ServiceConfig.UpdateSection(service, section, string(body.Value), serviceconfig.NoEnvironmentID)
+		action = fmt.Sprintf("put service-config %s/%s", service, section)
+	}
 	if err != nil {
 		switch {
 		case errors.Is(err, serviceconfig.ErrSectionNotEditable):
 			apiErrorResponse(w, "section is not editable", http.StatusConflict, err)
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			apiErrorResponse(w, "section not found", http.StatusNotFound, err)
+		case errors.Is(err, serviceconfig.ErrUnknownField),
+			errors.Is(err, serviceconfig.ErrEmptyPatch),
+			errors.Is(err, serviceconfig.ErrSectionNotPatchable):
+			// The caller's request is wrong, not the server: say what, so the
+			// page can show it. Field names come from the request itself.
+			apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 		default:
 			apiErrorResponse(w, "error updating section", http.StatusInternalServerError, err)
 		}
 		return
 	}
-	h.AuditLog.SettingsAction(ctx[ctxUser], fmt.Sprintf("put service-config %s/%s", service, section), strings.Split(r.RemoteAddr, ":")[0])
+	h.AuditLog.SettingsAction(ctx[ctxUser], action, strings.Split(r.RemoteAddr, ":")[0])
 	log.Debug().Msgf("Updated service config %s/%s", service, section)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, updated)
+}
+
+// sortedKeys renders the field names of a patch for the audit log. Only names,
+// never values: a patch can carry anything an editable section holds.
+func sortedKeys(m map[string]json.RawMessage) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, ",")
 }
 
 // ServiceConfigApplyHandler — POST /api/v1/service-config/apply

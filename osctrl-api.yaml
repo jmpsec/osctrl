@@ -10406,6 +10406,23 @@ components:
           type: string
         name:
           type: string
+        overrides:
+          description: >-
+            Overrides is a JSON array of the top-level fields an operator pinned
+            in
+
+            this section. Only pinned fields beat flags, environment variables and
+
+            YAML at startup; every other field follows the process.
+
+
+            Empty is meaningful and depends on Source:
+              - source=yaml: nothing is pinned.
+              - source=db:   a row written before pins existed (or replaced
+                wholesale through the API), so EVERY field is pinned. That is the
+                only reading that cannot silently drop an operator's edit, since the
+                original YAML is gone once a row is overwritten.
+          type: string
         service:
           type: string
         source:
@@ -11507,6 +11524,12 @@ components:
       type: object
     types.ServiceConfigUpdateRequest:
       properties:
+        patch:
+          type: object
+        reset:
+          items:
+            type: string
+          type: array
         value:
           type: object
       type: object

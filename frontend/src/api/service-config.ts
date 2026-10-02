@@ -22,6 +22,11 @@ export interface ServiceConfig {
   Source: string;
   Editable: boolean;
   Info: string;
+  /** JSON array of the fields pinned in this section. Empty on a source=db
+   * row means every field is pinned (a row from before per-field overrides,
+   * or one replaced as a whole). Read it through parsePins in
+   * features/service-config/pins.ts rather than directly. */
+  Overrides?: string;
 }
 
 /** GET /api/v1/service-config — all sections across all services. */
@@ -46,10 +51,22 @@ export function getServiceConfig(
   );
 }
 
-/** Body shape for PUT /api/v1/service-config/{service}/{section}. */
+/**
+ * Body shape for PUT /api/v1/service-config/{service}/{section}. Send exactly
+ * one form; the server rejects a body that mixes them.
+ *
+ * `value` replaces the whole section and therefore pins EVERY field in it.
+ * `patch` and `reset` change individual fields: only a pinned field overrides
+ * flags and environment variables, so a field you never touched keeps
+ * following its flag.
+ */
 export interface ServiceConfigUpdateRequest {
   /** Raw JSON object representing the new section contents. */
-  value: unknown;
+  value?: unknown;
+  /** Fields to pin, with their new values. */
+  patch?: Record<string, unknown>;
+  /** Fields to release, so they follow the process again after a restart. */
+  reset?: string[];
 }
 
 /** PUT /api/v1/service-config/{service}/{section} — update an editable section. */

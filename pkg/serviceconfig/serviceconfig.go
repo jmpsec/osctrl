@@ -48,6 +48,17 @@ type ServiceConfig struct {
 	Source        string // "yaml" or "db"
 	Editable      bool
 	Info          string
+	// Overrides is a JSON array of the top-level fields an operator pinned in
+	// this section. Only pinned fields beat flags, environment variables and
+	// YAML at startup; every other field follows the process.
+	//
+	// Empty is meaningful and depends on Source:
+	//   - source=yaml: nothing is pinned.
+	//   - source=db:   a row written before pins existed (or replaced
+	//     wholesale through the API), so EVERY field is pinned. That is the
+	//     only reading that cannot silently drop an operator's edit, since the
+	//     original YAML is gone once a row is overwritten.
+	Overrides string `gorm:"type:text"`
 }
 
 // ServiceConfigManager manages the service_config table.
@@ -196,8 +207,39 @@ func (m *ServiceConfigManager) Seed(service string, cfg *config.ServiceParameter
 			}).Error; err != nil {
 			return fmt.Errorf("sync metadata %s/%s: %w", service, spec.Name, err)
 		}
+		if err := m.refreshUnpinned(service, spec.Name, envID, raw); err != nil {
+			return err
+		}
 	}
 	log.Debug().Msgf("Seeded service config for %s (%d sections)", service, len(SectionRegistry[service]))
+	return nil
+}
+
+// refreshUnpinned keeps every field of an existing row that the operator has
+// NOT pinned equal to the configuration this process started with, so the
+// stored value (which the UI renders as the current setting) matches what is
+// actually running.
+//
+// Without this, per-field overrides would make the display lie: a flag changed
+// since the first boot would run, while the page showed the value seeded
+// months ago. Pinned fields are never touched, and a row whose every field is
+// pinned (a legacy or wholesale-replaced row) is left byte-for-byte alone.
+func (m *ServiceConfigManager) refreshUnpinned(service, name string, envID uint, fresh string) error {
+	sc, err := m.GetSection(service, name, envID)
+	if err != nil {
+		return fmt.Errorf("read %s/%s for refresh: %w", service, name, err)
+	}
+	pins := sc.pinSet()
+	if pins.all {
+		return nil
+	}
+	merged, changed := mergeUnpinned(sc.Value, fresh, pins)
+	if !changed {
+		return nil
+	}
+	if err := m.DB.Model(&sc).Update("value", merged).Error; err != nil {
+		return fmt.Errorf("refresh %s/%s: %w", service, name, err)
+	}
 	return nil
 }
 
@@ -237,6 +279,14 @@ func (m *ServiceConfigManager) GetAll(envID uint) ([]ServiceConfig, error) {
 //
 // This is the core of phase 3: the YAML file bootstraps the config, the DB
 // overrides it for sections the operator has edited through the API.
+//
+// PRECEDENCE: a source=db row beats command-line flags and environment
+// variables, not just YAML. That is what makes "Apply & Restart" take effect,
+// but it surprises anyone who passes --port and watches the service ignore
+// it — and because the API stores a whole section per save, one edited field
+// pins every other field in that section too. So every field a row actually
+// changes is logged at Info; a row that matches what the process already had
+// is not worth a line.
 func (m *ServiceConfigManager) Resolve(service string, cfg *config.ServiceParameters, envID uint) error {
 	if !m.VerifyService(service) {
 		return fmt.Errorf("unknown service %q", service)
@@ -248,22 +298,76 @@ func (m *ServiceConfigManager) Resolve(service string, cfg *config.ServiceParame
 	if err != nil {
 		return fmt.Errorf("resolve %s: %w", service, err)
 	}
+	// Sections are independent fields of ServiceParameters, so one snapshot
+	// taken before any row is applied is a valid "before" for every section.
+	before, err := sectionValues(service, cfg)
+	if err != nil {
+		return fmt.Errorf("resolve %s: snapshot before overrides: %w", service, err)
+	}
+	var applied []string
 	for _, sc := range sections {
 		// Only DB-edited rows override the YAML defaults.
 		if sc.Source != SourceDB {
 			continue
 		}
-		applied, err := applySection(cfg, sc.Name, sc.Value)
+		// Only the fields the operator pinned beat flags, environment and
+		// YAML. A row from before pins existed pins every field.
+		ok, err := applySection(cfg, sc.Name, filterToPins(sc.Value, sc.pinSet()))
 		if err != nil {
 			return fmt.Errorf("resolve %s/%s: %w", service, sc.Name, err)
 		}
-		if applied {
+		if ok {
 			log.Debug().Msgf("Resolved service config %s/%s from DB (source=db)", service, sc.Name)
+			applied = append(applied, sc.Name)
 		} else {
 			log.Debug().Msgf("Skipped service config %s/%s — section is nil in ServiceParameters", service, sc.Name)
 		}
 	}
+	if len(applied) == 0 {
+		return nil
+	}
+	after, err := sectionValues(service, cfg)
+	if err != nil {
+		// Reporting is best effort: the overrides are already applied, and a
+		// marshal failure here must not stop the service from booting.
+		log.Warn().Err(err).Msgf("service config %s: could not describe database overrides", service)
+		return nil
+	}
+	for _, sc := range sections {
+		if sc.Source != SourceDB {
+			continue
+		}
+		for _, name := range applied {
+			if name == sc.Name {
+				m.logOverride(service, sc, before[name], after[name])
+			}
+		}
+	}
 	return nil
+}
+
+// logOverride reports what one database row changed. A row identical to what
+// the process already had logs nothing at Info.
+func (m *ServiceConfigManager) logOverride(service string, sc ServiceConfig, before, after string) {
+	changes, whole := diffSections(before, after)
+	section := sc.Name
+	switch {
+	case whole:
+		log.Info().Str("service", service).Str("section", section).
+			Msg("service config: database row replaces this section, overriding flags, environment and YAML")
+	case len(changes) > 0:
+		msg := "service config: pinned fields in the database override flags, environment and YAML"
+		if sc.pinSet().all {
+			// Say why untouched-looking fields moved too: this row predates
+			// per-field pins, or was replaced as a whole.
+			msg = "service config: this database row pins EVERY field in the section (it predates per-field " +
+				"overrides, or was replaced as a whole), so it overrides flags, environment and YAML; " +
+				"release fields with a reset to follow the process again"
+		}
+		log.Info().Str("service", service).Str("section", section).
+			Str("fields", describeChanges(changes, m.IsEditable(service, section))).
+			Msg(msg)
+	}
 }
 
 // applySection unmarshals a JSON section value into the matching field on
@@ -355,41 +459,163 @@ func (m *ServiceConfigManager) UpdateSection(service, name, value string, envID 
 	if !m.IsEditable(service, name) {
 		return ServiceConfig{}, ErrSectionNotEditable
 	}
-	// Validate that the new value is valid JSON.
+	if err := validateSectionValue(service, name, value); err != nil {
+		return ServiceConfig{}, err
+	}
+	existing, err := m.GetSection(service, name, envID)
+	if err != nil {
+		return ServiceConfig{}, fmt.Errorf("get section %s/%s: %w", service, name, err)
+	}
+	// Replacing a section wholesale cannot say which fields the caller meant
+	// to pin, so it pins them all: the same behavior every row had before pins
+	// existed. Callers that know what they changed use PatchSection instead.
+	if err := m.DB.Model(&existing).Updates(map[string]any{
+		"value":     value,
+		"source":    SourceDB,
+		"overrides": "",
+	}).Error; err != nil {
+		return ServiceConfig{}, fmt.Errorf("update %s/%s: %w", service, name, err)
+	}
+	log.Debug().Msgf("Updated service config %s/%s (source=db)", service, name)
+	return existing, nil
+}
+
+// validateSectionValue checks a candidate section value. It is shared by the
+// whole-section and field-level paths so the two can never accept different
+// things.
+func validateSectionValue(service, name, value string) error {
 	if !json.Valid([]byte(value)) {
-		return ServiceConfig{}, fmt.Errorf("value is not valid JSON")
+		return fmt.Errorf("value is not valid JSON")
 	}
 	if name == "osquery" {
 		var osquery config.YAMLConfigurationOsquery
 		if err := json.Unmarshal([]byte(value), &osquery); err != nil {
-			return ServiceConfig{}, fmt.Errorf("unmarshal osquery: %w", err)
+			return fmt.Errorf("unmarshal osquery: %w", err)
 		}
 	}
 	if name == "rateLimits" {
 		var limits config.YAMLConfigurationRateLimits
 		if err := json.Unmarshal([]byte(value), &limits); err != nil {
-			return ServiceConfig{}, fmt.Errorf("unmarshal rateLimits: %w", err)
+			return fmt.Errorf("unmarshal rateLimits: %w", err)
 		}
 		names := []string{"enroll"}
 		if service == config.ServiceAPI {
 			names = []string{"login", "preAuth", "serviceConfigApply"}
 		}
 		if err := config.ValidateRateLimits(limits, names...); err != nil {
-			return ServiceConfig{}, err
+			return err
 		}
+	}
+	return nil
+}
+
+// PatchSection changes individual top-level fields of an editable section.
+//
+//   - set pins each named field to the given value. Only pinned fields beat
+//     flags, environment variables and YAML at startup.
+//   - reset releases each named field, so it follows the process again from the
+//     next restart (the stored value is refreshed by Seed then).
+//
+// This is the field-level counterpart of UpdateSection, which replaces a whole
+// section and therefore pins every field in it. When the last pin is released
+// the row returns to source=yaml.
+//
+// Field names are matched case-insensitively, the way encoding/json matches
+// them, and stored under the spelling the section already uses. A name the
+// section does not have is an error rather than a no-op.
+func (m *ServiceConfigManager) PatchSection(service, name string, set map[string]json.RawMessage, reset []string, envID uint) (ServiceConfig, error) {
+	if !m.VerifyService(service) {
+		return ServiceConfig{}, fmt.Errorf("unknown service %q", service)
+	}
+	if !m.IsEditable(service, name) {
+		return ServiceConfig{}, ErrSectionNotEditable
+	}
+	if len(set) == 0 && len(reset) == 0 {
+		return ServiceConfig{}, ErrEmptyPatch
 	}
 	existing, err := m.GetSection(service, name, envID)
 	if err != nil {
 		return ServiceConfig{}, fmt.Errorf("get section %s/%s: %w", service, name, err)
 	}
-	if err := m.DB.Model(&existing).Updates(map[string]any{
-		"value":  value,
-		"source": SourceDB,
-	}).Error; err != nil {
-		return ServiceConfig{}, fmt.Errorf("update %s/%s: %w", service, name, err)
+	fields, err := orderedFields(existing.Value)
+	if err != nil {
+		return ServiceConfig{}, ErrSectionNotPatchable
 	}
-	log.Debug().Msgf("Updated service config %s/%s (source=db)", service, name)
-	return existing, nil
+	canon := canonicalKeys(fields)
+
+	// Resolve every name to the section's own spelling, rejecting strangers
+	// and a field named twice.
+	setCanon := make(map[string]json.RawMessage, len(set))
+	for key, raw := range set {
+		c, ok := canon[norm(key)]
+		if !ok {
+			return ServiceConfig{}, fmt.Errorf("%w: %q", ErrUnknownField, key)
+		}
+		if _, dup := setCanon[c]; dup {
+			return ServiceConfig{}, fmt.Errorf("field %q given more than once", c)
+		}
+		setCanon[c] = compact(raw)
+	}
+	resetCanon := make(map[string]bool, len(reset))
+	for _, key := range reset {
+		c, ok := canon[norm(key)]
+		if !ok {
+			return ServiceConfig{}, fmt.Errorf("%w: %q", ErrUnknownField, key)
+		}
+		if _, both := setCanon[c]; both {
+			return ServiceConfig{}, fmt.Errorf("field %q cannot be both set and reset", c)
+		}
+		resetCanon[c] = true
+	}
+
+	// New value: the existing fields, in order, with the patched ones replaced.
+	for i, f := range fields {
+		if raw, ok := setCanon[f.Key]; ok {
+			fields[i].Raw = raw
+		}
+	}
+	newValue, err := renderFields(fields)
+	if err != nil {
+		return ServiceConfig{}, fmt.Errorf("render %s/%s: %w", service, name, err)
+	}
+	if err := validateSectionValue(service, name, newValue); err != nil {
+		return ServiceConfig{}, err
+	}
+
+	// New pins: what was pinned, plus what is set, minus what is reset. A row
+	// that pinned everything (legacy) is expanded to the explicit list first,
+	// which is what lets a single field be released from it.
+	current := existing.pinSet()
+	pinned := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		if current.has(f.Key) {
+			pinned[f.Key] = true
+		}
+	}
+	for c := range setCanon {
+		pinned[c] = true
+	}
+	for c := range resetCanon {
+		delete(pinned, c)
+	}
+
+	updates := map[string]any{"value": newValue}
+	if len(pinned) == 0 {
+		updates["source"] = SourceYAML
+		updates["overrides"] = ""
+	} else {
+		keys := make([]string, 0, len(pinned))
+		for k := range pinned {
+			keys = append(keys, k)
+		}
+		updates["source"] = SourceDB
+		updates["overrides"] = encodePins(keys)
+	}
+	if err := m.DB.Model(&existing).Updates(updates).Error; err != nil {
+		return ServiceConfig{}, fmt.Errorf("patch %s/%s: %w", service, name, err)
+	}
+	log.Debug().Msgf("Patched service config %s/%s (%d set, %d reset, %d pinned)", service, name, len(setCanon), len(resetCanon), len(pinned))
+	return m.GetSection(service, name, envID)
 }
 
 // sectionValues extracts each registered section from ServiceParameters and
