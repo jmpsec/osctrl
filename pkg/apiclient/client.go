@@ -72,6 +72,10 @@ type OsctrlAPI struct {
 	Configuration JSONConfigurationAPI
 	Client        *http.Client
 	Headers       map[string]string
+	// UserAgent identifies the calling binary in osctrl-api's logs. Empty
+	// means the osctrl-cli default; other consumers set their own so their
+	// traffic can be told apart.
+	UserAgent string
 }
 
 // LoadConfiguration to load the API configuration file and assign to variables
@@ -197,7 +201,11 @@ func (api *OsctrlAPI) ReqGeneric(reqType string, url string, body io.Reader) ([]
 		return []byte{}, fmt.Errorf("NewRequest - %w", err)
 	}
 	// Set custom User-Agent
-	req.Header.Set(UserAgent, osctrlUserAgent)
+	ua := api.UserAgent
+	if ua == "" {
+		ua = osctrlUserAgent
+	}
+	req.Header.Set(UserAgent, ua)
 	// Prepare headers
 	for key, value := range api.Headers {
 		req.Header.Add(key, value)

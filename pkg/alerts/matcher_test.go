@@ -267,3 +267,28 @@ func makeString(n int) string {
 	}
 	return string(b)
 }
+
+// When several columns match, the one visited first supplies the detail. Map
+// iteration is random, so the detail must come from a fixed field order.
+func TestMatchResultLogsDetailIsDeterministic(t *testing.T) {
+	rs := compileForTest(t,
+		AlertRule{Model: ruleWithID(1), Name: "digits", Source: SourceResultLog, MatchType: MatchTypeRegex, MatchValue: `\d+`},
+		AlertRule{Model: ruleWithID(2), Name: "anything", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: ""},
+	)
+	logs := []types.LogResultData{resultEntry("U", "pack_q", map[string]string{
+		"zeta": "999", "beta": "222", "alpha": "111", "gamma": "333",
+	})}
+	for i := 0; i < 50; i++ {
+		hits := rs.MatchResultLogs(NoEnvironmentID, "dev", testNode, logs)
+		if len(hits) != 2 {
+			t.Fatalf("expected 2 hits, got %+v", hits)
+		}
+		// Sorted keys: action (empty), alpha, beta, gamma, name, zeta.
+		if hits[0].Detail != "111" {
+			t.Fatalf("run %d: regex detail = %q, want the first matching column (alpha)", i, hits[0].Detail)
+		}
+		if hits[1].Detail != "111" {
+			t.Fatalf("run %d: empty-pattern detail = %q, want the first non-empty column (alpha)", i, hits[1].Detail)
+		}
+	}
+}
