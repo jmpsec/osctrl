@@ -94,7 +94,7 @@ func (h *HandlersApi) inactivityEnvironment(w http.ResponseWriter, r *http.Reque
 		apiErrorResponse(w, "error getting environment", status, err)
 		return env, ctx, false
 	}
-	if !h.Users.CheckPermissions(ctx[ctxUser], level, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], level, env.UUID) {
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return env, ctx, false
 	}

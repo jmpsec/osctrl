@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
@@ -69,7 +68,7 @@ func toLogSinkDTO(s logsinks.LogSink, reveal bool) logSinkDTO {
 
 func (h *HandlersApi) requireLogSinksAdmin(w http.ResponseWriter, r *http.Request) (string, bool) {
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use log-sinks API by user %s", ctx[ctxUser]))
 		return "", false
 	}
@@ -111,7 +110,7 @@ func (h *HandlersApi) LogSinksListHandler(w http.ResponseWriter, r *http.Request
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireLogSinksAdmin(w, r)
+	_, ok := h.requireLogSinksAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -134,7 +133,6 @@ func (h *HandlersApi) LogSinksListHandler(w http.ResponseWriter, r *http.Request
 	for _, row := range rows {
 		out = append(out, toLogSinkDTO(row, reveal))
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
 
@@ -204,7 +202,7 @@ func (h *HandlersApi) LogSinksGetHandler(w http.ResponseWriter, r *http.Request)
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireLogSinksAdmin(w, r)
+	_, ok := h.requireLogSinksAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -226,7 +224,6 @@ func (h *HandlersApi) LogSinksGetHandler(w http.ResponseWriter, r *http.Request)
 		apiErrorResponse(w, "error getting log sink", http.StatusInternalServerError, err)
 		return
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, toLogSinkDTO(row, parseReveal(r)))
 }
 

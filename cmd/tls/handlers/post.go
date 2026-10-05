@@ -166,6 +166,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if !nodeInvalid {
 		h.recordActivity(env.UUID, newNode.UUID, activity.EventEnroll)
+		h.AuditLog.NewEnroll(newNode.UUID, utils.GetIP(r), env.ID)
 	}
 	response := types.EnrollResponse{NodeKey: nodeKey, NodeInvalid: nodeInvalid}
 	// Debug HTTP

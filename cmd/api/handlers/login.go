@@ -71,7 +71,7 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, nil)
 			return
 		}
-		if !h.Users.CheckPermissions(l.Username, users.AdminLevel, env.UUID) {
+		if !h.Users.CheckPermissionsContext(r.Context(), l.Username, users.AdminLevel, env.UUID) {
 			h.AuditLog.FailedLogin(l.Username, utils.GetIP(r), fmt.Sprintf("no admin access to env %s", env.UUID))
 			apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use %s by user %s", h.ServiceName, l.Username))
 			return

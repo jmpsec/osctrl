@@ -50,3 +50,32 @@ func TestEventSessionRechecksStoredTokenAndIdentity(t *testing.T) {
 	r.Header.Set("Cookie", cookieNameToken+"="+expired)
 	require.False(t, eventSessionValid(r, config.AuthJWT, "event-test-secret-at-least-thirty-two-bytes"))
 }
+
+func TestEventPermissionSnapshotReusesAuthenticatedUser(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	previous := apiUsers
+	t.Cleanup(func() { apiUsers = previous })
+	secret := "event-test-secret-at-least-thirty-two-bytes"
+	apiUsers = users.CreateUserManager(db).WithJWT(&config.YAMLConfigurationJWT{JWTSecret: secret, HoursToExpire: 1})
+	require.NoError(t, apiUsers.Create(users.AdminUser{Username: "alice"}))
+	require.NoError(t, apiUsers.CreatePermission(users.UserPermission{Username: "alice", Environment: "env", AccessType: int(users.AdminLevel), AccessValue: true}))
+	token, expiry, err := apiUsers.CreateToken("alice", "api", 1)
+	require.NoError(t, err)
+	require.NoError(t, apiUsers.UpdateToken("alice", token, expiry))
+	r := httptest.NewRequest("GET", "/api/v1/events", nil)
+	r.Header.Set("Authorization", "Bearer "+token)
+	r = r.WithContext(context.WithValue(r.Context(), handlers.ContextKey(contextAPI), handlers.ContextValue{"user": "alice"}))
+	queries := 0
+	require.NoError(t, db.Callback().Query().Before("gorm:query").Register("count_auth_reads", func(*gorm.DB) { queries++ }))
+	pass := r.WithContext(users.WithPermissionCache(r.Context()))
+	require.True(t, eventSessionValid(pass, config.AuthJWT, secret))
+	require.True(t, apiUsers.CheckPermissionsContext(pass.Context(), "alice", users.QueryLevel, "env"))
+	require.True(t, apiUsers.CheckPermissionsContext(pass.Context(), "alice", users.CarveLevel, "env"))
+	require.Equal(t, 2, queries, "one token/user read plus one permissions read for both topics")
+	require.NoError(t, db.Model(&users.UserPermission{}).Where("username = ?", "alice").Update("access_value", false).Error)
+	pass = r.WithContext(users.WithPermissionCache(r.Context()))
+	require.True(t, eventSessionValid(pass, config.AuthJWT, secret))
+	require.False(t, apiUsers.CheckPermissionsContext(pass.Context(), "alice", users.QueryLevel, "env"))
+	require.Equal(t, 4, queries, "the next batch must refresh both rows")
+}

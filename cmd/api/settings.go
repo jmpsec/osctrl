@@ -31,5 +31,10 @@ func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) erro
 			return fmt.Errorf("failed to add %s to configuration: %w", settings.InactiveHours, err)
 		}
 	}
+	if !mgr.IsValue(config.ServiceAPI, settings.AuditLogRetentionDays, settings.NoEnvironmentID) {
+		if err := mgr.NewIntegerValue(config.ServiceAPI, settings.AuditLogRetentionDays, settings.DefaultAuditLogRetentionDays, settings.NoEnvironmentID); err != nil {
+			return fmt.Errorf("failed to add audit retention setting: %w", err)
+		}
+	}
 	return nil
 }

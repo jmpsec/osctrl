@@ -18,15 +18,14 @@ import (
 //
 //	?service=...       exact match on service name
 //	?username=...      case-insensitive partial match on username
-//	?type=...          log type integer (1..11), see pkg/auditlog.LogType*
+//	?type=...          log type integer (1..12), see pkg/auditlog.LogType*
 //	?env_uuid=...      filter to one environment (resolved to internal ID)
 //	?since=RFC3339     created_at >= since
 //	?until=RFC3339     created_at <= until
 //	?page=N            1-indexed page; default 1
 //	?page_size=N       default 50, max 500
 //
-// Returns the SPA-canonical paginated envelope. The handler audit-logs the
-// visit on success.
+// Returns the SPA-canonical paginated envelope without auditing reads.
 // @Summary List audit logs
 // @Description Returns paginated API audit log entries.
 // @Tags audit

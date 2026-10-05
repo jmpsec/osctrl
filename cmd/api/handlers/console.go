@@ -92,7 +92,9 @@ func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http
 	if primingCmd, primingErr := h.Console.SubmitPrimingCommand(session.ID, h.consolePrimingTimeout(env)); primingErr == nil {
 		priming = &primingCmd
 	}
-	h.auditConsoleVisit(ctx[ctxUser], r, env.ID)
+	if h.AuditLog != nil {
+		h.AuditLog.QueryAction(ctx[ctxUser], fmt.Sprintf("created console session %d", session.ID), strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, consoleSessionResponse{
 		Session:  session,
 		History:  history,
@@ -102,7 +104,7 @@ func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http
 }
 
 func (h *HandlersApi) ConsoleSessionShowHandler(w http.ResponseWriter, r *http.Request) {
-	env, ctx, session, ok := h.consoleSessionContext(w, r)
+	_, _, session, ok := h.consoleSessionContext(w, r)
 	if !ok {
 		return
 	}
@@ -111,7 +113,6 @@ func (h *HandlersApi) ConsoleSessionShowHandler(w http.ResponseWriter, r *http.R
 		apiErrorResponse(w, "error refreshing console session", http.StatusInternalServerError, err)
 		return
 	}
-	h.auditConsoleVisit(ctx[ctxUser], r, env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, session)
 }
 
@@ -142,7 +143,7 @@ func (h *HandlersApi) ConsoleCommandCreateHandler(w http.ResponseWriter, r *http
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 		return
 	}
-	if preview.Kind == console.CommandCarve && !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if preview.Kind == console.CommandCarve && !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use console get by user %s", ctx[ctxUser]))
 		return
 	}
@@ -375,7 +376,7 @@ func (h *HandlersApi) consoleEnvContext(w http.ResponseWriter, r *http.Request) 
 		return environments.TLSEnvironment{}, nil, false
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return environments.TLSEnvironment{}, nil, false
 	}
@@ -423,10 +424,4 @@ func consoleNotFoundOrError(w http.ResponseWriter, notFoundMsg, errorMsg string,
 		return
 	}
 	apiErrorResponse(w, errorMsg, http.StatusInternalServerError, err)
-}
-
-func (h *HandlersApi) auditConsoleVisit(user string, r *http.Request, envID uint) {
-	if h.AuditLog != nil {
-		h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], envID)
-	}
 }

@@ -52,7 +52,7 @@ func (h *HandlersApi) GetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -114,7 +114,7 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -231,7 +231,7 @@ func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *htt
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -348,7 +348,7 @@ func (h *HandlersApi) RefreshUserTokenHandler(w http.ResponseWriter, r *http.Req
 	}
 	requester := ctx[ctxUser]
 	isSelf := username == requester
-	if !isSelf && !h.Users.CheckPermissions(requester, users.AdminLevel, users.NoEnvironment) {
+	if !isSelf && !h.Users.CheckPermissionsContext(r.Context(), requester, users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to refresh token for %s by %s", username, requester))
 		return
 	}
@@ -441,7 +441,7 @@ func (h *HandlersApi) DeleteUserTokenHandler(w http.ResponseWriter, r *http.Requ
 	}
 	requester := ctx[ctxUser]
 	isSelf := username == requester
-	if !isSelf && !h.Users.CheckPermissions(requester, users.AdminLevel, users.NoEnvironment) {
+	if !isSelf && !h.Users.CheckPermissionsContext(r.Context(), requester, users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to delete token for %s by %s", username, requester))
 		return
 	}

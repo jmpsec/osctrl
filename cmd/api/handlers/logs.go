@@ -83,7 +83,7 @@ func (h *HandlersApi) NodeLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
 	}
