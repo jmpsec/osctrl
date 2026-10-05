@@ -52,7 +52,7 @@ func (h *HandlersApi) SettingPatchHandler(w http.ResponseWriter, r *http.Request
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -104,6 +104,12 @@ func (h *HandlersApi) SettingPatchHandler(w http.ResponseWriter, r *http.Request
 		}
 		if service == config.ServiceAPI && name == settings.InactiveHours {
 			if err := settings.ValidateInactiveHours(*body.Integer); err != nil {
+				apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+				return
+			}
+		}
+		if service == config.ServiceAPI && name == settings.AuditLogRetentionDays {
+			if err := settings.ValidateAuditLogRetentionDays(*body.Integer); err != nil {
 				apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 				return
 			}

@@ -18,6 +18,7 @@ func TestLogTypeToString(t *testing.T) {
 		{9, "Visit"},
 		{10, "User"},
 		{11, "MCP"},
+		{12, "Enrollment"},
 		{0, "Unknown"},
 		{99, "Unknown"},
 	}

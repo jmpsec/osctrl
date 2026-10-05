@@ -67,7 +67,7 @@ export function getOsqueryVersionCounts(): Promise<OsqueryVersionCount[]> {
  *   - config ← Setting (8) + Environment (7)
  *   - query  ← Query (4)
  *   - carve  ← Carve (5)
- *   - enroll ← Node (3)
+ *   - enroll ← successful Enrollment (12)
  *
  * Buckets are returned contiguously — empty windows ship zero rows for that
  * bucket — so the SPA grid renders without densifying client-side.

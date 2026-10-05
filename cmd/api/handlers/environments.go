@@ -106,7 +106,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.UserLevel, env.UUID) {
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
@@ -114,8 +114,7 @@ func (h *HandlersApi) EnvironmentHandler(w http.ResponseWriter, r *http.Request)
 	// super-admins) receive the full storage struct including secret /
 	// certificate / flags. UserLevel operators receive the low-privilege
 	// view that omits enroll credentials.
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
-	if h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		log.Debug().Msgf("Returned environment %s (admin view)", env.Name)
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
 		return
@@ -159,7 +158,7 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
@@ -180,7 +179,6 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Serialize and serve JSON
 	log.Debug().Msg("Returned environments map")
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, envMap)
 }
 
@@ -242,7 +240,6 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 		out = []any{}
 	}
 	log.Debug().Msgf("Returned %d environment(s) to %s", len(out), requester)
-	h.AuditLog.Visit(requester, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
 
@@ -292,7 +289,7 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// so it must be gated to AdminLevel on the env, not UserLevel.
 	//
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
@@ -337,7 +334,6 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize and serve JSON. Don't log the payload — it contains the
 	// enroll secret.
 	log.Debug().Msgf("Returned enroll data for environment %s target=%s", env.Name, targetVar)
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }
 
@@ -384,7 +380,7 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	// remove-secret in the URL, so the endpoint must be AdminLevel-gated
 	// just like the enroll variant.
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
@@ -415,7 +411,6 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	// Serialize and serve JSON. Don't log the payload — it embeds the
 	// remove secret.
 	log.Debug().Msgf("Returned remove data for environment %s target=%s", env.Name, targetVar)
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }
 
@@ -462,7 +457,7 @@ func (h *HandlersApi) EnvEnrollActionsHandler(w http.ResponseWriter, r *http.Req
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
@@ -582,7 +577,7 @@ func (h *HandlersApi) EnvRemoveActionsHandler(w http.ResponseWriter, r *http.Req
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
@@ -659,7 +654,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
@@ -842,7 +837,7 @@ func (h *HandlersApi) EnvConfigurationHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}
@@ -881,7 +876,7 @@ func (h *HandlersApi) EnvCertUploadHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		h.denyEnv(w, r, ctx, env.ID, "permission check failed")
 		return
 	}

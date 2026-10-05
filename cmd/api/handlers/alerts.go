@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/alerts"
-	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -100,7 +99,7 @@ func toAlertChannelDTO(c alerts.AlertChannel, reveal bool) alertChannelDTO {
 
 func (h *HandlersApi) requireAlertsAdmin(w http.ResponseWriter, r *http.Request) (string, bool) {
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use alerts API by user %s", ctx[ctxUser]))
 		return "", false
 	}
@@ -134,7 +133,7 @@ func (h *HandlersApi) AlertRulesListHandler(w http.ResponseWriter, r *http.Reque
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	_, ok := h.requireAlertsAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -156,7 +155,6 @@ func (h *HandlersApi) AlertRulesListHandler(w http.ResponseWriter, r *http.Reque
 	for _, row := range rows {
 		out = append(out, toAlertRuleDTO(row))
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
 
@@ -179,7 +177,7 @@ func (h *HandlersApi) AlertRuleGetHandler(w http.ResponseWriter, r *http.Request
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	_, ok := h.requireAlertsAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -197,7 +195,6 @@ func (h *HandlersApi) AlertRuleGetHandler(w http.ResponseWriter, r *http.Request
 		respondAlertsErr(w, err)
 		return
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, toAlertRuleDTO(row))
 }
 
@@ -377,7 +374,7 @@ func (h *HandlersApi) AlertChannelsListHandler(w http.ResponseWriter, r *http.Re
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	_, ok := h.requireAlertsAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -400,7 +397,6 @@ func (h *HandlersApi) AlertChannelsListHandler(w http.ResponseWriter, r *http.Re
 	for _, row := range rows {
 		out = append(out, toAlertChannelDTO(row, reveal))
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
 
@@ -468,7 +464,7 @@ func (h *HandlersApi) AlertChannelsGetHandler(w http.ResponseWriter, r *http.Req
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	_, ok := h.requireAlertsAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -486,7 +482,6 @@ func (h *HandlersApi) AlertChannelsGetHandler(w http.ResponseWriter, r *http.Req
 		respondAlertsErr(w, err)
 		return
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, toAlertChannelDTO(row, parseReveal(r)))
 }
 
@@ -737,7 +732,7 @@ func (h *HandlersApi) AlertHistoryHandler(w http.ResponseWriter, r *http.Request
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	_, ok := h.requireAlertsAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -751,7 +746,6 @@ func (h *HandlersApi) AlertHistoryHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "error listing alert history", http.StatusInternalServerError, err)
 		return
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rows)
 }
 

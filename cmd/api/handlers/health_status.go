@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/health"
@@ -51,7 +49,7 @@ func (h *HandlersApi) HealthStatusHandler(w http.ResponseWriter, r *http.Request
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use health API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -84,7 +82,6 @@ func (h *HandlersApi) HealthStatusHandler(w http.ResponseWriter, r *http.Request
 		upgrade = h.HealthVersions.Info(row.Version)
 	}
 
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, healthStatusResponse{
 		GeneratedAt: now,
 		Components:  components,

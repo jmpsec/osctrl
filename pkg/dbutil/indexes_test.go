@@ -85,6 +85,21 @@ func TestEnsureIndexesContinuesPastFailures(t *testing.T) {
 	require.True(t, db.Migrator().HasIndex(&widget{}, "idx_widgets_name"))
 }
 
+func TestReplacementIndexDropsOnlyAfterSuccessfulBuild(t *testing.T) {
+	db := openSQLite(t, &gorm.Config{NamingStrategy: schema.NamingStrategy{TablePrefix: "replacement_"}})
+	require.NoError(t, db.AutoMigrate(&widget{}))
+	oldName := db.NamingStrategy.IndexName("replacement_widgets", "kind")
+	require.NoError(t, db.Exec("CREATE INDEX "+oldName+" ON replacement_widgets (kind)").Error)
+	idx := dbutil.Index{Model: &widget{}, Name: "idx_replacement", Columns: []string{"kind", "missing"}, Replaces: []string{"kind"}}
+	require.Error(t, dbutil.EnsureIndexes(db, idx))
+	require.True(t, db.Migrator().HasIndex(&widget{}, oldName), "failed builds must keep the fallback")
+	idx.Columns = []string{"kind", "created_at"}
+	require.NoError(t, dbutil.EnsureIndexes(db, idx))
+	require.True(t, db.Migrator().HasIndex(&widget{}, idx.Name))
+	require.False(t, db.Migrator().HasIndex(&widget{}, oldName))
+	require.NoError(t, dbutil.EnsureIndexes(db, idx), "restart is idempotent")
+}
+
 func osctrlIndexes() []dbutil.Index {
 	return slices.Concat(nodes.Indexes(), queries.Indexes(), auditlog.Indexes(),
 		carves.Indexes(), tags.Indexes(), logging.Indexes())
@@ -149,6 +164,55 @@ func TestOsctrlIndexesBuildExternalBackend(t *testing.T) {
 				require.Truef(t, db.Migrator().HasIndex(idx.Model, idx.Name), "index %s missing", idx.Name)
 			}
 			require.NoError(t, dbutil.EnsureIndexes(db, indexes...), "a second run must be a no-op")
+		})
+	}
+}
+
+// Remove the historical standalone indexes, then restart. Optional DSNs use the
+// same isolated table-prefix convention as the other real-engine tests.
+func TestLogIndexUpgradeExternalBackend(t *testing.T) {
+	for _, backend := range []string{"POSTGRES", "MYSQL"} {
+		t.Run(backend, func(t *testing.T) {
+			db, prefix := externalDB(t, backend)
+			models := []any{&logging.OsqueryStatusData{}, &logging.OsqueryResultData{}, &logging.OsqueryQueryData{}}
+			t.Cleanup(func() { require.NoError(t, db.Migrator().DropTable(models...)) })
+			require.NoError(t, db.AutoMigrate(models...))
+			for _, model := range models[:2] {
+				stmt := &gorm.Statement{DB: db}
+				require.NoError(t, stmt.Parse(model))
+				oldName := db.NamingStrategy.IndexName(stmt.Schema.Table, "uuid")
+				require.NoError(t, db.Exec("CREATE INDEX "+stmt.Quote(oldName)+" ON "+stmt.Quote(stmt.Schema.Table)+" ("+stmt.Quote("uuid")+")").Error)
+				require.NoError(t, db.Table(stmt.Schema.Table).Create(map[string]any{"uuid": "NODE-A"}).Error)
+			}
+			indexes := logging.Indexes()
+			for i := range indexes {
+				indexes[i].Name = prefix + indexes[i].Name
+			}
+			require.NoError(t, dbutil.EnsureIndexes(db, indexes...))
+			require.NoError(t, db.AutoMigrate(models...))
+			for _, model := range models[:2] {
+				stmt := &gorm.Statement{DB: db}
+				require.NoError(t, stmt.Parse(model))
+				require.False(t, db.Migrator().HasIndex(model, db.NamingStrategy.IndexName(stmt.Schema.Table, "uuid")))
+				columns, err := db.Migrator().ColumnTypes(model)
+				require.NoError(t, err)
+				for _, column := range columns {
+					if column.Name() != "uuid" {
+						continue
+					}
+					if backend == "MYSQL" {
+						require.Equal(t, "varchar", column.DatabaseTypeName())
+						size, ok := column.Length()
+						require.True(t, ok)
+						require.EqualValues(t, 191, size)
+					} else {
+						require.Equal(t, "text", column.DatabaseTypeName())
+					}
+				}
+				var count int64
+				require.NoError(t, db.Model(model).Where("uuid = ?", "NODE-A").Count(&count).Error)
+				require.EqualValues(t, 1, count)
+			}
 		})
 	}
 }

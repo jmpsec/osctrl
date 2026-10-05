@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/types"
+	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
@@ -102,7 +103,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 			// Set middleware values
 			s := make(handlers.ContextValue)
 			s["user"] = "admin"
-			ctx := context.WithValue(r.Context(), handlers.ContextKey(contextAPI), s)
+			ctx := users.WithPermissionCache(context.WithValue(r.Context(), handlers.ContextKey(contextAPI), s))
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		case config.AuthJWT:
@@ -163,7 +164,8 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 			// Set middleware values
 			s := make(handlers.ContextValue)
 			s["user"] = claims.Username
-			ctx := context.WithValue(r.Context(), handlers.ContextKey(contextAPI), s)
+			ctx := users.WithPermissionCache(context.WithValue(r.Context(), handlers.ContextKey(contextAPI), s))
+			users.CacheAuthenticatedUser(ctx, user)
 			// Access granted
 			h.ServeHTTP(w, r.WithContext(ctx))
 		}
@@ -186,5 +188,9 @@ func eventSessionValid(r *http.Request, auth, secret string) bool {
 	}
 	user, err := apiUsers.Get(claims.Username)
 	ctx, ok := r.Context().Value(handlers.ContextKey(contextAPI)).(handlers.ContextValue)
-	return ok && ctx["user"] == claims.Username && err == nil && user.APIToken != "" && subtle.ConstantTimeCompare([]byte(user.APIToken), []byte(token)) == 1
+	valid = ok && ctx["user"] == claims.Username && err == nil && user.APIToken != "" && subtle.ConstantTimeCompare([]byte(user.APIToken), []byte(token)) == 1
+	if valid {
+		users.CacheAuthenticatedUser(r.Context(), user)
+	}
+	return valid
 }

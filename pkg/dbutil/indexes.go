@@ -30,10 +30,13 @@ type Index struct {
 	Name string
 	// Columns are database column names, in index order.
 	Columns []string
+	// Replaces lists obsolete GORM field indexes to drop only after this
+	// replacement exists and is usable. Names respect the naming strategy.
+	Replaces []string
 }
 
-// EnsureIndexes creates whichever of indexes do not exist yet, and is a no-op
-// for the rest. It is safe to run from several processes at once: osctrl-api
+// EnsureIndexes creates missing indexes and removes their declared obsolete
+// field indexes after the replacements are usable. It is safe to run from several processes at once: osctrl-api
 // and osctrl-tls both run it at startup.
 //
 // On Postgres the build is CONCURRENTLY, so writers are never blocked however
@@ -75,29 +78,59 @@ func BuildIndexes(db *gorm.DB, indexes ...Index) {
 
 func ensureIndex(db *gorm.DB, idx Index) error {
 	if !db.Migrator().HasIndex(idx.Model, idx.Name) {
-		return createIndex(db, idx)
+		if err := createIndex(db, idx); err != nil {
+			return err
+		}
 	}
-	if db.Name() != "postgres" {
-		return nil
+	if db.Name() == "postgres" {
+		var valid, building bool
+		err := db.Raw(`SELECT i.indisvalid,
+            EXISTS (SELECT 1 FROM pg_stat_progress_create_index p WHERE p.index_relid = c.oid)
+        FROM pg_class c
+        JOIN pg_index i ON i.indexrelid = c.oid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = ? AND n.nspname = current_schema()`, idx.Name).Row().Scan(&valid, &building)
+		if err != nil {
+			return fmt.Errorf("check validity: %w", err)
+		}
+		// Never drop the fallback while the replacement is being built.
+		if building {
+			return nil
+		}
+		if !valid {
+			log.Warn().Str("index", idx.Name).Msg("rebuilding invalid index left by an interrupted concurrent build")
+			if err := db.Exec("DROP INDEX CONCURRENTLY IF EXISTS " + quote(db, idx.Name)).Error; err != nil {
+				return err
+			}
+			if err := createIndex(db, idx); err != nil {
+				return err
+			}
+			// IF NOT EXISTS may have raced with another builder. Recheck
+			// usability before removing any fallback index.
+			return ensureIndex(db, idx)
+		}
 	}
-	var valid, building bool
-	err := db.Raw(`SELECT i.indisvalid,
-			EXISTS (SELECT 1 FROM pg_stat_progress_create_index p WHERE p.index_relid = c.oid)
-		FROM pg_class c
-		JOIN pg_index i ON i.indexrelid = c.oid
-		JOIN pg_namespace n ON n.oid = c.relnamespace
-		WHERE c.relname = ? AND n.nspname = current_schema()`, idx.Name).Row().Scan(&valid, &building)
-	if err != nil {
-		return fmt.Errorf("check validity: %w", err)
+	stmt := &gorm.Statement{DB: db}
+	if err := stmt.Parse(idx.Model); err != nil {
+		return err
 	}
-	if valid || building {
-		return nil
+	for _, field := range idx.Replaces {
+		name := db.NamingStrategy.IndexName(stmt.Schema.Table, field)
+		if !db.Migrator().HasIndex(idx.Model, name) {
+			continue
+		}
+		var err error
+		if db.Name() == "postgres" {
+			err = db.Exec("DROP INDEX CONCURRENTLY IF EXISTS " + quote(db, name)).Error
+		} else {
+			err = db.Migrator().DropIndex(idx.Model, name)
+		}
+		// Another process may have dropped it between the check and DDL.
+		if err != nil && db.Migrator().HasIndex(idx.Model, name) {
+			return fmt.Errorf("drop replaced index %s: %w", name, err)
+		}
 	}
-	log.Warn().Str("index", idx.Name).Msg("rebuilding invalid index left by an interrupted concurrent build")
-	if err := db.Exec("DROP INDEX CONCURRENTLY IF EXISTS " + quote(db, idx.Name)).Error; err != nil {
-		return fmt.Errorf("drop invalid index: %w", err)
-	}
-	return createIndex(db, idx)
+	return nil
 }
 
 func createIndex(db *gorm.DB, idx Index) error {

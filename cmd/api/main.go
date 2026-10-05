@@ -553,6 +553,9 @@ func osctrlAPIService() {
 	if err != nil {
 		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
 	}
+	auditRetentionCtx, stopAuditRetention := context.WithCancel(context.Background())
+	defer stopAuditRetention()
+	go auditLog.RunRetention(auditRetentionCtx, settingsmgr.AuditLogRetentionDays)
 	// Secondary indexes for the hot read paths, beyond the struct tags. Built
 	// in the background, so a large table does not hold up startup; osctrl-api
 	// and osctrl-tls both run this and are safe to race.
@@ -1393,6 +1396,7 @@ func osctrlAPIService() {
 			log.Fatal().Msgf("ListenAndServe: %v", err)
 		}
 	case <-shutdownSignals:
+		stopAuditRetention()
 		if eventBus != nil {
 			eventBus.Close()
 		}
@@ -1402,6 +1406,7 @@ func osctrlAPIService() {
 		}
 		cancelDrain()
 	case <-restartCh:
+		stopAuditRetention()
 		if eventBus != nil {
 			eventBus.Close()
 		}

@@ -202,6 +202,7 @@ details intentionally omit users, environment UUIDs, query names, and payloads.
 - Per-environment access lives in `user_permissions`.
 - The user manager's `CheckPermissions(...)` method grants access by environment UUID/string plus level (`user`, `query`, `carve`, `admin`).
 - Full admins bypass per-environment checks.
+- HTTP handlers use `CheckPermissionsContext` with a request-scoped cache. Authentication seeds the user row; each environment's permission rows are loaded once per request. Streams create a fresh snapshot for every batch and heartbeat, preserving database-authoritative revocation across replicas and CLI changes. No permission snapshot is reused between requests or stream batches.
 
 ## Settings Subsystem
 
@@ -285,7 +286,10 @@ Handled by `pkg/auditlog`.
 
 - Model: `AuditLog`
 - GORM table: `audit_logs`
-- Created from API and hosted MCP actions such as login, node/query/carve actions, settings changes, and MCP tool calls. TLS also records failed enrollment and consumed service-control events.
+- Created from API and hosted MCP actions such as login, node/query/carve mutations, explicit downloads, settings changes, and MCP tool calls. Routine successful REST reads and polling do not create audit rows. TLS records successful and failed enrollment and consumed service-control events.
+- Successful enrollment/re-enrollment uses `LogTypeEnroll` (12), after node persistence succeeds. The audit-backed environment activity endpoint counts only that type as enrollment; generic node events, including historical viewed rows, are excluded. Query actions use `LogTypeQuery`. Earlier successful enrollments were not audited, so historical enrollment counts are not reconstructed from generic node events.
+- The API seeds the global `api/audit_log_retention_days` integer setting (90 days; valid range 1–36500). It can be edited through the settings API. If older audit history must be retained on upgrade, preconfigure its global `setting_values` row before starting the upgraded API. At startup and hourly, the API physically deletes expired rows from all services, including soft-deleted rows, in batches of 1,000, with a 100 ms pause and five-minute sweep limit. Pruning runs even if new audit writes are disabled. Invalid settings or setting-read failures stop cleanup. API replicas may safely race; no cleanup worker runs when the API is stopped.
+- DB log startup builds `(uuid, created_at)` indexes before removing the redundant status/result UUID indexes. PostgreSQL replacement indexes must be valid and not building before removal; drops use `CONCURRENTLY`. The UUID column retains its original `varchar(191)` type on MySQL and `text` type on PostgreSQL/SQLite, avoiding a column rewrite. The query-log UUID index stays because `(name, created_at)` does not cover it. Complete rollout of the new logger code before relying on removal: an older process can recreate the old indexes at startup.
 
 ## Request Flow
 

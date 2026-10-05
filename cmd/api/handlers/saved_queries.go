@@ -70,7 +70,7 @@ func (h *HandlersApi) SavedQueriesListHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -112,7 +112,6 @@ func (h *HandlersApi) SavedQueriesListHandler(w http.ResponseWriter, r *http.Req
 		TotalPages: totalPages,
 	}
 	log.Debug().Msgf("Returned %d saved queries (page %d of %d)", len(items), page, totalPages)
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
 
@@ -153,7 +152,7 @@ func (h *HandlersApi) SavedQueryCreateHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -243,7 +242,7 @@ func (h *HandlersApi) SavedQueryUpdateHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -311,7 +310,7 @@ func (h *HandlersApi) SavedQueryDeleteHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}

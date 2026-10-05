@@ -116,7 +116,7 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, e := range allEnvs {
 		// Filter to envs the user can actually see.
-		if !h.Users.CheckPermissions(user, users.UserLevel, e.UUID) {
+		if !h.Users.CheckPermissionsContext(r.Context(), user, users.UserLevel, e.UUID) {
 			continue
 		}
 		if countErr != nil {
@@ -274,7 +274,7 @@ func (h *HandlersApi) EnvActivityHandler(w http.ResponseWriter, r *http.Request)
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), user, users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
@@ -323,7 +323,7 @@ func (h *HandlersApi) EnvActivityHandler(w http.ResponseWriter, r *http.Request)
 			out[idx].Query += int(row.Cnt)
 		case auditlog.LogTypeCarve:
 			out[idx].Carve += int(row.Cnt)
-		case auditlog.LogTypeNode:
+		case auditlog.LogTypeEnroll:
 			out[idx].Enroll += int(row.Cnt)
 		}
 	}
@@ -400,7 +400,7 @@ func (h *HandlersApi) NodeActivityHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), user, users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
@@ -602,7 +602,7 @@ func (h *HandlersApi) NodeActivityBatchHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), user, users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
@@ -802,7 +802,7 @@ func (h *HandlersApi) NodeActivityTilesHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), user, users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
@@ -881,7 +881,7 @@ func (h *HandlersApi) NodeActivityTilesBatchHandler(w http.ResponseWriter, r *ht
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), user, users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
@@ -979,7 +979,7 @@ func (h *HandlersApi) EnvActivityTilesHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), user, users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
@@ -1046,7 +1046,7 @@ func (h *HandlersApi) EnvErrorNodesHandler(w http.ResponseWriter, r *http.Reques
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissions(user, users.UserLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), user, users.UserLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}

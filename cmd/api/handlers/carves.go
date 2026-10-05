@@ -111,7 +111,7 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -163,7 +163,6 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		Files: views,
 	}
 	log.Debug().Msgf("Returned carve %s (%d files)", name, len(views))
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
 
@@ -203,7 +202,7 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -222,7 +221,6 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	log.Debug().Msgf("Returned %d carves", len(carvesList))
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carvesList)
 }
 
@@ -266,7 +264,7 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -325,7 +323,6 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 		TotalPages: totalPages,
 	}
 	log.Debug().Msgf("Returned %d carves (page %d of %d)", len(items), page, totalPages)
-	h.AuditLog.Visit(ctx[ctxUser], r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
 
@@ -363,7 +360,7 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -381,7 +378,7 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	// allowlist gate here so legitimate paths containing spaces or
 	// non-ASCII characters round-trip correctly.
 	for _, e := range c.Environments {
-		if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, e) {
+		if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, e) {
 			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run carves in environment %s", ctx[ctxUser], e), http.StatusForbidden, nil)
 			return
 		}
@@ -486,7 +483,7 @@ func (h *HandlersApi) CarvesActionHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -585,7 +582,7 @@ func (h *HandlersApi) CarveArchiveHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}

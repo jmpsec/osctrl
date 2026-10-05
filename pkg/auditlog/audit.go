@@ -25,6 +25,7 @@ var LogTypes = map[uint]struct{}{
 	LogTypeVisit:       {},
 	LogTypeUser:        {},
 	LogTypeMCP:         {},
+	LogTypeEnroll:      {},
 }
 
 // PageFilter describes the inputs accepted by GetPaged.
@@ -128,6 +129,8 @@ const (
 	// agent activity out of the (much larger) volume of SPA/CLI-driven
 	// entries, which carry no origin marker at all.
 	LogTypeMCP = 11
+	// LogTypeEnroll records successful agent enrollment only.
+	LogTypeEnroll = 12
 	// Severities
 	SeverityInfo    = 1
 	SeverityWarning = 2
@@ -303,7 +306,7 @@ func (m *AuditLogManager) QueryAction(username, action, ip string, envID uint) {
 		return
 	}
 	line := fmt.Sprintf("user %s performed query action: %s", username, action)
-	if err := m.CreateNew(username, line, ip, LogTypeNode, SeverityInfo, envID); err != nil {
+	if err := m.CreateNew(username, line, ip, LogTypeQuery, SeverityInfo, envID); err != nil {
 		log.Err(err).Msg("error creating query action audit log")
 	}
 }
@@ -557,5 +560,15 @@ func (m *AuditLogManager) GetBySeverityEnv(severity, envID uint) ([]AuditLog, er
 func Indexes() []dbutil.Index {
 	return []dbutil.Index{
 		{Model: &AuditLog{}, Name: "idx_audit_logs_created_at", Columns: []string{"created_at"}},
+	}
+}
+
+// NewEnroll records a successful enrollment or re-enrollment after persistence.
+func (m *AuditLogManager) NewEnroll(uuid, ip string, envID uint) {
+	if m == nil || !m.Enabled {
+		return
+	}
+	if err := m.CreateNew("osctrl-tls", "node enrolled: "+uuid, ip, LogTypeEnroll, SeverityInfo, envID); err != nil {
+		log.Err(err).Msg("error creating enrollment audit log")
 	}
 }

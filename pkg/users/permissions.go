@@ -141,16 +141,7 @@ func (m *UserManager) CheckPermissions(username string, level AccessLevel, envir
 	if err := m.DB.Where("username = ? AND environment = ?", username, environment).Find(&perms).Error; err != nil {
 		return false
 	}
-	for _, p := range perms {
-		// Access is yes for admins
-		if p.AccessType == int(AdminLevel) && p.AccessValue {
-			return true
-		}
-		if p.AccessType == int(level) {
-			return p.AccessValue
-		}
-	}
-	return false
+	return permissionsAllow(perms, level)
 }
 
 // ChangePermissions for setting user permissions by username

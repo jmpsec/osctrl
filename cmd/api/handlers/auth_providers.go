@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/authproviders"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
@@ -57,7 +56,7 @@ func toAuthProviderDTO(p authproviders.AuthProvider, reveal bool) authProviderDT
 
 func (h *HandlersApi) requireAuthProvidersAdmin(w http.ResponseWriter, r *http.Request) (string, bool) {
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissions(ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use auth-providers API by user %s", ctx[ctxUser]))
 		return "", false
 	}
@@ -69,7 +68,7 @@ func (h *HandlersApi) AuthProvidersListHandler(w http.ResponseWriter, r *http.Re
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAuthProvidersAdmin(w, r)
+	_, ok := h.requireAuthProvidersAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -87,7 +86,6 @@ func (h *HandlersApi) AuthProvidersListHandler(w http.ResponseWriter, r *http.Re
 	for _, row := range rows {
 		out = append(out, toAuthProviderDTO(row, reveal))
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
 
@@ -125,7 +123,7 @@ func (h *HandlersApi) AuthProvidersGetHandler(w http.ResponseWriter, r *http.Req
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAuthProvidersAdmin(w, r)
+	_, ok := h.requireAuthProvidersAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -147,7 +145,6 @@ func (h *HandlersApi) AuthProvidersGetHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error getting auth provider", http.StatusInternalServerError, err)
 		return
 	}
-	h.AuditLog.Visit(user, r.URL.Path, strings.Split(r.RemoteAddr, ":")[0], auditlog.NoEnvironment)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, toAuthProviderDTO(row, r.URL.Query().Get("reveal") == "1"))
 }
 

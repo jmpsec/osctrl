@@ -111,6 +111,9 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	username := ctx[ctxUser]
 	authorized := func() bool {
+		// Refresh the snapshot before every batch and heartbeat so revocations
+		// from any process take effect before sending another event.
+		r := r.WithContext(users.WithPermissionCache(r.Context()))
 		if !h.EventsAuthenticate(r) {
 			return false
 		}
@@ -123,7 +126,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, topic := range topics {
 			if topic == events.Alerts || topic == events.ServiceCommands || topic == events.Fleet {
-				if !h.Users.CheckPermissions(username, users.AdminLevel, users.NoEnvironment) {
+				if !h.Users.CheckPermissionsContext(r.Context(), username, users.AdminLevel, users.NoEnvironment) {
 					return false
 				}
 				continue
@@ -135,7 +138,7 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 			if topic == events.Console || topic == events.FileExplorer {
 				level = users.AdminLevel
 			}
-			if !h.Users.CheckPermissions(username, level, environmentUUID) {
+			if !h.Users.CheckPermissionsContext(r.Context(), username, level, environmentUUID) {
 				return false
 			}
 		}

@@ -21,7 +21,7 @@ import (
 // OsqueryResultData to log result data to database
 type OsqueryResultData struct {
 	gorm.Model
-	UUID        string `gorm:"index"`
+	UUID        NodeLogUUID
 	Environment string
 	Name        string
 	Action      string
@@ -33,7 +33,7 @@ type OsqueryResultData struct {
 // OsqueryStatusData to log status data to database
 type OsqueryStatusData struct {
 	gorm.Model
-	UUID        string `gorm:"index"`
+	UUID        NodeLogUUID
 	Environment string
 	Line        string
 	Message     string
@@ -158,7 +158,7 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 	for _, l := range logs {
 		entries = append(entries, OsqueryStatusData{
 			Model:       stamp(),
-			UUID:        strings.ToUpper(uuid),
+			UUID:        NodeLogUUID(strings.ToUpper(uuid)),
 			Environment: environment,
 			Line:        strconv.Itoa(int(l.Line)),
 			Message:     l.Message,
@@ -183,7 +183,7 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 	for _, l := range logs {
 		entries = append(entries, OsqueryResultData{
 			Model:       stamp(),
-			UUID:        strings.ToUpper(uuid),
+			UUID:        NodeLogUUID(strings.ToUpper(uuid)),
 			Environment: environment,
 			Name:        l.Name,
 			Action:      l.Action,
@@ -384,7 +384,7 @@ func GetNodeLogs(db *gorm.DB, logType, env, uuid string, since time.Time, limit 
 			result = append(result, map[string]any{
 				"id":          r.ID,
 				"created_at":  r.CreatedAt,
-				"uuid":        r.UUID,
+				"uuid":        string(r.UUID),
 				"environment": r.Environment,
 				"line":        r.Line,
 				"message":     r.Message,
@@ -413,7 +413,7 @@ func GetNodeLogs(db *gorm.DB, logType, env, uuid string, since time.Time, limit 
 			result = append(result, map[string]any{
 				"id":          r.ID,
 				"created_at":  r.CreatedAt,
-				"uuid":        r.UUID,
+				"uuid":        string(r.UUID),
 				"environment": r.Environment,
 				"name":        r.Name,
 				"action":      r.Action,
@@ -607,8 +607,8 @@ func (logDB *LoggerDB) CleanQueryLogs(entries int64) error {
 // (uuid, created_at) a node's log page reads every row it has ever sent.
 func Indexes() []dbutil.Index {
 	return []dbutil.Index{
-		{Model: &OsqueryStatusData{}, Name: "idx_osquery_status_data_uuid_created", Columns: []string{"uuid", "created_at"}},
-		{Model: &OsqueryResultData{}, Name: "idx_osquery_result_data_uuid_created", Columns: []string{"uuid", "created_at"}},
+		{Model: &OsqueryStatusData{}, Name: "idx_osquery_status_data_uuid_created", Columns: []string{"uuid", "created_at"}, Replaces: []string{"uuid"}},
+		{Model: &OsqueryResultData{}, Name: "idx_osquery_result_data_uuid_created", Columns: []string{"uuid", "created_at"}, Replaces: []string{"uuid"}},
 		{Model: &OsqueryQueryData{}, Name: "idx_osquery_query_data_name_created", Columns: []string{"name", "created_at"}},
 	}
 }
