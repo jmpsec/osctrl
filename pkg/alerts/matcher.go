@@ -3,6 +3,7 @@ package alerts
 import (
 	"encoding/json"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -60,6 +61,7 @@ func (rs *RuleSet) MatchResultLogs(envID uint, environment, nodeUUID string, log
 		entry := &logs[i]
 		uuid := nodeUUID
 		fields := resultFields(entry)
+		keys := sortedKeys(fields)
 		lowered := make(map[string]string, len(fields))
 		for j := range rs.result {
 			r := &rs.result[j]
@@ -70,7 +72,7 @@ func (rs *RuleSet) MatchResultLogs(envID uint, environment, nodeUUID string, log
 			if r.nodeScope != "" && r.nodeScope != uuid {
 				continue
 			}
-			if matched, detail := matchFields(r, fields, lowered); matched {
+			if matched, detail := matchFields(r, fields, keys, lowered); matched {
 				hits = append(hits, Hit{
 					RuleID:          r.id,
 					RuleName:        r.name,
@@ -145,6 +147,7 @@ func (rs *RuleSet) MatchQueryResult(envID uint, environment, queryName string, r
 	if !ok {
 		return nil
 	}
+	keys := sortedKeys(fields)
 	lowered := make(map[string]string, len(fields))
 	var hits []Hit
 	for j := range rs.query {
@@ -152,7 +155,7 @@ func (rs *RuleSet) MatchQueryResult(envID uint, environment, queryName string, r
 		if !r.ruleApplies(envID) {
 			continue
 		}
-		if matched, detail := matchFields(r, fields, lowered); matched {
+		if matched, detail := matchFields(r, fields, keys, lowered); matched {
 			hits = append(hits, Hit{
 				RuleID:          r.id,
 				RuleName:        r.name,
@@ -327,7 +330,22 @@ func matchSingle(r *compiledRule, value, key string, lowered map[string]string) 
 // is tried. Values are lowercased at most once per call regardless of
 // how many rules share the entry — the caller reuses the lowered map
 // across the whole rule slice.
-func matchFields(r *compiledRule, fields map[string]string, lowered map[string]string) (bool, string) {
+// sortedKeys returns the keys of fields in a fixed order, for matchFields to
+// walk instead of the map: Go randomizes map iteration, and when several fields
+// match a rule the one visited first supplies the hit's detail. Computed once
+// per entry, not per rule.
+func sortedKeys(fields map[string]string) []string {
+	keys := make([]string, 0, len(fields))
+	for k := range fields {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// keys must be the keys of fields in sorted order (see sortedKeys), so that
+// match-any rules report the same detail for the same entry every time.
+func matchFields(r *compiledRule, fields map[string]string, keys []string, lowered map[string]string) (bool, string) {
 	lowerOnce := func(k, v string) string {
 		if lv, ok := lowered[k]; ok {
 			return lv
@@ -353,14 +371,25 @@ func matchFields(r *compiledRule, fields map[string]string, lowered map[string]s
 		return false, ""
 	}
 	if r.matchRegex != nil {
-		for _, v := range fields {
-			if m := r.matchRegex.FindString(v); m != "" {
+		for _, k := range keys {
+			if m := r.matchRegex.FindString(fields[k]); m != "" {
 				return true, m
 			}
 		}
 		return false, ""
 	}
-	for k, v := range fields {
+	// The empty pattern matches every entry; report the first non-empty
+	// value, since a blank field (action often is) would say nothing.
+	if r.matchSubstring == "" {
+		for _, k := range keys {
+			if v := fields[k]; v != "" {
+				return true, v
+			}
+		}
+		return true, ""
+	}
+	for _, k := range keys {
+		v := fields[k]
 		if strings.Contains(lowerOnce(k, v), r.matchSubstring) {
 			return true, substringDetail(r.matchSubstring, v)
 		}

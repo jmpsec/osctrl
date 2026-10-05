@@ -3,10 +3,10 @@ package queries
 import (
 	"fmt"
 	"strings"
+	"testing"
 
 	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type eventRecorder struct{ hints []events.Hint }

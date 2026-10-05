@@ -131,6 +131,8 @@ func run(ctx context.Context, _ *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("error creating API client - %w", err)
 	}
+	// Distinguishes agent traffic from osctrl-cli's in osctrl-api's logs.
+	client.UserAgent = serviceName + "/" + buildVersion
 	// Fail fast on a bad URL or a dead/rejected token. Without this the
 	// server starts happily and every tool call fails one at a time, which
 	// reads to the user as "the tools are broken" rather than "the token is
