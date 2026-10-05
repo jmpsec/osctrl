@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 )
 
 // OsqueryNode as abstraction of a node
@@ -85,4 +87,21 @@ type NodeMetadata struct {
 	Platform        string
 	PlatformVersion string
 	BytesReceived   int
+}
+
+// Indexes are the secondary indexes for osquery_nodes beyond those in the
+// struct tags, created by dbutil.EnsureIndexes. environment serves the
+// per-environment counts and paged lists; hostname and localname let the
+// uuid-or-hostname-or-localname lookups use an index for every branch.
+//
+// last_seen, ip_address and bytes_received are deliberately not indexed:
+// every check-in or log batch rewrites them, and while no indexed column
+// changes, Postgres can apply those updates in place (HOT) without touching
+// any index on the table.
+func Indexes() []dbutil.Index {
+	return []dbutil.Index{
+		{Model: &OsqueryNode{}, Name: "idx_osquery_nodes_environment", Columns: []string{"environment"}},
+		{Model: &OsqueryNode{}, Name: "idx_osquery_nodes_hostname", Columns: []string{"hostname"}},
+		{Model: &OsqueryNode{}, Name: "idx_osquery_nodes_localname", Columns: []string{"localname"}},
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -632,4 +633,14 @@ func (m *TagManager) CountTaggedNodes(tags []AdminTag) (TagCounter, error) {
 		}
 	}
 	return tagCounter, nil
+}
+
+// Indexes are the secondary indexes for tagged_nodes, created by
+// dbutil.EnsureIndexes: every node list loads the tags of its page by node,
+// and the tags page counts nodes per tag.
+func Indexes() []dbutil.Index {
+	return []dbutil.Index{
+		{Model: &TaggedNode{}, Name: "idx_tagged_nodes_node_id", Columns: []string{"node_id"}},
+		{Model: &TaggedNode{}, Name: "idx_tagged_nodes_admin_tag_id", Columns: []string{"admin_tag_id"}},
+	}
 }

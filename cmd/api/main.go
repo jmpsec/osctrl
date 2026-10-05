@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -24,6 +25,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
@@ -551,6 +553,11 @@ func osctrlAPIService() {
 	if err != nil {
 		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
 	}
+	// Secondary indexes for the hot read paths, beyond the struct tags. Built
+	// in the background, so a large table does not hold up startup; osctrl-api
+	// and osctrl-tls both run this and are safe to race.
+	dbutil.BuildIndexes(db.Conn, slices.Concat(
+		nodes.Indexes(), queries.Indexes(), auditlog.Indexes(), carves.Indexes(), tags.Indexes())...)
 	// Load osquery tables schema (best-effort; an empty slice is fine if the file doesn't exist)
 	if flagParams.Osquery.TablesFile != "" {
 		log.Info().Msgf("Loading osquery tables from %s", flagParams.Osquery.TablesFile)

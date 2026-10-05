@@ -16,14 +16,14 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-func TestUpdateMetadataByUUID(t *testing.T) {
+func TestUpdateMetadata(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
 	require.NoError(t, err)
-	testUpdateMetadataByUUID(t, db)
+	testUpdateMetadata(t, db)
 }
 
 // Optional real-engine checks; each uses and removes its own prefixed table.
-func TestUpdateMetadataByUUIDExternalBackend(t *testing.T) {
+func TestUpdateMetadataExternalBackend(t *testing.T) {
 	for _, backend := range []string{"POSTGRES", "MYSQL"} {
 		t.Run(backend, func(t *testing.T) {
 			dsn := os.Getenv("OSCTRL_TEST_" + backend + "_DSN")
@@ -39,17 +39,18 @@ func TestUpdateMetadataByUUIDExternalBackend(t *testing.T) {
 			}})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, db.Migrator().DropTable(&OsqueryNode{})) })
-			testUpdateMetadataByUUID(t, db)
+			testUpdateMetadata(t, db)
 		})
 	}
 }
 
-func testUpdateMetadataByUUID(t *testing.T, db *gorm.DB) {
+func testUpdateMetadata(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	require.NoError(t, db.AutoMigrate(&OsqueryNode{}))
 	repo := NodeManager{DB: db}
 
-	// The same UUID enrolled in two environments has a live row in each.
+	// The same UUID enrolled in two environments has a live row in each; an
+	// update by primary key must touch only the one it names.
 	rows := []OsqueryNode{
 		{UUID: "NODE-A", EnvironmentID: 1, Hostname: "old-host", Username: "keep-me", BytesReceived: 100},
 		{UUID: "NODE-A", EnvironmentID: 2, Hostname: "other-env", BytesReceived: 7},
@@ -61,9 +62,8 @@ func testUpdateMetadataByUUID(t *testing.T, db *gorm.DB) {
 	require.NoError(t, db.Callback().Query().After("gorm:query").Register("count_metadata_selects", func(*gorm.DB) { selects++ }))
 	require.NoError(t, db.Callback().Update().After("gorm:update").Register("count_metadata_updates", func(*gorm.DB) { updates++ }))
 
-	// Lower-case UUID, as host identifiers can arrive; empty fields must not
-	// blank out what is stored.
-	require.NoError(t, repo.UpdateMetadataByUUID("node-a", 1, NodeMetadata{
+	// Empty fields must not blank out what is stored.
+	require.NoError(t, repo.UpdateMetadata(rows[0].ID, NodeMetadata{
 		Hostname:       "new-host",
 		ConfigHash:     "abc123",
 		OsqueryVersion: "5.23.1",
@@ -85,24 +85,24 @@ func testUpdateMetadataByUUID(t *testing.T, db *gorm.DB) {
 	require.Equal(t, "keep-me", target.Username, "an empty field must leave the stored value alone")
 	require.Equal(t, 125, target.BytesReceived)
 
-	// Only the row of the authenticated environment is touched.
+	// Only the row named by ID is touched.
 	require.Equal(t, "other-env", got["NODE-A/2"].Hostname, "same UUID in another environment must be untouched")
 	require.Equal(t, 7, got["NODE-A/2"].BytesReceived)
 	require.Equal(t, "unrelated", got["NODE-B/1"].Hostname)
 	require.Equal(t, 50, got["NODE-B/1"].BytesReceived)
 
-	// Unknown nodes still report not-found, as the read-first version did.
-	err := repo.UpdateMetadataByUUID("NODE-MISSING", 1, NodeMetadata{BytesReceived: 1})
-	require.Error(t, err)
+	// Unknown and deleted nodes report not-found, as the read-first version did.
+	err := repo.UpdateMetadata(rows[len(rows)-1].ID+100, NodeMetadata{BytesReceived: 1})
 	require.True(t, errors.Is(err, gorm.ErrRecordNotFound), "got %v", err)
-	err = repo.UpdateMetadataByUUID("NODE-A", 99, NodeMetadata{BytesReceived: 1})
-	require.True(t, errors.Is(err, gorm.ErrRecordNotFound), "wrong environment must not match: got %v", err)
+	require.NoError(t, db.Delete(&rows[2]).Error)
+	err = repo.UpdateMetadata(rows[2].ID, NodeMetadata{BytesReceived: 1})
+	require.True(t, errors.Is(err, gorm.ErrRecordNotFound), "a deleted node must not be updated: got %v", err)
 }
 
 // Log batches from one node are processed in parallel goroutines. Reading
 // bytes_received and writing back a sum lost increments whenever two
 // overlapped; the SQL-side increment must account for every byte.
-func TestUpdateMetadataByUUIDConcurrentBytes(t *testing.T) {
+func TestUpdateMetadataConcurrentBytes(t *testing.T) {
 	dir := t.TempDir()
 	// A file database so connections share state and SQLite serialises
 	// writers for real, rather than one in-memory connection doing it all.
@@ -110,14 +110,15 @@ func TestUpdateMetadataByUUIDConcurrentBytes(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(&OsqueryNode{}))
 	repo := NodeManager{DB: db}
-	require.NoError(t, db.Create(&OsqueryNode{UUID: "NODE-A", EnvironmentID: 1}).Error)
+	node := OsqueryNode{UUID: "NODE-A", EnvironmentID: 1}
+	require.NoError(t, db.Create(&node).Error)
 
 	const writers, each = 8, 25
 	var wg sync.WaitGroup
 	for range writers {
 		wg.Go(func() {
 			for range each {
-				if err := repo.UpdateMetadataByUUID("NODE-A", 1, NodeMetadata{BytesReceived: 3}); err != nil {
+				if err := repo.UpdateMetadata(node.ID, NodeMetadata{BytesReceived: 3}); err != nil {
 					t.Errorf("update: %v", err)
 					return
 				}

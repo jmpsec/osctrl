@@ -35,6 +35,11 @@ func compileForTest(t *testing.T, rules ...AlertRule) *RuleSet {
 	return rs
 }
 
+// testNode is the node the matcher tests' batches are authenticated as. The
+// entries' own hostIdentifier values are deliberately different: they are
+// sender-controlled and must not decide attribution.
+const testNode = "NODE-A"
+
 func resultEntry(uuid, name string, columns map[string]string) types.LogResultData {
 	raw, _ := json.Marshal(columns)
 	return types.LogResultData{
@@ -62,19 +67,19 @@ func TestMatchResultLogs(t *testing.T) {
 		resultEntry("UUID2", "file_events", map[string]string{"path": "/etc/shadow"}),
 		resultEntry("UUID3", "file_events", map[string]string{"path": "/etc/hostname"}),
 	}
-	hits := rs.MatchResultLogs(NoEnvironmentID, "dev", logs)
+	hits := rs.MatchResultLogs(NoEnvironmentID, "dev", testNode, logs)
 	if len(hits) != 2 {
 		t.Fatalf("expected 2 hits, got %d: %+v", len(hits), hits)
 	}
-	// Hit 1: case-insensitive any-field substring on UUID1.
-	if hits[0].RuleName != "any-substring" || hits[0].NodeUUID != "UUID1" {
+	// Hit 1: case-insensitive any-field substring on the first entry.
+	if hits[0].RuleName != "any-substring" || hits[0].NodeUUID != testNode {
 		t.Fatalf("unexpected hit 0: %+v", hits[0])
 	}
-	// Hit 2: scoped regex path match on UUID2.
-	if hits[1].RuleName != "scoped-regex" || hits[1].NodeUUID != "UUID2" {
+	// Hit 2: scoped regex path match on the second entry.
+	if hits[1].RuleName != "scoped-regex" || hits[1].NodeUUID != testNode {
 		t.Fatalf("unexpected hit 1: %+v", hits[1])
 	}
-	if hits[1].Entity != "UUID2:file_events" {
+	if hits[1].Entity != testNode+":file_events" {
 		t.Fatalf("entity should include query name: %q", hits[1].Entity)
 	}
 }
@@ -86,7 +91,7 @@ func TestMatchResultLogsScopedFieldMissing(t *testing.T) {
 	// Entry has no "path" column — scoped rule must not fall back to
 	// other fields.
 	logs := []types.LogResultData{resultEntry("U", "processes", map[string]string{"name": "/etc value in wrong field"})}
-	if hits := rs.MatchResultLogs(NoEnvironmentID, "dev", logs); len(hits) != 0 {
+	if hits := rs.MatchResultLogs(NoEnvironmentID, "dev", testNode, logs); len(hits) != 0 {
 		t.Fatalf("scoped rule matched absent field: %+v", hits)
 	}
 }
@@ -98,7 +103,7 @@ func TestMatchResultLogsSnapshot(t *testing.T) {
 	snap := []map[string]string{{"username": "root", "host": "box"}}
 	raw, _ := json.Marshal(snap)
 	logs := []types.LogResultData{{HostIdentifier: "U", Name: "logged_in_users", Snapshot: raw}}
-	hits := rs.MatchResultLogs(NoEnvironmentID, "dev", logs)
+	hits := rs.MatchResultLogs(NoEnvironmentID, "dev", testNode, logs)
 	if len(hits) != 1 {
 		t.Fatalf("expected snapshot match, got %+v", hits)
 	}
@@ -116,7 +121,7 @@ func TestMatchStatusLogs(t *testing.T) {
 		statusEntry("U3", 1, "warning: scheduler backoff"),        // matches warn-or-worse + info-ok
 		statusEntry("U4", 2, "error: different message entirely"), // matches any-error + info? no line... any-error yes
 	}
-	hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", logs)
+	hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", testNode, logs)
 	// U1: info-ok (1). U2: any-error + warn-or-worse + info-ok? "line" not
 	// in message... info-ok pattern is "line" and message has no "line":
 	// so U2 matches any-error + warn-or-worse (2). U3: warn-or-worse (1).
@@ -135,12 +140,12 @@ func TestMatchResultLogsEnvScoping(t *testing.T) {
 	logs := []types.LogResultData{resultEntry("U", "t", map[string]string{"f": "match-me"})}
 
 	// env 7: both rules apply.
-	hits := rs.MatchResultLogs(7, "prod", logs)
+	hits := rs.MatchResultLogs(7, "prod", testNode, logs)
 	if len(hits) != 2 {
 		t.Fatalf("env 7 expected 2 hits, got %d", len(hits))
 	}
 	// other envs: only the global rule.
-	hits = rs.MatchResultLogs(9, "other", logs)
+	hits = rs.MatchResultLogs(9, "other", testNode, logs)
 	if len(hits) != 1 || hits[0].RuleName != "global" {
 		t.Fatalf("env 9 expected global-only hit, got %+v", hits)
 	}
@@ -158,8 +163,10 @@ func TestMatchStatusLogsSeverityFloor(t *testing.T) {
 		statusEntry("U2", 1, "match at warn"), // below floor — skipped
 		statusEntry("U3", 2, "match at error"),
 	}
-	hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", logs)
-	if len(hits) != 1 || hits[0].NodeUUID != "U3" {
+	hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", testNode, logs)
+	// All three lines contain the pattern; only the error-level one clears
+	// the floor.
+	if len(hits) != 1 || hits[0].NodeUUID != testNode {
 		t.Fatalf("severity floor not enforced: %+v", hits)
 	}
 }
@@ -192,10 +199,10 @@ func TestMatchQueryResultFailedQuery(t *testing.T) {
 
 func TestMatchNoRulesNoWork(t *testing.T) {
 	rs := NewStore().Snapshot()
-	if hits := rs.MatchResultLogs(NoEnvironmentID, "dev", []types.LogResultData{resultEntry("U", "t", map[string]string{"a": "b"})}); hits != nil {
+	if hits := rs.MatchResultLogs(NoEnvironmentID, "dev", testNode, []types.LogResultData{resultEntry("U", "t", map[string]string{"a": "b"})}); hits != nil {
 		t.Fatalf("empty snapshot must not hit: %+v", hits)
 	}
-	if hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", nil); hits != nil {
+	if hits := rs.MatchStatusLogs(NoEnvironmentID, "dev", testNode, nil); hits != nil {
 		t.Fatalf("empty snapshot must not hit: %+v", hits)
 	}
 	if hits := rs.MatchQueryResult(NoEnvironmentID, "dev", "q", nil, 0, ""); hits != nil {

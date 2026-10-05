@@ -384,20 +384,18 @@ func (n *NodeManager) GetOsqueryVersionCounts() ([]OsqueryVersionCount, error) {
 	return GetOsqueryVersionCounts(n.DB)
 }
 
-// UpdateMetadataByUUID records the metadata osquery decorates its log batches
-// with on the node of that UUID enrolled in envID.
+// UpdateMetadata records the metadata osquery decorates its log batches with
+// on node nodeID: the node the batch was authenticated as, by node_key. The
+// caller must not derive nodeID from the batch itself — its hostIdentifier is
+// whatever the sender chose to write.
 //
-// It runs on every log batch every node sends, so it is a single UPDATE.
-// bytes_received is incremented in SQL instead of being read and written back,
-// which also stops two log batches from the same node, processed concurrently,
-// from losing each other's bytes. The other columns are assigned whenever the
-// batch carries a value: storing an unchanged value leaves the row as it was,
-// so there is no need to read the row first to compare.
-//
-// Scoping by environment matters because a UUID enrolled in two environments
-// has a live row in each; the caller has already authenticated the batch
-// against envID, so that is the row it describes.
-func (n *NodeManager) UpdateMetadataByUUID(uuid string, envID uint, metadata NodeMetadata) error {
+// It runs on every log batch every node sends, so it is a single UPDATE by
+// primary key. bytes_received is incremented in SQL instead of being read and
+// written back, which also stops two log batches from the same node, processed
+// concurrently, from losing each other's bytes. The other columns are assigned
+// whenever the batch carries a value: storing an unchanged value leaves the row
+// as it was, so there is no need to read the row first to compare.
+func (n *NodeManager) UpdateMetadata(nodeID uint, metadata NodeMetadata) error {
 	updates := map[string]interface{}{
 		"bytes_received": gorm.Expr("bytes_received + ?", metadata.BytesReceived),
 	}
@@ -415,14 +413,12 @@ func (n *NodeManager) UpdateMetadataByUUID(uuid string, envID uint, metadata Nod
 			updates[column] = value
 		}
 	}
-	result := n.DB.Model(&OsqueryNode{}).
-		Where("uuid = ? AND environment_id = ?", strings.ToUpper(uuid), envID).
-		Updates(updates)
+	result := n.DB.Model(&OsqueryNode{}).Where("id = ?", nodeID).Updates(updates)
 	if result.Error != nil {
 		return fmt.Errorf("update metadata %w", result.Error)
 	}
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("update metadata for node %s: %w", uuid, gorm.ErrRecordNotFound)
+		return fmt.Errorf("update metadata for node %d: %w", nodeID, gorm.ErrRecordNotFound)
 	}
 	return nil
 }

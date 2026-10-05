@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/health"
@@ -456,6 +458,11 @@ func osctrlService() {
 	if err != nil {
 		log.Fatal().Msgf("error initializing audit log manager: %v", err)
 	}
+	// Secondary indexes for the hot read paths, beyond the struct tags. Built
+	// in the background, so a large table does not hold up startup; osctrl-api
+	// and osctrl-tls both run this and are safe to race.
+	dbutil.BuildIndexes(db.Conn, slices.Concat(
+		nodes.Indexes(), queries.Indexes(), auditlog.Indexes(), carves.Indexes(), tags.Indexes())...)
 	restartCh := make(chan struct{}, 1)
 	// Per-IP rate limit on /enroll. Defaults to bursts of 20 per minute,
 	// idle eviction after 10 minutes.

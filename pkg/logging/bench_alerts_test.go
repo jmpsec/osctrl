@@ -95,11 +95,11 @@ type noopMatcher struct {
 	calls int
 }
 
-func (m *noopMatcher) MatchResultLogs(envID uint, environment string, logs []types.LogResultData) {
+func (m *noopMatcher) MatchResultLogs(envID uint, environment, nodeUUID string, logs []types.LogResultData) {
 	m.calls += len(logs)
 }
 
-func (m *noopMatcher) MatchStatusLogs(envID uint, environment string, logs []types.LogStatusData) {
+func (m *noopMatcher) MatchStatusLogs(envID uint, environment, nodeUUID string, logs []types.LogStatusData) {
 	m.calls += len(logs)
 }
 
@@ -123,7 +123,7 @@ func benchmarkProcessLogs(b *testing.B, matcher AlertMatcher) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = logger.ProcessLogs(data, "result", 1, "prod", "10.0.0.1", len(data), false)
+		_ = logger.ProcessLogs(hookNode, data, "result", 1, "prod", "10.0.0.1", len(data), false)
 	}
 }
 
@@ -156,7 +156,7 @@ func BenchmarkProcessLogsStatusBaseline(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = logger.ProcessLogs(data, "status", 1, "prod", "10.0.0.1", len(data), false)
+		_ = logger.ProcessLogs(hookNode, data, "status", 1, "prod", "10.0.0.1", len(data), false)
 	}
 }
 
@@ -177,6 +177,6 @@ func BenchmarkProcessLogsStatusMatcher(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = logger.ProcessLogs(data, "status", 1, "prod", "10.0.0.1", len(data), false)
+		_ = logger.ProcessLogs(hookNode, data, "status", 1, "prod", "10.0.0.1", len(data), false)
 	}
 }

@@ -24,7 +24,14 @@ func parseResultLogs(data json.RawMessage) ([]types.LogResultData, error) {
 // ProcessLogs processes and dispatches logs. Result entries are returned so
 // callers can reuse the decoded batch for secondary consumers such as posture.
 // envID selects the environment-scoped exporter set.
-func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint, environment, ipaddress string, dataLen int, debug bool) []types.LogResultData {
+//
+// node is the node the batch was authenticated as, by node_key. Everything the
+// batch produces — the metadata update, the exported rows, alert hits — is
+// attributed to it. The entries' hostIdentifier is never used for that: the
+// sender writes it, so trusting it let any enrolled node overwrite another
+// node's metadata, plant log rows under another node, or fire and dodge
+// node-scoped alerts.
+func (l *LoggerTLS) ProcessLogs(node nodes.OsqueryNode, data json.RawMessage, logType string, envID uint, environment, ipaddress string, dataLen int, debug bool) []types.LogResultData {
 	// Parse log to extract metadata
 	var logs []types.LogGenericData
 	var resultLogs []types.LogResultData
@@ -73,15 +80,15 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 	if l.Alerts != nil {
 		switch logType {
 		case types.ResultLog:
-			l.Alerts.MatchResultLogs(envID, environment, resultLogs)
+			l.Alerts.MatchResultLogs(envID, environment, node.UUID, resultLogs)
 		case types.StatusLog:
-			l.Alerts.MatchStatusLogs(envID, environment, statusLogs)
+			l.Alerts.MatchStatusLogs(envID, environment, node.UUID, statusLogs)
 		}
 	}
-	// Iterate through received messages to extract metadata
-	var uuid, hostname, localname, username, osqueryuser, confighash, daemonhash, osqueryversion string
+	// Iterate through received messages to extract the metadata the node
+	// decorates its logs with.
+	var hostname, localname, username, osqueryuser, confighash, daemonhash, osqueryversion string
 	for _, l := range logs {
-		uuid = metadataVerification(uuid, l.HostIdentifier)
 		hostname = metadataVerification(hostname, l.Decorations.Hostname)
 		localname = metadataVerification(localname, l.Decorations.LocalHostname)
 		username = metadataVerification(username, l.Decorations.Username)
@@ -91,7 +98,7 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 		osqueryversion = metadataVerification(osqueryversion, l.Decorations.OsqueryVersion)
 	}
 	if debug {
-		log.Debug().Msgf("metadata and dispatch for %s", uuid)
+		log.Debug().Msgf("metadata and dispatch for %s", node.UUID)
 	}
 	metadata := nodes.NodeMetadata{
 		IPAddress:      ipaddress,
@@ -105,7 +112,7 @@ func (l *LoggerTLS) ProcessLogs(data json.RawMessage, logType string, envID uint
 		BytesReceived:  dataLen,
 	}
 	// Dispatch logs and update metadata
-	l.DispatchLogs(data, uuid, logType, envID, environment, metadata, debug)
+	l.DispatchLogs(data, node, logType, envID, environment, metadata, debug)
 	return resultLogs
 }
 

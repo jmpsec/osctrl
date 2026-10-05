@@ -17,10 +17,12 @@ import (
 // feature-off state (nil interface + nil receiver = zero cost).
 type AlertMatcher interface {
 	// MatchResultLogs is called with the decoded result-log batch
-	// after parse, before dispatch. It must not block.
-	MatchResultLogs(envID uint, environment string, logs []types.LogResultData)
+	// after parse, before dispatch. It must not block. nodeUUID is the
+	// node the batch was authenticated as; the entries' hostIdentifier is
+	// sender-controlled and must not be used to attribute hits.
+	MatchResultLogs(envID uint, environment, nodeUUID string, logs []types.LogResultData)
 	// MatchStatusLogs is the status-log counterpart.
-	MatchStatusLogs(envID uint, environment string, logs []types.LogStatusData)
+	MatchStatusLogs(envID uint, environment, nodeUUID string, logs []types.LogStatusData)
 	// MatchQueryResult is called per query in ProcessLogQueryResult.
 	MatchQueryResult(envID uint, environment, queryName string, result json.RawMessage, status int, message string)
 }
