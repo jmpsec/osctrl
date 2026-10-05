@@ -148,9 +148,11 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 	if err := json.Unmarshal(data, &logs); err != nil {
 		log.Err(err).Msgf("error parsing logs %s %v", string(data), err)
 	}
-	// Iterate and insert in DB
+	stamp := logDB.rowStamper()
+	entries := make([]OsqueryStatusData, 0, len(logs))
 	for _, l := range logs {
-		entry := OsqueryStatusData{
+		entries = append(entries, OsqueryStatusData{
+			Model:       stamp(),
 			UUID:        strings.ToUpper(l.HostIdentifier),
 			Environment: environment,
 			Line:        strconv.Itoa(int(l.Line)),
@@ -158,11 +160,9 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 			Version:     l.Version,
 			Filename:    l.Filename,
 			Severity:    strconv.Itoa(int(l.Severity)),
-		}
-		if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
-			log.Err(err).Msg("Error creating status log entry")
-		}
+		})
 	}
+	insertLogRows(logDB.Database.Conn, entries, "status")
 }
 
 // Result - Function that sends JSON result logs to the configured DB
@@ -172,9 +172,11 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 	if err != nil {
 		log.Err(err).Msgf("error parsing logs %s", string(data))
 	}
-	// Iterate and insert in DB
+	stamp := logDB.rowStamper()
+	entries := make([]OsqueryResultData, 0, len(logs))
 	for _, l := range logs {
-		entry := OsqueryResultData{
+		entries = append(entries, OsqueryResultData{
+			Model:       stamp(),
 			UUID:        strings.ToUpper(l.HostIdentifier),
 			Environment: environment,
 			Name:        l.Name,
@@ -182,10 +184,70 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 			Epoch:       l.Epoch,
 			Columns:     string(l.Columns),
 			Counter:     l.Counter,
+		})
+	}
+	insertLogRows(logDB.Database.Conn, entries, "result")
+}
+
+// logInsertBatchSize caps rows per multi-row INSERT. Both log models bind 10
+// columns per row (the gorm.Model timestamps plus seven fields), so 50 rows is
+// 500 bind parameters: under the 999 limit of older SQLite builds and far
+// under the 65535 of Postgres and MySQL.
+const logInsertBatchSize = 50
+
+// insertLogRows writes one osquery log batch with multi-row INSERTs inside a
+// single transaction.
+//
+// Row-by-row inserts each ran in GORM's implicit per-statement transaction,
+// so a batch of N lines cost N commits — N WAL flushes on Postgres — on the
+// busiest write path in osctrl-tls. One transaction makes that one commit.
+//
+// The batch is all-or-nothing, which row-by-row was not: one unstorable row
+// (Postgres rejects NUL bytes in text, for instance) used to cost only itself.
+// So on failure the rolled-back batch is retried row by row from a pristine
+// copy, keeping the old partial-success behaviour without duplicating
+// anything — the transaction guarantees none of the batch was kept.
+func insertLogRows[T any](db *gorm.DB, entries []T, kind string) {
+	if len(entries) == 0 {
+		return
+	}
+	// CreateInBatches writes generated IDs back into the rows it inserted,
+	// even in a batch that is later rolled back. Retrying those rows would
+	// insert explicit IDs, so the fallback works from an untouched copy.
+	pristine := append([]T(nil), entries...)
+	err := db.Transaction(func(tx *gorm.DB) error {
+		return tx.CreateInBatches(entries, logInsertBatchSize).Error
+	})
+	if err == nil {
+		return
+	}
+	log.Warn().Err(err).Int("rows", len(entries)).Msgf("batched %s log insert failed, retrying row by row", kind)
+	for i := range pristine {
+		if err := db.Create(&pristine[i]).Error; err != nil {
+			log.Err(err).Msgf("Error creating %s log entry", kind)
 		}
-		if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
-			log.Err(err).Msg("Error creating result log entry")
-		}
+	}
+}
+
+// rowStamper returns a function handing out strictly increasing timestamps,
+// one per row of a log batch.
+//
+// GORM stamps every row of a multi-row INSERT with the same created_at, but
+// the log readers order by created_at alone, so ties would let the lines of
+// one batch come back shuffled. Row-by-row inserts never tied in practice;
+// stepping by the backend's storage precision (MySQL keeps milliseconds,
+// Postgres microseconds) keeps every row distinct after the database rounds
+// it, and preserves the order osquery sent the lines in.
+func (logDB *LoggerDB) rowStamper() func() gorm.Model {
+	step := time.Microsecond
+	if logDB.Database.Conn.Name() == "mysql" {
+		step = time.Millisecond
+	}
+	next := time.Now()
+	return func() gorm.Model {
+		ts := next
+		next = next.Add(step)
+		return gorm.Model{CreatedAt: ts, UpdatedAt: ts}
 	}
 }
 

@@ -595,16 +595,24 @@ func (m *UserManager) UpdateMetadata(ipaddress, useragent, username, csrftoken s
 	return nil
 }
 
-// UpdateTokenIPAddress updates IP and Last Access for a user's token
-func (m *UserManager) UpdateTokenIPAddress(ipaddress, username string) error {
-	user, err := m.Get(username)
-	if err != nil {
-		return fmt.Errorf("error getting user %w", err)
+// tokenUseResolution is how stale LastTokenUse may get before a request
+// refreshes it. LastTokenUse is informational — nothing authorizes on it — so
+// minute resolution costs nothing visible, while recording every request had
+// each SPA poll write the same admin_users row.
+const tokenUseResolution = time.Minute
+
+// RecordTokenUse stamps the IP and time of an authenticated API request on
+// user, the record the auth middleware has just loaded to validate the token,
+// so no second lookup is needed. The write is skipped when the IP is unchanged
+// and the stored use is within tokenUseResolution; a new IP always records.
+func (m *UserManager) RecordTokenUse(user AdminUser, ipaddress string, now time.Time) error {
+	if user.LastIPAddress == ipaddress && now.Sub(user.LastTokenUse) < tokenUseResolution {
+		return nil
 	}
 	if err := m.DB.Model(&user).Updates(
 		AdminUser{
 			LastIPAddress: ipaddress,
-			LastTokenUse:  time.Now(),
+			LastTokenUse:  now,
 		}).Error; err != nil {
 		return fmt.Errorf("update %w", err)
 	}

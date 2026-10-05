@@ -137,6 +137,38 @@ func (n *NodeManager) GetByUUID(uuid string) (OsqueryNode, error) {
 	return node, nil
 }
 
+// UUIDsInEnvironment reports which of uuids belong to a live node enrolled in
+// environment env, keyed by the stored (upper-case) UUID. The environment name
+// is matched case-insensitively, as the handlers compare it elsewhere.
+//
+// One query for the whole set, reading only the two columns it needs, in place
+// of a full-row lookup per UUID: the rows carry the raw enrollment blob, and
+// callers check membership for a whole page of nodes at a time.
+func (n *NodeManager) UUIDsInEnvironment(uuids []string, env string) (map[string]struct{}, error) {
+	out := make(map[string]struct{}, len(uuids))
+	if len(uuids) == 0 {
+		return out, nil
+	}
+	upper := make([]string, len(uuids))
+	for i, u := range uuids {
+		upper[i] = strings.ToUpper(u)
+	}
+	var rows []struct {
+		UUID        string
+		Environment string
+	}
+	if err := n.DB.Model(&OsqueryNode{}).Select("uuid", "environment").
+		Where("uuid IN ?", upper).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		if strings.EqualFold(r.Environment, env) {
+			out[r.UUID] = struct{}{}
+		}
+	}
+	return out, nil
+}
+
 // GetByUUIDEnv to retrieve full node object from DB, by uuid and environment ID
 // UUID is expected uppercase
 func (n *NodeManager) GetByUUIDEnv(uuid string, envid uint) (OsqueryNode, error) {
@@ -352,48 +384,45 @@ func (n *NodeManager) GetOsqueryVersionCounts() ([]OsqueryVersionCount, error) {
 	return GetOsqueryVersionCounts(n.DB)
 }
 
-// UpdateMetadataByUUID to update node metadata by UUID
-func (n *NodeManager) UpdateMetadataByUUID(uuid string, metadata NodeMetadata) error {
-	// Retrieve node
-	node, err := n.GetByUUID(uuid)
-	if err != nil {
-		return fmt.Errorf("getNodeByUUID %w", err)
-	}
-	// Prepare metadata updates
+// UpdateMetadataByUUID records the metadata osquery decorates its log batches
+// with on the node of that UUID enrolled in envID.
+//
+// It runs on every log batch every node sends, so it is a single UPDATE.
+// bytes_received is incremented in SQL instead of being read and written back,
+// which also stops two log batches from the same node, processed concurrently,
+// from losing each other's bytes. The other columns are assigned whenever the
+// batch carries a value: storing an unchanged value leaves the row as it was,
+// so there is no need to read the row first to compare.
+//
+// Scoping by environment matters because a UUID enrolled in two environments
+// has a live row in each; the caller has already authenticated the batch
+// against envID, so that is the row it describes.
+func (n *NodeManager) UpdateMetadataByUUID(uuid string, envID uint, metadata NodeMetadata) error {
 	updates := map[string]interface{}{
-		"bytes_received": node.BytesReceived + metadata.BytesReceived,
+		"bytes_received": gorm.Expr("bytes_received + ?", metadata.BytesReceived),
 	}
-	// Record username
-	if metadata.Username != node.Username && metadata.Username != "" {
-		updates["username"] = metadata.Username
+	for column, value := range map[string]string{
+		"username":        metadata.Username,
+		"hostname":        metadata.Hostname,
+		"localname":       metadata.Localname,
+		"ip_address":      metadata.IPAddress,
+		"config_hash":     metadata.ConfigHash,
+		"daemon_hash":     metadata.DaemonHash,
+		"osquery_version": metadata.OsqueryVersion,
+		"osquery_user":    metadata.OsqueryUser,
+	} {
+		if value != "" {
+			updates[column] = value
+		}
 	}
-	// Record hostname
-	if metadata.Hostname != node.Hostname && metadata.Hostname != "" {
-		updates["hostname"] = metadata.Hostname
+	result := n.DB.Model(&OsqueryNode{}).
+		Where("uuid = ? AND environment_id = ?", strings.ToUpper(uuid), envID).
+		Updates(updates)
+	if result.Error != nil {
+		return fmt.Errorf("update metadata %w", result.Error)
 	}
-	// Record localname
-	if metadata.Localname != node.Localname && metadata.Localname != "" {
-		updates["localname"] = metadata.Localname
-	}
-	// Record IP address
-	if metadata.IPAddress != node.IPAddress && metadata.IPAddress != "" {
-		updates["ip_address"] = metadata.IPAddress
-	}
-	// Configuration and daemon hash and osquery version update, if different
-	if metadata.ConfigHash != node.ConfigHash && metadata.ConfigHash != "" {
-		updates["config_hash"] = metadata.ConfigHash
-	}
-	if metadata.DaemonHash != node.DaemonHash && metadata.DaemonHash != "" {
-		updates["daemon_hash"] = metadata.DaemonHash
-	}
-	if metadata.OsqueryVersion != node.OsqueryVersion && metadata.OsqueryVersion != "" {
-		updates["osquery_version"] = metadata.OsqueryVersion
-	}
-	if metadata.OsqueryUser != node.OsqueryUser && metadata.OsqueryUser != "" {
-		updates["osquery_user"] = metadata.OsqueryUser
-	}
-	if err := n.MetadataRefresh(node, updates); err != nil {
-		return fmt.Errorf("MetadataRefresh %w", err)
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("update metadata for node %s: %w", uuid, gorm.ErrRecordNotFound)
 	}
 	return nil
 }
@@ -505,11 +534,6 @@ func (n *NodeManager) UpdateIP(nodeID uint, ip string) error {
 	// Update the IP address in the database
 	return n.DB.Model(&OsqueryNode{}).Where("id = ?", nodeID).UpdateColumn("ip_address", ip).Error
 
-}
-
-// MetadataRefresh to perform all needed update operations per node to keep metadata refreshed
-func (n *NodeManager) MetadataRefresh(node OsqueryNode, updates map[string]interface{}) error {
-	return n.DB.Model(&node).Updates(updates).Error
 }
 
 // SortableColumns is the closed set of columns that may be ordered by external

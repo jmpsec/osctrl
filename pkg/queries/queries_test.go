@@ -1,6 +1,7 @@
 package queries_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -476,4 +477,130 @@ func TestSetNodeQueriesAsExpired(t *testing.T) {
 		assert.Equal(t, int64(0), count, "No node queries should be marked as expired for a non-existent query ID")
 	})
 
+}
+
+// A node with no node_query row was never targeted. Reporting it is an error,
+// and it must not touch the query's state or anyone else's status.
+func TestUpdateQueryStatusRejectsUntargetedNode(t *testing.T) {
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
+	require.NoError(t, db.Create(&queries.NodeQuery{NodeID: nodes[0].ID, QueryID: query.ID, Status: queries.DistributedQueryStatusPending}).Error)
+
+	err := q.UpdateQueryStatus(query.Name, nodes[2].ID, 0)
+	require.Error(t, err, "a node the query never targeted must be reported")
+
+	var target queries.NodeQuery
+	require.NoError(t, db.Where("node_id = ? AND query_id = ?", nodes[0].ID, query.ID).First(&target).Error)
+	assert.Equal(t, queries.DistributedQueryStatusPending, target.Status, "the real target's status must be untouched")
+	var unchanged queries.DistributedQuery
+	require.NoError(t, db.First(&unchanged, query.ID).Error)
+	assert.False(t, unchanged.Completed, "an untargeted report must not complete the query")
+}
+
+// An errored result is terminal too: the query completes once every target
+// has either answered or failed.
+func TestUpdateQueryStatusErrorsCountAsTerminal(t *testing.T) {
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
+	for _, n := range nodes[:2] {
+		require.NoError(t, db.Create(&queries.NodeQuery{NodeID: n.ID, QueryID: query.ID, Status: queries.DistributedQueryStatusPending}).Error)
+	}
+
+	require.NoError(t, q.UpdateQueryStatus(query.Name, nodes[0].ID, 1))
+	require.NoError(t, q.UpdateQueryStatus(query.Name, nodes[1].ID, 0))
+
+	var failed queries.NodeQuery
+	require.NoError(t, db.Where("node_id = ? AND query_id = ?", nodes[0].ID, query.ID).First(&failed).Error)
+	assert.Equal(t, queries.DistributedQueryStatusError, failed.Status)
+	var done queries.DistributedQuery
+	require.NoError(t, db.First(&done, query.ID).Error)
+	assert.True(t, done.Completed, "a query whose targets all finished, one with an error, is complete")
+}
+
+// Completion looks for any remaining pending target rather than counting
+// them. With many targets, the last pending row can sit behind every finished
+// one; the query must stay open until exactly that row resolves.
+func TestUpdateQueryStatusCompletesOnlyAfterLastPendingTarget(t *testing.T) {
+	db := testDB(t)
+	q := queries.CreateQueries(db)
+	query := &queries.DistributedQuery{
+		Name: "fanout", Query: "SELECT 1;", Active: true, EnvironmentID: 1,
+		Expiration: time.Now().Add(time.Hour),
+	}
+	require.NoError(t, db.Create(query).Error)
+
+	const targets = 40
+	ids := make([]uint, targets)
+	for i := range ids {
+		n := nodes.OsqueryNode{UUID: fmt.Sprintf("NODE-%02d", i)}
+		require.NoError(t, db.Create(&n).Error)
+		ids[i] = n.ID
+		require.NoError(t, db.Create(&queries.NodeQuery{NodeID: n.ID, QueryID: query.ID, Status: queries.DistributedQueryStatusPending}).Error)
+	}
+
+	// Answer in reverse insertion order, leaving the first-inserted row last.
+	for i := targets - 1; i >= 1; i-- {
+		require.NoError(t, q.UpdateQueryStatus(query.Name, ids[i], 0))
+		var open queries.DistributedQuery
+		require.NoError(t, db.First(&open, query.ID).Error)
+		require.Falsef(t, open.Completed, "completed with %d target(s) still pending", i)
+	}
+	require.NoError(t, q.UpdateQueryStatus(query.Name, ids[0], 0))
+	var done queries.DistributedQuery
+	require.NoError(t, db.First(&done, query.ID).Error)
+	assert.True(t, done.Completed, "query must complete when its last target answers")
+	assert.False(t, done.Active)
+}
+
+// The grouped count must agree with GetQueries/GetCarves(TargetActive) for
+// every environment, since StatsHandler swapped one for the other.
+func TestActiveCountsByEnvironmentMatchesTargetActive(t *testing.T) {
+	db := testDB(t)
+	q := queries.CreateQueries(db)
+
+	type spec struct {
+		env                                 uint
+		typ                                 string
+		active, completed, deleted, expired bool
+		hidden, softDeleted                 bool
+	}
+	specs := []spec{
+		{env: 1, typ: queries.StandardQueryType, active: true},
+		{env: 1, typ: queries.StandardQueryType, active: true, hidden: true}, // TargetActive does not filter hidden
+		{env: 1, typ: queries.StandardQueryType, active: true, completed: true},
+		{env: 1, typ: queries.StandardQueryType, active: true, deleted: true},
+		{env: 1, typ: queries.StandardQueryType, active: true, expired: true},
+		{env: 1, typ: queries.StandardQueryType, active: true, softDeleted: true},
+		{env: 1, typ: queries.StandardQueryType},
+		{env: 1, typ: queries.CarveQueryType, active: true},
+		{env: 1, typ: queries.ConsoleQueryType, active: true},
+		{env: 1, typ: queries.FileExplorerQueryType, active: true},
+		{env: 2, typ: queries.CarveQueryType, active: true},
+		{env: 2, typ: queries.CarveQueryType, active: true},
+		{env: 3, typ: queries.StandardQueryType, completed: true},
+	}
+	for i, s := range specs {
+		dq := queries.DistributedQuery{
+			Name: fmt.Sprintf("q%02d", i), Query: "SELECT 1;", Type: s.typ, EnvironmentID: s.env,
+			Active: s.active, Completed: s.completed, Deleted: s.deleted, Expired: s.expired, Hidden: s.hidden,
+		}
+		require.NoError(t, db.Create(&dq).Error)
+		if s.softDeleted {
+			require.NoError(t, db.Delete(&dq).Error)
+		}
+	}
+
+	got, err := q.ActiveCountsByEnvironment()
+	require.NoError(t, err)
+	for _, env := range []uint{1, 2, 3, 4} {
+		wantQ, err := q.GetQueries(queries.TargetActive, env)
+		require.NoError(t, err)
+		wantC, err := q.GetCarves(queries.TargetActive, env)
+		require.NoError(t, err)
+		assert.Equalf(t, queries.ActiveCounts{Queries: len(wantQ), Carves: len(wantC)}, got[env], "environment %d", env)
+	}
+	assert.Equal(t, queries.ActiveCounts{Queries: 2, Carves: 1}, got[1])
+	assert.Equal(t, queries.ActiveCounts{Carves: 2}, got[2])
+	_, hasEnv3 := got[3]
+	assert.False(t, hasEnv3, "an environment with nothing active has no entry")
 }
