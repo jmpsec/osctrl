@@ -13,15 +13,18 @@ import (
 // LoggerTLS.LogWithEnv). The string environment is forwarded as
 // metadata for exporters that embed it (Splunk source type, DB row,
 // etc.).
-func (l *LoggerTLS) DispatchLogs(data []byte, uuid, logType string, envID uint, environment string, metadata nodes.NodeMetadata, debug bool) {
+//
+// node is the authenticated sender: its metadata is updated and its UUID is
+// what the exporters file the batch under.
+func (l *LoggerTLS) DispatchLogs(data []byte, node nodes.OsqueryNode, logType string, envID uint, environment string, metadata nodes.NodeMetadata, debug bool) {
 	// Use metadata to update record
-	if err := l.Nodes.UpdateMetadataByUUID(uuid, envID, metadata); err != nil {
+	if err := l.Nodes.UpdateMetadata(node.ID, metadata); err != nil {
 		log.Err(err).Msg("error updating metadata")
 	}
 	if debug {
 		log.Debug().Msgf("dispatching logs to %s", l.Logging)
 	}
-	l.LogWithEnv(logType, data, envID, environment, uuid, debug)
+	l.LogWithEnv(logType, data, envID, environment, node.UUID, debug)
 }
 
 // DispatchQueries - Helper to dispatch queries. Uses the node's

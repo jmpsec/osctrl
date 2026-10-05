@@ -45,14 +45,20 @@ func (r *compiledRule) ruleApplies(envID uint) bool {
 // MatchResultLogs evaluates result-log entries against rules scoped to
 // envID. The columns of each entry (or its snapshot rows) are matched
 // field-scoped or across all fields depending on the rule.
-func (rs *RuleSet) MatchResultLogs(envID uint, environment string, logs []types.LogResultData) []Hit {
+//
+// nodeUUID is the node osctrl-tls authenticated the batch as, by node_key.
+// Hits are attributed to it, and node-scoped rules are checked against it,
+// never against the entries' hostIdentifier: the sender writes that field, so
+// trusting it would let a node frame another one, or evade a rule scoped to
+// itself by claiming to be someone else.
+func (rs *RuleSet) MatchResultLogs(envID uint, environment, nodeUUID string, logs []types.LogResultData) []Hit {
 	if len(rs.result) == 0 || len(logs) == 0 {
 		return nil
 	}
 	var hits []Hit
 	for i := range logs {
 		entry := &logs[i]
-		uuid := entry.HostIdentifier
+		uuid := nodeUUID
 		fields := resultFields(entry)
 		lowered := make(map[string]string, len(fields))
 		for j := range rs.result {
@@ -84,15 +90,16 @@ func (rs *RuleSet) MatchResultLogs(envID uint, environment string, logs []types.
 
 // MatchStatusLogs evaluates status-log entries against rules scoped to
 // envID. Entries below the rule's severity floor are skipped before any
-// pattern work happens.
-func (rs *RuleSet) MatchStatusLogs(envID uint, environment string, logs []types.LogStatusData) []Hit {
+// pattern work happens. nodeUUID is the authenticated sender, as for
+// MatchResultLogs.
+func (rs *RuleSet) MatchStatusLogs(envID uint, environment, nodeUUID string, logs []types.LogStatusData) []Hit {
 	if len(rs.status) == 0 || len(logs) == 0 {
 		return nil
 	}
 	var hits []Hit
 	for i := range logs {
 		entry := &logs[i]
-		uuid := entry.HostIdentifier
+		uuid := nodeUUID
 		lowered := make(map[string]string, 3)
 		for j := range rs.status {
 			r := &rs.status[j]
@@ -265,11 +272,20 @@ func matchStatus(r *compiledRule, entry *types.LogStatusData, lowered map[string
 			return false, ""
 		}
 	}
-	return matchFields(r, map[string]string{
-		"message":  entry.Message,
-		"filename": entry.Filename,
-		"version":  entry.Version,
-	}, lowered)
+	// Fields in a fixed order rather than through matchFields' map, whose
+	// iteration order is random: when several fields match — always the case
+	// for the empty pattern of the node page's "any error" preset — the
+	// reported detail must be the message, not whichever field came first.
+	for _, f := range [...]struct{ key, value string }{
+		{"message", entry.Message},
+		{"filename", entry.Filename},
+		{"version", entry.Version},
+	} {
+		if matched, detail := matchSingle(r, f.value, f.key, lowered); matched {
+			return true, detail
+		}
+	}
+	return false, ""
 }
 
 // substringDetail is the context a substring match reports. An empty

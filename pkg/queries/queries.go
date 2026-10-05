@@ -813,3 +813,15 @@ func queryResourceIDs(extraData, resourceKey string) (uint, uint, bool) {
 	resourceID := fields[resourceKey]
 	return sessionID, resourceID, sessionID != 0 && resourceID != 0
 }
+
+// Indexes are the secondary indexes for the query tables beyond those in the
+// struct tags, created by dbutil.EnsureIndexes. (query_id, status) answers
+// "is any target of this query still pending" on every result osctrl-tls
+// records; (environment_id, type, created_at) serves the per-environment query
+// lists and active counts, newest first.
+func Indexes() []dbutil.Index {
+	return []dbutil.Index{
+		{Model: &NodeQuery{}, Name: "idx_node_queries_query_status", Columns: []string{"query_id", "status"}},
+		{Model: &DistributedQuery{}, Name: "idx_distributed_queries_env_type_created", Columns: []string{"environment_id", "type", "created_at"}},
+	}
+}

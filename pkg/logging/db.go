@@ -86,6 +86,9 @@ func CreateLoggerDB(backend *backend.DBManager) (*LoggerDB, error) {
 	if err := backend.Conn.AutoMigrate(&OsqueryQueryData{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (osquery_query_data): %v", err)
 	}
+	// Here rather than with the other tables' indexes: the log tables may live
+	// in a separate logger database, which a log-sink reload can also open.
+	dbutil.BuildIndexes(backend.Conn, Indexes()...)
 	return l, nil
 }
 
@@ -141,7 +144,9 @@ func (logDB *LoggerDB) Log(logType string, data []byte, environment, uuid string
 	}
 }
 
-// Status - Function that sends JSON status logs to the configured DB
+// Status - Function that sends JSON status logs to the configured DB. Rows are
+// filed under uuid, the node the batch was authenticated as, not under each
+// entry's sender-controlled hostIdentifier.
 func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool) {
 	// Parse JSON
 	var logs []types.LogStatusData
@@ -153,7 +158,7 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 	for _, l := range logs {
 		entries = append(entries, OsqueryStatusData{
 			Model:       stamp(),
-			UUID:        strings.ToUpper(l.HostIdentifier),
+			UUID:        strings.ToUpper(uuid),
 			Environment: environment,
 			Line:        strconv.Itoa(int(l.Line)),
 			Message:     l.Message,
@@ -165,7 +170,8 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 	insertLogRows(logDB.Database.Conn, entries, "status")
 }
 
-// Result - Function that sends JSON result logs to the configured DB
+// Result - Function that sends JSON result logs to the configured DB, filed
+// under uuid as for Status.
 func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool) {
 	// Parse JSON
 	logs, err := parseResultLogs(data)
@@ -177,7 +183,7 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 	for _, l := range logs {
 		entries = append(entries, OsqueryResultData{
 			Model:       stamp(),
-			UUID:        strings.ToUpper(l.HostIdentifier),
+			UUID:        strings.ToUpper(uuid),
 			Environment: environment,
 			Name:        l.Name,
 			Action:      l.Action,
@@ -593,4 +599,16 @@ func (logDB *LoggerDB) CleanQueryLogs(entries int64) error {
 		}
 	}
 	return nil
+}
+
+// Indexes are the secondary indexes for the log tables beyond those in the
+// struct tags, created by dbutil.EnsureIndexes. A node's status and result logs
+// are read newest first, and a query's results oldest first; without
+// (uuid, created_at) a node's log page reads every row it has ever sent.
+func Indexes() []dbutil.Index {
+	return []dbutil.Index{
+		{Model: &OsqueryStatusData{}, Name: "idx_osquery_status_data_uuid_created", Columns: []string{"uuid", "created_at"}},
+		{Model: &OsqueryResultData{}, Name: "idx_osquery_result_data_uuid_created", Columns: []string{"uuid", "created_at"}},
+		{Model: &OsqueryQueryData{}, Name: "idx_osquery_query_data_name_created", Columns: []string{"name", "created_at"}},
+	}
 }

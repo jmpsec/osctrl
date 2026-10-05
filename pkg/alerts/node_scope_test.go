@@ -10,17 +10,17 @@ import (
 )
 
 // TestMatchNodeScopedResultRule pins the node-scoping contract: a rule
-// with NodeUUID set only matches that node's entries.
+// with NodeUUID set only matches batches from that node.
 func TestMatchNodeScopedResultRule(t *testing.T) {
 	rs := compileForTest(t,
 		AlertRule{Model: ruleWithID(1), Name: "scoped", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "needle", NodeUUID: "UUID-SCOPED"},
 		AlertRule{Model: ruleWithID(2), Name: "global", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "needle"},
 	)
-	logs := []types.LogResultData{
-		resultEntry("UUID-SCOPED", "file_events", map[string]string{"path": "needle-here"}),
-		resultEntry("UUID-OTHER", "file_events", map[string]string{"path": "needle-here"}),
+	batch := func(uuid string) []types.LogResultData {
+		return []types.LogResultData{resultEntry(uuid, "file_events", map[string]string{"path": "needle-here"})}
 	}
-	hits := rs.MatchResultLogs(7, "prod", logs)
+	hits := append(rs.MatchResultLogs(7, "prod", "UUID-SCOPED", batch("UUID-SCOPED")),
+		rs.MatchResultLogs(7, "prod", "UUID-OTHER", batch("UUID-OTHER"))...)
 	if len(hits) != 3 {
 		// scoped fires on UUID-SCOPED only (1), global fires on both (2)
 		t.Fatalf("expected 3 hits (1 scoped + 2 global), got %d: %+v", len(hits), hits)
@@ -44,13 +44,44 @@ func TestMatchNodeScopedStatusRule(t *testing.T) {
 	rs := compileForTest(t,
 		AlertRule{Model: ruleWithID(1), Name: "scoped-status", Source: SourceStatusLog, MatchType: MatchTypeSubstring, MatchValue: "error", NodeUUID: "UUID-SCOPED"},
 	)
-	logs := []types.LogStatusData{
-		statusEntry("UUID-SCOPED", 2, "error: mine"),
-		statusEntry("UUID-OTHER", 2, "error: not mine"),
-	}
-	hits := rs.MatchStatusLogs(7, "prod", logs)
+	hits := append(rs.MatchStatusLogs(7, "prod", "UUID-SCOPED", []types.LogStatusData{statusEntry("UUID-SCOPED", 2, "error: mine")}),
+		rs.MatchStatusLogs(7, "prod", "UUID-OTHER", []types.LogStatusData{statusEntry("UUID-OTHER", 2, "error: not mine")})...)
 	if len(hits) != 1 || hits[0].NodeUUID != "UUID-SCOPED" {
 		t.Fatalf("scoped status rule must only fire for its node: %+v", hits)
+	}
+}
+
+// A batch's entries carry a hostIdentifier the sender writes. A node that
+// claims to be another must neither fire that node's scoped rules (framing
+// it) nor slip past rules scoped to itself (evading them): attribution is the
+// node the batch was authenticated as.
+func TestMatchIgnoresClaimedHostIdentifier(t *testing.T) {
+	rs := compileForTest(t,
+		AlertRule{Model: ruleWithID(1), Name: "victim-result", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "needle", NodeUUID: "VICTIM"},
+		AlertRule{Model: ruleWithID(2), Name: "attacker-result", Source: SourceResultLog, MatchType: MatchTypeSubstring, MatchValue: "needle", NodeUUID: "ATTACKER"},
+		AlertRule{Model: ruleWithID(3), Name: "victim-status", Source: SourceStatusLog, MatchType: MatchTypeSubstring, MatchValue: "error", NodeUUID: "VICTIM"},
+		AlertRule{Model: ruleWithID(4), Name: "attacker-status", Source: SourceStatusLog, MatchType: MatchTypeSubstring, MatchValue: "error", NodeUUID: "ATTACKER"},
+	)
+	// Authenticated as ATTACKER, every entry claiming to be VICTIM.
+	results := rs.MatchResultLogs(7, "prod", "ATTACKER", []types.LogResultData{
+		resultEntry("VICTIM", "file_events", map[string]string{"path": "needle"}),
+	})
+	statuses := rs.MatchStatusLogs(7, "prod", "ATTACKER", []types.LogStatusData{
+		statusEntry("VICTIM", 2, "error: spoofed"),
+	})
+	for _, h := range append(results, statuses...) {
+		if h.NodeUUID != "ATTACKER" {
+			t.Fatalf("hit attributed to the claimed node instead of the sender: %+v", h)
+		}
+		if strings.HasPrefix(h.RuleName, "victim") {
+			t.Fatalf("a spoofed hostIdentifier fired another node's rule: %+v", h)
+		}
+	}
+	if len(results) != 1 || results[0].RuleName != "attacker-result" {
+		t.Fatalf("the sender's own result rule must still fire: %+v", results)
+	}
+	if len(statuses) != 1 || statuses[0].RuleName != "attacker-status" {
+		t.Fatalf("the sender's own status rule must still fire: %+v", statuses)
 	}
 }
 
@@ -95,9 +126,9 @@ func TestMatchNodeScopedErrorRule(t *testing.T) {
 		statusEntry("WATCH-U9", 2, "query failed to execute"),
 		statusEntry("WATCH-U9", 1, "a warning nobody asked to be paged for"),
 		statusEntry("WATCH-U9", 0, "an informational line"),
-		statusEntry("OTHER-NODE", 2, "someone else's error"),
 	}
-	hits := rs.MatchStatusLogs(0, "prod", logs)
+	hits := append(rs.MatchStatusLogs(0, "prod", "WATCH-U9", logs),
+		rs.MatchStatusLogs(0, "prod", "OTHER-NODE", []types.LogStatusData{statusEntry("OTHER-NODE", 2, "someone else's error")})...)
 	if len(hits) != 1 {
 		t.Fatalf("expected exactly the node's error line to hit, got %+v", hits)
 	}

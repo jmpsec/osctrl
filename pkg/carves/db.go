@@ -3,6 +3,7 @@ package carves
 import (
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"gorm.io/gorm"
 )
 
@@ -40,4 +41,13 @@ type CarvedBlock struct {
 	Size          int
 	Carver        string
 	EnvironmentID uint
+}
+
+// Indexes are the secondary indexes for carved_files beyond those in the
+// struct tags, created by dbutil.EnsureIndexes: the carves list looks up each
+// carve's files by query name within an environment.
+func Indexes() []dbutil.Index {
+	return []dbutil.Index{
+		{Model: &CarvedFile{}, Name: "idx_carved_files_env_query", Columns: []string{"environment_id", "query_name"}},
+	}
 }

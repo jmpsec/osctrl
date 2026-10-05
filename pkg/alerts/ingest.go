@@ -29,19 +29,19 @@ func NewIngestMatcher(store *Store, worker *Worker) *IngestMatcher {
 }
 
 // MatchResultLogs implements logging.AlertMatcher.
-func (m *IngestMatcher) MatchResultLogs(envID uint, environment string, logs []types.LogResultData) {
+func (m *IngestMatcher) MatchResultLogs(envID uint, environment, nodeUUID string, logs []types.LogResultData) {
 	if m == nil {
 		return
 	}
-	m.worker.Enqueue(m.store.Snapshot().MatchResultLogs(envID, environment, logs))
+	m.worker.Enqueue(m.store.Snapshot().MatchResultLogs(envID, environment, nodeUUID, logs))
 }
 
 // MatchStatusLogs implements logging.AlertMatcher.
-func (m *IngestMatcher) MatchStatusLogs(envID uint, environment string, logs []types.LogStatusData) {
+func (m *IngestMatcher) MatchStatusLogs(envID uint, environment, nodeUUID string, logs []types.LogStatusData) {
 	if m == nil {
 		return
 	}
-	m.worker.Enqueue(m.store.Snapshot().MatchStatusLogs(envID, environment, logs))
+	m.worker.Enqueue(m.store.Snapshot().MatchStatusLogs(envID, environment, nodeUUID, logs))
 }
 
 // MatchQueryResult implements logging.AlertMatcher.

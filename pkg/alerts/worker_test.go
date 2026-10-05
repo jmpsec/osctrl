@@ -211,16 +211,16 @@ func TestIngestMatcherAdapts(t *testing.T) {
 	store.Publish(rs)
 
 	matcher := NewIngestMatcher(store, worker)
-	matcher.MatchResultLogs(1, "dev", []types.LogResultData{resultEntry("node-1", "file_events", map[string]string{"path": "needle here"})})
-	matcher.MatchStatusLogs(1, "dev", []types.LogStatusData{statusEntry("node-1", 2, "an error occurred")})
+	matcher.MatchResultLogs(1, "dev", "NODE-1", []types.LogResultData{resultEntry("node-1", "file_events", map[string]string{"path": "needle here"})})
+	matcher.MatchStatusLogs(1, "dev", "NODE-1", []types.LogStatusData{statusEntry("node-1", 2, "an error occurred")})
 	if sink.count() != 2 {
 		t.Fatalf("expected 2 dispatches through adapter, got %d", sink.count())
 	}
 
 	// nil matcher must be safe
 	var nilMatcher *IngestMatcher
-	nilMatcher.MatchResultLogs(1, "dev", nil)
-	nilMatcher.MatchStatusLogs(1, "dev", nil)
+	nilMatcher.MatchResultLogs(1, "dev", "NODE-1", nil)
+	nilMatcher.MatchStatusLogs(1, "dev", "NODE-1", nil)
 	nilMatcher.MatchQueryResult(1, "dev", "q", nil, 0, "")
 }
 

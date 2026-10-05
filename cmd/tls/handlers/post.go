@@ -354,7 +354,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		// Process logs and update metadata
 		go func() {
 			start := time.Now()
-			results := h.Logs.ProcessLogs(t.Data, t.LogType, env.ID, env.Name, utils.GetIP(r), len(body), env.DebugHTTP)
+			results := h.Logs.ProcessLogs(node, t.Data, t.LogType, env.ID, env.Name, utils.GetIP(r), len(body), env.DebugHTTP)
 			duration := time.Since(start).Seconds()
 			logProcessDuration.WithLabelValues(string(env.UUID), t.LogType).Observe(duration)
 			// Count ERROR-severity status logs into the activity rollup.

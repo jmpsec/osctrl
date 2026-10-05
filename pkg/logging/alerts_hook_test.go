@@ -11,6 +11,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// hookNode is the node the hook tests' batches are authenticated as.
+var hookNode = nodes.OsqueryNode{ID: 1, UUID: "NODE-A"}
+
 // recordingMatcher captures hook invocations for the ingest tests.
 type recordingMatcher struct {
 	resultBatches  []int
@@ -18,21 +21,24 @@ type recordingMatcher struct {
 	queryResults   []string
 	lastEnvID      uint
 	lastEnvName    string
+	lastNodeUUID   string
 	lastResultLogs []types.LogResultData
 	lastStatusLogs []types.LogStatusData
 }
 
-func (m *recordingMatcher) MatchResultLogs(envID uint, environment string, logs []types.LogResultData) {
+func (m *recordingMatcher) MatchResultLogs(envID uint, environment, nodeUUID string, logs []types.LogResultData) {
 	m.resultBatches = append(m.resultBatches, len(logs))
 	m.lastEnvID = envID
 	m.lastEnvName = environment
+	m.lastNodeUUID = nodeUUID
 	m.lastResultLogs = logs
 }
 
-func (m *recordingMatcher) MatchStatusLogs(envID uint, environment string, logs []types.LogStatusData) {
+func (m *recordingMatcher) MatchStatusLogs(envID uint, environment, nodeUUID string, logs []types.LogStatusData) {
 	m.statusBatches = append(m.statusBatches, len(logs))
 	m.lastEnvID = envID
 	m.lastEnvName = environment
+	m.lastNodeUUID = nodeUUID
 	m.lastStatusLogs = logs
 }
 
@@ -48,7 +54,7 @@ func TestProcessLogsAlertHookResult(t *testing.T) {
 	logger := testLoggerWithMatcher(t, &recordingMatcher{})
 	data := json.RawMessage(`[{"name":"file_events","columns":{"path":"/etc/shadow"},"hostIdentifier":"NODE-A"}]`)
 
-	returned := logger.ProcessLogs(data, types.ResultLog, 3, "prod", "10.0.0.1", len(data), false)
+	returned := logger.ProcessLogs(hookNode, data, types.ResultLog, 3, "prod", "10.0.0.1", len(data), false)
 
 	if len(returned) != 1 {
 		t.Fatalf("ProcessLogs must still return decoded results: %d", len(returned))
@@ -63,6 +69,9 @@ func TestProcessLogsAlertHookResult(t *testing.T) {
 	if m.lastResultLogs[0].HostIdentifier != "NODE-A" {
 		t.Fatalf("unexpected entry passed to matcher: %+v", m.lastResultLogs[0])
 	}
+	if m.lastNodeUUID != hookNode.UUID {
+		t.Fatalf("matcher must be told the authenticated sender, got %q", m.lastNodeUUID)
+	}
 }
 
 // TestProcessLogsAlertHookStatus verifies the status-log tap decodes the
@@ -71,7 +80,7 @@ func TestProcessLogsAlertHookStatus(t *testing.T) {
 	logger := testLoggerWithMatcher(t, &recordingMatcher{})
 	data := json.RawMessage(`[{"severity":"2","message":"error: bad thing happened","hostIdentifier":"NODE-A"}]`)
 
-	logger.ProcessLogs(data, types.StatusLog, 3, "prod", "10.0.0.1", len(data), false)
+	logger.ProcessLogs(hookNode, data, types.StatusLog, 3, "prod", "10.0.0.1", len(data), false)
 
 	m := logger.Alerts.(*recordingMatcher)
 	if len(m.statusBatches) != 1 {
@@ -91,7 +100,7 @@ func TestProcessLogsNoMatcherIsNoop(t *testing.T) {
 	logger := testLoggerWithMatcher(t, nil)
 	data := json.RawMessage(`[{"name":"x","columns":{"a":"b"},"hostIdentifier":"U"}]`)
 
-	returned := logger.ProcessLogs(data, types.ResultLog, 1, "dev", "10.0.0.1", len(data), false)
+	returned := logger.ProcessLogs(hookNode, data, types.ResultLog, 1, "dev", "10.0.0.1", len(data), false)
 	if len(returned) != 1 {
 		t.Fatalf("no-matcher path must not change behavior: %d", len(returned))
 	}

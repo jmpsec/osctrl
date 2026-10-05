@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -548,4 +549,13 @@ func (m *AuditLogManager) GetBySeverityEnv(severity, envID uint) ([]AuditLog, er
 		return logs, fmt.Errorf("get AuditLog by severity and environment %w", err)
 	}
 	return logs, nil
+}
+
+// Indexes are the secondary indexes for audit_logs beyond those in the struct
+// tags, created by dbutil.EnsureIndexes: the audit page lists entries newest
+// first.
+func Indexes() []dbutil.Index {
+	return []dbutil.Index{
+		{Model: &AuditLog{}, Name: "idx_audit_logs_created_at", Columns: []string{"created_at"}},
+	}
 }
