@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jmpsec/osctrl/cmd/api/handlers"
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -156,7 +157,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 				return
 			}
 			// Update metadata for the user
-			if err := apiUsers.UpdateTokenIPAddress(utils.GetIP(r), claims.Username); err != nil {
+			if err := apiUsers.RecordTokenUse(user, utils.GetIP(r), time.Now()); err != nil {
 				log.Err(err).Msgf("error updating token for user %s", claims.Username)
 			}
 			// Set middleware values

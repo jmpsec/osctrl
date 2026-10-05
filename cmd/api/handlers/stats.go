@@ -15,7 +15,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
-	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -107,9 +106,20 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 		Environments:  make([]EnvStats, 0, len(allEnvs)),
 	}
 
+	// Active query and carve totals for every environment in one grouped
+	// count. If it fails, every environment is left out, as the per-env
+	// lookups it replaces skipped any environment whose count failed.
+	activeCounts, countErr := h.Queries.ActiveCountsByEnvironment()
+	if countErr != nil {
+		log.Warn().Err(countErr).Msg("stats: failed to count active queries and carves, skipping environments")
+	}
+
 	for _, e := range allEnvs {
 		// Filter to envs the user can actually see.
 		if !h.Users.CheckPermissions(user, users.UserLevel, e.UUID) {
+			continue
+		}
+		if countErr != nil {
 			continue
 		}
 
@@ -129,19 +139,7 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 			log.Warn().Err(err).Str("env", e.Name).Msg("stats: failed to get platform counts, defaulting to zeros")
 		}
 
-		// Use type-specific methods to avoid double-counting:
-		//   GetQueries returns StandardQueryType active items only.
-		//   GetCarves  returns CarveQueryType active items only.
-		activeQ, err := h.Queries.GetQueries(queries.TargetActive, e.ID)
-		if err != nil {
-			log.Warn().Err(err).Str("env", e.Name).Msg("stats: failed to count active queries, skipping env")
-			continue
-		}
-		activeC, err := h.Queries.GetCarves(queries.TargetActive, e.ID)
-		if err != nil {
-			log.Warn().Err(err).Str("env", e.Name).Msg("stats: failed to count active carves, skipping env")
-			continue
-		}
+		active := activeCounts[e.ID]
 
 		row := EnvStats{
 			InactiveHours:  envHours,
@@ -150,16 +148,16 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 			Active:         ns.Active,
 			Inactive:       ns.Inactive,
 			Total:          ns.Total,
-			ActiveQueries:  len(activeQ),
-			ActiveCarves:   len(activeC),
+			ActiveQueries:  active.Queries,
+			ActiveCarves:   active.Carves,
 			PlatformCounts: platCounts,
 		}
 		out.Environments = append(out.Environments, row)
 		out.ActiveNodes += ns.Active
 		out.InactiveNodes += ns.Inactive
 		out.TotalNodes += ns.Total
-		out.TotalActiveQueries += len(activeQ)
-		out.TotalActiveCarves += len(activeC)
+		out.TotalActiveQueries += active.Queries
+		out.TotalActiveCarves += active.Carves
 		// Aggregate cross-env platform totals.
 		out.PlatformCounts.Linux += platCounts.Linux
 		out.PlatformCounts.Darwin += platCounts.Darwin
@@ -923,18 +921,17 @@ func (h *HandlersApi) NodeActivityTilesBatchHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Only include nodes that actually belong to this env.
+	// Only include nodes that actually belong to this env. A lookup failure
+	// leaves nodes out rather than failing the poll, as the per-node lookups
+	// it replaces did.
 	out := make(map[string]activity.NodeTileSeries, len(uuids))
-	for _, u := range uuids {
-		node, err := h.Nodes.GetByUUID(u)
-		if err != nil {
-			continue
-		}
-		if !strings.EqualFold(node.Environment, env.Name) {
-			continue
-		}
-		if s, ok := series[node.UUID]; ok {
-			out[node.UUID] = s
+	inEnv, err := h.Nodes.UUIDsInEnvironment(uuids, env.Name)
+	if err != nil {
+		log.Warn().Err(err).Str("env", env.Name).Msg("activity tiles: node membership lookup failed")
+	}
+	for u := range inEnv {
+		if s, ok := series[u]; ok {
+			out[u] = s
 		}
 	}
 

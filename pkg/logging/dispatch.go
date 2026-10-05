@@ -15,7 +15,7 @@ import (
 // etc.).
 func (l *LoggerTLS) DispatchLogs(data []byte, uuid, logType string, envID uint, environment string, metadata nodes.NodeMetadata, debug bool) {
 	// Use metadata to update record
-	if err := l.Nodes.UpdateMetadataByUUID(uuid, metadata); err != nil {
+	if err := l.Nodes.UpdateMetadataByUUID(uuid, envID, metadata); err != nil {
 		log.Err(err).Msg("error updating metadata")
 	}
 	if debug {

@@ -394,13 +394,10 @@ func TestUserChangePreferredLanguageClear(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateTokenIPAddress(t *testing.T) {
+// The auth middleware already loaded the user to validate the token, so
+// recording the request's use must not look the user up again.
+func TestRecordTokenUseWritesWithoutLookup(t *testing.T) {
 	manager, mock := setupTestManager(t)
-	mock.ExpectQuery(
-		regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
-		WithArgs("testUser", 1).
-		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
-
 	mock.ExpectBegin()
 	mock.ExpectExec(
 		regexp.QuoteMeta(`UPDATE "admin_users" SET "updated_at"=$1,"last_ip_address"=$2,"last_token_use"=$3 WHERE "admin_users"."deleted_at" IS NULL AND "id" = $4`)).
@@ -408,9 +405,35 @@ func TestUpdateTokenIPAddress(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err := manager.UpdateTokenIPAddress("1.2.3.4", "testUser")
+	user := AdminUser{Model: gorm.Model{ID: 1}, Username: "testUser", LastIPAddress: "1.2.3.4", LastTokenUse: time.Now().Add(-2 * tokenUseResolution)}
+	assert.NoError(t, manager.RecordTokenUse(user, "1.2.3.4", time.Now()))
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
 
-	assert.NoError(t, err)
+func TestRecordTokenUseSkipsRecentSameIP(t *testing.T) {
+	manager, mock := setupTestManager(t)
+	now := time.Now()
+	user := AdminUser{Model: gorm.Model{ID: 1}, Username: "testUser", LastIPAddress: "1.2.3.4", LastTokenUse: now.Add(-tokenUseResolution / 2)}
+
+	// No expectations: any statement fails the test.
+	assert.NoError(t, manager.RecordTokenUse(user, "1.2.3.4", now))
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// A request from a new address is recorded immediately, however recent the
+// last one was.
+func TestRecordTokenUseRecordsNewIPImmediately(t *testing.T) {
+	manager, mock := setupTestManager(t)
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(`UPDATE "admin_users" SET`)).
+		WithArgs(sqlmock.AnyArg(), "5.6.7.8", sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	now := time.Now()
+	user := AdminUser{Model: gorm.Model{ID: 1}, Username: "testUser", LastIPAddress: "1.2.3.4", LastTokenUse: now.Add(-time.Second)}
+	assert.NoError(t, manager.RecordTokenUse(user, "5.6.7.8", now))
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestUpdateMetadata(t *testing.T) {

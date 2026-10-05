@@ -335,6 +335,45 @@ func (q *Queries) GetCarves(target string, envid uint) ([]DistributedQuery, erro
 	return q.Gets(target, CarveQueryType, envid)
 }
 
+// ActiveCounts is how many active standard queries and carves an environment
+// has.
+type ActiveCounts struct {
+	Queries int
+	Carves  int
+}
+
+// ActiveCountsByEnvironment counts active standard queries and carves for
+// every environment in one grouped query, applying exactly the TargetActive
+// filter of GetQueries and GetCarves. For callers that only need the totals:
+// those methods load every matching row, query text included, to be counted.
+func (q *Queries) ActiveCountsByEnvironment() (map[uint]ActiveCounts, error) {
+	var rows []struct {
+		EnvironmentID uint
+		Type          string
+		Total         int
+	}
+	if err := q.DB.Model(&DistributedQuery{}).
+		Select("environment_id, type, COUNT(*) AS total").
+		Where("active = ? AND completed = ? AND deleted = ? AND expired = ? AND type IN ?",
+			true, false, false, false, []string{StandardQueryType, CarveQueryType}).
+		Group("environment_id, type").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make(map[uint]ActiveCounts)
+	for _, r := range rows {
+		c := out[r.EnvironmentID]
+		switch r.Type {
+		case StandardQueryType:
+			c.Queries = r.Total
+		case CarveQueryType:
+			c.Carves = r.Total
+		}
+		out[r.EnvironmentID] = c
+	}
+	return out, nil
+}
+
 // Get to get a query by name
 func (q *Queries) Get(name string, envid uint) (DistributedQuery, error) {
 	var query DistributedQuery
@@ -592,26 +631,34 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 		return fmt.Errorf("error getting query id: %w", err)
 	}
 
-	var nodeQuery NodeQuery
-
-	if err := q.DB.Where("node_id = ? AND query_id = ?", nodeID, query.ID).Find(&nodeQuery).Error; err != nil {
-		return err
+	// One UPDATE rather than SELECT-then-UPDATE. No matching row means the
+	// node was never targeted by this query, which stays an error, as it was
+	// when the empty SELECT left nothing to update.
+	updated := q.DB.Model(&NodeQuery{}).
+		Where("node_id = ? AND query_id = ?", nodeID, query.ID).
+		Updates(map[string]interface{}{"status": result})
+	if updated.Error != nil {
+		return updated.Error
 	}
-	if err := q.DB.Model(&nodeQuery).Updates(map[string]interface{}{"status": result}).Error; err != nil {
-		return err
+	if updated.RowsAffected == 0 {
+		return fmt.Errorf("no node query for node %d and query %s", nodeID, queryName)
 	}
 
-	var pending int64
+	// Completion only needs to know whether any target is still pending, so
+	// look for one rather than counting them. status is not indexed: COUNT
+	// read every node_query row of the query on every result, O(targets²)
+	// over a query's life, while LIMIT 1 stops at the first pending row.
+	var stillPending []uint
 	if err := q.DB.Model(&NodeQuery{}).
 		Where("query_id = ? AND status = ?", query.ID, DistributedQueryStatusPending).
-		Count(&pending).Error; err != nil {
+		Limit(1).Pluck("id", &stillPending).Error; err != nil {
 		return err
 	}
 	// Standard distributed queries are complete once every targeted node has
 	// reached a terminal node_query status. Carves use the same delivery
 	// mechanism, but the actual file transfer continues after query delivery, so
 	// they must not be auto-completed here.
-	if pending == 0 && query.Type != CarveQueryType {
+	if len(stillPending) == 0 && query.Type != CarveQueryType {
 		if err := q.DB.Model(&query).Updates(map[string]interface{}{"completed": true, "active": false}).Error; err != nil {
 			return err
 		}
