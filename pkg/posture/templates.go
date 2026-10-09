@@ -104,11 +104,11 @@ func GetProfile(id string) *PostureProfile {
 // -----------------------------------------------------------------------
 
 func WindowsServerProfile() PostureProfile {
-	return PostureProfile{
+	return withSecurityChecks(PostureProfile{
 		ID:          "win-server",
 		Name:        "Windows Servers",
 		Platform:    "windows",
-		Description: "Posture checks for Windows production servers: installed programs, real users, disk encryption, running services, scheduled tasks, autorun entries, listening ports, and patches. All queries run once per day.",
+		Description: "Posture checks for Windows production servers: installed programs, real users, disk encryption, running services, scheduled tasks, autorun entries, listening ports, and patches. Includes platform security baseline signals for SOC 2 and ISO 27001 evidence. All queries run once per day.",
 		Queries: map[string]ProfileQuery{
 			"packages_windows": {
 				Query:    "SELECT name, version, publisher, install_date FROM programs ORDER BY name",
@@ -144,7 +144,7 @@ func WindowsServerProfile() PostureProfile {
 				Interval: 86400, Platform: "windows", Snapshot: true,
 			},
 		},
-	}
+	})
 }
 
 // -----------------------------------------------------------------------
@@ -152,11 +152,11 @@ func WindowsServerProfile() PostureProfile {
 // -----------------------------------------------------------------------
 
 func LinuxServerProfile() PostureProfile {
-	return PostureProfile{
+	return withSecurityChecks(PostureProfile{
 		ID:          "linux-server",
 		Name:        "Linux Servers",
 		Platform:    "linux",
-		Description: "Posture checks for Linux production servers: deb/rpm packages, real users, disk encryption, listening ports, cron jobs, systemd timers, kernel modules, SUID binaries, and SSH keys. All queries run once per day.",
+		Description: "Posture checks for Linux production servers: deb/rpm packages, real users, disk encryption, listening ports, cron jobs, systemd timers, kernel modules, SUID binaries, and SSH keys. Includes platform security baseline signals for SOC 2 and ISO 27001 evidence. All queries run once per day.",
 		Queries: map[string]ProfileQuery{
 			"packages_deb": {
 				Query:    "SELECT name, version, revision, source AS repo FROM deb_packages ORDER BY name",
@@ -200,7 +200,7 @@ func LinuxServerProfile() PostureProfile {
 				Interval: 86400, Platform: "linux", Snapshot: true,
 			},
 		},
-	}
+	})
 }
 
 // -----------------------------------------------------------------------
@@ -208,11 +208,11 @@ func LinuxServerProfile() PostureProfile {
 // -----------------------------------------------------------------------
 
 func MacOSLaptopProfile() PostureProfile {
-	return PostureProfile{
+	return withSecurityChecks(PostureProfile{
 		ID:          "macos-laptop",
 		Name:        "macOS Laptops",
 		Platform:    "darwin",
-		Description: "Posture checks for corporate macOS laptops: Homebrew packages, installed apps, real users, disk encryption, startup items, browser extensions, WiFi networks, SSH keys, and file sharing preferences. All queries run once per day.",
+		Description: "Posture checks for corporate macOS laptops: Homebrew packages, installed apps, real users, disk encryption, startup items, browser extensions, WiFi networks, SSH keys, and file sharing preferences. Includes platform security baseline signals for SOC 2 and ISO 27001 evidence. All queries run once per day.",
 		Queries: map[string]ProfileQuery{
 			"packages_brew": {
 				Query:    "SELECT name, version, type FROM homebrew_packages ORDER BY name",
@@ -256,7 +256,7 @@ func MacOSLaptopProfile() PostureProfile {
 				Interval: 86400, Platform: "darwin", Snapshot: true,
 			},
 		},
-	}
+	})
 }
 
 // -----------------------------------------------------------------------
@@ -264,11 +264,11 @@ func MacOSLaptopProfile() PostureProfile {
 // -----------------------------------------------------------------------
 
 func WindowsLaptopProfile() PostureProfile {
-	return PostureProfile{
+	return withSecurityChecks(PostureProfile{
 		ID:          "win-laptop",
 		Name:        "Windows Laptops",
 		Platform:    "windows",
-		Description: "Posture checks for corporate Windows laptops: installed programs, real users, disk encryption, startup items, browser extensions, autorun entries, and patches. All queries run once per day.",
+		Description: "Posture checks for corporate Windows laptops: installed programs, real users, disk encryption, startup items, browser extensions, autorun entries, and patches. Includes platform security baseline signals for SOC 2 and ISO 27001 evidence. All queries run once per day.",
 		Queries: map[string]ProfileQuery{
 			"packages_windows": {
 				Query:    "SELECT name, version, publisher, install_date FROM programs ORDER BY name",
@@ -304,7 +304,7 @@ func WindowsLaptopProfile() PostureProfile {
 				Interval: 86400, Platform: "windows", Snapshot: true,
 			},
 		},
-	}
+	})
 }
 
 // -----------------------------------------------------------------------
@@ -312,11 +312,11 @@ func WindowsLaptopProfile() PostureProfile {
 // -----------------------------------------------------------------------
 
 func LinuxLaptopProfile() PostureProfile {
-	return PostureProfile{
+	return withSecurityChecks(PostureProfile{
 		ID:          "linux-laptop",
 		Name:        "Linux Laptops",
 		Platform:    "linux",
-		Description: "Posture checks for corporate Linux laptops: deb/rpm packages, real users, disk encryption, startup items, browser extensions, and SSH keys. All queries run once per day.",
+		Description: "Posture checks for corporate Linux laptops: deb/rpm packages, real users, disk encryption, startup items, browser extensions, and SSH keys. Includes platform security baseline signals for SOC 2 and ISO 27001 evidence. All queries run once per day.",
 		Queries: map[string]ProfileQuery{
 			"packages_deb": {
 				Query:    "SELECT name, version, revision, source AS repo FROM deb_packages ORDER BY name",
@@ -352,5 +352,5 @@ func LinuxLaptopProfile() PostureProfile {
 				Interval: 86400, Platform: "linux", Snapshot: true,
 			},
 		},
-	}
+	})
 }
