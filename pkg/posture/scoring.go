@@ -205,23 +205,19 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 	}
 
 	// Build a lookup: category → parsed rows. A collected category with an
-	// empty result is kept as an empty (non-nil) slice — "the query ran and
+	// empty result is kept in the lookup — "the query ran and
 	// found nothing" is different from "never collected".
 	categoryData := make(map[string][]map[string]interface{})
+	incompleteData := make(map[string]bool)
 	for _, r := range records {
-		var rows []map[string]interface{}
-		if r.Summary != "" {
-			_ = json.Unmarshal([]byte(r.Summary), &rows)
+		rows, valid := scoringRows(r.Summary)
+		// Summaries are capped at 100 rows. Use the full snapshot when it
+		// contains more evidence; a malformed/truncated snapshot is never
+		// allowed to replace a valid summary.
+		if snapshot, ok := scoringRows(r.Snapshot); ok && (!valid || len(snapshot) > len(rows)) {
+			rows, valid = snapshot, true
 		}
-		if rows == nil {
-			// Try snapshot if summary was empty
-			if r.Snapshot != "" {
-				_ = json.Unmarshal([]byte(r.Snapshot), &rows)
-			}
-		}
-		if rows == nil {
-			rows = []map[string]interface{}{}
-		}
+		incompleteData[r.Category] = !valid || len(rows) < r.RowCount
 		categoryData[r.Category] = rows
 		if score.NodeUUID == "" {
 			score.NodeUUID = r.NodeUUID
@@ -252,6 +248,15 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 		}
 
 		status, detail := rule.Evaluate(data)
+		for cat := range data {
+			if incompleteData[cat] {
+				if status == "pass" {
+					status = "warn"
+				}
+				detail += "; evidence is malformed or incomplete — collect a complete snapshot"
+				break
+			}
+		}
 		weight := ruleWeight(rule)
 
 		result := ControlResult{
@@ -290,6 +295,29 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 	return score
 }
 
+func scoringRows(raw string) ([]map[string]interface{}, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, false
+	}
+	var rows []map[string]interface{}
+	if strings.HasPrefix(raw, "{") {
+		var row map[string]interface{}
+		if err := json.Unmarshal([]byte(raw), &row); err != nil {
+			return nil, false
+		}
+		rows = []map[string]interface{}{row}
+	} else if err := json.Unmarshal([]byte(raw), &rows); err != nil {
+		return nil, false
+	}
+	for _, row := range rows {
+		if row == nil {
+			return nil, false
+		}
+	}
+	return rows, true
+}
+
 func ruleWeight(rule ScoringRule) int {
 	if rule.Weight > 0 {
 		return rule.Weight
@@ -326,7 +354,7 @@ func riskLevel(score int, controls []ControlResult) string {
 // ---------------------------------------------------------------------------
 
 func defaultRules() []ScoringRule {
-	return []ScoringRule{
+	return append([]ScoringRule{
 		// --- Disk encryption at rest (A.8.24 / CC6.6) ---
 		// Evidence arrives either as generic disk_encryption rows (Linux and
 		// macOS: "encrypted" flag) or BitLocker rows ("protection_status"),
@@ -700,7 +728,7 @@ func defaultRules() []ScoringRule {
 				return "pass", fmt.Sprintf("%d kernel modules loaded", len(rows))
 			},
 		},
-	}
+	}, securityRules()...)
 }
 
 // ---------------------------------------------------------------------------

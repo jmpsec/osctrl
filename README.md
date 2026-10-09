@@ -50,7 +50,7 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 - **Security-sensitive API defaults**: JWT authentication by default for `osctrl-api`, optional multi-factor authentication (TOTP, passkeys/security keys, recovery codes) for password logins, trusted proxy controls, audit logging, and authenticated access to query/carve sample libraries.
 - **Model Context Protocol**: A standalone `osctrl-mcp` stdio server and an optional hosted `/api/v1/mcp` endpoint expose permission-checked fleet inspection tools to MCP clients. Mutating tools are separately gated and disabled by default.
 - **Alerting**: Optional rule-based alerting on result/status/query logs and node state (inactive/recovered), scoped globally, per environment, or to a single node. Notifications fan out to webhook and email channels with Redis-backed cooldown/dedupe, dispatched history, and hot reload without a restart. Rules can be created straight from a node's page, and a node shows a marker when any rule covers it.
-- **Posture and enrichment hooks**: Optional posture ingestion from scheduled query prefixes, optional MaxMind GeoIP country enrichment, Redis-backed activity tracking, and API-managed service configuration sections.
+- **Posture and enrichment hooks**: Optional posture ingestion and [device risk checks mapped to SOC 2 and ISO 27001 objectives](pkg/posture/README.md), optional MaxMind GeoIP country enrichment, Redis-backed activity tracking, and API-managed service configuration sections.
 - **Health / system status**: Optional deployment health page behind `--health-enabled` (disabled by default), fusing a live database ping, a Redis PING, per-service runtime stats, an `osctrl-tls` heartbeat, and cached upgrade status.
 
 ## Documentation
