@@ -75,6 +75,7 @@ Main runtime components:
 - `pkg/mcp`: MCP server registration, tool schemas, read tools, and separately enabled write tools shared by standalone and hosted transports.
 - `pkg/apiclient`: authenticated REST client used by `osctrl-cli` and standalone `osctrl-mcp`.
 - `pkg/posture`: optional posture ingestion, checks, and scoring.
+- `pkg/vulns`: optional vulnerability monitoring — inventory ingestion (TLS), OSV/CISA KEV feed sync, matching and findings (API worker), read model.
 - `pkg/serviceconfig`, `pkg/servicecommands`: persisted service sections and DB-mediated control requests between API and TLS processes.
 - `deploy`: Docker, nginx, systemd, osquery assets, sample YAML configs.
 - `tools`: helper scripts, Bruno collections, release tooling.
@@ -95,8 +96,8 @@ Both long-lived backend services follow the same pattern in their `main.go`:
 
 Service-specific additions:
 
-- `osctrl-tls` wires Redis-backed environment/settings/query-dispatch caches, node activity batching, node metadata batching, persisted log sinks, service-command polling, and optional DB-health, posture, alerting, and Prometheus components. When `--health-enabled` is set, it also writes a `service_status` heartbeat (version, uptime, goroutines, worker counters) every 60s by riding the existing 5s service-command poll loop rather than starting a new ticker.
-- `osctrl-api` wires the shared environment/query caches and activity reader; initializes audit, MFA, console, file-explorer, service-config, log-sink, and auth-provider managers; and conditionally registers posture, alerting, service-management, federated-auth, and hosted-MCP routes.
+- `osctrl-tls` wires Redis-backed environment/settings/query-dispatch caches, node activity batching, node metadata batching, persisted log sinks, service-command polling, and optional DB-health, posture, vulnerability-inventory, alerting, and Prometheus components. When `--health-enabled` is set, it also writes a `service_status` heartbeat (version, uptime, goroutines, worker counters) every 60s by riding the existing 5s service-command poll loop rather than starting a new ticker.
+- `osctrl-api` wires the shared environment/query caches and activity reader; initializes audit, MFA, console, file-explorer, service-config, log-sink, and auth-provider managers; and conditionally registers posture, vulnerability (plus its feed-sync worker, single-active across replicas through a SQL lease), alerting, service-management, federated-auth, and hosted-MCP routes.
 
 The standalone `osctrl-mcp` process has a smaller startup flow:
 
@@ -367,7 +368,7 @@ Persistence is mostly direct GORM `AutoMigrate` plus CRUD. There is no separate 
 
 Primary database models/tables:
 
-Feature-owned tables are migrated only when their manager is initialized. In particular, posture and alert tables require those features to be enabled; osquery log tables require a DB logger.
+Feature-owned tables are migrated only when their manager is initialized. In particular, posture, alert and vulnerability tables require those features to be enabled; osquery log tables require a DB logger.
 
 - Environments:
   - `pkg/environments.TLSEnvironment` -> `tls_environments`
@@ -403,6 +404,16 @@ Feature-owned tables are migrated only when their manager is initialized. In par
 - Posture:
   - `pkg/posture.NodePosture` -> `node_posture`
   - `pkg/posture.PostureCheck` -> `posture_checks`
+- Vulnerabilities (only with `--vuln-enabled`):
+  - `pkg/vulns.NodeSoftware` -> `node_software`
+  - `pkg/vulns.NodeState` -> `vuln_node_state`
+  - `pkg/vulns.Advisory` -> `vuln_advisories`
+  - `pkg/vulns.Alias` -> `vuln_aliases`
+  - `pkg/vulns.Affected` -> `vuln_affected`
+  - `pkg/vulns.KEV` -> `vuln_kev`
+  - `pkg/vulns.Finding` -> `vuln_findings`
+  - `pkg/vulns.SyncState` -> `vuln_sync_state`
+  - `pkg/vulns.WorkerState` -> `vuln_worker_state`
 - Alerts:
   - `pkg/alerts.AlertRule` -> `alert_rules`
   - `pkg/alerts.AlertChannel` -> `alert_channels`

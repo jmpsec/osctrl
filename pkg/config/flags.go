@@ -156,6 +156,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	// Add flags by category
 	allFlags = append(allFlags, initConfigFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, initServiceFlags(params)...)
+	allFlags = append(allFlags, initVulnFlags(params)...)
 	allFlags = append(allFlags, initAuthFlag(params, AuthJWT, "Authentication mechanism for the service (jwt|none — `none` requires OSCTRL_INSECURE_NO_AUTH=1)"))
 	allFlags = append(allFlags, initLoggingFlags(params)...)
 	allFlags = append(allFlags, initRedisFlags(params)...)
@@ -312,6 +313,13 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Service.HealthEnabled,
 		},
 		&cli.BoolFlag{
+			Name:        "vuln-enabled",
+			Value:       false,
+			Usage:       "Enable vulnerability monitoring: osctrl-tls stores software inventory from osctrl:vuln: scheduled queries and osctrl-api matches it against OSV and CISA KEV data. Disabled by default; when off no tables are created and nothing is downloaded. Requires a service restart to change.",
+			Sources:     cli.EnvVars("SERVICE_VULN_ENABLED"),
+			Destination: &params.Service.VulnEnabled,
+		},
+		&cli.BoolFlag{
 			Name:        "service-config-enabled",
 			Value:       false,
 			Usage:       "Serve the service-config API and show the matching section in the SPA. Disabled by default: the YAML sections are still seeded into the database at every boot and resolved back at startup, but none of the /api/v1/service-config routes are registered — change the rows or the YAML file directly instead.",
@@ -372,6 +380,55 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Prefix for scheduled query names whose results are ingested as node posture data when --posture-enabled is true.",
 			Sources:     cli.EnvVars("SERVICE_POSTURE_QUERY_PREFIX"),
 			Destination: &params.Service.PostureQueryPrefix,
+		},
+	}
+}
+
+// initVulnFlags holds the vulnerability feed settings. Only osctrl-api syncs
+// feeds, so only InitAPIFlags includes them.
+func initVulnFlags(params *ServiceParameters) []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{
+			Name:        "vuln-osv-url",
+			Value:       "https://osv-vulnerabilities.storage.googleapis.com",
+			Usage:       "Base URL of the OSV data bucket, or of an internal mirror with the same layout (air-gapped deployments).",
+			Sources:     cli.EnvVars("VULN_OSV_URL"),
+			Destination: &params.Service.VulnOSVURL,
+		},
+		&cli.StringFlag{
+			Name:        "vuln-kev-url",
+			Value:       "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+			Usage:       "CISA Known Exploited Vulnerabilities JSON feed, or a mirror of it.",
+			Sources:     cli.EnvVars("VULN_KEV_URL"),
+			Destination: &params.Service.VulnKEVURL,
+		},
+		&cli.StringFlag{
+			Name:        "vuln-ecosystems",
+			Value:       "",
+			Usage:       "Comma-separated OSV ecosystem directories to sync (e.g. Debian,Ubuntu,PyPI). Empty syncs the ecosystems the fleet reports.",
+			Sources:     cli.EnvVars("VULN_ECOSYSTEMS"),
+			Destination: &params.Service.VulnEcosystems,
+		},
+		&cli.IntFlag{
+			Name:        "vuln-sync-hours",
+			Value:       6,
+			Usage:       "Hours between advisory feed refreshes.",
+			Sources:     cli.EnvVars("VULN_SYNC_HOURS"),
+			Destination: &params.Service.VulnSyncHours,
+		},
+		&cli.IntFlag{
+			Name:        "vuln-retention-days",
+			Value:       90,
+			Usage:       "Days a resolved vulnerability finding is kept.",
+			Sources:     cli.EnvVars("VULN_RETENTION_DAYS"),
+			Destination: &params.Service.VulnRetentionDays,
+		},
+		&cli.IntFlag{
+			Name:        "vuln-max-download-mb",
+			Value:       2048,
+			Usage:       "Size cap in MiB for any single advisory feed download.",
+			Sources:     cli.EnvVars("VULN_MAX_DOWNLOAD_MB"),
+			Destination: &params.Service.VulnMaxDownloadMB,
 		},
 	}
 }

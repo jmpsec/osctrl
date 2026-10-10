@@ -370,6 +370,10 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 			if h.Posture != nil && t.LogType == "result" {
 				h.ingestPosture(results, node.UUID, env.Name)
 			}
+			// Store vulnerability inventory (if enabled)
+			if h.Vulns != nil && t.LogType == "result" {
+				h.Vulns.Ingest(node.UUID, env.ID, results)
+			}
 		}()
 	} else {
 		nodeInvalid = true

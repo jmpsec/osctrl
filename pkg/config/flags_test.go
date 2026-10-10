@@ -211,3 +211,45 @@ func TestServiceHealthEnabledFlagDefaultsOff(t *testing.T) {
 		t.Fatal("missing health-enabled service flag")
 	}
 }
+
+func TestServiceVulnEnabledFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Service: &YAMLConfigurationService{}}
+	flags := initServiceFlags(params)
+
+	var vulnFlag *cli.BoolFlag
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.BoolFlag); ok && f.Name == "vuln-enabled" {
+			vulnFlag = f
+			break
+		}
+	}
+	if vulnFlag == nil {
+		t.Fatal("missing vuln-enabled service flag")
+	}
+	if vulnFlag.Value {
+		t.Fatal("vuln-enabled flag default: got true want false")
+	}
+	if vulnFlag.Destination != &params.Service.VulnEnabled {
+		t.Fatal("vuln-enabled flag destination does not wire Service.VulnEnabled")
+	}
+}
+
+// Feed settings only mean something to the API worker, so they live in
+// initVulnFlags, which only InitAPIFlags includes.
+func TestVulnFeedFlags(t *testing.T) {
+	params := &ServiceParameters{Service: &YAMLConfigurationService{}}
+	names := map[string]bool{}
+	for _, f := range initVulnFlags(params) {
+		names[f.Names()[0]] = true
+	}
+	for _, want := range []string{"vuln-osv-url", "vuln-kev-url", "vuln-ecosystems", "vuln-sync-hours", "vuln-retention-days", "vuln-max-download-mb"} {
+		if !names[want] {
+			t.Errorf("missing --%s", want)
+		}
+	}
+	for _, f := range initServiceFlags(params) {
+		if f.Names()[0] == "vuln-osv-url" {
+			t.Fatal("feed flags must not be shared with osctrl-tls")
+		}
+	}
+}

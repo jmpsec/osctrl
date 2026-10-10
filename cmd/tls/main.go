@@ -37,6 +37,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/jmpsec/osctrl/pkg/version"
+	"github.com/jmpsec/osctrl/pkg/vulns"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
@@ -265,6 +266,17 @@ func osctrlService() {
 	} else {
 		posture.SetPrefix("")
 		log.Info().Msg("Posture system disabled (enable with --posture-enabled)")
+	}
+	var vulnInventory *vulns.Inventory
+	if flagParams.Service.VulnEnabled {
+		inv, err := vulns.NewInventory(db.Conn)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to initialize vulnerability inventory")
+		}
+		vulnInventory = inv
+		log.Info().Msg("Vulnerability inventory enabled")
+	} else {
+		log.Info().Msg("Vulnerability monitoring disabled (enable with --vuln-enabled)")
 	}
 	// Alerting subsystem (disabled by default). The nil matcher means
 	// the ingest path never evaluates rules — zero cost when the
@@ -504,7 +516,8 @@ func osctrlService() {
 		handlers.WithLogs(loggerTLS),
 		handlers.WithWriteHandler(tlsWriter),
 		handlers.WithActivityWriter(activityWriter),
-		handlers.WithPosture(posturemgr), // nil when posture disabled
+		handlers.WithPosture(posturemgr),  // nil when posture disabled
+		handlers.WithVulns(vulnInventory), // nil when vulnerability monitoring disabled
 		handlers.WithOsqueryValues(flagParams.Osquery),
 		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),

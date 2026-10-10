@@ -29,6 +29,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/vulns"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -90,6 +91,7 @@ type HandlersApi struct {
 	GeoIP                *geoip.GeoIPResolver
 	Posture              *posture.PostureManager
 	PostureEnabled       bool
+	Vulns                *vulns.Reader // nil when --vuln-enabled is off
 	// MFA owns the second-factor tables. Nil disables every MFA route.
 	MFA *mfa.Manager
 	// WebAuthn is nil when no RP ID or origin could be resolved, which
@@ -301,6 +303,13 @@ func WithGeoIP(g *geoip.GeoIPResolver) HandlersOption {
 func WithPosture(pm *posture.PostureManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Posture = pm
+	}
+}
+
+// WithVulns wires the vulnerability read model (nil when disabled).
+func WithVulns(r *vulns.Reader) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Vulns = r
 	}
 }
 
