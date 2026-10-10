@@ -114,6 +114,7 @@ export const tr: Messages = {
       unknown: 'Bilinmiyor',
     },
     components: {
+      vulnerabilities: 'Bildirim kaynakları',
       database: 'Veritabanı',
       workers: 'Arka plan işlemleri',
     },

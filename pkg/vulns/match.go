@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"maps"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -33,6 +34,10 @@ func (m *Matcher) MatchNode(nodeUUID string) error {
 	if err := m.DB.Where("node_uuid = ?", nodeUUID).Find(&software).Error; err != nil {
 		return err
 	}
+	synced, err := syncedDirs(m.DB)
+	if err != nil {
+		return err
+	}
 	envID := state.EnvironmentID
 	if envID == 0 && len(software) > 0 {
 		envID = software[0].EnvironmentID
@@ -43,7 +48,8 @@ func (m *Matcher) MatchNode(nodeUUID string) error {
 	byEco := map[string]map[string][]NodeSoftware{} // ecosystem → package key → installed
 	for _, sw := range software {
 		eco := ecosystemFor(sw.Category, osKey)
-		if eco == "" || !assessableVersion(sw.Version) {
+		dir, _, _ := strings.Cut(eco, ":")
+		if eco == "" || !synced[dir] || !assessableVersion(sw.Version) {
 			unassessed[sw.ID] = true
 			continue
 		}
@@ -100,6 +106,23 @@ func (m *Matcher) MatchNode(nodeUUID string) error {
 	return m.DB.Transaction(func(tx *gorm.DB) error {
 		return persistFindings(tx, nodeUUID, envID, found, len(unassessed), start)
 	})
+}
+
+// syncedDirs returns the OSV directories that have synced successfully. A
+// package in any other ecosystem is not assessed: an empty advisory table is
+// not a clean bill of health.
+func syncedDirs(db *gorm.DB) (map[string]bool, error) {
+	var sources []string
+	if err := db.Model(&SyncState{}).Where("last_success IS NOT NULL").Pluck("source", &sources).Error; err != nil {
+		return nil, err
+	}
+	out := map[string]bool{}
+	for _, s := range sources {
+		if dir, ok := strings.CutPrefix(s, osvSourcePrefix); ok {
+			out[dir] = true
+		}
+	}
+	return out, nil
 }
 
 func (m *Matcher) copyAdvisoryFlags(found map[findingKey]Finding) error {

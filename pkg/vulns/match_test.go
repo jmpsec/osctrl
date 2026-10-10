@@ -2,6 +2,7 @@ package vulns
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,6 +39,16 @@ func (f *matchFixture) advisory(t *testing.T, id, severity, ecosystem, pkg strin
 	raw, _ := json.Marshal(ranges)
 	require.NoError(t, f.db.Create(&Advisory{ID: id, Severity: severity}).Error)
 	require.NoError(t, f.db.Create(&Affected{AdvisoryID: id, Ecosystem: ecosystem, Package: pkg, Ranges: string(raw), Versions: "[]"}).Error)
+	dir, _, _ := strings.Cut(ecosystem, ":")
+	f.synced(t, dir)
+}
+
+// synced records a successful sync of an OSV directory: advisories exist
+// only once their feed has synced.
+func (f *matchFixture) synced(t *testing.T, dir string) {
+	t.Helper()
+	now := f.clock.now()
+	require.NoError(t, recordSuccess(f.db, osvSourcePrefix+dir, now, SyncResult{}, now))
 }
 
 func (f *matchFixture) findings(t *testing.T, uuid string) []Finding {
@@ -109,11 +120,27 @@ func TestMatchCountsWhatItCannotAssess(t *testing.T) {
 		NodeSoftware{Category: CategoryRPM, Name: "openssl", Version: "1.0.2k-26.el7"}, // unknown distro
 		NodeSoftware{Category: CategoryPython, Name: "weird", Version: "unknown"},      // no digit
 		NodeSoftware{Category: CategoryPython, Name: "requests", Version: "2.31.0"})    // assessable
+	f.synced(t, "PyPI")
 	require.NoError(t, f.matcher.MatchNode("N1"))
 	var state NodeState
 	require.NoError(t, f.db.First(&state, "node_uuid = ?", "N1").Error)
 	assert.Equal(t, 2, state.NotAssessed)
 	require.NotNil(t, state.MatchedAt)
+}
+
+// An ecosystem whose feed never synced has no advisories to match against;
+// its packages are not assessed, not clean (Rocky before its first sync, or
+// a mirror without that directory).
+func TestMatchCountsUnsyncedEcosystemsAsNotAssessed(t *testing.T) {
+	f := newMatchFixture(t)
+	f.synced(t, "Debian")
+	f.node(t, "N1", "rocky", "9.4", "9",
+		NodeSoftware{Category: CategoryRPM, Name: "openssl", Version: "3.0.7-27.el9"},
+		NodeSoftware{Category: CategoryRPM, Name: "bash", Version: "5.1.8-9.el9"})
+	require.NoError(t, f.matcher.MatchNode("N1"))
+	var state NodeState
+	require.NoError(t, f.db.First(&state, "node_uuid = ?", "N1").Error)
+	assert.Equal(t, 2, state.NotAssessed)
 }
 
 func TestFindingsResolveAndReopenKeepingFirstSeen(t *testing.T) {

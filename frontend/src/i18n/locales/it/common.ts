@@ -114,6 +114,7 @@ export const it: Messages = {
       unknown: 'Sconosciuto',
     },
     components: {
+      vulnerabilities: 'Fonti degli avvisi',
       database: 'Database',
       workers: 'Processi in background',
     },

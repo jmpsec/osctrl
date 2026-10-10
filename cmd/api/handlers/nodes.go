@@ -860,12 +860,7 @@ func (h *HandlersApi) NodePostureScoreHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "posture not configured", http.StatusServiceUnavailable, nil)
 		return
 	}
-	records, err := h.Posture.GetByNode(node.UUID)
-	if err != nil {
-		apiErrorResponse(w, "error getting posture", http.StatusInternalServerError, err)
-		return
-	}
-	score, err := h.Posture.Score(records)
+	score, err := h.Posture.ScoreNode(node.UUID)
 	if err != nil {
 		apiErrorResponse(w, "error scoring posture", http.StatusInternalServerError, err)
 		return

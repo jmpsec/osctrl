@@ -114,6 +114,7 @@ export const fr: Messages = {
       unknown: 'Inconnu',
     },
     components: {
+      vulnerabilities: 'Sources d’avis',
       database: 'Base de données',
       workers: 'Processus de travail',
     },

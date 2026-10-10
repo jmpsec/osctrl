@@ -114,6 +114,7 @@ export const uk: Messages = {
       unknown: 'Невідомо',
     },
     components: {
+      vulnerabilities: 'Джерела бюлетенів',
       database: 'База даних',
       workers: 'Фонові процеси',
     },

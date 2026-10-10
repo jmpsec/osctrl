@@ -114,6 +114,7 @@ export const el: Messages = {
       unknown: 'Άγνωστο',
     },
     components: {
+      vulnerabilities: 'Πηγές ενημερώσεων',
       database: 'Βάση δεδομένων',
       workers: 'Διεργασίες παρασκηνίου',
     },

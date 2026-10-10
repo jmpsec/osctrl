@@ -114,6 +114,7 @@ export const he: Messages = {
       unknown: 'לא ידוע',
     },
     components: {
+      vulnerabilities: 'מקורות עדכונים',
       database: 'מסד נתונים',
       workers: 'תהליכי רקע',
     },

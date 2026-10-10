@@ -114,6 +114,7 @@ export const ko: Messages = {
       unknown: '알 수 없음',
     },
     components: {
+      vulnerabilities: '권고 피드',
       database: '데이터베이스',
       workers: '워커',
     },

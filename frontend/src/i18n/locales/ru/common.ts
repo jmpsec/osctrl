@@ -114,6 +114,7 @@ export const ru: Messages = {
       unknown: 'Неизвестно',
     },
     components: {
+      vulnerabilities: 'Источники бюллетеней',
       database: 'База данных',
       workers: 'Фоновые процессы',
     },

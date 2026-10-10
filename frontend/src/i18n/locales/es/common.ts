@@ -114,6 +114,7 @@ export const es: Messages = {
       unknown: 'Desconocido',
     },
     components: {
+      vulnerabilities: 'Fuentes de avisos',
       database: 'Base de datos',
       workers: 'Procesos de trabajo',
     },

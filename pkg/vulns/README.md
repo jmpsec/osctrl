@@ -31,6 +31,7 @@ Not assessed, and counted as such rather than reported clean:
 - CentOS, SUSE and other distributions;
 - Ubuntu Pro/FIPS and RHEL EUS streams;
 - Windows and macOS applications (NVD/CPE matching is planned);
+- packages in an ecosystem whose OSV feed hasn't synced yet;
 - versions without a digit.
 
 ## Severity
@@ -41,6 +42,66 @@ Not assessed, and counted as such rather than reported clean:
   severity is `unknown`.
 - **KEV:** a finding is flagged when any CVE alias of its advisory is in the
   CISA catalog.
+
+## Alerts
+
+A `vuln_finding` alert rule fires when a node gains an open confirmed finding at
+or above the rule's threshold:
+
+| Threshold | Matches |
+| --- | --- |
+| `kev` | Known-exploited findings only |
+| `critical` | Critical findings, plus all known-exploited |
+| `high` | High and critical, plus all known-exploited |
+| `medium` | Medium, high and critical, plus all known-exploited |
+| `low` | Low and above, plus all known-exploited |
+| `any` | Everything, including unknown severity |
+
+How it fires:
+
+- **Where:** the watcher runs in osctrl-tls, so it needs `--alerts-enabled` and
+  `--vuln-enabled` there. The API refuses `vuln_finding` rules when vulnerability
+  monitoring is off.
+- **Grouping:** findings are grouped per advisory, so one advisory affecting
+  many nodes is one notification.
+- **Cap:** each rule sends at most 10 advisories per environment per hour,
+  worst first within a sweep, plus one digest per hour for the rest. The budget
+  lives in Redis, so it holds across sweeps and osctrl-tls replicas; an
+  inventory rollout or a fleet-wide re-match can't page once a minute.
+- **Once only:** a finding alerts when it first appears, including on a node's
+  first inventory. A reopened finding doesn't alert again.
+- **Not re-alerted:** a finding that later becomes known-exploited (added to
+  CISA KEV) or rises in severity does not alert again. A `kev` rule fires only
+  for findings that are already KEV when recorded.
+- **Restarts:** a Redis cursor (`osctrl:alert:vuln:cursor`) prevents re-alerting.
+  Deleting the cursor restarts from the newest finding; it never replays history.
+- **Possible findings:** never alert.
+
+## Posture score
+
+With `--posture-enabled` and `--vuln-enabled` on osctrl-api, nodes get a
+"Known vulnerabilities" control (ISO 27001 A.8.8):
+
+| Open confirmed findings | Result |
+| --- | --- |
+| Any KEV or critical | Fail at critical weight; risk level critical |
+| Otherwise any high | Fail at high weight |
+| Otherwise any medium, low or unknown | Warn |
+| None | Pass |
+
+The control is unevaluated, never passed, before advisory data has loaded and
+for a node without findings that has never been matched or has no assessed
+packages (Amazon Linux, an OS-only Windows node, an ecosystem whose feed hasn't
+synced). A node with no findings but some packages not assessed warns: not
+assessed is never clean.
+
+## Health
+
+The health page shows an "Advisory feeds" component:
+
+- **degraded** when a feed's last error is newer than its last success;
+- **unknown** before the first OSV sync;
+- **stale** after three missed sync intervals.
 
 ## Air-gapped deployments
 

@@ -43,6 +43,9 @@ type compiledRule struct {
 	// 0 = any, 1 = warning+, 2 = error only.
 	minSeverity int
 
+	// vulnMin is the threshold of a SourceVulnFinding rule (normalized).
+	vulnMin string
+
 	cooldownMinutes int
 	channels        []uint
 }
@@ -59,6 +62,8 @@ type RuleSet struct {
 	// cooldown + channels — no pattern.
 	nodeInactive  []compiledRule
 	nodeRecovered []compiledRule
+	// vulnFinding is evaluated by the vulnerability watcher.
+	vulnFinding []compiledRule
 }
 
 // counts returns the number of compiled rules per bucket (test helper).
@@ -69,7 +74,7 @@ func (rs *RuleSet) counts() (result, status, query int) {
 // empty reports whether the snapshot has no rules at all.
 func (rs *RuleSet) empty() bool {
 	return len(rs.result) == 0 && len(rs.status) == 0 && len(rs.query) == 0 &&
-		len(rs.nodeInactive) == 0 && len(rs.nodeRecovered) == 0
+		len(rs.nodeInactive) == 0 && len(rs.nodeRecovered) == 0 && len(rs.vulnFinding) == 0
 }
 
 // Store publishes rule snapshots. Safe for concurrent use; readers pull

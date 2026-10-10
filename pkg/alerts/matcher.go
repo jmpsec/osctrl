@@ -428,6 +428,7 @@ func CompileRule(rule AlertRule) (compiledRule, error) {
 		matchAny:        strings.TrimSpace(rule.MatchField) == "",
 		matchFieldLower: strings.ToLower(strings.TrimSpace(rule.MatchField)),
 		cooldownMinutes: rule.CooldownMinutes,
+		vulnMin:         normalizeVulnMin(rule.VulnMinSeverity),
 	}
 	if len(rule.MatchValue) > MaxPatternLen {
 		return cr, errPatternTooLong

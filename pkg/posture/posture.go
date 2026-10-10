@@ -81,6 +81,10 @@ func (NodePosture) TableName() string { return "node_posture" }
 // PostureManager manages the node posture table.
 type PostureManager struct {
 	DB *gorm.DB
+	// Evidence, when set, adds scoring evidence posture queries do not
+	// collect. osctrl-api wires vulnerability findings here when both
+	// --posture-enabled and --vuln-enabled are on.
+	Evidence EvidenceSource
 }
 
 // NewPostureManager creates the manager and auto-migrates the table.
@@ -453,17 +457,18 @@ func SummaryFromRecords(records []NodePosture) *types.NodePostureSummary {
 }
 
 func (pm *PostureManager) GetSummaryByNode(nodeUUID string) (*types.NodePostureSummary, error) {
-	records, err := pm.GetByNode(nodeUUID)
+	records, err := pm.nodeRecords(nodeUUID)
 	if err != nil {
 		return nil, err
 	}
 	if len(records) == 0 {
 		return nil, nil
 	}
-	score, err := pm.Score(records)
+	sc, err := pm.calculator()
 	if err != nil {
 		return nil, err
 	}
+	score := sc.Score(records)
 	if score.RiskLevel == "" {
 		return nil, nil
 	}
@@ -499,11 +504,17 @@ func (pm *PostureManager) GetSummaryByNodes(nodeUUIDs []string) (map[string]*typ
 	for _, record := range records {
 		grouped[record.NodeUUID] = append(grouped[record.NodeUUID], record)
 	}
-	checks, err := pm.enabledChecks()
+	extra, err := pm.evidenceFor(upperUUIDs)
 	if err != nil {
 		return nil, err
 	}
-	calculator := NewScoreCalculatorWithChecks(checks)
+	for nodeUUID, recs := range extra {
+		grouped[nodeUUID] = append(grouped[nodeUUID], recs...)
+	}
+	calculator, err := pm.calculator()
+	if err != nil {
+		return nil, err
+	}
 	for nodeUUID, nodeRecords := range grouped {
 		score := calculator.Score(nodeRecords)
 		if score.RiskLevel != "" {

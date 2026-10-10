@@ -582,6 +582,11 @@ func osctrlAPIService() {
 	} else {
 		log.Info().Msg("Vulnerability monitoring disabled (enable with --vuln-enabled)")
 	}
+	// Vulnerability findings count toward the posture risk score when both
+	// features are on (posture.EvidenceSource).
+	if posturemgr != nil && vulnReader != nil {
+		posturemgr.Evidence = vulnReader
+	}
 	vulnCtx, stopVulns := context.WithCancel(context.Background())
 	if vulnWorker != nil {
 		go vulnWorker.Run(vulnCtx)

@@ -121,6 +121,7 @@ export const en = {
       unknown: 'Unknown',
     },
     components: {
+      vulnerabilities: 'Advisory feeds',
       database: 'Database',
       workers: 'Workers',
     },

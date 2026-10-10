@@ -18,6 +18,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/vulns"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -351,4 +352,32 @@ func TestAlertsApplyQueuesServiceCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, servicecommands.ActionReloadAlerts, cmd.Action)
+}
+
+// A vulnerability rule on a deployment without vulnerability monitoring
+// would never fire; refuse it instead of storing a silent rule.
+func TestAlertRuleVulnFindingNeedsTheFeature(t *testing.T) {
+	h := setupAlertsHandler(t)
+	body := map[string]any{"name": "kev", "source": "vuln_finding", "vuln_min_severity": "kev", "enabled": true}
+	rr := call(t, h.AlertRulesCreateHandler, http.MethodPost, "/api/v1/alerts/rules", body)
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, rr.Body.String(), "vulnerability monitoring")
+}
+
+func TestAlertRuleVulnFindingRoundTrip(t *testing.T) {
+	h := setupAlertsHandler(t)
+	h.Vulns = vulns.NewReader(nil, 0) // only its presence is checked
+	body := map[string]any{"name": "kev", "source": "vuln_finding", "vuln_min_severity": "kev", "enabled": true}
+	rr := call(t, h.AlertRulesCreateHandler, http.MethodPost, "/api/v1/alerts/rules", body)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var created alertRuleDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &created))
+	require.Equal(t, "kev", created.VulnMinSeverity)
+
+	body["vuln_min_severity"] = "High"
+	rr = callWithID(t, h.AlertRulesUpdateHandler, http.MethodPut, "/api/v1/alerts/rules/1", created.ID, body)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	var updated alertRuleDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &updated))
+	require.Equal(t, "high", updated.VulnMinSeverity)
 }

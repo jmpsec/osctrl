@@ -164,6 +164,49 @@ beforeEach(() => {
 });
 
 describe('AlertsPage', () => {
+  it('offers the vulnerability source only when vulnerability monitoring is on', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New rule' }));
+    expect(screen.queryByRole('option', { name: 'New vulnerability findings' })).not.toBeInTheDocument();
+  });
+
+  it('creates a vulnerability rule without a pattern', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({
+      posture: false, service_config: true, log_sinks: true, alerts: true,
+      accelerated: false, file_explorer: false, vulnerabilities: true,
+    });
+    mockCreateRule.mockResolvedValue(makeRule({ source: 'vuln_finding', vuln_min_severity: 'kev' }));
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New rule' }));
+    await user.type(screen.getByLabelText('Name'), 'exploited-in-the-wild');
+    await user.selectOptions(screen.getByLabelText('Source'), 'vuln_finding');
+    expect(screen.queryByLabelText('Pattern')).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Minimum vulnerability severity'), 'kev');
+    await user.click(screen.getByRole('button', { name: 'Create rule' }));
+    await waitFor(() => {
+      expect(mockCreateRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'exploited-in-the-wild',
+          source: 'vuln_finding',
+          vuln_min_severity: 'kev',
+          match_value: '',
+        }),
+      );
+    });
+  });
+
+  it('lists a vulnerability rule with its threshold', async () => {
+    mockListRules.mockResolvedValue([
+      makeRule({ id: 3, name: 'kev-only', source: 'vuln_finding', vuln_min_severity: 'kev', match_value: '' }),
+    ]);
+    renderPage();
+    expect(await screen.findByText('kev-only')).toBeInTheDocument();
+    expect(screen.getByText('New vulnerability findings')).toBeInTheDocument();
+    expect(screen.getByText('Known exploited only')).toBeInTheDocument();
+  });
+
   it('renders the empty rules state when there are no rules', async () => {
     renderPage();
     expect(await screen.findByText('No alert rules')).toBeInTheDocument();
