@@ -96,6 +96,10 @@ vi.mock('./NodeFileExplorerTab', () => ({
   NodeFileExplorerTab: () => <div data-testid="file-explorer-panel" />,
 }));
 
+vi.mock('$/features/vulnerabilities/NodeVulnerabilitiesTab', () => ({
+  NodeVulnerabilitiesTab: () => <div data-testid="vulnerabilities-panel" />,
+}));
+
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
   getCsrfToken: () => 'test-csrf',
@@ -848,6 +852,30 @@ describe('NodeDetailPage', () => {
     });
 
     expect(screen.queryByRole('tab', { name: /file explorer/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the vulnerabilities tab when vulnerability monitoring is enabled', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, vulnerabilities: true });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('tab', { name: 'Vulnerabilities' }));
+    expect(screen.getByTestId('vulnerabilities-panel')).toBeInTheDocument();
+  });
+
+  it('hides the vulnerabilities tab while the feature is disabled', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false });
+
+    renderWithProviders(makeTestRouter());
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'web-server-01' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('tab', { name: 'Vulnerabilities' })).not.toBeInTheDocument();
   });
 
   it('wraps single-node actions away from the hostname block', async () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { InactiveHoursSetting } from './InactiveHoursSetting';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
@@ -19,6 +19,7 @@ import { getPostureProfiles } from '$/api/nodes';
 import { getFeatures } from '$/api/features';
 import type { PostureProfile } from '$/api/types';
 import { applyPostureProfileToSchedule } from './postureSchedule';
+import { VulnProfilePicker } from '$/features/vulnerabilities/VulnProfilePicker';
 import { cn } from '$/lib/cn';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
@@ -135,6 +136,8 @@ export function EnvConfigPage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [showPosturePicker, setShowPosturePicker] = useState(false);
   const [postureAggressiveness, setPostureAggressiveness] = useState(1);
+  const [showVulnPicker, setShowVulnPicker] = useState(false);
+  const closeVulnPicker = useCallback(() => setShowVulnPicker(false), []);
   type TabKey = 'settings' | SectionKey | 'posture' | 'assembled';
   const [activeTab, setActiveTab] = useState<TabKey>('settings');
   const featuresQuery = useQuery({
@@ -143,6 +146,7 @@ export function EnvConfigPage() {
     staleTime: 5 * 60_000,
   });
   const postureEnabled = featuresQuery.data?.posture === true;
+  const vulnsEnabled = featuresQuery.data?.vulnerabilities === true;
   const postureProfilesQuery = useQuery({
     queryKey: ['posture-profiles'],
     queryFn: () => getPostureProfiles(),
@@ -247,6 +251,21 @@ export function EnvConfigPage() {
       setDraft({ ...draft, schedule });
       setSaveErr(null);
       setShowPosturePicker(false);
+    } catch (error) {
+      setSaveErr(error instanceof Error ? error.message : 'Schedule must be a JSON object.');
+    }
+  }
+
+  // Inventory profiles share the posture profile shape and carry full
+  // osctrl:vuln: query names, so the posture merge applies unchanged.
+  // Inventory is collected daily; there is no frequency slider.
+  function applyVulnProfile(profile: PostureProfile) {
+    if (!draft) return;
+    try {
+      const schedule = applyPostureProfileToSchedule(draft.schedule, profile, 86400);
+      setDraft({ ...draft, schedule });
+      setSaveErr(null);
+      setShowVulnPicker(false);
     } catch (error) {
       setSaveErr(error instanceof Error ? error.message : 'Schedule must be a JSON object.');
     }
@@ -481,19 +500,34 @@ export function EnvConfigPage() {
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-3)]">Quick add</span>
-                    {postureEnabled && (
-                      <button
-                        type="button"
-                        onClick={() => setShowPosturePicker(true)}
-                        className={cn(
-                          'px-2.5 py-1 text-xs font-medium rounded',
-                          'text-[color:var(--signal)] border border-[color:var(--signal)]/30',
-                          'hover:bg-[color:var(--signal)]/10 transition-colors',
-                        )}
-                      >
-                        Add posture checks
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {vulnsEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => setShowVulnPicker(true)}
+                          className={cn(
+                            'px-2.5 py-1 text-xs font-medium rounded',
+                            'text-[color:var(--signal)] border border-[color:var(--signal)]/30',
+                            'hover:bg-[color:var(--signal)]/10 transition-colors',
+                          )}
+                        >
+                          {t('vulns.addInventory')}
+                        </button>
+                      )}
+                      {postureEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => setShowPosturePicker(true)}
+                          className={cn(
+                            'px-2.5 py-1 text-xs font-medium rounded',
+                            'text-[color:var(--signal)] border border-[color:var(--signal)]/30',
+                            'hover:bg-[color:var(--signal)]/10 transition-colors',
+                          )}
+                        >
+                          Add posture checks
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <AddScheduledQueryForm
                     draftValue={after}
@@ -522,6 +556,7 @@ export function EnvConfigPage() {
           );
         })}
       </div>
+      {showVulnPicker && <VulnProfilePicker onPick={applyVulnProfile} onClose={closeVulnPicker} />}
       {showPosturePicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowPosturePicker(false)}>
           <div className="bg-[color:var(--bg-2)] rounded-md border border-[color:var(--border)] max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>

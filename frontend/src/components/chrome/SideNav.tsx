@@ -15,6 +15,7 @@ import {
   ListChecks,
   Monitor,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
   Tag,
@@ -233,6 +234,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
   const queriesPath = `/_app/env/${currentEnv}/queries`;
   const savedQueriesPath = `/_app/env/${currentEnv}/saved-queries`;
   const carvesPath = `/_app/env/${currentEnv}/carves`;
+  const vulnerabilitiesPath = `/_app/env/${currentEnv}/vulnerabilities`;
   const tagsPath = `/_app/env/${currentEnv}/tags`;
   const enrollPath = `/_app/env/${currentEnv}/enroll`;
   const configPath = `/_app/env/${currentEnv}/config`;
@@ -241,6 +243,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
   const isQueriesActive =
     pathname.startsWith(`/_app/env/${currentEnv}/queries`) && !isSavedQueriesActive;
   const isCarvesActive = pathname.startsWith(`/_app/env/${currentEnv}/carves`);
+  const isVulnerabilitiesActive = pathname.startsWith(vulnerabilitiesPath);
   const isTagsActive = pathname.startsWith(`/_app/env/${currentEnv}/tags`);
   const isEnrollActive = pathname.startsWith(`/_app/env/${currentEnv}/enroll`);
   const isConfigActive = pathname.startsWith(`/_app/env/${currentEnv}/config`);
@@ -442,6 +445,20 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             icon={<DatabaseBackup size={14} strokeWidth={1.8} />}
           >
             {t('nav.carves')}
+          </NavItem>
+        )}
+        {/* Vulnerability findings are environment-admin data on the API
+            side (same check as node detail), so the entry follows
+            canManageEnv, and only exists while --vuln-enabled is on. */}
+        {canManageEnv && features?.vulnerabilities && (
+          <NavItem
+            collapsed={collapsed}
+            active={isVulnerabilitiesActive}
+            to={vulnerabilitiesPath}
+            tone="rose"
+            icon={<ShieldAlert size={14} strokeWidth={1.8} />}
+          >
+            {t('nav.vulnerabilities')}
           </NavItem>
         )}
         {canManageEnv && (

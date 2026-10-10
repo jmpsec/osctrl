@@ -46,6 +46,7 @@ import { SearchInput } from '$/components/data/SearchInput';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { HealthBadge, TagChips } from './nodeSignals';
 import { NodeFileExplorerTab } from './NodeFileExplorerTab';
+import { NodeVulnerabilitiesTab } from '$/features/vulnerabilities/NodeVulnerabilitiesTab';
 import { recomputePostureScore, controlKey } from './postureScore';
 
 // NodeHeatmapBucket is the merged per-node activity grid the heatmap renders.
@@ -70,7 +71,7 @@ interface NodeHeatmapBucket {
 // Tabs
 // ---------------------------------------------------------------------------
 
-type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture' | 'file-explorer';
+type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture' | 'vulnerabilities' | 'file-explorer';
 type NodeActionModal = 'query' | 'carve' | 'tag' | 'alert' | null;
 const TAG_TYPE_REGULAR = 6;
 const POSTURE_QUERY_PREFIX = 'osctrl:posture:';
@@ -626,6 +627,7 @@ const TABS = [
   { id: 'status-logs' as Tab, label: 'Status logs' },
   { id: 'result-logs' as Tab, label: 'Result logs' },
   { id: 'posture' as Tab, label: 'Posture' },
+  { id: 'vulnerabilities' as Tab, label: 'Vulnerabilities' },
   { id: 'file-explorer' as Tab, label: 'File Explorer' },
 ] as const;
 
@@ -697,24 +699,29 @@ export function NodeDetailPage() {
   const postureEnabled = features?.posture === true;
   const consoleEnabled = features?.console === true;
   const fileExplorerEnabled = features?.file_explorer === true;
+  const vulnsEnabled = features?.vulnerabilities === true;
   const alertsEnabled = features?.alerts === true;
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => {
       if (tab.id === 'posture') return postureEnabled;
+      if (tab.id === 'vulnerabilities') return vulnsEnabled;
       if (tab.id === 'file-explorer') return fileExplorerEnabled;
       return true;
     }),
-    [fileExplorerEnabled, postureEnabled],
+    [fileExplorerEnabled, postureEnabled, vulnsEnabled],
   );
 
   useEffect(() => {
     if (activeTab === 'posture' && !postureEnabled) {
       setActiveTab('details');
     }
+    if (activeTab === 'vulnerabilities' && !vulnsEnabled) {
+      setActiveTab('details');
+    }
     if (activeTab === 'file-explorer' && !fileExplorerEnabled) {
       setActiveTab('details');
     }
-  }, [activeTab, fileExplorerEnabled, postureEnabled]);
+  }, [activeTab, fileExplorerEnabled, postureEnabled, vulnsEnabled]);
 
   function handleTabKeyDown(e: React.KeyboardEvent) {
     const currentIndex = visibleTabs.findIndex((t) => t.id === activeTab);
@@ -1386,6 +1393,9 @@ export function NodeDetailPage() {
 
         {activeTab === 'posture' && postureEnabled && (
           <PostureTab env={env} uuid={uuid} />
+        )}
+        {activeTab === 'vulnerabilities' && vulnsEnabled && (
+          <NodeVulnerabilitiesTab env={env} uuid={uuid} />
         )}
         {activeTab === 'file-explorer' && fileExplorerEnabled && (
           <NodeFileExplorerTab env={env} uuid={uuid} />

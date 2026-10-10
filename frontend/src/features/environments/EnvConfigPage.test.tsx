@@ -22,6 +22,7 @@ const {
   mockPatchIntervals,
   mockPatchExpiration,
   mockGetPostureProfiles,
+  mockGetVulnProfiles,
   mockGetFeatures,
   mockGetInactiveHours,
   mockSetInactiveHours,
@@ -35,6 +36,7 @@ const {
   mockPatchIntervals: vi.fn(),
   mockPatchExpiration: vi.fn(),
   mockGetPostureProfiles: vi.fn(),
+  mockGetVulnProfiles: vi.fn(),
   mockGetFeatures: vi.fn<() => Promise<Features>>(),
   mockGetInactiveHours: vi.fn(),
   mockSetInactiveHours: vi.fn(),
@@ -76,6 +78,10 @@ vi.mock('$/api/nodes', () => ({
 
 vi.mock('$/api/features', () => ({
   getFeatures: () => mockGetFeatures(),
+}));
+
+vi.mock('$/api/vulnerabilities', () => ({
+  getVulnProfiles: (...args: unknown[]) => mockGetVulnProfiles(...args),
 }));
 
 vi.mock('$/components/forms/CodeEditor', () => ({
@@ -194,6 +200,7 @@ describe('EnvConfigPage', () => {
       data: '{"options":{"logger_plugin":"tls"}}',
     });
     mockGetPostureProfiles.mockResolvedValue([]);
+    mockGetVulnProfiles.mockResolvedValue([]);
     mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false });
   });
 
@@ -414,6 +421,46 @@ describe('EnvConfigPage', () => {
 
     expect(screen.getByDisplayValue('osctrl:posture:users')).toBeInTheDocument();
     expect(screen.getByLabelText('Profile')).toHaveValue('linux-server');
+  });
+
+  it('adds a vulnerability inventory profile to the schedule', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, vulnerabilities: true });
+    mockGetVulnProfiles.mockResolvedValue([
+      {
+        id: 'vuln-linux',
+        name: 'Vulnerability inventory (Linux)',
+        description: 'Daily software inventory snapshots for vulnerability matching.',
+        platform: 'linux',
+        queries: {
+          deb: {
+            query_name: 'osctrl:vuln:deb',
+            query: "SELECT name, version, source, arch FROM deb_packages WHERE status = 'install ok installed'",
+            interval: 86400,
+            platform: 'linux',
+            snapshot: true,
+          },
+        },
+      },
+    ]);
+
+    renderWithProviders();
+
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }));
+    await user.click(screen.getByRole('button', { name: 'Add vulnerability inventory' }));
+    await user.click(await screen.findByRole('button', { name: 'Add Vulnerability inventory (Linux) to schedule' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const editors = screen.getAllByTestId('code-editor').map((el) => el.textContent ?? '');
+    expect(editors.some((text) => text.includes('osctrl:vuln:deb') && text.includes('"interval": 86400'))).toBe(true);
+  });
+
+  it('hides the inventory picker while vulnerability monitoring is disabled', async () => {
+    const user = userEvent.setup();
+    renderWithProviders();
+    await user.click(await screen.findByRole('tab', { name: 'Schedule' }));
+    expect(screen.queryByRole('button', { name: 'Add vulnerability inventory' })).not.toBeInTheDocument();
+    expect(mockGetVulnProfiles).not.toHaveBeenCalled();
   });
 
   it('saves the selected posture profile for a new manual check', async () => {
