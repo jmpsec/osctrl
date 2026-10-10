@@ -12,6 +12,12 @@ const (
 	CategoryRPM    = "rpm"
 	CategoryPython = "python"
 	CategoryNPM    = "npm"
+	// CPE-only categories: matched by product name against NVD, and only
+	// while --vuln-nvd-enabled is on.
+	CategoryHomebrew   = "homebrew"
+	CategoryPrograms   = "programs"
+	CategoryApps       = "apps"
+	CategoryChocolatey = "chocolatey"
 )
 
 var (

@@ -163,6 +163,16 @@ type YAMLConfigurationService struct {
 	VulnRetentionDays int `yaml:"vulnRetentionDays"`
 	// VulnMaxDownloadMB caps any single feed download.
 	VulnMaxDownloadMB int `yaml:"vulnMaxDownloadMB"`
+	// VulnNVDEnabled adds NVD CVE data and CPE matching of Windows programs,
+	// macOS apps, Homebrew and Chocolatey packages. Matches are "possible"
+	// findings: shown, never alerted on or scored. Consumed by osctrl-api only.
+	VulnNVDEnabled bool `yaml:"vulnNVDEnabled"`
+	// VulnNVDURL is the NVD CVE API 2.0 endpoint, or a mirror of it.
+	VulnNVDURL string `yaml:"vulnNVDURL"`
+	// VulnNVDAPIKey raises the NVD request rate tenfold. Optional, and a
+	// secret: prefer the VULN_NVD_API_KEY environment variable. json:"-"
+	// keeps it out of service_config, which admins can read and edit.
+	VulnNVDAPIKey string `yaml:"vulnNVDAPIKey" json:"-"`
 	// EventsEnabled enables best-effort SSE invalidation notifications.
 	EventsEnabled bool `yaml:"eventsEnabled"`
 	// EventsNamespace must be shared by API/TLS and unique within Redis.

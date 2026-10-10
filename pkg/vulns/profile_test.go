@@ -70,3 +70,16 @@ func TestEveryProfileCollectsTheOS(t *testing.T) {
 	require.True(t, ok)
 	assert.Contains(t, linux.Queries[CategoryDeb].Query, "install ok installed", "removed packages keep config files and must not count")
 }
+
+func TestProfilesCollectApplicationsForCPEMatching(t *testing.T) {
+	darwin, ok := Profile("vuln-darwin")
+	require.True(t, ok)
+	assert.Contains(t, darwin.Queries, CategoryApps)
+	assert.Contains(t, darwin.Queries, CategoryHomebrew)
+	windows, ok := Profile("vuln-windows")
+	require.True(t, ok)
+	assert.Contains(t, windows.Queries, CategoryPrograms)
+	assert.Contains(t, windows.Queries, CategoryChocolatey)
+	linux, _ := Profile("vuln-linux")
+	assert.NotContains(t, linux.Queries, CategoryPrograms)
+}

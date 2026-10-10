@@ -60,8 +60,12 @@ func syncKEV(ctx context.Context, db *gorm.DB, f fetcher, url string, now time.T
 }
 
 // refreshFlags recomputes KEV on advisories and copies severity and KEV onto
-// findings, so a feed update shows without re-matching every node.
+// findings, so a feed update shows without re-matching every node. Borrowed
+// NVD severities are applied first (enrich.go).
 func refreshFlags(db *gorm.DB) error {
+	if err := enrichSeverity(db); err != nil {
+		return err
+	}
 	if err := db.Exec(`UPDATE vuln_advisories SET kev = EXISTS (
 		SELECT 1 FROM vuln_aliases a JOIN vuln_kev k ON k.cve_id = a.alias
 		WHERE a.advisory_id = vuln_advisories.id)`).Error; err != nil {

@@ -430,6 +430,27 @@ func initVulnFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("VULN_MAX_DOWNLOAD_MB"),
 			Destination: &params.Service.VulnMaxDownloadMB,
 		},
+		&cli.BoolFlag{
+			Name:        "vuln-nvd-enabled",
+			Value:       false,
+			Usage:       "Match Windows programs, macOS apps, Homebrew and Chocolatey packages against NVD CPE data. Matches are possible findings: shown, never alerted on or scored.",
+			Sources:     cli.EnvVars("VULN_NVD_ENABLED"),
+			Destination: &params.Service.VulnNVDEnabled,
+		},
+		&cli.StringFlag{
+			Name:        "vuln-nvd-url",
+			Value:       "https://services.nvd.nist.gov/rest/json/cves/2.0",
+			Usage:       "NVD CVE API 2.0 endpoint, or a mirror serving the same responses.",
+			Sources:     cli.EnvVars("VULN_NVD_URL"),
+			Destination: &params.Service.VulnNVDURL,
+		},
+		&cli.StringFlag{
+			Name:        "vuln-nvd-api-key",
+			Value:       "",
+			Usage:       "Optional NVD API key for ten times the request rate. Prefer the environment variable: a flag value shows in the process list.",
+			Sources:     cli.EnvVars("VULN_NVD_API_KEY"),
+			Destination: &params.Service.VulnNVDAPIKey,
+		},
 	}
 }
 

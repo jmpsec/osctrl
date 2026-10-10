@@ -13,8 +13,9 @@ import (
 // QueryPrefix names the scheduled queries whose results are inventory.
 const QueryPrefix = "osctrl:vuln:"
 
-// Finding confidence. Only confirmed findings are produced today: an exact
-// package-ecosystem match against an advisory.
+// Finding confidence. Confirmed is an exact package-ecosystem match against
+// an advisory; possible is a name-and-version match against NVD CPE data,
+// shown but never alerted on or scored.
 const (
 	ConfidenceConfirmed = "confirmed"
 	ConfidencePossible  = "possible"
@@ -27,6 +28,12 @@ const (
 	SeverityMedium   = "medium"
 	SeverityLow      = "low"
 	SeverityUnknown  = "unknown"
+)
+
+// Advisory sources: the feed that owns a record.
+const (
+	AdvisorySourceOSV = "osv"
+	AdvisorySourceNVD = "nvd"
 )
 
 // NodeSoftware is one installed package on one node, from the latest
@@ -58,6 +65,10 @@ type NodeState struct {
 	InventoryAt   time.Time  `gorm:"index" json:"inventory_at"`
 	MatchedAt     *time.Time `gorm:"index" json:"matched_at"`
 	NotAssessed   int        `json:"not_assessed"`
+	// Assessed counts packages matched against an exact ecosystem feed
+	// (OSV). It is what a clean result means for scoring; CPE matches never
+	// count.
+	Assessed int `json:"assessed"`
 }
 
 func (NodeState) TableName() string { return "vuln_node_state" }
@@ -65,16 +76,22 @@ func (NodeState) TableName() string { return "vuln_node_state" }
 // Advisory is one vulnerability record (an OSV id such as DSA-5678-1 or
 // RHSA-2026:1234). KEV is owned by the KEV sync, never by the record.
 type Advisory struct {
-	ID         string    `gorm:"primaryKey;type:varchar(128)" json:"id"`
-	Summary    string    `gorm:"type:text" json:"summary"`
-	Details    string    `gorm:"type:text" json:"details"`
-	CVSSVector string    `gorm:"type:varchar(255)" json:"cvss_vector"`
-	CVSSScore  float64   `json:"cvss_score"`
-	Severity   string    `gorm:"type:varchar(16);index" json:"severity"`
-	KEV        bool      `gorm:"index" json:"kev"`
-	RefURLs    string    `gorm:"type:text" json:"-"` // JSON array of URLs
-	Published  time.Time `json:"published"`
-	Modified   time.Time `json:"modified"`
+	ID string `gorm:"primaryKey;type:varchar(128)" json:"id"`
+	// Source is the feed that owns the record. Existing rows predate NVD
+	// support and are OSV records.
+	Source     string  `gorm:"type:varchar(8);default:osv;index" json:"source"`
+	Summary    string  `gorm:"type:text" json:"summary"`
+	Details    string  `gorm:"type:text" json:"details"`
+	CVSSVector string  `gorm:"type:varchar(255)" json:"cvss_vector"`
+	CVSSScore  float64 `json:"cvss_score"`
+	Severity   string  `gorm:"type:varchar(16);index" json:"severity"`
+	// CVSSFrom is the aliased NVD CVE an OSV record without its own CVSS
+	// borrowed its score from. Empty when the score is the record's own.
+	CVSSFrom  string    `gorm:"type:varchar(32);default:''" json:"cvss_from"`
+	KEV       bool      `gorm:"index" json:"kev"`
+	RefURLs   string    `gorm:"type:text" json:"-"` // JSON array of URLs
+	Published time.Time `json:"published"`
+	Modified  time.Time `json:"modified"`
 }
 
 func (Advisory) TableName() string { return "vuln_advisories" }
@@ -106,6 +123,17 @@ type KEV struct {
 }
 
 func (KEV) TableName() string { return "vuln_kev" }
+
+// CPEProduct is one vendor:product that a stored NVD CVE lists. It is the
+// CPE dictionary name matching looks names up in: only products some CVE
+// affects can produce a finding, so the full NVD dictionary would add
+// nothing.
+type CPEProduct struct {
+	Vendor  string `gorm:"primaryKey;type:varchar(128)"`
+	Product string `gorm:"primaryKey;type:varchar(128);index"`
+}
+
+func (CPEProduct) TableName() string { return "vuln_cpe_products" }
 
 // Finding is one advisory affecting one package on one node. Resolved
 // findings are kept (ResolvedAt set) so "fixed on" stays visible.
@@ -160,5 +188,5 @@ func (WorkerState) TableName() string { return "vuln_worker_state" }
 // enabled, so a disabled deployment never has them.
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&NodeSoftware{}, &NodeState{}, &Advisory{}, &Alias{},
-		&Affected{}, &KEV{}, &Finding{}, &SyncState{}, &WorkerState{})
+		&Affected{}, &KEV{}, &CPEProduct{}, &Finding{}, &SyncState{}, &WorkerState{})
 }

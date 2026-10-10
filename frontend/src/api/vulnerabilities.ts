@@ -47,6 +47,8 @@ export interface VulnSummary {
   stale: boolean;
   by_severity: Partial<Record<VulnSeverity, Partial<Record<VulnConfidence, number>>>>;
   kev: number;
+  /** Open possible (NVD CPE) findings. kev, affected_nodes and the top lists count confirmed findings only. */
+  possible: number;
   affected_nodes: number;
   not_assessed: number;
   top_advisories: VulnCountRow[];
@@ -55,6 +57,9 @@ export interface VulnSummary {
 
 export interface VulnAdvisory {
   id: string;
+  source?: 'osv' | 'nvd';
+  /** The NVD CVE an OSV record without its own CVSS borrowed its score from. */
+  cvss_from?: string;
   summary: string;
   details: string;
   cvss_vector: string;

@@ -150,3 +150,32 @@ func TestClipKeepsValidUTF8(t *testing.T) {
 	assert.True(t, utf8.ValidString(got))
 	assert.Equal(t, strings.Repeat("a", 254), got)
 }
+
+// Applications are inventoried for NVD CPE matching. The vendor is what CPE
+// candidates are built from: the Windows publisher, the macOS bundle id.
+func TestIngestApplicationCategories(t *testing.T) {
+	inv, _ := newTestInventory(t)
+	inv.Ingest("NODE-1", 1, []types.LogResultData{
+		snapshot(CategoryPrograms, []map[string]string{{"name": "Mozilla Firefox (x64 en-US)", "version": "128.0.3", "publisher": "Mozilla"}}),
+		snapshot(CategoryApps, []map[string]string{
+			{"name": "Google Chrome.app", "bundle_name": "Google Chrome", "bundle_identifier": "com.google.Chrome", "bundle_short_version": "120.0.6099.71"},
+			{"name": "Tool.app", "bundle_name": "", "bundle_identifier": "", "bundle_short_version": "2.1"},
+		}),
+		snapshot(CategoryHomebrew, []map[string]string{{"name": "openssl@3", "version": "3.3.1", "type": "formula"}}),
+		snapshot(CategoryChocolatey, []map[string]string{{"name": "7zip", "version": "23.1.0"}}),
+	})
+
+	byName := map[string]NodeSoftware{}
+	for _, sw := range softwareOf(t, inv, "NODE-1") {
+		byName[sw.Name] = sw
+	}
+	require.Len(t, byName, 5)
+	assert.Equal(t, "Mozilla", byName["Mozilla Firefox (x64 en-US)"].Vendor)
+	chrome := byName["Google Chrome"]
+	assert.Equal(t, CategoryApps, chrome.Category)
+	assert.Equal(t, "120.0.6099.71", chrome.Version)
+	assert.Equal(t, "com.google.Chrome", chrome.Vendor)
+	assert.Equal(t, "2.1", byName["Tool"].Version, "without a bundle name the .app suffix is dropped")
+	assert.Equal(t, "3.3.1", byName["openssl@3"].Version)
+	assert.Equal(t, "23.1.0", byName["7zip"].Version)
+}

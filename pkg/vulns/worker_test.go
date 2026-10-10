@@ -155,3 +155,170 @@ func TestHousekeepingSweepsDeletedNodesAndOldResolvedFindings(t *testing.T) {
 	db.Model(&NodeState{}).Where("node_uuid = ?", "GONE").Count(&n)
 	assert.Zero(t, n)
 }
+
+func newTestWorkerNVD(t *testing.T, db *gorm.DB, baseURL string, clock *fixedClock) *Worker {
+	t.Helper()
+	require.NoError(t, db.AutoMigrate(&nodes.OsqueryNode{}))
+	w, err := NewWorker(db, Config{
+		OSVURL: baseURL, KEVURL: baseURL + "/kev.json", NVDEnabled: true, NVDURL: baseURL + "/nvd",
+		SyncInterval: 6 * time.Hour, Retention: 90 * 24 * time.Hour,
+		MaxDownload: 10 << 20, HTTPClient: http.DefaultClient,
+	})
+	require.NoError(t, err)
+	w.now = clock.now
+	return w
+}
+
+func TestNewWorkerValidatesTheNVDURLOnlyWhenEnabled(t *testing.T) {
+	_, err := NewWorker(newTestDB(t), Config{OSVURL: DefaultOSVURL, KEVURL: DefaultKEVURL, NVDEnabled: true, NVDURL: "file:///etc/passwd"})
+	assert.Error(t, err)
+	_, err = NewWorker(newTestDB(t), Config{OSVURL: DefaultOSVURL, KEVURL: DefaultKEVURL, NVDURL: "file:///etc/passwd"})
+	assert.NoError(t, err, "ignored while NVD is off")
+}
+
+// End to end: a Windows node reports Firefox, one tick syncs NVD and KEV, and
+// the node has a possible, KEV-flagged finding.
+func TestTickMatchesWindowsProgramsAgainstNVD(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/kev.json", []byte(`{"vulnerabilities": [{"cveID": "CVE-2026-1000"}]}`))
+	fs.set("/nvd", []byte(nvdPageOf(1, nvdEntry("CVE-2026-1000", "Analyzed", firefoxCPE, `, "versionEndExcluding": "130.0"`))))
+	db := newTestDB(t)
+	clock := newClock()
+	inv := &Inventory{DB: db, now: clock.now}
+	require.NoError(t, inv.ingestSnapshot("W1", 1, CategoryOS, []byte(`[{"platform":"windows","version":"10.0.22631","major":"10"}]`)))
+	require.NoError(t, inv.ingestSnapshot("W1", 1, CategoryPrograms, []byte(`[{"name":"Mozilla Firefox (x64 en-US)","version":"128.0.3","publisher":"Mozilla"}]`)))
+	w := newTestWorkerNVD(t, db, srv.URL, clock)
+	require.NoError(t, db.Create(&nodes.OsqueryNode{UUID: "W1"}).Error)
+
+	clock.advance(time.Second)
+	require.NoError(t, w.Tick(context.Background()))
+
+	var got []Finding
+	require.NoError(t, db.Find(&got).Error)
+	require.Len(t, got, 1)
+	assert.Equal(t, ConfidencePossible, got[0].Confidence)
+	assert.Equal(t, "mozilla:firefox", got[0].Package)
+	assert.Equal(t, "130.0", got[0].FixedVersion)
+	assert.True(t, got[0].KEV)
+}
+
+// Turning NVD on syncs it at the next retry point, not hours later.
+func TestNVDSyncsSoonAfterItIsTurnedOn(t *testing.T) {
+	db := newTestDB(t)
+	clock := newClock()
+	w := newTestWorkerNVD(t, db, "http://unused", clock)
+	last := clock.now().Add(-failureRetry)
+	due, err := w.syncDue(WorkerState{LastSyncAt: &last}, nil)
+	require.NoError(t, err)
+	assert.True(t, due)
+	now := clock.now()
+	require.NoError(t, recordSuccess(db, sourceNVD, now, SyncResult{}, now))
+	due, err = w.syncDue(WorkerState{LastSyncAt: &last}, nil)
+	require.NoError(t, err)
+	assert.False(t, due)
+}
+
+// Turning NVD off removes what it left: possible findings resolve, borrowed
+// severities revert, and its sync row stops marking data stale.
+func TestTurningNVDOffDropsItsData(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/kev.json", []byte(`{"vulnerabilities": [{"cveID": "CVE-2026-0001"}]}`))
+	db := newTestDB(t)
+	clock := newClock()
+	now := clock.now()
+	require.NoError(t, recordSuccess(db, sourceNVD, now, SyncResult{}, now))
+	require.NoError(t, db.Create(&[]Advisory{
+		{ID: "CVE-2026-1000", Source: AdvisorySourceNVD, Severity: SeverityCritical, CVSSVector: cvss98, CVSSScore: 9.8},
+		{ID: "DSA-1-1", Source: AdvisorySourceOSV, Severity: SeverityCritical, CVSSVector: cvss98, CVSSScore: 9.8, CVSSFrom: "CVE-2026-1000"},
+	}).Error)
+	require.NoError(t, db.Create(&[]Alias{
+		{AdvisoryID: "CVE-2026-1000", Alias: "CVE-2026-1000"}, {AdvisoryID: "DSA-1-1", Alias: "CVE-2026-1000"},
+	}).Error)
+	require.NoError(t, db.Create(&Affected{AdvisoryID: "CVE-2026-1000", Ecosystem: cpeEcosystem, Package: "mozilla:firefox", Ranges: "[]", Versions: "[]"}).Error)
+	require.NoError(t, db.Create(&CPEProduct{Vendor: "mozilla", Product: "firefox"}).Error)
+	require.NoError(t, db.Create(&NodeState{NodeUUID: "W1", EnvironmentID: 1, InventoryAt: now, MatchedAt: &now}).Error)
+	require.NoError(t, db.Create(&Finding{NodeUUID: "W1", EnvironmentID: 1, AdvisoryID: "CVE-2026-1000", Ecosystem: cpeEcosystem,
+		Package: "mozilla:firefox", Severity: SeverityCritical, Confidence: ConfidencePossible}).Error)
+	w := newTestWorker(t, db, srv.URL, clock) // NVD off
+	require.NoError(t, db.Create(&nodes.OsqueryNode{UUID: "W1"}).Error)
+
+	clock.advance(time.Second)
+	require.NoError(t, w.Tick(context.Background()))
+
+	var n int64
+	require.NoError(t, db.Model(&SyncState{}).Where("source = ?", sourceNVD).Count(&n).Error)
+	assert.Zero(t, n, "a feed that will never sync again must not mark data stale")
+	require.NoError(t, db.Model(&Advisory{}).Where("source = ?", AdvisorySourceNVD).Count(&n).Error)
+	assert.Zero(t, n)
+	require.NoError(t, db.Model(&Affected{}).Where("ecosystem = ?", cpeEcosystem).Count(&n).Error)
+	assert.Zero(t, n)
+	require.NoError(t, db.Model(&CPEProduct{}).Count(&n).Error)
+	assert.Zero(t, n)
+	var dsa Advisory
+	require.NoError(t, db.First(&dsa, "id = ?", "DSA-1-1").Error)
+	assert.Equal(t, SeverityUnknown, dsa.Severity)
+	assert.Empty(t, dsa.CVSSFrom)
+	var f Finding
+	require.NoError(t, db.First(&f, "node_uuid = ?", "W1").Error)
+	assert.NotNil(t, f.ResolvedAt, "the node was re-matched and the possible finding resolved")
+}
+
+// A sync that runs long and fails waits the retry interval after it ends,
+// not after it started: otherwise it reruns at once and matching starves.
+func TestFailedLongSyncWaitsBeforeRetrying(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/kev.json", []byte(`{"vulnerabilities": [{"cveID": "CVE-2026-0001"}]}`))
+	fs.fail("/nvd", http.StatusServiceUnavailable)
+	db := newTestDB(t)
+	clock := newClock()
+	w := newTestWorkerNVD(t, db, srv.URL, clock)
+	// Each retry wait takes 10 minutes: the failing sync lasts 20.
+	w.nvd.sleep = func(_ context.Context, d time.Duration) error {
+		clock.advance(10 * time.Minute)
+		return nil
+	}
+	require.NoError(t, w.Tick(context.Background()))
+
+	var ws WorkerState
+	require.NoError(t, db.First(&ws, "name = ?", workerName).Error)
+	require.True(t, ws.LastSyncFailed)
+	due, err := w.syncDue(ws, nil)
+	require.NoError(t, err)
+	assert.False(t, due, "retry 15 minutes after the failure, not straight away")
+	clock.advance(failureRetry)
+	due, err = w.syncDue(ws, nil)
+	require.NoError(t, err)
+	assert.True(t, due)
+}
+
+// An interrupted first sync can leave NVD data without a sync row, and nodes
+// silent for 30 days are never re-matched: neither may keep NVD effects once
+// NVD is off.
+func TestDropNVDCleansUpWithoutASyncRowAndOnStaleNodes(t *testing.T) {
+	db := newTestDB(t)
+	clock := newClock()
+	stale := clock.now().Add(-40 * 24 * time.Hour)
+	require.NoError(t, db.Create(&[]Advisory{
+		{ID: "CVE-2026-1000", Source: AdvisorySourceNVD, Severity: SeverityCritical, CVSSVector: cvss98, CVSSScore: 9.8},
+		{ID: "DSA-1-1", Source: AdvisorySourceOSV, Severity: SeverityCritical, CVSSVector: cvss98, CVSSScore: 9.8, CVSSFrom: "CVE-2026-1000"},
+	}).Error)
+	require.NoError(t, db.Create(&Alias{AdvisoryID: "DSA-1-1", Alias: "CVE-2026-1000"}).Error)
+	require.NoError(t, db.Create(&CPEProduct{Vendor: "mozilla", Product: "firefox"}).Error)
+	require.NoError(t, db.Create(&NodeState{NodeUUID: "OLD", EnvironmentID: 1, InventoryAt: stale, MatchedAt: &stale}).Error)
+	require.NoError(t, db.Create(&Finding{NodeUUID: "OLD", EnvironmentID: 1, AdvisoryID: "CVE-2026-1000", Ecosystem: cpeEcosystem,
+		Package: "mozilla:firefox", Severity: SeverityCritical, Confidence: ConfidencePossible}).Error)
+
+	require.NoError(t, dropNVD(db, clock.now()))
+
+	var n int64
+	require.NoError(t, db.Model(&Advisory{}).Where("source = ?", AdvisorySourceNVD).Count(&n).Error)
+	assert.Zero(t, n, "NVD data without a sync row is dropped too")
+	require.NoError(t, db.Model(&CPEProduct{}).Count(&n).Error)
+	assert.Zero(t, n)
+	dsa := advisoryByID(t, db, "DSA-1-1")
+	assert.Equal(t, SeverityUnknown, dsa.Severity)
+	assert.Empty(t, dsa.CVSSFrom)
+	var f Finding
+	require.NoError(t, db.First(&f, "node_uuid = ?", "OLD").Error)
+	assert.NotNil(t, f.ResolvedAt, "a stale node's possible finding resolves without a re-match")
+}

@@ -8,6 +8,7 @@ import { z } from 'zod';
  */
 export const vulnSearchSchema = z.object({
   severity: z.enum(['critical', 'high', 'medium', 'low', 'unknown']).optional().catch(undefined),
+  confidence: z.enum(['confirmed', 'possible']).optional().catch(undefined),
   state: z.enum(['open', 'resolved', 'all']).optional().catch(undefined),
   kev: z.boolean().optional().catch(undefined),
   page: z.number().int().positive().optional().catch(undefined),

@@ -124,14 +124,17 @@ type CountRow struct {
 
 // Summary is the environment overview.
 type Summary struct {
-	Loaded        bool                        `json:"loaded"`
-	Stale         bool                        `json:"stale"`
-	BySeverity    map[string]map[string]int64 `json:"by_severity"`
-	KEV           int64                       `json:"kev"`
-	AffectedNodes int64                       `json:"affected_nodes"`
-	NotAssessed   int64                       `json:"not_assessed"`
-	TopAdvisories []CountRow                  `json:"top_advisories"`
-	TopPackages   []CountRow                  `json:"top_packages"`
+	Loaded     bool                        `json:"loaded"`
+	Stale      bool                        `json:"stale"`
+	BySeverity map[string]map[string]int64 `json:"by_severity"`
+	KEV        int64                       `json:"kev"`
+	// Possible counts open possible (NVD CPE) findings. KEV, AffectedNodes
+	// and the top lists count confirmed findings only.
+	Possible      int64      `json:"possible"`
+	AffectedNodes int64      `json:"affected_nodes"`
+	NotAssessed   int64      `json:"not_assessed"`
+	TopAdvisories []CountRow `json:"top_advisories"`
+	TopPackages   []CountRow `json:"top_packages"`
 }
 
 // Summary counts open findings in one environment.
@@ -140,6 +143,7 @@ func (r *Reader) Summary(envID uint) (Summary, error) {
 	open := func() *gorm.DB {
 		return r.DB.Model(&Finding{}).Where("environment_id = ? AND resolved_at IS NULL", envID)
 	}
+	confirmed := func() *gorm.DB { return open().Where("confidence = ?", ConfidenceConfirmed) }
 	var rows []struct {
 		Severity   string
 		Confidence string
@@ -154,21 +158,24 @@ func (r *Reader) Summary(envID uint) (Summary, error) {
 		}
 		s.BySeverity[row.Severity][row.Confidence] = row.Total
 	}
-	if err := open().Where("kev = ?", true).Count(&s.KEV).Error; err != nil {
+	if err := confirmed().Where("kev = ?", true).Count(&s.KEV).Error; err != nil {
 		return s, err
 	}
-	if err := open().Distinct("node_uuid").Count(&s.AffectedNodes).Error; err != nil {
+	if err := open().Where("confidence = ?", ConfidencePossible).Count(&s.Possible).Error; err != nil {
+		return s, err
+	}
+	if err := confirmed().Distinct("node_uuid").Count(&s.AffectedNodes).Error; err != nil {
 		return s, err
 	}
 	if err := r.DB.Model(&NodeState{}).Where("environment_id = ?", envID).
 		Select("COALESCE(SUM(not_assessed), 0)").Scan(&s.NotAssessed).Error; err != nil {
 		return s, err
 	}
-	if err := open().Select("advisory_id AS name, COUNT(DISTINCT node_uuid) AS total").
+	if err := confirmed().Select("advisory_id AS name, COUNT(DISTINCT node_uuid) AS total").
 		Group("advisory_id").Order("total DESC, name").Limit(topN).Scan(&s.TopAdvisories).Error; err != nil {
 		return s, err
 	}
-	if err := open().Select("package AS name, COUNT(DISTINCT node_uuid) AS total").
+	if err := confirmed().Select("package AS name, COUNT(DISTINCT node_uuid) AS total").
 		Group("package").Order("total DESC, name").Limit(topN).Scan(&s.TopPackages).Error; err != nil {
 		return s, err
 	}
@@ -192,7 +199,7 @@ func (r *Reader) Advisory(id string, envID uint) (AdvisoryDetail, error) {
 		return d, err
 	}
 	_ = json.Unmarshal([]byte(d.Advisory.RefURLs), &d.References)
-	if err := r.DB.Model(&Alias{}).Where("advisory_id = ?", id).Order("alias").Pluck("alias", &d.Aliases).Error; err != nil {
+	if err := r.DB.Model(&Alias{}).Where("advisory_id = ? AND alias <> ?", id, id).Order("alias").Pluck("alias", &d.Aliases).Error; err != nil {
 		return d, err
 	}
 	err := r.DB.Where("advisory_id = ? AND environment_id = ? AND resolved_at IS NULL", id, envID).

@@ -13,7 +13,7 @@ the feed downloads below, to URLs the operator controls.
 2. osctrl-tls replaces each node's `node_software` rows per category on every
    snapshot and records the OS in `vuln_node_state`.
 3. One osctrl-api replica (SQL lease) syncs the OSV ecosystems the fleet
-   reports, plus the CISA KEV catalog, every `--vuln-sync-hours`. It then
+   reports, plus the CISA KEV catalog and, with `--vuln-nvd-enabled`, NVD CVEs, every `--vuln-sync-hours`. It then
    re-matches nodes whose inventory or advisories changed.
 
 ## Coverage
@@ -24,13 +24,15 @@ the feed downloads below, to URLs the operator controls.
 | RHEL, Rocky, AlmaLinux `rpm_packages` | OSV `Red Hat:enterprise_linux:<major>::*`, `Rocky Linux:<major>`, `AlmaLinux:<major>` |
 | `python_packages` | OSV `PyPI` (PEP 503 names) |
 | `npm_packages` (global) | OSV `npm` |
+| Windows `programs`, `chocolatey_packages`; macOS `apps`, `homebrew_packages` | NVD CPE (`--vuln-nvd-enabled`), as **possible** findings |
 
 Not assessed, and counted as such rather than reported clean:
 
 - Alpine (osquery has no `apk_packages` table);
 - CentOS, SUSE and other distributions;
 - Ubuntu Pro/FIPS and RHEL EUS streams;
-- Windows and macOS applications (NVD/CPE matching is planned);
+- Windows programs, macOS apps, Homebrew and Chocolatey packages while
+  `--vuln-nvd-enabled` is off;
 - packages in an ecosystem whose OSV feed hasn't synced yet;
 - versions without a digit.
 
@@ -42,6 +44,37 @@ Not assessed, and counted as such rather than reported clean:
   severity is `unknown`.
 - **KEV:** a finding is flagged when any CVE alias of its advisory is in the
   CISA catalog.
+
+## NVD possible findings
+
+With `--vuln-nvd-enabled`, osctrl-api also syncs CVEs from the NVD CVE API
+2.0 and matches Windows programs, macOS apps, Homebrew and Chocolatey
+packages by product name.
+
+- **Names:** the installed name and vendor are normalized to CPE spelling.
+  The vendor is the Windows publisher or the macOS bundle id. The names are
+  then looked up exactly among the products stored CVEs list
+  (`vuln_cpe_products`). Without a matching vendor, a product is taken only
+  when a single vendor ships it. There is no fuzzy matching.
+- **Versions** are compared as dotted numbers. A version without a digit is
+  not assessed.
+- **Possible, not confirmed:** these findings are shown, de-emphasized, but
+  never alert and never count toward the posture score. KEV and severity come
+  from the CVE.
+- **Severity:** an OSV record without its own CVSS borrows the highest score
+  of an aliased NVD CVE; `cvss_from` names the CVE.
+- **Application CVEs only** (CPE part `a`) are stored. Kernel and OS CVEs are
+  not, so their OSV records keep `unknown` severity unless they carry a CVSS.
+- **Rate limits:** requests are paced at NVD's documented limit, one every
+  6 seconds without a key; an API key gives ten times the rate. The first
+  sync reads about 150 pages of 2,000 CVEs and stores each one, so expect an
+  hour or more, during which the worker matches nothing else. Rate-limited
+  pages are retried twice; a sync that still fails retries 15 minutes after
+  it ended.
+- **API key:** set it through `VULN_NVD_API_KEY`; a flag value shows in the
+  process list. It is sent only as the `apiKey` header.
+- **Turning it off** removes the NVD data on the next worker tick: possible
+  findings resolve and borrowed severities revert.
 
 ## Alerts
 
@@ -93,7 +126,9 @@ The control is unevaluated, never passed, before advisory data has loaded and
 for a node without findings that has never been matched or has no assessed
 packages (Amazon Linux, an OS-only Windows node, an ecosystem whose feed hasn't
 synced). A node with no findings but some packages not assessed warns: not
-assessed is never clean.
+assessed is never clean. Packages only NVD names cover (Windows programs,
+macOS apps, Homebrew, Chocolatey) never count either way, and possible findings
+never affect the score.
 
 ## Health
 
@@ -108,7 +143,8 @@ The health page shows an "Advisory feeds" component:
 Mirror the OSV bucket layout (`<ecosystem>/all.zip`,
 `<ecosystem>/modified_id.csv`, `<ecosystem>/<id>.json`) and the KEV JSON on
 an internal web server. Then set `--vuln-osv-url` and `--vuln-kev-url`. Only
-`http` and `https` URLs are accepted.
+`http` and `https` URLs are accepted. Leave NVD off, or point `--vuln-nvd-url`
+at a mirror that serves the API's responses.
 
 ## Operations
 

@@ -120,6 +120,12 @@ service:
   vulnSyncHours: 6
   vulnRetentionDays: 90
   vulnMaxDownloadMB: 2048
+  # NVD CPE matching of Windows programs, macOS apps, Homebrew and
+  # Chocolatey packages. Matches are "possible" findings: shown, never
+  # alerted on or scored. Set the optional API key through the
+  # VULN_NVD_API_KEY environment variable, not here.
+  vulnNVDEnabled: false
+  vulnNVDURL: "https://services.nvd.nist.gov/rest/json/cves/2.0"
   # DB health monitor. When enabled, osctrl-api pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache switches to stale-serve mode:

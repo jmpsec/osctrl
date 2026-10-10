@@ -572,6 +572,9 @@ func osctrlAPIService() {
 			SyncInterval: syncInterval,
 			Retention:    time.Duration(flagParams.Service.VulnRetentionDays) * 24 * time.Hour,
 			MaxDownload:  int64(flagParams.Service.VulnMaxDownloadMB) << 20,
+			NVDEnabled:   flagParams.Service.VulnNVDEnabled,
+			NVDURL:       flagParams.Service.VulnNVDURL,
+			NVDAPIKey:    flagParams.Service.VulnNVDAPIKey,
 		})
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to initialize vulnerability monitoring")

@@ -45,7 +45,7 @@ function summary(overrides: Partial<VulnSummary> = {}): VulnSummary {
   return {
     loaded: true, stale: false,
     by_severity: { critical: { confirmed: 2 }, medium: { confirmed: 1 } },
-    kev: 2, affected_nodes: 2, not_assessed: 5, top_advisories: [], top_packages: [],
+    kev: 2, possible: 0, affected_nodes: 2, not_assessed: 5, top_advisories: [], top_packages: [],
     ...overrides,
   };
 }
@@ -87,6 +87,38 @@ describe('VulnerabilitiesPage', () => {
       findings: [finding(), finding({ id: 2, advisory_id: 'DSA-2', package: 'curl', fixed_version: '', severity: 'medium', kev: false })],
       total: 2, page: 1,
     });
+  });
+
+  it('counts only confirmed findings in the headline and de-emphasizes possible ones', async () => {
+    mockSummary.mockResolvedValue(summary({
+      by_severity: { critical: { confirmed: 2, possible: 4 }, medium: { confirmed: 1 } },
+      possible: 4,
+    }));
+    mockList.mockResolvedValue({
+      findings: [
+        finding(),
+        finding({ id: 3, advisory_id: 'CVE-2026-9', ecosystem: 'cpe', package: 'mozilla:firefox', confidence: 'possible', kev: false }),
+      ],
+      total: 2, page: 1,
+    });
+    renderPage();
+    const possibleRow = (await screen.findByRole('button', { name: 'CVE-2026-9' })).closest('tr');
+    expect(possibleRow).toHaveClass('opacity-70');
+    expect(screen.getByRole('button', { name: 'DSA-1' }).closest('tr')).not.toHaveClass('opacity-70');
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('Possible matches not counted: 4')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Critical/ })).toHaveTextContent('6');
+  });
+
+  it('filters by confidence, starting from the first page', async () => {
+    const user = userEvent.setup();
+    mockSummary.mockResolvedValue(summary({ by_severity: { critical: { confirmed: 2, possible: 4 } }, possible: 4 }));
+    renderPage();
+    await user.selectOptions(await screen.findByLabelText('Confidence'), 'possible');
+    await waitFor(() =>
+      expect(mockList).toHaveBeenLastCalledWith('dev', expect.objectContaining({ confidence: 'possible', page: 1 })),
+    );
+    expect(screen.getByRole('button', { name: /^Critical/ })).toHaveTextContent('4');
   });
 
   it('shows the summary and the findings', async () => {

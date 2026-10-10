@@ -246,7 +246,7 @@ func storeAdvisory(tx *gorm.DB, p parsedAdvisory) error {
 	if err := tx.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "id"}},
 		// kev belongs to the KEV sync, so a record update never clears it.
-		DoUpdates: clause.AssignmentColumns([]string{"summary", "details", "cvss_vector", "cvss_score", "severity", "ref_urls", "published", "modified"}),
+		DoUpdates: clause.AssignmentColumns([]string{"source", "summary", "details", "cvss_vector", "cvss_score", "severity", "ref_urls", "published", "modified", "cvss_from"}),
 	}).Create(&p.Advisory).Error; err != nil {
 		return err
 	}

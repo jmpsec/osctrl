@@ -23,6 +23,7 @@ const maxFieldLen = 255
 // packageCategories are the inventory categories that hold packages.
 var packageCategories = map[string]bool{
 	CategoryDeb: true, CategoryRPM: true, CategoryPython: true, CategoryNPM: true,
+	CategoryHomebrew: true, CategoryPrograms: true, CategoryApps: true, CategoryChocolatey: true,
 }
 
 // Inventory stores the software nodes report through the osctrl:vuln:
@@ -148,6 +149,17 @@ func normalizeRows(category string, rows []row) []NodeSoftware {
 			}
 			sw.SourceName = rpmSourceName(r.get("source"))
 			sw.Vendor = r.get("vendor")
+		case CategoryPrograms:
+			sw.Vendor = r.get("publisher")
+		case CategoryApps:
+			// apps.name is the bundle's file name ("Firefox.app").
+			if b := r.get("bundle_name"); b != "" {
+				sw.Name = b
+			} else {
+				sw.Name = strings.TrimSuffix(sw.Name, ".app")
+			}
+			sw.Version = r.get("bundle_short_version")
+			sw.Vendor = r.get("bundle_identifier")
 		}
 		if sw.Name == "" {
 			continue
