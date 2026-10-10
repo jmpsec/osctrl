@@ -22,6 +22,8 @@ type NewFinding struct {
 	Escalated        bool
 	PrevSeverity     string
 	PrevKEV          bool
+	// FindingID is the escalated finding (ID is the escalation's own).
+	FindingID uint
 }
 
 // FindingsAfter lists open confirmed findings with id > afterID, lowest id
@@ -54,11 +56,13 @@ func (inv *Inventory) EscalationsAfter(ctx context.Context, afterID uint, limit 
 	out := []NewFinding{}
 	err := inv.DB.WithContext(ctx).Table("vuln_escalations AS e").
 		Select("e.id, f.node_uuid, f.environment_id, f.advisory_id, f.package, f.installed_version, "+
-			"f.fixed_version, f.severity, f.kev, e.prev_severity, e.prev_kev, "+
+			"f.fixed_version, f.severity, f.kev, e.prev_severity, e.prev_kev, f.id AS finding_id, "+
 			"COALESCE(n.hostname, '') AS hostname").
 		Joins("JOIN vuln_findings AS f ON f.id = e.finding_id").
 		Joins("LEFT JOIN osquery_nodes AS n ON n.uuid = f.node_uuid AND n.deleted_at IS NULL").
-		Where("e.id > ? AND f.confidence = ? AND f.resolved_at IS NULL", afterID, ConfidenceConfirmed).
+		// An escalation from before the finding's last reopen is not news.
+		Where("e.id > ? AND f.confidence = ? AND f.resolved_at IS NULL AND (f.reopened_at IS NULL OR e.created_at >= f.reopened_at)",
+			afterID, ConfidenceConfirmed).
 		Order("e.id").Limit(limit).
 		Scan(&out).Error
 	for i := range out {

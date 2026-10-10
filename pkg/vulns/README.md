@@ -113,7 +113,14 @@ How it fires:
   corrupt or expired cursor restarts from the newest record and never replays
   history. Cursors expire after a week without sweeps, so re-enabling alerts
   after a long pause starts from now.
-- **Replicas:** one osctrl-tls replica sweeps per minute (a Redis lock).
+- **Peaks:** an escalation is measured against the highest severity and KEV
+  state the finding ever had, so falling and coming back (NVD off for a while,
+  a truncated KEV feed) is not news. Escalations recorded before a finding was
+  reopened stay silent, and a finding the watcher has not alerted yet alerts
+  once with its current state.
+- **Replicas:** one osctrl-tls replica sweeps at a time (a Redis lock held for
+  the sweep, released when it ends, expiring after 5 minutes if its holder
+  dies).
 - **Settling:** a sweep takes only findings the previous sweep already
   listed, so one written by a slower match transaction is never skipped.
   Alerts arrive a minute later; no clocks are compared.
@@ -171,7 +178,9 @@ at a mirror that serves the API's responses.
   `osctrl_vuln_advisories`, `osctrl_vuln_feed_last_success_timestamp_seconds`
   (per source), `osctrl_vuln_findings_open` (per confidence),
   `osctrl_vuln_findings_resolved`, `osctrl_vuln_nodes_pending_match` and
-  `osctrl_vuln_packages_not_assessed`.
+  `osctrl_vuln_packages_not_assessed`. Every osctrl-tls replica exports the
+  same fleet-wide values: aggregate with `max()`, not `sum()`. A reading that
+  fails or takes over 10 seconds exports nothing.
 - **Rejected records:** an advisory the database rejects is skipped and
   counted (`last_skipped`), not retried forever.
 - **NVD on some replicas only:** a replica with `--vuln-nvd-enabled` off keeps

@@ -77,10 +77,19 @@ func refreshFlags(db *gorm.DB, now time.Time) error {
 		if err := recordEscalations(tx, now); err != nil {
 			return err
 		}
-		return tx.Exec(`UPDATE vuln_findings SET
+		if err := tx.Exec(`UPDATE vuln_findings SET
 		kev = (SELECT a.kev FROM vuln_advisories a WHERE a.id = vuln_findings.advisory_id),
 		severity = (SELECT a.severity FROM vuln_advisories a WHERE a.id = vuln_findings.advisory_id)
-		WHERE EXISTS (SELECT 1 FROM vuln_advisories a WHERE a.id = vuln_findings.advisory_id)`).Error
+		WHERE EXISTS (SELECT 1 FROM vuln_advisories a WHERE a.id = vuln_findings.advisory_id)`).Error; err != nil {
+			return err
+		}
+		// Raise the peaks to the new values.
+		if err := tx.Exec(`UPDATE vuln_findings SET peak_severity = severity WHERE ` +
+			severityRankSQL("severity") + ` > ` + severityRankSQL("peak_severity")).Error; err != nil {
+			return err
+		}
+		// NULL: rows from before the column, on any database.
+		return tx.Model(&Finding{}).Where("kev = ? AND (ever_kev = ? OR ever_kev IS NULL)", true, false).Update("ever_kev", true).Error
 	})
 }
 
@@ -88,13 +97,15 @@ func refreshFlags(db *gorm.DB, now time.Time) error {
 // known-exploited or more severe than the finding says.
 func recordEscalations(tx *gorm.DB, now time.Time) error {
 	var rows []struct {
-		ID          uint
-		Severity    string
-		KEV         bool
-		NewSeverity string
-		NewKEV      bool
+		ID           uint
+		Severity     string
+		KEV          bool
+		PeakSeverity string
+		EverKEV      bool
+		NewSeverity  string
+		NewKEV       bool
 	}
-	if err := tx.Raw(`SELECT f.id, f.severity, f.kev, a.severity AS new_severity, a.kev AS new_kev
+	if err := tx.Raw(`SELECT f.id, f.severity, f.kev, f.peak_severity, f.ever_kev, a.severity AS new_severity, a.kev AS new_kev
 		FROM vuln_findings f JOIN vuln_advisories a ON a.id = f.advisory_id
 		WHERE f.resolved_at IS NULL AND f.confidence = ? AND (f.severity <> a.severity OR f.kev <> a.kev)`,
 		ConfidenceConfirmed).Scan(&rows).Error; err != nil {
@@ -102,8 +113,9 @@ func recordEscalations(tx *gorm.DB, now time.Time) error {
 	}
 	var events []Escalation
 	for _, r := range rows {
-		if escalated(r.Severity, r.KEV, r.NewSeverity, r.NewKEV) {
-			events = append(events, Escalation{FindingID: r.ID, PrevSeverity: r.Severity, PrevKEV: r.KEV, CreatedAt: now})
+		prev, prevKEV := higherSeverity(r.Severity, r.PeakSeverity), r.KEV || r.EverKEV
+		if escalated(prev, prevKEV, r.NewSeverity, r.NewKEV) {
+			events = append(events, Escalation{FindingID: r.ID, PrevSeverity: prev, PrevKEV: prevKEV, CreatedAt: now})
 		}
 	}
 	if len(events) == 0 {
@@ -114,6 +126,20 @@ func recordEscalations(tx *gorm.DB, now time.Time) error {
 
 // severityRank orders severities; unknown ranks below low.
 var severityRank = map[string]int{SeverityLow: 1, SeverityMedium: 2, SeverityHigh: 3, SeverityCritical: 4}
+
+// higherSeverity is the more severe of a and b.
+func higherSeverity(a, b string) string {
+	if severityRank[b] > severityRank[a] {
+		return b
+	}
+	return a
+}
+
+// severityRankSQL is severityRank as a SQL expression over column.
+func severityRankSQL(column string) string {
+	return "(CASE " + column + " WHEN '" + SeverityCritical + "' THEN 4 WHEN '" + SeverityHigh + "' THEN 3 WHEN '" +
+		SeverityMedium + "' THEN 2 WHEN '" + SeverityLow + "' THEN 1 ELSE 0 END)"
+}
 
 // escalated reports whether a finding became known-exploited or rose in
 // severity.

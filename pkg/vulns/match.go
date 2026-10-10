@@ -270,26 +270,34 @@ func persistFindings(tx *gorm.DB, nodeUUID string, envID uint, found map[finding
 			continue
 		}
 		delete(found, key)
-		if e.ResolvedAt == nil && e.Confidence == ConfidenceConfirmed && escalated(e.Severity, e.KEV, f.Severity, f.KEV) {
-			if err := tx.Create(&Escalation{FindingID: e.ID, PrevSeverity: e.Severity, PrevKEV: e.KEV, CreatedAt: now}).Error; err != nil {
+		prev, prevKEV := higherSeverity(e.Severity, e.PeakSeverity), e.KEV || e.EverKEV
+		if e.ResolvedAt == nil && e.Confidence == ConfidenceConfirmed && escalated(prev, prevKEV, f.Severity, f.KEV) {
+			if err := tx.Create(&Escalation{FindingID: e.ID, PrevSeverity: prev, PrevKEV: prevKEV, CreatedAt: now}).Error; err != nil {
 				return err
 			}
 		}
-		if err := tx.Model(&Finding{}).Where("id = ?", e.ID).Updates(map[string]any{
+		updates := map[string]any{
 			"environment_id":    envID,
 			"installed_version": f.InstalledVersion,
 			"fixed_version":     f.FixedVersion,
 			"severity":          f.Severity,
 			"kev":               f.KEV,
+			"peak_severity":     higherSeverity(prev, f.Severity),
+			"ever_kev":          prevKEV || f.KEV,
 			"last_seen":         now,
 			"resolved_at":       nil,
-		}).Error; err != nil {
+		}
+		if e.ResolvedAt != nil {
+			updates["reopened_at"] = now
+		}
+		if err := tx.Model(&Finding{}).Where("id = ?", e.ID).Updates(updates).Error; err != nil {
 			return err
 		}
 	}
 	created := make([]Finding, 0, len(found))
 	for _, f := range found {
 		f.FirstSeen, f.LastSeen = now, now
+		f.PeakSeverity, f.EverKEV = f.Severity, f.KEV
 		created = append(created, f)
 	}
 	if len(created) > 0 {

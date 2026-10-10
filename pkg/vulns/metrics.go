@@ -1,6 +1,7 @@
 package vulns
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -14,7 +15,12 @@ import (
 // so the numbers come from the shared database. A reading is reused for
 // metricsTTL so frequent scrapes cannot load the database.
 
-const metricsTTL = time.Minute
+const (
+	metricsTTL = time.Minute
+	// metricsTimeout bounds one reading: a stalled database fails the scrape
+	// instead of holding every scrape behind it.
+	metricsTimeout = 10 * time.Second
+)
 
 var (
 	descAdvisories  = prometheus.NewDesc("osctrl_vuln_advisories", "Stored advisories.", nil, nil)
@@ -85,7 +91,9 @@ func (c *metricsCollector) read() *metricsReading {
 	if c.reading != nil && now.Sub(c.readAt) < metricsTTL {
 		return c.reading
 	}
-	r, err := c.query(now)
+	ctx, cancel := context.WithTimeout(context.Background(), metricsTimeout)
+	defer cancel()
+	r, err := c.query(ctx, now)
 	if err != nil {
 		log.Warn().Err(err).Msg("vulns: reading metrics failed")
 		return nil
@@ -94,36 +102,37 @@ func (c *metricsCollector) read() *metricsReading {
 	return r
 }
 
-func (c *metricsCollector) query(now time.Time) (*metricsReading, error) {
+func (c *metricsCollector) query(ctx context.Context, now time.Time) (*metricsReading, error) {
+	db := c.db.WithContext(ctx)
 	r := &metricsReading{open: map[string]int64{}, lastSuccess: map[string]time.Time{}}
-	if err := c.db.Model(&Advisory{}).Count(&r.advisories).Error; err != nil {
+	if err := db.Model(&Advisory{}).Count(&r.advisories).Error; err != nil {
 		return nil, err
 	}
 	var open []struct {
 		Confidence string
 		Total      int64
 	}
-	if err := c.db.Model(&Finding{}).Select("confidence, COUNT(*) AS total").
+	if err := db.Model(&Finding{}).Select("confidence, COUNT(*) AS total").
 		Where("resolved_at IS NULL").Group("confidence").Scan(&open).Error; err != nil {
 		return nil, err
 	}
 	for _, o := range open {
 		r.open[o.Confidence] = o.Total
 	}
-	if err := c.db.Model(&Finding{}).Where("resolved_at IS NOT NULL").Count(&r.resolved).Error; err != nil {
+	if err := db.Model(&Finding{}).Where("resolved_at IS NOT NULL").Count(&r.resolved).Error; err != nil {
 		return nil, err
 	}
 	// The worker's queue: the nodes matchDirty would pick.
-	if err := c.db.Model(&NodeState{}).
+	if err := db.Model(&NodeState{}).
 		Where("(matched_at IS NULL OR matched_at < inventory_at) AND inventory_at > ?", now.Add(-staleNodeAge)).
 		Count(&r.pending).Error; err != nil {
 		return nil, err
 	}
-	if err := c.db.Model(&NodeState{}).Select("COALESCE(SUM(not_assessed), 0)").Scan(&r.notAssessed).Error; err != nil {
+	if err := db.Model(&NodeState{}).Select("COALESCE(SUM(not_assessed), 0)").Scan(&r.notAssessed).Error; err != nil {
 		return nil, err
 	}
 	var states []SyncState
-	if err := c.db.Where("last_success IS NOT NULL").Find(&states).Error; err != nil {
+	if err := db.Where("last_success IS NOT NULL").Find(&states).Error; err != nil {
 		return nil, err
 	}
 	for _, s := range states {

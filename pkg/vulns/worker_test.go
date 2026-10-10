@@ -386,3 +386,58 @@ func TestTurningNVDOffOnTheSameHostDropsAtOnce(t *testing.T) {
 	require.NoError(t, db.Model(&Advisory{}).Where("source = ?", AdvisorySourceNVD).Count(&n).Error)
 	assert.Zero(t, n)
 }
+
+// A feed the fleet no longer uses never syncs again: its row would mark every
+// view stale and export a frozen last-success time. The sync drops it.
+func TestSyncDropsFeedsNoLongerInUse(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/Debian/all.zip", zipOf(t, map[string]string{"DSA-1-1.json": debianRecord("DSA-1-1", "2026-10-01T00:00:00Z", "3.0.13-1")}))
+	fs.set("/kev.json", []byte(`{"vulnerabilities": [{"cveID": "CVE-2026-0001"}]}`))
+	db := newTestDB(t)
+	clock := newClock()
+	now := clock.now()
+	require.NoError(t, recordSuccess(db, "osv:Ubuntu", now, SyncResult{}, now))
+	inv := &Inventory{DB: db, now: clock.now}
+	require.NoError(t, inv.ingestSnapshot("N1", 1, CategoryOS, []byte(`[{"platform":"debian","version":"12 (bookworm)","major":"12"}]`)))
+	w := newTestWorker(t, db, srv.URL, clock)
+	require.NoError(t, db.Create(&nodes.OsqueryNode{UUID: "N1"}).Error)
+	clock.advance(time.Second)
+	require.NoError(t, w.Tick(context.Background()))
+	var sources []string
+	require.NoError(t, db.Model(&SyncState{}).Order("source").Pluck("source", &sources).Error)
+	assert.Equal(t, []string{sourceKEV, "osv:Debian"}, sources)
+}
+
+// Only feeds no node reports are dropped. An ecosystem the allow-list leaves
+// out but the fleet still runs keeps its row (its findings stay matched), and
+// an empty fleet drops nothing (re-adding a node must not re-download).
+func TestSyncKeepsFeedsTheFleetStillReports(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/Debian/all.zip", zipOf(t, map[string]string{"DSA-1-1.json": debianRecord("DSA-1-1", "2026-10-01T00:00:00Z", "3.0.13-1")}))
+	fs.set("/kev.json", []byte(`{"vulnerabilities": [{"cveID": "CVE-2026-0001"}]}`))
+	db := newTestDB(t)
+	clock := newClock()
+	now := clock.now()
+	require.NoError(t, recordSuccess(db, "osv:Ubuntu", now, SyncResult{}, now))
+	inv := &Inventory{DB: db, now: clock.now}
+	require.NoError(t, inv.ingestSnapshot("N1", 1, CategoryOS, []byte(`[{"platform":"debian","version":"12 (bookworm)","major":"12"}]`)))
+	require.NoError(t, inv.ingestSnapshot("N2", 1, CategoryOS, []byte(`[{"platform":"ubuntu","version":"22.04.4 LTS","major":"22"}]`)))
+	w := newTestWorker(t, db, srv.URL, clock)
+	w.cfg.Ecosystems = []string{"Debian"} // narrowed while N2 still runs Ubuntu
+	require.NoError(t, db.Create(&[]nodes.OsqueryNode{{UUID: "N1"}, {UUID: "N2"}}).Error)
+	clock.advance(time.Second)
+	require.NoError(t, w.Tick(context.Background()))
+	var n int64
+	require.NoError(t, db.Model(&SyncState{}).Where("source = ?", "osv:Ubuntu").Count(&n).Error)
+	assert.Equal(t, int64(1), n)
+
+	t.Run("empty fleet", func(t *testing.T) {
+		empty := newTestDB(t) // a subtest's own database
+		require.NoError(t, recordSuccess(empty, "osv:Debian", now, SyncResult{}, now))
+		we := newTestWorker(t, empty, srv.URL, clock)
+		require.NoError(t, we.Tick(context.Background()))
+		var n int64
+		require.NoError(t, empty.Model(&SyncState{}).Where("source = ?", "osv:Debian").Count(&n).Error)
+		assert.Equal(t, int64(1), n, "an empty fleet drops nothing")
+	})
+}

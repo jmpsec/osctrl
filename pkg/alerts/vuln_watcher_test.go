@@ -412,7 +412,7 @@ func TestRedisVulnBudgetLive(t *testing.T) {
 // escalation is base after it became known-exploited or rose in severity;
 // id is the escalation's own id.
 func escalation(id uint, base FindingSnapshot, prevSeverity string, prevKEV bool) FindingSnapshot {
-	base.ID, base.Escalated, base.PrevSeverity, base.PrevKEV = id, true, prevSeverity, prevKEV
+	base.FindingID, base.ID, base.Escalated, base.PrevSeverity, base.PrevKEV = base.ID, id, true, prevSeverity, prevKEV
 	return base
 }
 
@@ -423,7 +423,7 @@ var kevRule = AlertRule{Model: ruleWithID(4), Name: "kev", Source: SourceVulnFin
 func TestVulnWatcherAlertsEscalationsOnce(t *testing.T) {
 	source := &fakeFindingSource{}
 	store, worker, sink := vulnRules(t, kevRule)
-	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true})
+	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true, val: 100})
 	w.escalations = &memCursor{set: true}
 	source.escalate(escalation(1, finding(40, "N1", "DSA-1", "high", true), "high", false))
 	w.Sweep(context.Background())
@@ -443,7 +443,7 @@ func TestVulnWatcherAlertsEscalationsOnce(t *testing.T) {
 func TestVulnWatcherEscalationNeedsANewMatch(t *testing.T) {
 	source := &fakeFindingSource{}
 	store, worker, sink := vulnRules(t, highRule)
-	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true})
+	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true, val: 100})
 	w.escalations = &memCursor{set: true}
 	source.escalate(
 		escalation(1, finding(40, "N1", "DSA-1", "high", false), "medium", false),
@@ -493,6 +493,26 @@ func TestVulnWatcherKeepsTheCursorAliveWhenQuiet(t *testing.T) {
 type denyLock struct{}
 
 func (denyLock) acquire(context.Context) bool { return false }
+func (denyLock) release(context.Context)      {}
+
+type countingLock struct{ held, released int }
+
+func (l *countingLock) acquire(context.Context) bool { l.held++; return true }
+func (l *countingLock) release(context.Context)      { l.released++ }
+
+// The lock is held for the whole sweep, however long, and let go when it
+// ends rather than left to expire.
+func TestVulnWatcherReleasesTheLockAfterTheSweep(t *testing.T) {
+	source := &fakeFindingSource{}
+	store, worker, _ := vulnRules(t, highRule)
+	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true})
+	lock := &countingLock{}
+	w.lock = lock
+	w.Sweep(context.Background())
+	if lock.held != 1 || lock.released != 1 {
+		t.Fatalf("held=%d released=%d", lock.held, lock.released)
+	}
+}
 
 // Only one osctrl-tls replica sweeps at a time: concurrent sweeps would move
 // the cursor backwards and send grouped hits twice.
@@ -526,18 +546,80 @@ func TestParseVulnCursor(t *testing.T) {
 func TestVulnWatcherEscalationsDoNotStarveNewFindings(t *testing.T) {
 	source := &fakeFindingSource{}
 	store, worker, sink := vulnRules(t, highRule)
-	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true})
+	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true, val: 200})
 	w.escalations = &memCursor{set: true}
 	w.budget = newMemVulnBudget()
 	for i := uint(1); i <= 15; i++ {
 		source.escalate(escalation(i, finding(100+i, "N1", fmt.Sprintf("DSA-%02d", i), "high", false), "unknown", false))
 	}
 	w.Sweep(context.Background())
+	if got := len(sink.snapshot()); got != maxVulnHitsPerRule+1 {
+		t.Fatalf("the escalation flood spends its own budget: %d hits", got)
+	}
 	sink.reset()
-	source.add(finding(1, "N2", "DSA-NEW", "critical", true))
+	source.add(finding(201, "N2", "DSA-NEW", "critical", true))
 	w.Sweep(context.Background())
 	hits := sink.snapshot()
 	if len(hits) != 1 || !strings.Contains(hits[0].Detail, "DSA-NEW") {
 		t.Fatalf("a new finding after an escalation flood must alert: %+v", hits)
+	}
+}
+
+// A finding that turns KEV before the watcher first sees it alerts once, as
+// a new known-exploited finding; its escalation is not news.
+func TestVulnWatcherSkipsEscalationsOfUnseenFindings(t *testing.T) {
+	source := &fakeFindingSource{}
+	store, worker, sink := vulnRules(t, kevRule)
+	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true})
+	w.escalations = &memCursor{set: true}
+	f := finding(1, "N1", "DSA-1", "high", true)
+	source.add(f)
+	source.escalate(escalation(1, f, "high", false))
+	w.Sweep(context.Background())
+	hits := sink.snapshot()
+	if len(hits) != 1 || hits[0].Entity != "N1:DSA-1" {
+		t.Fatalf("want only the new-finding hit, got %+v", hits)
+	}
+}
+
+func TestRedisVulnLockLive(t *testing.T) {
+	client, ok := liveRedis(t)
+	if !ok {
+		t.Skip("REDIS_URL not set; live lock test skipped")
+	}
+	ctx := context.Background()
+	_ = client.Del(ctx, vulnLockKey()).Err()
+	a, b := &redisVulnLock{client: client}, &redisVulnLock{client: client}
+	if !a.acquire(ctx) || b.acquire(ctx) {
+		t.Fatal("one holder at a time")
+	}
+	b.release(ctx) // not b's lock: must not free it
+	if b.acquire(ctx) {
+		t.Fatal("a release by a non-holder freed the lock")
+	}
+	a.release(ctx)
+	if !b.acquire(ctx) {
+		t.Fatal("the holder's release frees the lock")
+	}
+	b.release(ctx)
+}
+
+// With settling, an escalation is taken a sweep after it is listed. It must
+// not alert a finding that the sweep in between alerted already as KEV.
+func TestVulnWatcherSettledEscalationOfAJustAlertedFinding(t *testing.T) {
+	source := &fakeFindingSource{}
+	store, worker, sink := vulnRules(t, kevRule)
+	w := newVulnWatcherWithCursor(source, store, worker, &memCursor{set: true})
+	w.escalations = &memCursor{set: true}
+	w.settle = true
+	f := finding(1, "N1", "DSA-1", "high", true)
+	source.add(f)
+	w.Sweep(context.Background()) // finding listed
+	source.escalate(escalation(1, f, "high", false))
+	w.Sweep(context.Background()) // finding alerted as KEV; escalation listed
+	w.Sweep(context.Background()) // escalation taken
+	hits := sink.snapshot()
+	if len(hits) != 1 || hits[0].Entity != "N1:DSA-1" {
+		t.Fatalf("want only the new-finding hit, got %+v", hits)
 	}
 }

@@ -152,6 +152,13 @@ type Finding struct {
 	FirstSeen        time.Time  `json:"first_seen"`
 	LastSeen         time.Time  `json:"last_seen"`
 	ResolvedAt       *time.Time `gorm:"index" json:"resolved_at"`
+	// PeakSeverity and EverKEV are the highest state the finding reached:
+	// escalations are measured against them, so falling and coming back is
+	// not news. ReopenedAt is the last reopen: escalations recorded before
+	// it are not news either.
+	PeakSeverity string     `gorm:"type:varchar(16);default:''" json:"-"`
+	EverKEV      bool       `gorm:"default:false" json:"-"`
+	ReopenedAt   *time.Time `json:"-"`
 }
 
 func (Finding) TableName() string { return "vuln_findings" }
@@ -213,7 +220,14 @@ func Migrate(db *gorm.DB) error {
 	// vuln_node_state.assessed arrived with NVD support. Earlier rows read 0,
 	// which posture treats as "nothing assessed", so adding the column
 	// re-matches every node once instead of after the next advisory change.
-	rematch := db.Migrator().HasTable(&NodeState{}) && !hasColumn(db, &NodeState{}, "assessed")
+	rematch := false
+	if db.Migrator().HasTable(&NodeState{}) {
+		has, err := hasColumn(db, &NodeState{}, "assessed")
+		if err != nil {
+			return err
+		}
+		rematch = !has
+	}
 	if err := db.AutoMigrate(&NodeSoftware{}, &NodeState{}, &Advisory{}, &Alias{},
 		&Affected{}, &KEV{}, &CPEProduct{}, &Finding{}, &Escalation{}, &SyncState{}, &WorkerState{}); err != nil {
 		return err
@@ -226,15 +240,15 @@ func Migrate(db *gorm.DB) error {
 
 // hasColumn checks a column by exact name. GORM's SQLite HasColumn matches
 // the table's SQL text, where "not_assessed" contains "assessed".
-func hasColumn(db *gorm.DB, model any, name string) bool {
+func hasColumn(db *gorm.DB, model any, name string) (bool, error) {
 	cols, err := db.Migrator().ColumnTypes(model)
 	if err != nil {
-		return false
+		return false, err
 	}
 	for _, c := range cols {
 		if c.Name() == name {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }

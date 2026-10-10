@@ -240,6 +240,11 @@ func (w *Worker) ecosystemDirs() ([]string, error) {
 	if len(w.cfg.Ecosystems) > 0 {
 		return w.cfg.Ecosystems, nil
 	}
+	return w.fleetDirs()
+}
+
+// fleetDirs is every OSV directory the fleet's inventory needs.
+func (w *Worker) fleetDirs() ([]string, error) {
 	var platforms, categories []string
 	if err := w.db.Model(&NodeState{}).Distinct("os_platform").Pluck("os_platform", &platforms).Error; err != nil {
 		return nil, err
@@ -306,6 +311,7 @@ func (w *Worker) syncAll(ctx context.Context, dirs []string) {
 		}
 		changed = changed || res.Written > 0
 	}
+	w.dropUnusedFeeds()
 	if w.nvd != nil {
 		res, err := w.nvd.Sync(ctx)
 		if err != nil {
@@ -339,6 +345,26 @@ func (w *Worker) syncAll(ctx context.Context, dirs []string) {
 	// A request made while this sync ran is kept for the next tick.
 	_ = w.db.Model(&WorkerState{}).Where("name = ? AND sync_requested_at <= ?", workerName, start).
 		Update("sync_requested_at", nil).Error
+}
+
+// dropUnusedFeeds deletes the sync rows of OSV feeds no node reports: they
+// never sync again, so they would mark every view stale and export a frozen
+// time. It goes by the fleet, not the allow-list: a feed the allow-list
+// leaves out but nodes still run keeps its row, or their findings would be
+// resolved as unassessed. An empty fleet drops nothing, so re-adding a node
+// does not re-download archives.
+func (w *Worker) dropUnusedFeeds() {
+	dirs, err := w.fleetDirs()
+	if err != nil || len(dirs) == 0 {
+		return
+	}
+	inUse := make([]string, len(dirs))
+	for i, dir := range dirs {
+		inUse[i] = osvSourcePrefix + dir
+	}
+	if err := w.db.Where("source LIKE ? AND source NOT IN ?", osvSourcePrefix+"%", inUse).Delete(&SyncState{}).Error; err != nil {
+		log.Warn().Err(err).Msg("vulns: dropping unused feeds failed")
+	}
 }
 
 // matchDirty re-matches nodes whose inventory changed (or whose advisories

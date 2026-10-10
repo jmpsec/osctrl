@@ -1,6 +1,7 @@
 package vulns
 
 import (
+	"context"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -63,4 +64,21 @@ func TestMetricsReportFeedsFindingsAndQueue(t *testing.T) {
 	assert.Equal(t, float64(2), gather(t, c)["osctrl_vuln_advisories"])
 	clock.advance(metricsTTL)
 	assert.Equal(t, float64(3), gather(t, c)["osctrl_vuln_advisories"])
+}
+
+// A read past its deadline fails rather than holding every scrape, and a
+// failed read exports nothing: zeros would read as "no findings".
+func TestMetricsFailClosed(t *testing.T) {
+	db := newTestDB(t)
+	clock := newClock()
+	c := newMetricsCollector(db, clock.now)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := c.query(ctx, clock.now())
+	require.Error(t, err)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+	assert.Empty(t, gather(t, c))
 }

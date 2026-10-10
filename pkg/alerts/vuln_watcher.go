@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -37,8 +39,12 @@ const (
 	// vulnCursorTTL expires a cursor no sweep has refreshed for a week, so
 	// re-enabling alerts after a long pause starts from now.
 	vulnCursorTTL = 7 * 24 * time.Hour
-	// vulnLockTTL holds the sweep lock for a little under one interval.
-	vulnLockTTL = 50 * time.Second
+	// vulnLockTTL bounds how long a crashed sweeper blocks the others; a
+	// live one releases the lock when its sweep ends.
+	vulnLockTTL = 5 * time.Minute
+	// vulnSweepTimeout ends a stuck sweep before its lock expires, so two
+	// replicas never sweep at once.
+	vulnSweepTimeout = vulnLockTTL - 30*time.Second
 	// maxVulnHitsPerRule caps advisory hits per rule and environment per
 	// vulnWindow, across sweeps and osctrl-tls replicas; the rest collapse
 	// into one digest hit per window. A node's first inventory, a rollout or
@@ -69,6 +75,8 @@ type FindingSnapshot struct {
 	Escalated    bool
 	PrevSeverity string
 	PrevKEV      bool
+	// FindingID is the escalated finding (ID is the escalation's own).
+	FindingID uint
 }
 
 // FindingSource lists findings for the watcher. Implemented in osctrl-tls
@@ -138,18 +146,37 @@ func (c *redisVulnCursor) save(ctx context.Context, id uint) error {
 // sweeps would move the cursor backwards and send grouped hits twice.
 type vulnLock interface {
 	acquire(ctx context.Context) bool
+	release(ctx context.Context)
 }
 
-type redisVulnLock struct{ client *redis.Client }
+type redisVulnLock struct {
+	client *redis.Client
+	token  string // this holder's value, so release never frees another's lock
+}
+
+func vulnLockKey() string { return keyPrefix + "vuln:sweep" }
 
 func (l *redisVulnLock) acquire(ctx context.Context) bool {
-	ok, err := l.client.SetNX(ctx, keyPrefix+"vuln:sweep", 1, vulnLockTTL).Result()
+	token := strconv.FormatUint(rand.Uint64(), 36)
+	ok, err := l.client.SetNX(ctx, vulnLockKey(), token, vulnLockTTL).Result()
 	if err != nil {
 		// The cursor needs Redis too; this sweep could not run anyway.
 		log.Warn().Err(err).Msg("alert vulnerability sweep: lock unavailable, skipping")
 		return false
 	}
+	if ok {
+		l.token = token
+	}
 	return ok
+}
+
+// releaseScript deletes the lock only while it still holds this token.
+var releaseScript = redis.NewScript(`if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) end return 0`)
+
+func (l *redisVulnLock) release(ctx context.Context) {
+	if err := releaseScript.Run(ctx, l.client, []string{vulnLockKey()}, l.token).Err(); err != nil && !errors.Is(err, redis.Nil) {
+		log.Warn().Err(err).Msg("alert vulnerability sweep: releasing the lock failed; it expires on its own")
+	}
 }
 
 // vulnBudget meters advisory hits per kind (new findings or escalations),
@@ -211,6 +238,11 @@ type VulnWatcher struct {
 	// (process-local: a replica taking over the lock waits one sweep).
 	settle bool
 	seen   map[string]uint
+	// alerted is the findings cursor before the previous sweep's pass:
+	// findings at or below it alerted before any escalation now being
+	// taken was listed (settling takes an escalation a sweep later).
+	alerted    uint
+	hasAlerted bool
 }
 
 // NewVulnWatcher builds the watcher over the shared Redis client.
@@ -235,40 +267,57 @@ func (w *VulnWatcher) Sweep(ctx context.Context) {
 	if w == nil || w.worker == nil || w.store == nil || w.cursor == nil || w.source == nil {
 		return
 	}
-	if w.lock != nil && !w.lock.acquire(ctx) {
-		return
+	if w.lock != nil {
+		if !w.lock.acquire(ctx) {
+			return
+		}
+		defer w.lock.release(ctx)
 	}
-	w.pass(ctx, vulnKindNew, w.cursor, w.source.LatestFindingID, w.source.FindingsAfter)
-	if w.escalations != nil {
-		w.pass(ctx, vulnKindEscalated, w.escalations, w.source.LatestEscalationID, w.source.EscalationsAfter)
+	before, ok := w.pass(ctx, vulnKindNew, w.cursor, w.source.LatestFindingID, w.source.FindingsAfter, nil)
+	seenUpTo := before
+	if w.settle && w.hasAlerted {
+		seenUpTo = min(before, w.alerted)
+	}
+	if ok {
+		w.alerted, w.hasAlerted = before, true
+	}
+	if w.escalations != nil && ok {
+		// A finding earlier sweeps have not alerted yet alerts (or just
+		// alerted) with its current state; its escalation is not news.
+		seen := func(f FindingSnapshot) bool { return f.FindingID <= seenUpTo }
+		w.pass(ctx, vulnKindEscalated, w.escalations, w.source.LatestEscalationID, w.source.EscalationsAfter, seen)
 	}
 }
 
 // pass reads one feed (findings or escalations) from its cursor.
+// It returns the cursor as it was before the pass (what earlier sweeps
+// covered), and false when the cursor could not be read or listing failed. keep, when set, drops items before alerting
+// (the cursor still moves past them).
 func (w *VulnWatcher) pass(ctx context.Context, kind string, cursor vulnCursor, latest func(context.Context) (uint, error),
-	list func(context.Context, uint, int) ([]FindingSnapshot, error)) {
+	list func(context.Context, uint, int) ([]FindingSnapshot, error), keep func(FindingSnapshot) bool) (uint, bool) {
 	after, ok, err := cursor.load(ctx)
 	if err != nil {
 		// Fail closed: replaying every finding on a Redis blip would page
 		// the whole fleet; a delayed alert is the lesser harm.
 		log.Warn().Err(err).Msg("alert vulnerability sweep: cursor unavailable, skipping")
-		return
+		return 0, false
 	}
 	if !ok {
 		newest, err := latest(ctx)
 		if err != nil {
 			log.Err(err).Msg("alert vulnerability sweep: error reading the latest finding")
-			return
+			return 0, false
 		}
 		if err := cursor.save(ctx, newest); err != nil {
 			log.Err(err).Msg("alert vulnerability sweep: error initializing the cursor")
 		}
-		return
+		return newest, true
 	}
+	before := after
 	items, err := list(ctx, after, vulnBatch)
 	if err != nil {
 		log.Err(err).Msg("alert vulnerability sweep: error listing findings")
-		return
+		return 0, false
 	}
 	if w.settle {
 		// Only IDs the previous sweep listed; the rest waits a sweep.
@@ -283,10 +332,14 @@ func (w *VulnWatcher) pass(ctx context.Context, kind string, cursor vulnCursor, 
 		items = items[:settled]
 	}
 	if len(items) > 0 {
+		next := items[len(items)-1].ID
+		if keep != nil {
+			items = slices.DeleteFunc(items, func(f FindingSnapshot) bool { return !keep(f) })
+		}
 		if hits := vulnHits(w.store.Snapshot().vulnFinding, items, w.grant(ctx, kind)); len(hits) > 0 {
 			w.worker.Enqueue(hits)
 		}
-		after = items[len(items)-1].ID
+		after = next
 	}
 	// Saved every sweep, after enqueueing: a failed save replays this batch
 	// (the claim gate collapses repeats), and a quiet week does not expire
@@ -294,6 +347,7 @@ func (w *VulnWatcher) pass(ctx context.Context, kind string, cursor vulnCursor, 
 	if err := cursor.save(ctx, after); err != nil {
 		log.Err(err).Msg("alert vulnerability sweep: error saving the cursor")
 	}
+	return before, true
 }
 
 // Run sweeps on the interval until stop closes.
@@ -308,7 +362,9 @@ func (w *VulnWatcher) Run(stop <-chan struct{}, interval time.Duration) {
 		case <-stop:
 			return
 		case <-ticker.C:
-			w.Sweep(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), vulnSweepTimeout)
+			w.Sweep(ctx)
+			cancel()
 		}
 	}
 }

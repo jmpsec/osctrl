@@ -114,6 +114,7 @@ func TestEscalationsAfterListsOpenConfirmedFindings(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1, "an escalation of a resolved finding is no longer news")
 	assert.Equal(t, uint(1), got[0].ID, "the escalation's id")
+	assert.Equal(t, open.ID, got[0].FindingID)
 	assert.True(t, got[0].Escalated)
 	assert.Equal(t, SeverityHigh, got[0].PrevSeverity)
 	assert.True(t, got[0].KEV)
@@ -121,4 +122,109 @@ func TestEscalationsAfterListsOpenConfirmedFindings(t *testing.T) {
 	latest, err := inv.LatestEscalationID(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, uint(2), latest)
+}
+
+// A finding that falls and comes back (NVD off for a while, a truncated KEV
+// feed) is not news again: escalation is measured against the highest state
+// the finding ever reached.
+func TestRefreshFlagsEscalatesOnlyAboveThePeak(t *testing.T) {
+	db := newTestDB(t)
+	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	require.NoError(t, db.Create(&Advisory{ID: "DSA-1", Source: AdvisorySourceOSV, Severity: SeverityHigh}).Error)
+	require.NoError(t, db.Create(&Alias{AdvisoryID: "DSA-1", Alias: "CVE-2026-1"}).Error)
+	f := Finding{NodeUUID: "N1", AdvisoryID: "DSA-1", Ecosystem: "e", Package: "p1", Severity: SeverityHigh,
+		PeakSeverity: SeverityHigh, Confidence: ConfidenceConfirmed}
+	require.NoError(t, db.Create(&f).Error)
+	set := func(severity string, kev bool) {
+		t.Helper()
+		require.NoError(t, db.Model(&Advisory{}).Where("id = ?", "DSA-1").Update("severity", severity).Error)
+		require.NoError(t, db.Where("1 = 1").Delete(&KEV{}).Error)
+		if kev {
+			require.NoError(t, db.Create(&KEV{CVEID: "CVE-2026-1"}).Error)
+		}
+		require.NoError(t, refreshFlags(db, now))
+	}
+	events := func() []Escalation {
+		t.Helper()
+		var got []Escalation
+		require.NoError(t, db.Order("id").Find(&got).Error)
+		return got
+	}
+	set(SeverityUnknown, false) // falls
+	set(SeverityHigh, false)    // back to its peak: not news
+	assert.Empty(t, events())
+	set(SeverityHigh, true) // becomes KEV
+	set(SeverityHigh, false)
+	set(SeverityHigh, true) // KEV again after a truncated feed: not news
+	set(SeverityCritical, true)
+	got := events()
+	require.Len(t, got, 2)
+	assert.False(t, got[0].PrevKEV)
+	assert.Equal(t, SeverityHigh, got[1].PrevSeverity, "measured against the peak")
+	assert.True(t, got[1].PrevKEV)
+}
+
+// An escalation recorded before the finding was resolved and reopened is not
+// news: reopens are silent.
+func TestEscalationsAfterHidesThoseBeforeAReopen(t *testing.T) {
+	db := newTestDB(t)
+	require.NoError(t, db.AutoMigrate(&nodes.OsqueryNode{}))
+	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	reopened := now.Add(time.Hour)
+	f := Finding{NodeUUID: "N1", EnvironmentID: 1, AdvisoryID: "DSA-1", Ecosystem: "e", Package: "openssl",
+		Severity: SeverityCritical, Confidence: ConfidenceConfirmed, ReopenedAt: &reopened}
+	require.NoError(t, db.Create(&f).Error)
+	require.NoError(t, db.Create(&Escalation{FindingID: f.ID, PrevSeverity: SeverityHigh, CreatedAt: now}).Error)
+	got, err := (&Inventory{DB: db, now: time.Now}).EscalationsAfter(context.Background(), 0, 10)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+// Rows from before ever_kev read NULL; the backfill must still mark them.
+func TestRefreshFlagsBackfillsEverKEVOnUpgradedRows(t *testing.T) {
+	db := newTestDB(t)
+	require.NoError(t, db.Create(&Advisory{ID: "DSA-1", Source: AdvisorySourceOSV, Severity: SeverityHigh}).Error)
+	require.NoError(t, db.Create(&Alias{AdvisoryID: "DSA-1", Alias: "CVE-2026-1"}).Error)
+	require.NoError(t, db.Create(&KEV{CVEID: "CVE-2026-1"}).Error)
+	f := Finding{NodeUUID: "N1", AdvisoryID: "DSA-1", Ecosystem: "e", Package: "p1", Severity: SeverityHigh, KEV: true, Confidence: ConfidenceConfirmed}
+	require.NoError(t, db.Create(&f).Error)
+	require.NoError(t, db.Exec(`UPDATE vuln_findings SET ever_kev = NULL, peak_severity = NULL`).Error)
+	require.NoError(t, refreshFlags(db, time.Now()))
+	var got Finding
+	require.NoError(t, db.First(&got, f.ID).Error)
+	assert.True(t, got.EverKEV)
+	assert.Equal(t, SeverityHigh, got.PeakSeverity)
+}
+
+// An escalation recorded after a reopen is news.
+func TestEscalationsAfterKeepsThoseAfterAReopen(t *testing.T) {
+	db := newTestDB(t)
+	require.NoError(t, db.AutoMigrate(&nodes.OsqueryNode{}))
+	reopened := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	f := Finding{NodeUUID: "N1", EnvironmentID: 1, AdvisoryID: "DSA-1", Ecosystem: "e", Package: "openssl",
+		Severity: SeverityCritical, Confidence: ConfidenceConfirmed, ReopenedAt: &reopened}
+	require.NoError(t, db.Create(&f).Error)
+	require.NoError(t, db.Create(&Escalation{FindingID: f.ID, PrevSeverity: SeverityHigh, CreatedAt: reopened.Add(time.Hour)}).Error)
+	got, err := (&Inventory{DB: db, now: time.Now}).EscalationsAfter(context.Background(), 0, 10)
+	require.NoError(t, err)
+	assert.Len(t, got, 1)
+}
+
+// refreshFlags raises the peak: a finding that went critical, fell and came
+// back is not news.
+func TestRefreshFlagsRaisesThePeak(t *testing.T) {
+	db := newTestDB(t)
+	require.NoError(t, db.Create(&Advisory{ID: "DSA-1", Source: AdvisorySourceOSV, Severity: SeverityCritical}).Error)
+	f := Finding{NodeUUID: "N1", AdvisoryID: "DSA-1", Ecosystem: "e", Package: "p1", Severity: SeverityHigh,
+		PeakSeverity: SeverityHigh, Confidence: ConfidenceConfirmed}
+	require.NoError(t, db.Create(&f).Error)
+	now := time.Now()
+	require.NoError(t, refreshFlags(db, now)) // high → critical: escalation, peak critical
+	require.NoError(t, db.Model(&Advisory{}).Where("id = ?", "DSA-1").Update("severity", SeverityHigh).Error)
+	require.NoError(t, refreshFlags(db, now))
+	require.NoError(t, db.Model(&Advisory{}).Where("id = ?", "DSA-1").Update("severity", SeverityCritical).Error)
+	require.NoError(t, refreshFlags(db, now))
+	var n int64
+	require.NoError(t, db.Model(&Escalation{}).Count(&n).Error)
+	assert.Equal(t, int64(1), n)
 }
