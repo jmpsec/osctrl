@@ -87,6 +87,9 @@ func (c *redisVulnCursor) load(ctx context.Context) (uint, bool, error) {
 	if err != nil {
 		return 0, false, fmt.Errorf("corrupt vulnerability cursor %q: %w", raw, err)
 	}
+	if id > uint64(^uint(0)) {
+		return 0, false, fmt.Errorf("corrupt vulnerability cursor %q: value out of range for uint", raw)
+	}
 	return uint(id), true, nil
 }
 
