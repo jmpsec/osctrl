@@ -123,8 +123,8 @@ func (c *redisVulnCursor) load(ctx context.Context) (uint, bool, error) {
 // parseVulnCursor reads a stored cursor; ok is false for anything that is
 // not a finding ID.
 func parseVulnCursor(raw string) (uint, bool) {
-	id, err := strconv.ParseUint(raw, 10, 64)
-	if err != nil || id > uint64(^uint(0)) {
+	id, err := strconv.ParseUint(raw, 10, strconv.IntSize)
+	if err != nil {
 		return 0, false
 	}
 	return uint(id), true
