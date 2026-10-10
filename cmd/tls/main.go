@@ -416,6 +416,7 @@ func osctrlService() {
 	// sender caches reset alongside so channel edits are picked up.
 	var alertsRefreshStop chan struct{}
 	var alertsInactiveStop chan struct{}
+	var alertsVulnStop chan struct{}
 	var alertsRetentionStop chan struct{}
 	if alertsStore != nil {
 		alertsRefreshStop = make(chan struct{})
@@ -438,6 +439,16 @@ func osctrlService() {
 			alertsStore, alertsWorker, redis.Client)
 		go alertsInactiveWatcher.Run(alertsInactiveStop, alertsInactiveInterval)
 		log.Info().Msg("Alert node-inactive watcher started")
+	}
+	// Vulnerability-finding watcher: turns new confirmed findings, written
+	// by the osctrl-api worker, into alert hits. Needs both --alerts-enabled
+	// and --vuln-enabled here. A Redis cursor keeps restarts from
+	// re-alerting.
+	if alertsWorker != nil && vulnInventory != nil {
+		alertsVulnStop = make(chan struct{})
+		vulnWatcher := alerts.NewVulnWatcher(newTLSFindingSource(vulnInventory, envs), alertsStore, alertsWorker, redis.Client)
+		go vulnWatcher.Run(alertsVulnStop, alertsVulnInterval)
+		log.Info().Msg("Alert vulnerability watcher started")
 	}
 	// Start the background sink-stats writer. It snapshots per-sink
 	// atomic counters (bytes sent, export count) from the live exporter
@@ -632,7 +643,7 @@ func osctrlService() {
 	case err := <-serverErr:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
-		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsRetentionStop, alertsWorker)
+		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsVulnStop, alertsRetentionStop, alertsWorker)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			if eventBus != nil {
 				eventBus.Close()
@@ -642,7 +653,7 @@ func osctrlService() {
 	case <-restartCh:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
-		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsRetentionStop, alertsWorker)
+		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsVulnStop, alertsRetentionStop, alertsWorker)
 		if eventBus != nil {
 			eventBus.Close()
 		}
@@ -656,15 +667,23 @@ func osctrlService() {
 // against query load; 5 minutes matches the rule-refresh fallback.
 const alertsInactiveInterval = 5 * time.Minute
 
+// alertsVulnInterval is the vulnerability-finding sweep cadence. Findings
+// land in batches when the API worker matches, so a minute is prompt
+// without polling hot.
+const alertsVulnInterval = time.Minute
+
 // stopAlerts tears the alerting subsystem down on shutdown: stop the
 // background loops first (no new rules mid-drain), then drain the
 // dispatch queue. All nil-safe for the feature-off path.
-func stopAlerts(refreshStop, inactiveStop, retentionStop chan struct{}, worker *alerts.Worker) {
+func stopAlerts(refreshStop, inactiveStop, vulnStop, retentionStop chan struct{}, worker *alerts.Worker) {
 	if refreshStop != nil {
 		close(refreshStop)
 	}
 	if inactiveStop != nil {
 		close(inactiveStop)
+	}
+	if vulnStop != nil {
+		close(vulnStop)
 	}
 	if retentionStop != nil {
 		close(retentionStop)

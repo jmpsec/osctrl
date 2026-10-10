@@ -139,6 +139,11 @@ type ScoringRule struct {
 	// the node) with their parsed rows and returns (status, detail).
 	// status is "pass", "warn", or "fail".
 	Evaluate func(data map[string][]map[string]interface{}) (status, detail string)
+	// Grade, when set, replaces Evaluate for controls whose weight depends
+	// on the evidence: a known-exploited vulnerability fails at critical
+	// weight, a high-severity one at high weight. It returns the status,
+	// the detail and the severity the result is scored and escalated at.
+	Grade func(data map[string][]map[string]interface{}) (status, detail string, severity Severity) `json:"-"`
 }
 
 // NewScoreCalculator returns a calculator with all built-in rules.
@@ -247,7 +252,14 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 			continue
 		}
 
-		status, detail := rule.Evaluate(data)
+		var status, detail string
+		severity, weight := rule.Severity, ruleWeight(rule)
+		if rule.Grade != nil {
+			status, detail, severity = rule.Grade(data)
+			weight = SeverityWeight[severity]
+		} else {
+			status, detail = rule.Evaluate(data)
+		}
 		for cat := range data {
 			if incompleteData[cat] {
 				if status == "pass" {
@@ -257,8 +269,6 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 				break
 			}
 		}
-		weight := ruleWeight(rule)
-
 		result := ControlResult{
 			Category:    resultCategory,
 			ControlID:   rule.ControlID,
@@ -266,7 +276,7 @@ func (sc *ScoreCalculator) Score(records []NodePosture) PostureScore {
 			Title:       rule.Title,
 			Description: rule.Description,
 			Status:      status,
-			Severity:    rule.Severity,
+			Severity:    severity,
 			MaxScore:    weight,
 			Detail:      detail,
 		}

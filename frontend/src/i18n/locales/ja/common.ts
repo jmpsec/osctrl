@@ -114,6 +114,7 @@ export const ja: Messages = {
       unknown: '不明',
     },
     components: {
+      vulnerabilities: 'アドバイザリフィード',
       database: 'データベース',
       workers: 'ワーカー',
     },

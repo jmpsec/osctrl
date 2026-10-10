@@ -778,11 +778,14 @@ type AlertRuleCreateRequest struct {
 	Source        string `json:"source"`
 	// NodeUUID optionally scopes the rule to one node (used by the node
 	// detail page's "Alert on this node" button). Empty = all nodes.
-	NodeUUID        string `json:"node_uuid,omitempty"`
-	MatchType       string `json:"match_type"`
-	MatchField      string `json:"match_field,omitempty"`
-	MatchValue      string `json:"match_value"`
-	StatusSeverity  string `json:"status_severity,omitempty"`
+	NodeUUID       string `json:"node_uuid,omitempty"`
+	MatchType      string `json:"match_type"`
+	MatchField     string `json:"match_field,omitempty"`
+	MatchValue     string `json:"match_value"`
+	StatusSeverity string `json:"status_severity,omitempty"`
+	// VulnMinSeverity is the threshold of a "vuln_finding" rule: kev,
+	// critical, high, medium, low or any.
+	VulnMinSeverity string `json:"vuln_min_severity,omitempty"`
 	CooldownMinutes int    `json:"cooldown_minutes,omitempty"`
 	ChannelIDs      []uint `json:"channel_ids,omitempty"`
 	Enabled         bool   `json:"enabled"`

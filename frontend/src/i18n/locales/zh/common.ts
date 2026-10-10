@@ -114,6 +114,7 @@ export const zh: Messages = {
       unknown: '未知',
     },
     components: {
+      vulnerabilities: '安全公告源',
       database: '数据库',
       workers: '工作进程',
     },

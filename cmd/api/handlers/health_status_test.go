@@ -13,6 +13,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/events"
 	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/vulns"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -110,4 +111,14 @@ func TestHealthStatusFlagsMissingTLS(t *testing.T) {
 		}
 	}
 	t.Fatal("tls component missing from the response")
+}
+
+func TestHealthStatusIncludesAdvisoryFeedsWhenEnabled(t *testing.T) {
+	h, _ := setupHealthHandler(t)
+	require.NoError(t, vulns.Migrate(h.DB))
+	h.Vulns = vulns.NewReader(h.DB, 0)
+	rr := httptest.NewRecorder()
+	h.HealthStatusHandler(rr, healthRequest("alice"))
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	require.Contains(t, rr.Body.String(), `"id":"vulnerabilities"`)
 }

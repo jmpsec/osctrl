@@ -25,6 +25,7 @@ export interface AlertRule {
   match_field: string;
   match_value: string;
   status_severity: string;
+  vuln_min_severity?: string;
   cooldown_minutes: number;
   channel_ids: number[];
   enabled: boolean;
@@ -92,6 +93,7 @@ export interface AlertRuleRequest {
   match_field?: string;
   match_value: string;
   status_severity?: string;
+  vuln_min_severity?: string;
   cooldown_minutes?: number;
   channel_ids?: number[];
   enabled: boolean;

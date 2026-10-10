@@ -42,6 +42,7 @@ func NewManager(backend *gorm.DB) *Manager {
 func (m *Manager) CreateRule(rule AlertRule) (AlertRule, error) {
 	rule.Name = strings.TrimSpace(rule.Name)
 	rule.NodeUUID = strings.TrimSpace(rule.NodeUUID)
+	rule.VulnMinSeverity = normalizeVulnMin(rule.VulnMinSeverity)
 	if err := ValidateRule(rule); err != nil {
 		return AlertRule{}, err
 	}
@@ -64,6 +65,7 @@ func (m *Manager) CreateRule(rule AlertRule) (AlertRule, error) {
 // UpdateRule replaces the mutable fields of an existing rule.
 func (m *Manager) UpdateRule(id uint, rule AlertRule) (AlertRule, error) {
 	rule.Name = strings.TrimSpace(rule.Name)
+	rule.VulnMinSeverity = normalizeVulnMin(rule.VulnMinSeverity)
 	if err := ValidateRule(rule); err != nil {
 		return AlertRule{}, err
 	}
@@ -73,17 +75,18 @@ func (m *Manager) UpdateRule(id uint, rule AlertRule) (AlertRule, error) {
 	}
 	rule.ChannelIDs = normalizeChannelIDs(rule.ChannelIDs)
 	if err := m.DB.Model(&row).Updates(map[string]any{
-		"name":             rule.Name,
-		"source":           rule.Source,
-		"node_uuid":        strings.TrimSpace(rule.NodeUUID),
-		"match_type":       rule.MatchType,
-		"match_field":      rule.MatchField,
-		"match_value":      rule.MatchValue,
-		"status_severity":  rule.StatusSeverity,
-		"cooldown_minutes": rule.CooldownMinutes,
-		"channel_ids":      rule.ChannelIDs,
-		"enabled":          rule.Enabled,
-		"info":             rule.Info,
+		"name":              rule.Name,
+		"source":            rule.Source,
+		"node_uuid":         strings.TrimSpace(rule.NodeUUID),
+		"match_type":        rule.MatchType,
+		"match_field":       rule.MatchField,
+		"match_value":       rule.MatchValue,
+		"status_severity":   rule.StatusSeverity,
+		"vuln_min_severity": rule.VulnMinSeverity,
+		"cooldown_minutes":  rule.CooldownMinutes,
+		"channel_ids":       rule.ChannelIDs,
+		"enabled":           rule.Enabled,
+		"info":              rule.Info,
 	}).Error; err != nil {
 		return AlertRule{}, fmt.Errorf("update alert rule: %w", err)
 	}
@@ -352,6 +355,8 @@ func (m *Manager) LoadSnapshot(store *Store) error {
 			rs.nodeInactive = append(rs.nodeInactive, cr)
 		case SourceNodeRecovered:
 			rs.nodeRecovered = append(rs.nodeRecovered, cr)
+		case SourceVulnFinding:
+			rs.vulnFinding = append(rs.vulnFinding, cr)
 		}
 	}
 	store.Publish(rs)

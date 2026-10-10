@@ -114,6 +114,7 @@ export const fa: Messages = {
       unknown: 'نامشخص',
     },
     components: {
+      vulnerabilities: 'منابع توصیه‌نامه',
       database: 'پایگاه داده',
       workers: 'پردازش‌های پس‌زمینه',
     },

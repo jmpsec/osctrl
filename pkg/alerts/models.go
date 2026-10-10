@@ -46,6 +46,10 @@ const (
 	// SourceNodeRecovered fires when a previously inactive node is
 	// seen again. Evaluated by the same sweep.
 	SourceNodeRecovered = "node_recovered"
+	// SourceVulnFinding fires when vulnerability monitoring records a new
+	// confirmed finding at or above the rule's VulnMinSeverity. Evaluated
+	// by the vulnerability watcher, not the ingest path.
+	SourceVulnFinding = "vuln_finding"
 )
 
 // Match types. Substring is the operator default — regex is opt-in
@@ -79,6 +83,9 @@ type AlertRule struct {
 	// StatusSeverity filters status-log rules: "error", "warning" or
 	// "any". Only consulted when Source == SourceStatusLog.
 	StatusSeverity string `gorm:"size:16;default:any"`
+	// VulnMinSeverity is the threshold of SourceVulnFinding rules: one of
+	// the VulnMin* constants. Ignored by every other source.
+	VulnMinSeverity string `gorm:"size:16"`
 	// CooldownMinutes suppresses repeat notifications for the same
 	// rule+entity within this window. 0 = alert on every match (subject
 	// to the global default cooldown).

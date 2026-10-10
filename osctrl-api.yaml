@@ -10264,6 +10264,8 @@ components:
           type: string
         updated_at:
           type: string
+        vuln_min_severity:
+          type: string
       type: object
     handlers.healthStatusResponse:
       properties:
@@ -10898,6 +10900,11 @@ components:
         source:
           type: string
         status_severity:
+          type: string
+        vuln_min_severity:
+          description: |-
+            VulnMinSeverity is the threshold of a "vuln_finding" rule: kev,
+            critical, high, medium, low or any.
           type: string
       type: object
     types.ApiActionsRequest:

@@ -114,6 +114,7 @@ export const hi: Messages = {
       unknown: 'अज्ञात',
     },
     components: {
+      vulnerabilities: 'सलाह स्रोत',
       database: 'डेटाबेस',
       workers: 'वर्कर',
     },

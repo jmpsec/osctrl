@@ -51,6 +51,7 @@ const RULE_SOURCES = [
   { value: 'query_log', label: 'Distributed query results', help: 'On-demand query answers submitted by nodes.' },
   { value: 'node_inactive', label: 'Node inactive', help: 'Node last_seen crosses the inactive threshold. No pattern needed.' },
   { value: 'node_recovered', label: 'Node recovered', help: 'A previously inactive node is seen again. No pattern needed.' },
+  { value: 'vuln_finding', label: 'New vulnerability findings', help: 'A node gains a confirmed vulnerability finding at or above the threshold. Findings are grouped per advisory. No pattern needed.' },
 ] as const;
 
 /**
@@ -75,6 +76,21 @@ const RULE_PRESETS = [
 
 /** Sources that match patterns (vs. node-state sources). */
 const PATTERN_SOURCES = new Set(['result_log', 'status_log', 'query_log']);
+
+/** Thresholds of vulnerability rules. Unknown severity only matches "any";
+ * known-exploited findings match every threshold. */
+const VULN_THRESHOLDS = [
+  { value: 'kev', label: 'Known exploited only' },
+  { value: 'critical', label: 'Critical and known exploited' },
+  { value: 'high', label: 'High and above' },
+  { value: 'medium', label: 'Medium and above' },
+  { value: 'low', label: 'Low and above' },
+  { value: 'any', label: 'Any, including unknown severity' },
+] as const;
+
+function vulnThresholdLabel(value?: string): string {
+  return VULN_THRESHOLDS.find((v) => v.value === value)?.label ?? value ?? '—';
+}
 
 type Tab = 'rules' | 'channels' | 'history';
 
@@ -411,6 +427,7 @@ export function AlertsPage() {
           mode={ruleModal}
           envs={envs ?? []}
           channels={channels}
+          vulnsEnabled={features?.vulnerabilities === true}
           onClose={() => setRuleModal({ kind: 'closed' })}
           onSaved={() => {
             setRuleModal({ kind: 'closed' });
@@ -572,9 +589,11 @@ function RulesTable({
             )}
           </div>
           <div className="text-xs text-[color:var(--text-2)] truncate">
-            {PATTERN_SOURCES.has(rule.source)
-              ? `${rule.match_type}${rule.match_field ? ` · ${rule.match_field}` : ' · any field'}`
-              : '—'}
+            {rule.source === 'vuln_finding'
+              ? vulnThresholdLabel(rule.vuln_min_severity)
+              : PATTERN_SOURCES.has(rule.source)
+                ? `${rule.match_type}${rule.match_field ? ` · ${rule.match_field}` : ' · any field'}`
+                : '—'}
           </div>
           <div className="text-xs text-[color:var(--text-2)] truncate font-mono">
             {PATTERN_SOURCES.has(rule.source) ? rule.match_value : '—'}
@@ -757,12 +776,14 @@ function RuleEditorModal({
   mode,
   envs,
   channels,
+  vulnsEnabled,
   onClose,
   onSaved,
 }: {
   mode: RuleModalMode;
   envs: { id: number; name: string }[];
   channels: AlertChannel[];
+  vulnsEnabled: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -775,6 +796,12 @@ function RuleEditorModal({
   const [matchField, setMatchField] = useState(existing?.match_field ?? '');
   const [matchValue, setMatchValue] = useState(existing?.match_value ?? '');
   const [statusSeverity, setStatusSeverity] = useState(existing?.status_severity || 'any');
+  const [vulnMin, setVulnMin] = useState(existing?.vuln_min_severity || 'high');
+  // The vulnerability source is offered only while the feature is on;
+  // an existing vulnerability rule stays editable either way.
+  const sourceOptions = RULE_SOURCES.filter(
+    (s) => s.value !== 'vuln_finding' || vulnsEnabled || existing?.source === 'vuln_finding',
+  );
   const [cooldown, setCooldown] = useState(existing?.cooldown_minutes ?? 0);
   const [channelIDs, setChannelIDs] = useState<number[]>(existing?.channel_ids ?? []);
   const nodeScope = existing?.node_uuid ?? '';
@@ -831,6 +858,7 @@ function RuleEditorModal({
       match_field: needsPattern ? matchField : '',
       match_value: needsPattern ? matchValue : '',
       status_severity: source === 'status_log' ? statusSeverity : 'any',
+      vuln_min_severity: source === 'vuln_finding' ? vulnMin : undefined,
       cooldown_minutes: cooldown,
       channel_ids: channelIDs,
       enabled,
@@ -916,7 +944,7 @@ function RuleEditorModal({
               onChange={(e) => setSource(e.target.value)}
               className={inputClass}
             >
-              {RULE_SOURCES.map((s) => (
+              {sourceOptions.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
@@ -994,6 +1022,24 @@ function RuleEditorModal({
               <option value="any">{t('alertsPage.any')}</option>
               <option value="warning">{t('alertsPage.warningAndAbove')}</option>
               <option value="error">{t('alertsPage.errorOnly')}</option>
+            </select>
+          </div>
+        )}
+
+        {source === 'vuln_finding' && (
+          <div>
+            <label htmlFor="rule-vuln-severity" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
+              Minimum vulnerability severity
+            </label>
+            <select
+              id="rule-vuln-severity"
+              value={vulnMin}
+              onChange={(e) => setVulnMin(e.target.value)}
+              className={inputClass}
+            >
+              {VULN_THRESHOLDS.map((v) => (
+                <option key={v.value} value={v.value}>{v.label}</option>
+              ))}
             </select>
           </div>
         )}

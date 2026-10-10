@@ -114,6 +114,7 @@ export const nl: Messages = {
       unknown: 'Onbekend',
     },
     components: {
+      vulnerabilities: 'Adviesbronnen',
       database: 'Database',
       workers: 'Achtergrondprocessen',
     },

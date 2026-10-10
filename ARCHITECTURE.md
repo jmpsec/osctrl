@@ -75,7 +75,7 @@ Main runtime components:
 - `pkg/mcp`: MCP server registration, tool schemas, read tools, and separately enabled write tools shared by standalone and hosted transports.
 - `pkg/apiclient`: authenticated REST client used by `osctrl-cli` and standalone `osctrl-mcp`.
 - `pkg/posture`: optional posture ingestion, checks, and scoring.
-- `pkg/vulns`: optional vulnerability monitoring — inventory ingestion (TLS), OSV/CISA KEV feed sync, matching and findings (API worker), read model.
+- `pkg/vulns`: optional vulnerability monitoring — inventory ingestion (TLS), OSV/CISA KEV feed sync, matching and findings (API worker), read model. It also supplies posture score evidence and the advisory-feeds health component.
 - `pkg/serviceconfig`, `pkg/servicecommands`: persisted service sections and DB-mediated control requests between API and TLS processes.
 - `deploy`: Docker, nginx, systemd, osquery assets, sample YAML configs.
 - `tools`: helper scripts, Bruno collections, release tooling.
@@ -96,7 +96,7 @@ Both long-lived backend services follow the same pattern in their `main.go`:
 
 Service-specific additions:
 
-- `osctrl-tls` wires Redis-backed environment/settings/query-dispatch caches, node activity batching, node metadata batching, persisted log sinks, service-command polling, and optional DB-health, posture, vulnerability-inventory, alerting, and Prometheus components. When `--health-enabled` is set, it also writes a `service_status` heartbeat (version, uptime, goroutines, worker counters) every 60s by riding the existing 5s service-command poll loop rather than starting a new ticker.
+- `osctrl-tls` wires Redis-backed environment/settings/query-dispatch caches, node activity batching, node metadata batching, persisted log sinks, service-command polling, and optional DB-health, posture, vulnerability-inventory, alerting (including the vulnerability-finding watcher), and Prometheus components. When `--health-enabled` is set, it also writes a `service_status` heartbeat (version, uptime, goroutines, worker counters) every 60s by riding the existing 5s service-command poll loop rather than starting a new ticker.
 - `osctrl-api` wires the shared environment/query caches and activity reader; initializes audit, MFA, console, file-explorer, service-config, log-sink, and auth-provider managers; and conditionally registers posture, vulnerability (plus its feed-sync worker, single-active across replicas through a SQL lease), alerting, service-management, federated-auth, and hosted-MCP routes.
 
 The standalone `osctrl-mcp` process has a smaller startup flow:

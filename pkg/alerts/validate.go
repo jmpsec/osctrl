@@ -40,6 +40,7 @@ var validSources = map[string]bool{
 	SourceQueryLog:      true,
 	SourceNodeInactive:  true,
 	SourceNodeRecovered: true,
+	SourceVulnFinding:   true,
 }
 
 // ValidateRule checks the operator-facing fields of a rule before it is
@@ -67,6 +68,14 @@ func validateRule(rule AlertRule) error {
 	// rejected legitimate nodes outright.
 	if len(strings.TrimSpace(rule.NodeUUID)) > MaxNodeUUIDLen {
 		return fmt.Errorf("node_uuid exceeds %d characters", MaxNodeUUIDLen)
+	}
+	if rule.Source == SourceVulnFinding {
+		// Vulnerability rules match findings, not log text: the threshold
+		// is the whole rule.
+		if !validVulnThreshold(normalizeVulnMin(rule.VulnMinSeverity)) {
+			return errors.New("vuln_min_severity must be one of kev, critical, high, medium, low or any")
+		}
+		return nil
 	}
 	if rule.Source == SourceNodeInactive || rule.Source == SourceNodeRecovered {
 		// Node-state rules do no pattern matching.

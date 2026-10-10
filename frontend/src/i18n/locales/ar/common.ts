@@ -114,6 +114,7 @@ export const ar: Messages = {
       unknown: 'غير معروف',
     },
     components: {
+      vulnerabilities: 'مصادر النشرات',
       database: 'قاعدة البيانات',
       workers: 'عمليات الخلفية',
     },

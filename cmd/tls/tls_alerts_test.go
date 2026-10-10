@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/vulns"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -41,4 +42,31 @@ func TestTLSNodeSourceEnvironmentThresholds(t *testing.T) {
 	require.ElementsMatch(t, []string{"SHORT", "INHERITED"}, []string{inactive[0].UUID, inactive[1].UUID})
 	require.False(t, inactive[0].Active)
 	require.False(t, inactive[1].Active)
+}
+
+func TestTLSFindingSourceAddsTheEnvironmentName(t *testing.T) {
+	dsn := "file:" + strings.NewReplacer("/", "_").Replace(t.Name()) + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	require.NoError(t, err)
+	envs := environments.CreateEnvironment(db)
+	nodes.CreateNodes(db)
+	inv, err := vulns.NewInventory(db)
+	require.NoError(t, err)
+	env := environments.TLSEnvironment{UUID: "env-a", Name: "prod"}
+	require.NoError(t, db.Create(&env).Error)
+	require.NoError(t, db.Create(&nodes.OsqueryNode{UUID: "N1", Hostname: "web-01", EnvironmentID: env.ID}).Error)
+	require.NoError(t, db.Create(&vulns.Finding{NodeUUID: "N1", EnvironmentID: env.ID, AdvisoryID: "DSA-1",
+		Ecosystem: "Debian:12", Package: "openssl", Severity: "critical", KEV: true, Confidence: vulns.ConfidenceConfirmed}).Error)
+
+	s := newTLSFindingSource(inv, envs)
+	got, err := s.FindingsAfter(context.Background(), 0, 10)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, "prod", got[0].Environment)
+	require.Equal(t, "web-01", got[0].Hostname)
+	require.Equal(t, "critical", got[0].Severity)
+
+	latest, err := s.LatestFindingID(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, got[0].ID, latest)
 }

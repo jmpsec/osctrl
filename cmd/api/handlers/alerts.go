@@ -38,6 +38,7 @@ type alertRuleDTO struct {
 	MatchField      string `json:"match_field"`
 	MatchValue      string `json:"match_value"`
 	StatusSeverity  string `json:"status_severity"`
+	VulnMinSeverity string `json:"vuln_min_severity"`
 	CooldownMinutes int    `json:"cooldown_minutes"`
 	ChannelIDs      []uint `json:"channel_ids"`
 	Enabled         bool   `json:"enabled"`
@@ -58,6 +59,7 @@ func toAlertRuleDTO(r alerts.AlertRule) alertRuleDTO {
 		MatchField:      r.MatchField,
 		MatchValue:      r.MatchValue,
 		StatusSeverity:  r.StatusSeverity,
+		VulnMinSeverity: r.VulnMinSeverity,
 		CooldownMinutes: r.CooldownMinutes,
 		ChannelIDs:      ids,
 		Enabled:         r.Enabled,
@@ -231,6 +233,9 @@ func (h *HandlersApi) AlertRulesCreateHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
 		return
 	}
+	if !h.vulnRuleAllowed(w, body.Source) {
+		return
+	}
 	row, err := mgr.CreateRule(alerts.AlertRule{
 		Name:            body.Name,
 		EnvironmentID:   body.EnvironmentID,
@@ -240,6 +245,7 @@ func (h *HandlersApi) AlertRulesCreateHandler(w http.ResponseWriter, r *http.Req
 		MatchField:      body.MatchField,
 		MatchValue:      body.MatchValue,
 		StatusSeverity:  body.StatusSeverity,
+		VulnMinSeverity: body.VulnMinSeverity,
 		CooldownMinutes: body.CooldownMinutes,
 		ChannelIDs:      alerts.EncodeChannelIDs(body.ChannelIDs),
 		Enabled:         body.Enabled,
@@ -292,6 +298,9 @@ func (h *HandlersApi) AlertRulesUpdateHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
 		return
 	}
+	if !h.vulnRuleAllowed(w, body.Source) {
+		return
+	}
 	row, err := mgr.UpdateRule(id, alerts.AlertRule{
 		Name:            body.Name,
 		EnvironmentID:   body.EnvironmentID,
@@ -301,6 +310,7 @@ func (h *HandlersApi) AlertRulesUpdateHandler(w http.ResponseWriter, r *http.Req
 		MatchField:      body.MatchField,
 		MatchValue:      body.MatchValue,
 		StatusSeverity:  body.StatusSeverity,
+		VulnMinSeverity: body.VulnMinSeverity,
 		CooldownMinutes: body.CooldownMinutes,
 		ChannelIDs:      alerts.EncodeChannelIDs(body.ChannelIDs),
 		Enabled:         body.Enabled,
@@ -804,6 +814,16 @@ func parseAlertID(r *http.Request, name string) (uint, error) {
 		return 0, fmt.Errorf("invalid %s: %w", name, err)
 	}
 	return uint(n), nil
+}
+
+// vulnRuleAllowed refuses vulnerability rules on a deployment without
+// vulnerability monitoring: such a rule could never fire.
+func (h *HandlersApi) vulnRuleAllowed(w http.ResponseWriter, source string) bool {
+	if source == alerts.SourceVulnFinding && h.Vulns == nil {
+		apiErrorResponse(w, "vulnerability monitoring is not enabled (--vuln-enabled)", http.StatusBadRequest, nil)
+		return false
+	}
+	return true
 }
 
 func respondAlertsErr(w http.ResponseWriter, err error) {

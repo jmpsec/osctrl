@@ -174,11 +174,11 @@ func (pm *PostureManager) enabledChecks() ([]PostureCheck, error) {
 }
 
 func (pm *PostureManager) Score(records []NodePosture) (PostureScore, error) {
-	checks, err := pm.enabledChecks()
+	sc, err := pm.calculator()
 	if err != nil {
 		return PostureScore{}, err
 	}
-	return NewScoreCalculatorWithChecks(checks).Score(records), nil
+	return sc.Score(records), nil
 }
 
 func defaultChecks() []PostureCheck {

@@ -76,6 +76,9 @@ func (h *HandlersApi) HealthStatusHandler(w http.ResponseWriter, r *http.Request
 	if provider, ok := h.Events.(eventStatsProvider); ok {
 		components = append(components, health.EventsComponent(provider.Snapshot(), row, err, now))
 	}
+	if h.Vulns != nil {
+		components = append(components, h.Vulns.HealthComponent(checkCtx))
+	}
 
 	upgrade := health.UpgradeInfo{Current: h.ServiceVersion}
 	if h.HealthVersions != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/vulns"
 )
 
 // tls_alerts.go — adapters wiring pkg/alerts to the osctrl-tls managers.
@@ -77,4 +78,47 @@ func (s *tlsNodeSource) InactiveNodes(ctx context.Context) ([]alerts.NodeSnapsho
 // ActiveNodes implements alerts.NodeSource.
 func (s *tlsNodeSource) ActiveNodes(ctx context.Context) ([]alerts.NodeSnapshot, error) {
 	return s.snapshotsByEnv(ctx, nodes.ActiveNodes)
+}
+
+// tlsFindingSource adapts the vulnerability inventory to the alert
+// watcher's FindingSource, adding environment names.
+type tlsFindingSource struct {
+	inv  *vulns.Inventory
+	envs *environments.EnvManager
+}
+
+func newTLSFindingSource(inv *vulns.Inventory, envsMgr *environments.EnvManager) *tlsFindingSource {
+	return &tlsFindingSource{inv: inv, envs: envsMgr}
+}
+
+// FindingsAfter implements alerts.FindingSource.
+func (s *tlsFindingSource) FindingsAfter(ctx context.Context, afterID uint, limit int) ([]alerts.FindingSnapshot, error) {
+	rows, err := s.inv.FindingsAfter(ctx, afterID, limit)
+	if err != nil {
+		return nil, err
+	}
+	names := map[uint]string{}
+	out := make([]alerts.FindingSnapshot, 0, len(rows))
+	for _, r := range rows {
+		name, ok := names[r.EnvironmentID]
+		if !ok {
+			if env, err := s.envs.GetByID(r.EnvironmentID); err == nil {
+				name = env.Name
+			}
+			names[r.EnvironmentID] = name
+		}
+		out = append(out, alerts.FindingSnapshot{
+			ID: r.ID, NodeUUID: r.NodeUUID, Hostname: r.Hostname,
+			EnvironmentID: r.EnvironmentID, Environment: name,
+			AdvisoryID: r.AdvisoryID, Package: r.Package,
+			InstalledVersion: r.InstalledVersion, FixedVersion: r.FixedVersion,
+			Severity: r.Severity, KEV: r.KEV,
+		})
+	}
+	return out, nil
+}
+
+// LatestFindingID implements alerts.FindingSource.
+func (s *tlsFindingSource) LatestFindingID(ctx context.Context) (uint, error) {
+	return s.inv.LatestFindingID(ctx)
 }

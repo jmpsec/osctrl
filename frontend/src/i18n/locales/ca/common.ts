@@ -114,6 +114,7 @@ export const ca: Messages = {
       unknown: 'Desconegut',
     },
     components: {
+      vulnerabilities: 'Fonts d’avisos',
       database: 'Base de dades',
       workers: 'Processos de treball',
     },
