@@ -143,6 +143,26 @@ type YAMLConfigurationService struct {
 	// service_status table is never created, osctrl-tls writes no
 	// heartbeat, and the /api/v1/health routes are not registered.
 	HealthEnabled bool `yaml:"healthEnabled"`
+	// VulnEnabled controls the vulnerability monitoring subsystem. When false
+	// (default) osctrl-tls discards osctrl:vuln:* query results, osctrl-api
+	// registers no /api/v1/vulnerabilities routes and starts no feed sync, and
+	// none of the vulnerability tables are created. Requires a restart.
+	VulnEnabled bool `yaml:"vulnEnabled"`
+	// VulnOSVURL is the base URL of the OSV data bucket, or of an internal
+	// mirror with the same layout. Consumed by osctrl-api only.
+	VulnOSVURL string `yaml:"vulnOSVURL"`
+	// VulnKEVURL is the CISA Known Exploited Vulnerabilities JSON feed, or a
+	// mirror of it. Consumed by osctrl-api only.
+	VulnKEVURL string `yaml:"vulnKEVURL"`
+	// VulnEcosystems is a comma-separated list of OSV ecosystem directories
+	// to sync ("Debian,PyPI"). Empty syncs the ecosystems the fleet reports.
+	VulnEcosystems string `yaml:"vulnEcosystems"`
+	// VulnSyncHours is how often advisory feeds are refreshed.
+	VulnSyncHours int `yaml:"vulnSyncHours"`
+	// VulnRetentionDays is how long resolved findings are kept.
+	VulnRetentionDays int `yaml:"vulnRetentionDays"`
+	// VulnMaxDownloadMB caps any single feed download.
+	VulnMaxDownloadMB int `yaml:"vulnMaxDownloadMB"`
 	// EventsEnabled enables best-effort SSE invalidation notifications.
 	EventsEnabled bool `yaml:"eventsEnabled"`
 	// EventsNamespace must be shared by API/TLS and unique within Redis.

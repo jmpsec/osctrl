@@ -5501,6 +5501,45 @@ paths:
       summary: Get node posture risk score
       tags:
         - nodes
+  "/api/v1/nodes/{env}/node/{uuid}/vulnerabilities":
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/vulns.NodeReport"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Vulnerability findings for one node
+      tags:
+        - vulnerabilities
   "/api/v1/nodes/{env}/tag":
     post:
       description: Adds or updates a tag on a node.
@@ -9146,6 +9185,218 @@ paths:
       summary: Change current user password
       tags:
         - users
+  "/api/v1/vulnerabilities/{env}/advisories/{id}":
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Advisory id
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/vulns.AdvisoryDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: One advisory and the nodes it affects in an environment
+      tags:
+        - vulnerabilities
+  "/api/v1/vulnerabilities/{env}/findings":
+    get:
+      description: "Open findings in an environment by default. Filters: severity,
+        confidence, kev, state (open|resolved|all), package, advisory, page,
+        page_size."
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: critical|high|medium|low|unknown
+          in: query
+          name: severity
+          schema:
+            type: string
+        - description: confirmed|possible
+          in: query
+          name: confidence
+          schema:
+            type: string
+        - description: Only CISA KEV findings
+          in: query
+          name: kev
+          schema:
+            type: boolean
+        - description: open|resolved|all
+          in: query
+          name: state
+          schema:
+            type: string
+        - description: Package name
+          in: query
+          name: package
+          schema:
+            type: string
+        - description: Advisory id
+          in: query
+          name: advisory
+          schema:
+            type: string
+        - description: Page (1-based)
+          in: query
+          name: page
+          schema:
+            type: integer
+        - description: Page size (max 500)
+          in: query
+          name: page_size
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.VulnFindingsResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List vulnerability findings
+      tags:
+        - vulnerabilities
+  "/api/v1/vulnerabilities/{env}/summary":
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/vulns.Summary"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Vulnerability summary for an environment
+      tags:
+        - vulnerabilities
+  /api/v1/vulnerabilities/feeds:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/vulns.FeedStatus"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Advisory feed sync status
+      tags:
+        - vulnerabilities
+  /api/v1/vulnerabilities/feeds/sync:
+    post:
+      description: Super-admin only. The worker picks the request up on its next tick
+        (within a minute); the request never downloads anything itself.
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiGenericResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Request an advisory feed sync
+      tags:
+        - vulnerabilities
+  /api/v1/vulnerabilities/profiles:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/posture.PostureProfile"
+                type: array
+      security:
+        - ApiKeyAuth: []
+      summary: Inventory schedule profiles for vulnerability monitoring
+      tags:
+        - vulnerabilities
   /error:
     get:
       description: Returns a generic API error response.
@@ -9764,6 +10015,12 @@ components:
 
             false the /api/v1/service-config routes are not registered at all.
           type: boolean
+        vulnerabilities:
+          description: |-
+            Vulnerabilities gates the vulnerability pages in the SPA. Tied to
+            --vuln-enabled — when false the /api/v1/vulnerabilities routes are
+            not registered and the vulnerability tables are not created.
+          type: boolean
       type: object
     handlers.InactiveHoursRequest:
       properties:
@@ -9939,6 +10196,17 @@ components:
           type: integer
         total_nodes:
           description: Cross-env totals (the user's allowed envs only).
+          type: integer
+      type: object
+    handlers.VulnFindingsResponse:
+      properties:
+        findings:
+          items:
+            $ref: "#/components/schemas/vulns.Finding"
+          type: array
+        page:
+          type: integer
+        total:
           type: integer
       type: object
     handlers.alertChannelDTO:
@@ -11681,5 +11949,160 @@ components:
         username:
           type: string
         uuid:
+          type: string
+      type: object
+    vulns.Advisory:
+      properties:
+        cvss_score:
+          type: number
+        cvss_vector:
+          type: string
+        details:
+          type: string
+        id:
+          type: string
+        kev:
+          type: boolean
+        modified:
+          type: string
+        published:
+          type: string
+        severity:
+          type: string
+        summary:
+          type: string
+      type: object
+    vulns.AdvisoryDetail:
+      properties:
+        advisory:
+          $ref: "#/components/schemas/vulns.Advisory"
+        aliases:
+          items:
+            type: string
+          type: array
+        findings:
+          items:
+            $ref: "#/components/schemas/vulns.Finding"
+          type: array
+        references:
+          items:
+            type: string
+          type: array
+      type: object
+    vulns.CountRow:
+      properties:
+        name:
+          type: string
+        total:
+          type: integer
+      type: object
+    vulns.FeedStatus:
+      properties:
+        last_sync_at:
+          type: string
+        last_sync_failed:
+          type: boolean
+        loaded:
+          type: boolean
+        sources:
+          items:
+            $ref: "#/components/schemas/vulns.SyncState"
+          type: array
+        stale:
+          type: boolean
+        sync_requested_at:
+          type: string
+      type: object
+    vulns.Finding:
+      properties:
+        advisory_id:
+          type: string
+        confidence:
+          type: string
+        ecosystem:
+          type: string
+        environment_id:
+          type: integer
+        first_seen:
+          type: string
+        fixed_version:
+          type: string
+        id:
+          type: integer
+        installed_version:
+          type: string
+        kev:
+          type: boolean
+        last_seen:
+          type: string
+        node_uuid:
+          type: string
+        package:
+          type: string
+        resolved_at:
+          type: string
+        severity:
+          type: string
+      type: object
+    vulns.NodeReport:
+      properties:
+        findings:
+          items:
+            $ref: "#/components/schemas/vulns.Finding"
+          type: array
+        inventory_at:
+          type: string
+        loaded:
+          type: boolean
+        matched_at:
+          type: string
+        not_assessed:
+          type: integer
+        stale:
+          type: boolean
+      type: object
+    vulns.Summary:
+      properties:
+        affected_nodes:
+          type: integer
+        by_severity:
+          additionalProperties:
+            additionalProperties:
+              format: int64
+              type: integer
+            type: object
+          type: object
+        kev:
+          type: integer
+        loaded:
+          type: boolean
+        not_assessed:
+          type: integer
+        stale:
+          type: boolean
+        top_advisories:
+          items:
+            $ref: "#/components/schemas/vulns.CountRow"
+          type: array
+        top_packages:
+          items:
+            $ref: "#/components/schemas/vulns.CountRow"
+          type: array
+      type: object
+    vulns.SyncState:
+      properties:
+        cursor:
+          type: string
+        last_error:
+          type: string
+        last_error_at:
+          type: string
+        last_skipped:
+          type: integer
+        last_success:
+          type: string
+        last_written:
+          type: integer
+        source:
           type: string
       type: object

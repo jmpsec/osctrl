@@ -30,6 +30,10 @@ type FeaturesResponse struct {
 	// Health gates the Health section in the SPA. Tied to --health-enabled —
 	// when false the /api/v1/health routes are not registered.
 	Health bool `json:"health"`
+	// Vulnerabilities gates the vulnerability pages in the SPA. Tied to
+	// --vuln-enabled — when false the /api/v1/vulnerabilities routes are
+	// not registered and the vulnerability tables are not created.
+	Vulnerabilities bool `json:"vulnerabilities"`
 }
 
 // FeaturesHandler — GET /api/v1/features.
@@ -45,17 +49,18 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, FeaturesResponse{
-		Posture:       h.PostureEnabled,
-		Events:        h.Events != nil,
-		EventTopics:   h.eventTopics(),
-		ServiceConfig: h.ServiceConfigEnabled,
-		LogSinks:      h.LogSinksEnabled,
-		AuthProviders: h.AuthProvidersEnabled,
-		Alerts:        h.Alerts != nil,
-		Accelerated:   h.OsqueryValues.Accelerated,
-		Console:       h.OsqueryValues.Query && h.OsqueryValues.Console,
-		FileExplorer:  h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,
-		Health:        h.Health != nil,
+		Posture:         h.PostureEnabled,
+		Events:          h.Events != nil,
+		EventTopics:     h.eventTopics(),
+		ServiceConfig:   h.ServiceConfigEnabled,
+		LogSinks:        h.LogSinksEnabled,
+		AuthProviders:   h.AuthProvidersEnabled,
+		Alerts:          h.Alerts != nil,
+		Accelerated:     h.OsqueryValues.Accelerated,
+		Console:         h.OsqueryValues.Query && h.OsqueryValues.Console,
+		FileExplorer:    h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,
+		Health:          h.Health != nil,
+		Vulnerabilities: h.Vulns != nil,
 	})
 }
 

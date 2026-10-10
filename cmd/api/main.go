@@ -47,6 +47,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/jmpsec/osctrl/pkg/version"
+	"github.com/jmpsec/osctrl/pkg/vulns"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
@@ -553,9 +554,38 @@ func osctrlAPIService() {
 	if err != nil {
 		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
 	}
+	// Background workers are stopped explicitly in every exit branch of the
+	// final select, not deferred: a deferred stop would be skipped by any
+	// log.Fatal in between anyway.
 	auditRetentionCtx, stopAuditRetention := context.WithCancel(context.Background())
-	defer stopAuditRetention()
 	go auditLog.RunRetention(auditRetentionCtx, settingsmgr.AuditLogRetentionDays)
+	// Vulnerability monitoring (disabled by default). When off no worker
+	// runs, nothing is downloaded and no tables are created.
+	var vulnReader *vulns.Reader
+	var vulnWorker *vulns.Worker
+	if flagParams.Service.VulnEnabled {
+		syncInterval := time.Duration(flagParams.Service.VulnSyncHours) * time.Hour
+		worker, err := vulns.NewWorker(db.Conn, vulns.Config{
+			OSVURL:       flagParams.Service.VulnOSVURL,
+			KEVURL:       flagParams.Service.VulnKEVURL,
+			Ecosystems:   vulns.ParseEcosystems(flagParams.Service.VulnEcosystems),
+			SyncInterval: syncInterval,
+			Retention:    time.Duration(flagParams.Service.VulnRetentionDays) * 24 * time.Hour,
+			MaxDownload:  int64(flagParams.Service.VulnMaxDownloadMB) << 20,
+		})
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to initialize vulnerability monitoring")
+		}
+		vulnWorker = worker
+		vulnReader = vulns.NewReader(db.Conn, syncInterval)
+		log.Info().Msg("Vulnerability monitoring enabled")
+	} else {
+		log.Info().Msg("Vulnerability monitoring disabled (enable with --vuln-enabled)")
+	}
+	vulnCtx, stopVulns := context.WithCancel(context.Background())
+	if vulnWorker != nil {
+		go vulnWorker.Run(vulnCtx)
+	}
 	// Secondary indexes for the hot read paths, beyond the struct tags. Built
 	// in the background, so a large table does not hold up startup; osctrl-api
 	// and osctrl-tls both run this and are safe to race.
@@ -659,6 +689,7 @@ func osctrlAPIService() {
 		handlers.WithGeoIP(geoIPResolver),
 		handlers.WithPosture(posturemgr),
 		handlers.WithPostureEnabled(flagParams.Service.PostureEnabled),
+		handlers.WithVulns(vulnReader),
 		handlers.WithMFA(mfamgr, webAuthn, flagParams.Service.MFARequired, mfaIssuerName(flagParams)),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
@@ -812,6 +843,30 @@ func osctrlAPIService() {
 		muxAPI.Handle(
 			"GET "+_apiPath("/posture")+"/profiles/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.PostureProfileHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	}
+	if flagParams.Service.VulnEnabled {
+		// API: vulnerability monitoring
+		muxAPI.Handle(
+			"GET "+_apiPath("/vulnerabilities")+"/profiles",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.VulnProfilesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/vulnerabilities")+"/feeds",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.VulnFeedsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath("/vulnerabilities")+"/feeds/sync",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.VulnSyncRequestHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/vulnerabilities")+"/{env}/findings",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.VulnFindingsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/vulnerabilities")+"/{env}/summary",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.VulnSummaryHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/vulnerabilities")+"/{env}/advisories/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.VulnAdvisoryHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/vulnerabilities",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.VulnNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// API: node logs
 	muxAPI.Handle(
@@ -1389,6 +1444,8 @@ func osctrlAPIService() {
 	// Wait for either a server error or a restart signal.
 	select {
 	case err := <-serverErr:
+		stopAuditRetention()
+		stopVulns()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			if eventBus != nil {
 				eventBus.Close()
@@ -1397,6 +1454,7 @@ func osctrlAPIService() {
 		}
 	case <-shutdownSignals:
 		stopAuditRetention()
+		stopVulns()
 		if eventBus != nil {
 			eventBus.Close()
 		}
@@ -1407,6 +1465,7 @@ func osctrlAPIService() {
 		cancelDrain()
 	case <-restartCh:
 		stopAuditRetention()
+		stopVulns()
 		if eventBus != nil {
 			eventBus.Close()
 		}

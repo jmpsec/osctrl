@@ -87,6 +87,10 @@ service:
   # writes a heartbeat row (version, uptime, goroutines, worker
   # counters) every 60s. Requires a service restart to change.
   healthEnabled: false
+  # Store software inventory from osctrl:vuln: scheduled queries for
+  # vulnerability matching by osctrl-api. When false (default) those results
+  # are discarded and no tables are created. Requires a restart.
+  vulnEnabled: false
   # DB health monitor. When enabled, osctrl-tls pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache and SettingsCache switch to

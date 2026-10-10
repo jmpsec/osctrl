@@ -22,6 +22,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/version"
+	"github.com/jmpsec/osctrl/pkg/vulns"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -71,6 +72,7 @@ type HandlersTLS struct {
 	WriteHandler    *batchWriter
 	ActivityWriter  *activityWriter
 	Posture         *posture.PostureManager
+	Vulns           *vulns.Inventory // nil when --vuln-enabled is off: osctrl:vuln: results are discarded
 	OsqueryValues   *config.YAMLConfigurationOsquery
 	ConfigEndpoints *config.YAMLConfigurationEndpoints
 	DebugHTTP       *zerolog.Logger
@@ -188,6 +190,13 @@ func WithActivityWriter(activityWriter *activityWriter) Option {
 func WithPosture(pm *posture.PostureManager) Option {
 	return func(h *HandlersTLS) {
 		h.Posture = pm
+	}
+}
+
+// WithVulns wires the vulnerability inventory store (nil when disabled).
+func WithVulns(inv *vulns.Inventory) Option {
+	return func(h *HandlersTLS) {
+		h.Vulns = inv
 	}
 }
 

@@ -106,6 +106,20 @@ service:
   # heartbeat, and cached upgrade status. Requires a service restart to
   # change.
   healthEnabled: false
+  # Enable vulnerability monitoring. When false (default), no
+  # vulnerability routes are registered, no tables are created and no
+  # advisory feeds are downloaded. When true, osctrl-api downloads OSV and
+  # CISA KEV data and matches it against the inventory osctrl-tls stores.
+  # Package inventory never leaves the deployment. Requires a restart.
+  vulnEnabled: false
+  # Advisory sources. Point both at internal mirrors for air-gapped sites.
+  vulnOSVURL: "https://osv-vulnerabilities.storage.googleapis.com"
+  vulnKEVURL: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+  # Empty syncs only the ecosystems the fleet reports.
+  vulnEcosystems: ""
+  vulnSyncHours: 6
+  vulnRetentionDays: 90
+  vulnMaxDownloadMB: 2048
   # DB health monitor. When enabled, osctrl-api pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache switches to stale-serve mode:
