@@ -3,6 +3,7 @@ package vulns
 import (
 	"context"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -200,6 +201,9 @@ func TestTickMatchesWindowsProgramsAgainstNVD(t *testing.T) {
 	assert.Equal(t, "mozilla:firefox", got[0].Package)
 	assert.Equal(t, "130.0", got[0].FixedVersion)
 	assert.True(t, got[0].KEV)
+	var ws WorkerState
+	require.NoError(t, db.First(&ws, "name = ?", workerName).Error)
+	assert.NotNil(t, ws.NVDActiveAt, "an NVD replica says so, for replicas with NVD off")
 }
 
 // Turning NVD on syncs it at the next retry point, not hours later.
@@ -321,4 +325,64 @@ func TestDropNVDCleansUpWithoutASyncRowAndOnStaleNodes(t *testing.T) {
 	var f Finding
 	require.NoError(t, db.First(&f, "node_uuid = ?", "OLD").Error)
 	assert.NotNil(t, f.ResolvedAt, "a stale node's possible finding resolves without a re-match")
+}
+
+func TestHousekeepingPrunesOldEscalations(t *testing.T) {
+	db := newTestDB(t)
+	clock := newClock()
+	w := newTestWorker(t, db, "http://unused", clock)
+	require.NoError(t, db.Create(&[]Escalation{
+		{FindingID: 1, CreatedAt: clock.now().Add(-31 * 24 * time.Hour)},
+		{FindingID: 2, CreatedAt: clock.now()},
+	}).Error)
+	require.NoError(t, w.housekeep())
+	var n int64
+	require.NoError(t, db.Model(&Escalation{}).Count(&n).Error)
+	assert.Equal(t, int64(1), n)
+}
+
+// Replicas that disagree on --vuln-nvd-enabled must not delete NVD data on
+// every lease handover: an NVD-off replica keeps it while another replica
+// used NVD within nvdDropAfter.
+func TestNVDDataSurvivesAReplicaWithNVDOff(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/kev.json", []byte(`{"vulnerabilities": [{"cveID": "CVE-2026-0001"}]}`))
+	db := newTestDB(t)
+	clock := newClock()
+	now := clock.now()
+	require.NoError(t, recordSuccess(db, sourceNVD, now, SyncResult{}, now))
+	require.NoError(t, db.Create(&Advisory{ID: "CVE-2026-1000", Source: AdvisorySourceNVD, Severity: SeverityHigh}).Error)
+	require.NoError(t, db.Create(&WorkerState{Name: workerName, NVDActiveAt: &now, NVDActiveBy: "other-replica"}).Error)
+	w := newTestWorker(t, db, srv.URL, clock) // NVD off
+
+	clock.advance(time.Minute)
+	require.NoError(t, w.Tick(context.Background()))
+	var n int64
+	require.NoError(t, db.Model(&Advisory{}).Where("source = ?", AdvisorySourceNVD).Count(&n).Error)
+	assert.Equal(t, int64(1), n, "another replica used NVD a minute ago")
+
+	clock.advance(nvdDropAfter)
+	require.NoError(t, w.Tick(context.Background()))
+	require.NoError(t, db.Model(&Advisory{}).Where("source = ?", AdvisorySourceNVD).Count(&n).Error)
+	assert.Zero(t, n, "no replica has used NVD for an hour")
+}
+
+// One osctrl-api restarted with NVD off is not "another replica": its own
+// earlier stamp does not delay the drop.
+func TestTurningNVDOffOnTheSameHostDropsAtOnce(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/kev.json", []byte(`{"vulnerabilities": [{"cveID": "CVE-2026-0001"}]}`))
+	db := newTestDB(t)
+	clock := newClock()
+	now := clock.now()
+	host, _ := os.Hostname()
+	require.NoError(t, recordSuccess(db, sourceNVD, now, SyncResult{}, now))
+	require.NoError(t, db.Create(&Advisory{ID: "CVE-2026-1000", Source: AdvisorySourceNVD, Severity: SeverityHigh}).Error)
+	require.NoError(t, db.Create(&WorkerState{Name: workerName, NVDActiveAt: &now, NVDActiveBy: host}).Error)
+	w := newTestWorker(t, db, srv.URL, clock)
+	clock.advance(time.Minute)
+	require.NoError(t, w.Tick(context.Background()))
+	var n int64
+	require.NoError(t, db.Model(&Advisory{}).Where("source = ?", AdvisorySourceNVD).Count(&n).Error)
+	assert.Zero(t, n)
 }

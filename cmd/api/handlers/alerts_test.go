@@ -381,3 +381,30 @@ func TestAlertRuleVulnFindingRoundTrip(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &updated))
 	require.Equal(t, "high", updated.VulnMinSeverity)
 }
+
+// An existing vulnerability rule stays editable (to disable it) after
+// vulnerability monitoring is turned off; turning another rule into one
+// still needs the feature.
+func TestAlertRuleVulnFindingEditableWhenFeatureOff(t *testing.T) {
+	h := setupAlertsHandler(t)
+	h.Vulns = vulns.NewReader(nil, 0)
+	body := map[string]any{"name": "kev", "source": "vuln_finding", "vuln_min_severity": "kev", "enabled": true}
+	rr := call(t, h.AlertRulesCreateHandler, http.MethodPost, "/api/v1/alerts/rules", body)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var vulnRule alertRuleDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &vulnRule))
+	logBody := map[string]any{"name": "log", "source": "result_log", "match_type": "substring", "match_value": "x", "enabled": true}
+	rr = call(t, h.AlertRulesCreateHandler, http.MethodPost, "/api/v1/alerts/rules", logBody)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var logRule alertRuleDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &logRule))
+
+	h.Vulns = nil
+	body["enabled"] = false
+	rr = callWithID(t, h.AlertRulesUpdateHandler, http.MethodPut, "/api/v1/alerts/rules/1", vulnRule.ID, body)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	logBody["source"], logBody["vuln_min_severity"] = "vuln_finding", "kev"
+	rr = callWithID(t, h.AlertRulesUpdateHandler, http.MethodPut, "/api/v1/alerts/rules/2", logRule.ID, logBody)
+	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
+}

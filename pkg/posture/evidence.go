@@ -1,5 +1,7 @@
 package posture
 
+import "slices"
+
 // evidence.go — score evidence that posture queries do not collect.
 
 // EvidenceSource contributes scoring rules and per-node evidence from
@@ -34,12 +36,30 @@ func (pm *PostureManager) evidenceFor(nodeUUIDs []string) (map[string][]NodePost
 	return pm.Evidence.ScoreEvidence(nodeUUIDs)
 }
 
+// evidenceOwned is the set of categories the evidence source's rules read.
+// Posture records in them are dropped: a posture query must not grade, or
+// pass, an evidence control.
+func (pm *PostureManager) evidenceOwned() map[string]bool {
+	if pm.Evidence == nil {
+		return nil
+	}
+	owned := map[string]bool{}
+	for _, r := range pm.Evidence.ScoringRules() {
+		for _, c := range r.Categories {
+			owned[c] = true
+		}
+	}
+	return owned
+}
+
 // nodeRecords is a node's posture records plus its evidence.
 func (pm *PostureManager) nodeRecords(nodeUUID string) ([]NodePosture, error) {
 	records, err := pm.GetByNode(nodeUUID)
 	if err != nil {
 		return nil, err
 	}
+	owned := pm.evidenceOwned()
+	records = slices.DeleteFunc(records, func(r NodePosture) bool { return owned[r.Category] })
 	extra, err := pm.evidenceFor([]string{nodeUUID})
 	if err != nil {
 		return nil, err

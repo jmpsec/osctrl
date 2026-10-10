@@ -70,7 +70,7 @@ packages by product name.
   sync reads about 150 pages of 2,000 CVEs and stores each one, so expect an
   hour or more, during which the worker matches nothing else. Rate-limited
   pages are retried twice; a sync that still fails retries 15 minutes after
-  it ended.
+  it ended, and a failed first sync resumes from its next page.
 - **API key:** set it through `VULN_NVD_API_KEY`; a flag value shows in the
   process list. It is sent only as the `apiKey` header.
 - **Turning it off** removes the NVD data on the next worker tick: possible
@@ -103,11 +103,20 @@ How it fires:
   inventory rollout or a fleet-wide re-match can't page once a minute.
 - **Once only:** a finding alerts when it first appears, including on a node's
   first inventory. A reopened finding doesn't alert again.
-- **Not re-alerted:** a finding that later becomes known-exploited (added to
-  CISA KEV) or rises in severity does not alert again. A `kev` rule fires only
-  for findings that are already KEV when recorded.
-- **Restarts:** a Redis cursor (`osctrl:alert:vuln:cursor`) prevents re-alerting.
-  Deleting the cursor restarts from the newest finding; it never replays history.
+- **Escalations:** an open finding that later becomes known-exploited (CISA
+  adds its CVE to KEV) or rises in severity alerts again, once, for the rules
+  it newly matches: a `kev` rule fires when CISA lists a CVE the fleet already
+  has, and a `high` rule when a medium finding becomes high. osctrl-api
+  records each escalation in `vuln_escalations` (kept 30 days).
+- **Restarts:** Redis cursors (`osctrl:alert:vuln:cursor`,
+  `osctrl:alert:vuln:escalation-cursor`) prevent re-alerting. A missing,
+  corrupt or expired cursor restarts from the newest record and never replays
+  history. Cursors expire after a week without sweeps, so re-enabling alerts
+  after a long pause starts from now.
+- **Replicas:** one osctrl-tls replica sweeps per minute (a Redis lock).
+- **Settling:** a sweep takes only findings the previous sweep already
+  listed, so one written by a slower match transaction is never skipped.
+  Alerts arrive a minute later; no clocks are compared.
 - **Possible findings:** never alert.
 
 ## Posture score
@@ -157,3 +166,14 @@ at a mirror that serves the API's responses.
 - **Deleted nodes:** rows of deleted nodes are swept hourly.
 - **Log sinks:** inventory results also flow to the configured log sinks,
   like any scheduled query.
+- **Metrics:** with `--metrics-enabled` and `--vuln-enabled`, osctrl-tls
+  exports gauges read from the shared database (cached for a minute):
+  `osctrl_vuln_advisories`, `osctrl_vuln_feed_last_success_timestamp_seconds`
+  (per source), `osctrl_vuln_findings_open` (per confidence),
+  `osctrl_vuln_findings_resolved`, `osctrl_vuln_nodes_pending_match` and
+  `osctrl_vuln_packages_not_assessed`.
+- **Rejected records:** an advisory the database rejects is skipped and
+  counted (`last_skipped`), not retried forever.
+- **NVD on some replicas only:** a replica with `--vuln-nvd-enabled` off keeps
+  NVD data while another replica used NVD in the last hour, and logs a
+  warning; set the flag the same everywhere.

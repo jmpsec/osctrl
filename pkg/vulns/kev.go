@@ -48,7 +48,7 @@ func syncKEV(ctx context.Context, db *gorm.DB, f fetcher, url string, now time.T
 		}); err != nil {
 			return err
 		}
-		if err := refreshFlags(db); err != nil {
+		if err := refreshFlags(db, now); err != nil {
 			return err
 		}
 		return recordSuccess(db, sourceKEV, now, SyncResult{Written: len(rows)}, now)
@@ -61,8 +61,10 @@ func syncKEV(ctx context.Context, db *gorm.DB, f fetcher, url string, now time.T
 
 // refreshFlags recomputes KEV on advisories and copies severity and KEV onto
 // findings, so a feed update shows without re-matching every node. Borrowed
-// NVD severities are applied first (enrich.go).
-func refreshFlags(db *gorm.DB) error {
+// NVD severities are applied first (enrich.go), and open confirmed findings
+// that become known-exploited or more severe are recorded as escalations in
+// the same transaction as the copy, so each is recorded once.
+func refreshFlags(db *gorm.DB, now time.Time) error {
 	if err := enrichSeverity(db); err != nil {
 		return err
 	}
@@ -71,8 +73,50 @@ func refreshFlags(db *gorm.DB) error {
 		WHERE a.advisory_id = vuln_advisories.id)`).Error; err != nil {
 		return err
 	}
-	return db.Exec(`UPDATE vuln_findings SET
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := recordEscalations(tx, now); err != nil {
+			return err
+		}
+		return tx.Exec(`UPDATE vuln_findings SET
 		kev = (SELECT a.kev FROM vuln_advisories a WHERE a.id = vuln_findings.advisory_id),
 		severity = (SELECT a.severity FROM vuln_advisories a WHERE a.id = vuln_findings.advisory_id)
 		WHERE EXISTS (SELECT 1 FROM vuln_advisories a WHERE a.id = vuln_findings.advisory_id)`).Error
+	})
+}
+
+// recordEscalations notes open confirmed findings whose advisory became
+// known-exploited or more severe than the finding says.
+func recordEscalations(tx *gorm.DB, now time.Time) error {
+	var rows []struct {
+		ID          uint
+		Severity    string
+		KEV         bool
+		NewSeverity string
+		NewKEV      bool
+	}
+	if err := tx.Raw(`SELECT f.id, f.severity, f.kev, a.severity AS new_severity, a.kev AS new_kev
+		FROM vuln_findings f JOIN vuln_advisories a ON a.id = f.advisory_id
+		WHERE f.resolved_at IS NULL AND f.confidence = ? AND (f.severity <> a.severity OR f.kev <> a.kev)`,
+		ConfidenceConfirmed).Scan(&rows).Error; err != nil {
+		return err
+	}
+	var events []Escalation
+	for _, r := range rows {
+		if escalated(r.Severity, r.KEV, r.NewSeverity, r.NewKEV) {
+			events = append(events, Escalation{FindingID: r.ID, PrevSeverity: r.Severity, PrevKEV: r.KEV, CreatedAt: now})
+		}
+	}
+	if len(events) == 0 {
+		return nil
+	}
+	return tx.CreateInBatches(events, 500).Error
+}
+
+// severityRank orders severities; unknown ranks below low.
+var severityRank = map[string]int{SeverityLow: 1, SeverityMedium: 2, SeverityHigh: 3, SeverityCritical: 4}
+
+// escalated reports whether a finding became known-exploited or rose in
+// severity.
+func escalated(prevSeverity string, prevKEV bool, severity string, kev bool) bool {
+	return (kev && !prevKEV) || severityRank[severity] > severityRank[prevSeverity]
 }

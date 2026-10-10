@@ -160,3 +160,27 @@ func TestScoreEvidenceIgnoresCPEPackages(t *testing.T) {
 	assert.JSONEq(t, `[{"critical":0,"high":0,"medium":0,"low":0,"unknown":0,"kev":0,"not_assessed":0}]`, out["MAC"][0].Summary,
 		"apps NVD could not assess do not make the Python inventory less clean")
 }
+
+// An advisory sync clears matched_at fleet-wide. A clean node keeps its last
+// assessment instead of losing the control until it is re-matched.
+func TestScoreEvidenceKeepsCleanNodesAcrossSyncs(t *testing.T) {
+	r := evidenceReader(t)
+	markLoaded(t, r)
+	require.NoError(t, r.DB.Create(&NodeState{NodeUUID: "CLEAN", InventoryAt: r.now(), Assessed: 1}).Error)
+	require.NoError(t, r.DB.Create(&NodeSoftware{NodeUUID: "CLEAN", Category: CategoryDeb, Name: "bash", Version: "5.2-1"}).Error)
+	out, err := r.ScoreEvidence([]string{"CLEAN"})
+	require.NoError(t, err)
+	assert.Contains(t, out, "CLEAN")
+}
+
+// The worker stops re-matching nodes silent for 30 days, so new advisories
+// never reach them: a clean result that old is no longer evidence.
+func TestScoreEvidenceDropsNodesSilentForThirtyDays(t *testing.T) {
+	r := evidenceReader(t)
+	markLoaded(t, r)
+	require.NoError(t, r.DB.Create(&NodeState{NodeUUID: "SILENT", InventoryAt: r.now().Add(-staleNodeAge - time.Hour), Assessed: 1}).Error)
+	require.NoError(t, r.DB.Create(&NodeSoftware{NodeUUID: "SILENT", Category: CategoryDeb, Name: "bash", Version: "5.2-1"}).Error)
+	out, err := r.ScoreEvidence([]string{"SILENT"})
+	require.NoError(t, err)
+	assert.NotContains(t, out, "SILENT")
+}

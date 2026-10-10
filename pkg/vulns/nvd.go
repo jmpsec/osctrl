@@ -151,26 +151,48 @@ func (s *NVDSource) Sync(ctx context.Context) (SyncResult, error) {
 	if err := s.db.Where("source = ?", sourceNVD).Limit(1).Find(&state).Error; err != nil {
 		return SyncResult{}, err
 	}
-	start := s.now()
+	start, index := s.now(), 0
 	q := url.Values{"resultsPerPage": {strconv.Itoa(nvdPageSize)}}
 	since := state.Cursor.Add(-nvdOverlap)
-	if state.LastSuccess != nil && start.Sub(since) < nvdMaxWindow {
+	switch {
+	case state.ResumeStart != nil:
+		// A full sync that failed part-way continues from its next page.
+		// Full results come in a stable order and NVD never deletes a CVE;
+		// the first incremental sync, from when the full sync began, covers
+		// anything modified meanwhile.
+		start, index = *state.ResumeStart, state.ResumeIndex
+	case state.LastSuccess != nil && start.Sub(since) < nvdMaxWindow:
 		q.Set("lastModStartDate", since.UTC().Format(nvdQueryTime))
 		q.Set("lastModEndDate", start.UTC().Format(nvdQueryTime))
 	}
-	res, err := s.pages(ctx, q, !q.Has("lastModStartDate"))
+	full := !q.Has("lastModStartDate")
+	res, err := s.pages(ctx, q, index, full, func(next int) error {
+		if !full {
+			return nil
+		}
+		return s.db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "source"}},
+			DoUpdates: clause.AssignmentColumns([]string{"resume_index", "resume_start"}),
+		}).Create(&SyncState{Source: sourceNVD, ResumeIndex: next, ResumeStart: &start}).Error
+	})
 	if err != nil {
 		recordFailure(s.db, sourceNVD, err, s.now())
 		return res, err
 	}
-	return res, recordSuccess(s.db, sourceNVD, start, res, s.now())
+	if err := recordSuccess(s.db, sourceNVD, start, res, s.now()); err != nil {
+		return res, err
+	}
+	return res, s.db.Model(&SyncState{}).Where("source = ?", sourceNVD).
+		Updates(map[string]any{"resume_index": 0, "resume_start": nil}).Error
 }
 
 // pages reads every page of q. A truncated answer is an error, never a
 // complete sync: the cursor would move past CVEs that were never read.
-func (s *NVDSource) pages(ctx context.Context, q url.Values, full bool) (SyncResult, error) {
+// progress, called after each stored page that more pages follow, records
+// where to resume.
+func (s *NVDSource) pages(ctx context.Context, q url.Values, index int, full bool, progress func(next int) error) (SyncResult, error) {
 	var res SyncResult
-	for index := 0; ; {
+	for {
 		q.Set("startIndex", strconv.Itoa(index))
 		page, err := s.page(ctx, s.baseURL+"?"+q.Encode())
 		if err != nil {
@@ -188,7 +210,7 @@ func (s *NVDSource) pages(ctx context.Context, q url.Values, full bool) (SyncRes
 			products = append(products, prods...)
 			res.Written++
 		}
-		if err := s.store(batch, products); err != nil {
+		if err := s.store(batch, products, &res); err != nil {
 			return res, err
 		}
 		index += len(page.Vulnerabilities)
@@ -200,6 +222,9 @@ func (s *NVDSource) pages(ctx context.Context, q url.Values, full bool) (SyncRes
 		}
 		if len(page.Vulnerabilities) == 0 {
 			return res, fmt.Errorf("NVD returned an empty page at %d of %d results", index, page.TotalResults)
+		}
+		if err := progress(index); err != nil {
+			return res, err
 		}
 		if err := s.sleep(ctx, s.pause()); err != nil {
 			return res, err
@@ -241,8 +266,9 @@ func retryable(err error) bool {
 }
 
 // store writes one page. A CVE id an OSV record already uses stays the OSV
-// record's: NVD never overwrites it.
-func (s *NVDSource) store(batch []parsedAdvisory, products []CPEProduct) error {
+// record's: NVD never overwrites it. Records the database rejects move from
+// Written to Skipped.
+func (s *NVDSource) store(batch []parsedAdvisory, products []CPEProduct, res *SyncResult) error {
 	if len(batch) == 0 {
 		return nil
 	}
@@ -250,24 +276,17 @@ func (s *NVDSource) store(batch []parsedAdvisory, products []CPEProduct) error {
 	for i, p := range batch {
 		ids[i] = p.Advisory.ID
 	}
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var owned []string
-		if err := tx.Model(&Advisory{}).Where("id IN ? AND source <> ?", ids, AdvisorySourceNVD).Pluck("id", &owned).Error; err != nil {
-			return err
-		}
-		for _, p := range batch {
-			if slices.Contains(owned, p.Advisory.ID) {
-				continue
-			}
-			if err := storeAdvisory(tx, p); err != nil {
-				return err
-			}
-		}
-		if len(products) == 0 {
-			return nil
-		}
-		return tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(products, 500).Error
-	})
+	var owned []string
+	if err := s.db.Model(&Advisory{}).Where("id IN ? AND source <> ?", ids, AdvisorySourceNVD).Pluck("id", &owned).Error; err != nil {
+		return err
+	}
+	skipped, err := storeEach(s.db, batch, func(id string) bool { return slices.Contains(owned, id) })
+	res.Written -= skipped
+	res.Skipped += skipped
+	if err != nil || len(products) == 0 {
+		return err
+	}
+	return s.db.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(products, 500).Error
 }
 
 // parseNVD converts one CVE. Only application CPEs (part "a") that NVD marks
@@ -323,7 +342,8 @@ func parseNVD(c nvdCVE) (parsedAdvisory, []CPEProduct, error) {
 		for _, node := range cfg.Nodes {
 			for _, m := range node.CPEMatch {
 				n, ok := parseCPE(m.Criteria)
-				if !m.Vulnerable || !ok || n.Part != "a" || n.Version == "-" || len(n.Vendor) > 128 || len(n.Product) > 128 {
+				if !m.Vulnerable || !ok || n.Part != "a" || n.Version == "-" ||
+					len(n.Vendor) > 128 || len(n.Product) > 128 || len(n.Vendor)+1+len(n.Product) > maxFieldLen {
 					continue
 				}
 				key := n.Vendor + ":" + n.Product
@@ -430,7 +450,7 @@ func dropNVD(db *gorm.DB, now time.Time) error {
 	}); err != nil {
 		return err
 	}
-	if err := refreshFlags(db); err != nil {
+	if err := refreshFlags(db, now); err != nil {
 		return err
 	}
 	return db.Model(&NodeState{}).Where("1 = 1").Update("matched_at", nil).Error

@@ -294,3 +294,69 @@ func TestNVDKeyDoesNotFollowCrossHostRedirects(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{""}, other.keys)
 }
+
+// One record the database rejects is skipped and counted, not a sync that
+// fails on every retry.
+func TestNVDSkipsARecordTheDatabaseRejects(t *testing.T) {
+	ns, srv := newNVDServer(t)
+	ns.set("0", nvdPageOf(2,
+		nvdEntry("CVE-2026-0666", "Analyzed", firefoxCPE, `, "versionEndExcluding": "130.0"`),
+		nvdEntry("CVE-2026-1000", "Analyzed", firefoxCPE, `, "versionEndExcluding": "130.0"`)))
+	s, _ := newTestNVD(t, srv.URL, "", newClock())
+	require.NoError(t, s.db.Exec(`CREATE TRIGGER reject_bad BEFORE INSERT ON vuln_advisories
+		WHEN NEW.id = 'CVE-2026-0666' BEGIN SELECT RAISE(ABORT, 'rejected'); END`).Error)
+	res, err := s.Sync(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.Written)
+	assert.Equal(t, 1, res.Skipped)
+	var ids []string
+	require.NoError(t, s.db.Model(&Advisory{}).Pluck("id", &ids).Error)
+	assert.Equal(t, []string{"CVE-2026-1000"}, ids)
+}
+
+func TestParseNVDSkipsKeysTooLongToStore(t *testing.T) {
+	long := strings.Repeat("a", 128)
+	c := nvdCVE{ID: "CVE-2026-2001", Configurations: []nvdConfiguration{{Nodes: []nvdNode{{CPEMatch: []nvdCPEMatch{
+		{Vulnerable: true, Criteria: "cpe:2.3:a:" + long + ":" + long + ":1.0:*:*:*:*:*:*:*"},
+	}}}}}}
+	p, products, err := parseNVD(c)
+	require.NoError(t, err)
+	assert.Empty(t, p.Affected, "vendor:product must fit the 255-character package column")
+	assert.Empty(t, products)
+}
+
+// A full sync that fails part-way continues from its next page, not page 0.
+// NVD lists full results in a stable order and never deletes a CVE, and the
+// first incremental sync covers anything modified since the full sync began.
+func TestNVDResumesAFailedFullSync(t *testing.T) {
+	ns, srv := newNVDServer(t)
+	ns.set("0", nvdPageOf(2, nvdEntry("CVE-2026-1000", "Analyzed", firefoxCPE, `, "versionEndExcluding": "130.0"`)))
+	clock := newClock()
+	s, _ := newTestNVD(t, srv.URL, "", clock)
+	firstStart := clock.now()
+	_, err := s.Sync(context.Background())
+	require.Error(t, err, "page 1 is missing")
+
+	ns.set("1", nvdPageOf(2, nvdEntry("CVE-2026-1001", "Analyzed", firefoxCPE, `, "versionEndExcluding": "131.0"`)))
+	clock.advance(time.Hour)
+	_, err = s.Sync(context.Background())
+	require.NoError(t, err)
+	last := ns.queries[len(ns.queries)-1]
+	assert.Equal(t, "1", last.Get("startIndex"), "resumes at the next page")
+	assert.Empty(t, last.Get("lastModStartDate"))
+	pageZero := 0
+	for _, q := range ns.queries {
+		if q.Get("startIndex") == "0" {
+			pageZero++
+		}
+	}
+	assert.Equal(t, 1, pageZero, "page 0 is not read again")
+
+	var st SyncState
+	require.NoError(t, s.db.First(&st, "source = ?", sourceNVD).Error)
+	assert.Equal(t, firstStart, st.Cursor.UTC(), "the cursor is when the full sync began")
+	assert.Nil(t, st.ResumeStart)
+	var n int64
+	require.NoError(t, s.db.Model(&Advisory{}).Count(&n).Error)
+	assert.Equal(t, int64(2), n)
+}

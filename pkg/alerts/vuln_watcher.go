@@ -22,12 +22,23 @@ import (
 // A finding alerts once: the cursor is the last finding ID processed, and a
 // finding that resolves and reopens keeps its ID. The cursor lives in Redis
 // so a restart does not re-alert; when it is missing (first enable, Redis
-// flushed) the watcher starts from the newest finding instead of replaying
-// history.
+// flushed, corrupt, or expired after a week without sweeps) the watcher
+// starts from the newest finding instead of replaying history.
+//
+// A finding that later becomes known-exploited, or rises in severity, is
+// recorded by osctrl-api as an escalation. A second cursor reads those the
+// same way, and an escalation alerts the rules it newly matches.
 
 const (
 	// vulnBatch bounds one sweep; a bigger backlog drains over sweeps.
-	vulnBatch = 2000
+	// ponytail: ID order, not KEV first; a 150k-finding backlog drains in
+	// under ten minutes at this size.
+	vulnBatch = 20000
+	// vulnCursorTTL expires a cursor no sweep has refreshed for a week, so
+	// re-enabling alerts after a long pause starts from now.
+	vulnCursorTTL = 7 * 24 * time.Hour
+	// vulnLockTTL holds the sweep lock for a little under one interval.
+	vulnLockTTL = 50 * time.Second
 	// maxVulnHitsPerRule caps advisory hits per rule and environment per
 	// vulnWindow, across sweeps and osctrl-tls replicas; the rest collapse
 	// into one digest hit per window. A node's first inventory, a rollout or
@@ -39,7 +50,8 @@ const (
 	maxVulnNodesInDetail = 10
 )
 
-// FindingSnapshot is one new confirmed finding as the watcher sees it.
+// FindingSnapshot is one new confirmed finding, or one escalation of an
+// open finding, as the watcher sees it.
 type FindingSnapshot struct {
 	ID               uint
 	NodeUUID         string
@@ -52,6 +64,11 @@ type FindingSnapshot struct {
 	FixedVersion     string
 	Severity         string
 	KEV              bool
+	// Escalated marks an escalation: the finding became known-exploited or
+	// rose in severity. PrevSeverity and PrevKEV are what it was.
+	Escalated    bool
+	PrevSeverity string
+	PrevKEV      bool
 }
 
 // FindingSource lists findings for the watcher. Implemented in osctrl-tls
@@ -62,6 +79,12 @@ type FindingSource interface {
 	FindingsAfter(ctx context.Context, afterID uint, limit int) ([]FindingSnapshot, error)
 	// LatestFindingID returns the highest finding ID, 0 when there is none.
 	LatestFindingID(ctx context.Context) (uint, error)
+	// EscalationsAfter returns escalations of open confirmed findings with
+	// escalation ID > afterID, lowest first, at most limit. ID is the
+	// escalation's.
+	EscalationsAfter(ctx context.Context, afterID uint, limit int) ([]FindingSnapshot, error)
+	// LatestEscalationID returns the highest escalation ID, 0 when none.
+	LatestEscalationID(ctx context.Context) (uint, error)
 }
 
 // vulnCursor persists the last processed finding ID. ok is false when no
@@ -71,38 +94,78 @@ type vulnCursor interface {
 	save(ctx context.Context, id uint) error
 }
 
-type redisVulnCursor struct{ client *redis.Client }
+type redisVulnCursor struct {
+	client *redis.Client
+	key    string
+}
 
 func vulnCursorKey() string { return keyPrefix + "vuln:cursor" }
 
+func vulnEscalationCursorKey() string { return keyPrefix + "vuln:escalation-cursor" }
+
 func (c *redisVulnCursor) load(ctx context.Context) (uint, bool, error) {
-	raw, err := c.client.Get(ctx, vulnCursorKey()).Result()
+	raw, err := c.client.Get(ctx, c.key).Result()
 	if errors.Is(err, redis.Nil) {
 		return 0, false, nil
 	}
 	if err != nil {
 		return 0, false, err
 	}
+	id, ok := parseVulnCursor(raw)
+	if !ok {
+		// Restart from the newest instead of stopping alerts for good.
+		log.Warn().Str("key", c.key).Msg("alert vulnerability sweep: corrupt cursor, restarting from the newest")
+		return 0, false, nil
+	}
+	return id, true, nil
+}
+
+// parseVulnCursor reads a stored cursor; ok is false for anything that is
+// not a finding ID.
+func parseVulnCursor(raw string) (uint, bool) {
 	id, err := strconv.ParseUint(raw, 10, 64)
-	if err != nil {
-		return 0, false, fmt.Errorf("corrupt vulnerability cursor %q: %w", raw, err)
+	if err != nil || id > uint64(^uint(0)) {
+		return 0, false
 	}
-	if id > uint64(^uint(0)) {
-		return 0, false, fmt.Errorf("corrupt vulnerability cursor %q: value out of range for uint", raw)
-	}
-	return uint(id), true, nil
+	return uint(id), true
 }
 
 func (c *redisVulnCursor) save(ctx context.Context, id uint) error {
-	return c.client.Set(ctx, vulnCursorKey(), strconv.FormatUint(uint64(id), 10), 0).Err()
+	return c.client.Set(ctx, c.key, strconv.FormatUint(uint64(id), 10), vulnCursorTTL).Err()
 }
 
-// vulnBudget meters advisory hits per rule and environment per window.
-// take reserves n hits and returns how many fit, and whether this caller
-// sends the window's one digest for the rest.
-type vulnBudget interface {
-	take(ctx context.Context, ruleID, envID uint, n int) (granted int, digest bool, err error)
+// vulnLock lets one osctrl-tls replica sweep per interval: concurrent
+// sweeps would move the cursor backwards and send grouped hits twice.
+type vulnLock interface {
+	acquire(ctx context.Context) bool
 }
+
+type redisVulnLock struct{ client *redis.Client }
+
+func (l *redisVulnLock) acquire(ctx context.Context) bool {
+	ok, err := l.client.SetNX(ctx, keyPrefix+"vuln:sweep", 1, vulnLockTTL).Result()
+	if err != nil {
+		// The cursor needs Redis too; this sweep could not run anyway.
+		log.Warn().Err(err).Msg("alert vulnerability sweep: lock unavailable, skipping")
+		return false
+	}
+	return ok
+}
+
+// vulnBudget meters advisory hits per kind (new findings or escalations),
+// rule and environment per window. take reserves n hits and returns how many
+// fit, and whether this caller sends the window's one digest for the rest.
+// The kinds are metered apart, so an escalation flood (turning NVD on) never
+// starves a new finding.
+type vulnBudget interface {
+	take(ctx context.Context, kind string, ruleID, envID uint, n int) (granted int, digest bool, err error)
+}
+
+// Budget kinds.
+const (
+	vulnKindNew       = "new"
+	vulnKindEscalated = "esc"
+)
 
 // grantVuln is how many of n hits fit a window that already counted used.
 func grantVuln(used, n int) int {
@@ -114,8 +177,8 @@ type redisVulnBudget struct {
 	now    func() time.Time
 }
 
-func (b *redisVulnBudget) take(ctx context.Context, ruleID, envID uint, n int) (int, bool, error) {
-	key := fmt.Sprintf("%svuln:budget:%d:%d:%d", keyPrefix, ruleID, envID, b.now().Truncate(vulnWindow).Unix())
+func (b *redisVulnBudget) take(ctx context.Context, kind string, ruleID, envID uint, n int) (int, bool, error) {
+	key := fmt.Sprintf("%svuln:budget:%s:%d:%d:%d", keyPrefix, kind, ruleID, envID, b.now().Truncate(vulnWindow).Unix())
 	pipe := b.client.TxPipeline()
 	used := pipe.IncrBy(ctx, key, int64(n))
 	pipe.Expire(ctx, key, 2*vulnWindow)
@@ -136,31 +199,55 @@ type VulnWatcher struct {
 	store  *Store
 	worker *Worker
 	cursor vulnCursor
-	// budget is nil in tests that only need the per-sweep cap.
+	// escalations is the escalation cursor; nil skips that pass (tests).
+	escalations vulnCursor
+	// budget and lock are nil in tests that do not exercise them.
 	budget vulnBudget
+	lock   vulnLock
+	// settle makes a sweep take only IDs the previous sweep listed:
+	// overlapping match transactions can commit a lower ID after a higher
+	// one, and waiting a sweep keeps the cursor from passing one still
+	// being written. seen is that previous listing's highest ID per pass
+	// (process-local: a replica taking over the lock waits one sweep).
+	settle bool
+	seen   map[string]uint
 }
 
 // NewVulnWatcher builds the watcher over the shared Redis client.
 func NewVulnWatcher(source FindingSource, store *Store, worker *Worker, client *redis.Client) *VulnWatcher {
-	w := &VulnWatcher{source: source, store: store, worker: worker}
+	w := &VulnWatcher{source: source, store: store, worker: worker, settle: true, seen: map[string]uint{}}
 	if client != nil {
-		w.cursor = &redisVulnCursor{client: client}
+		w.cursor = &redisVulnCursor{client: client, key: vulnCursorKey()}
+		w.escalations = &redisVulnCursor{client: client, key: vulnEscalationCursorKey()}
 		w.budget = &redisVulnBudget{client: client, now: time.Now}
+		w.lock = &redisVulnLock{client: client}
 	}
 	return w
 }
 
 // newVulnWatcherWithCursor injects a cursor store (tests).
 func newVulnWatcherWithCursor(source FindingSource, store *Store, worker *Worker, cursor vulnCursor) *VulnWatcher {
-	return &VulnWatcher{source: source, store: store, worker: worker, cursor: cursor}
+	return &VulnWatcher{source: source, store: store, worker: worker, cursor: cursor, seen: map[string]uint{}}
 }
 
-// Sweep processes findings recorded since the last sweep.
+// Sweep processes findings and escalations recorded since the last sweep.
 func (w *VulnWatcher) Sweep(ctx context.Context) {
 	if w == nil || w.worker == nil || w.store == nil || w.cursor == nil || w.source == nil {
 		return
 	}
-	after, ok, err := w.cursor.load(ctx)
+	if w.lock != nil && !w.lock.acquire(ctx) {
+		return
+	}
+	w.pass(ctx, vulnKindNew, w.cursor, w.source.LatestFindingID, w.source.FindingsAfter)
+	if w.escalations != nil {
+		w.pass(ctx, vulnKindEscalated, w.escalations, w.source.LatestEscalationID, w.source.EscalationsAfter)
+	}
+}
+
+// pass reads one feed (findings or escalations) from its cursor.
+func (w *VulnWatcher) pass(ctx context.Context, kind string, cursor vulnCursor, latest func(context.Context) (uint, error),
+	list func(context.Context, uint, int) ([]FindingSnapshot, error)) {
+	after, ok, err := cursor.load(ctx)
 	if err != nil {
 		// Fail closed: replaying every finding on a Redis blip would page
 		// the whole fleet; a delayed alert is the lesser harm.
@@ -168,30 +255,43 @@ func (w *VulnWatcher) Sweep(ctx context.Context) {
 		return
 	}
 	if !ok {
-		latest, err := w.source.LatestFindingID(ctx)
+		newest, err := latest(ctx)
 		if err != nil {
 			log.Err(err).Msg("alert vulnerability sweep: error reading the latest finding")
 			return
 		}
-		if err := w.cursor.save(ctx, latest); err != nil {
+		if err := cursor.save(ctx, newest); err != nil {
 			log.Err(err).Msg("alert vulnerability sweep: error initializing the cursor")
 		}
 		return
 	}
-	findings, err := w.source.FindingsAfter(ctx, after, vulnBatch)
+	items, err := list(ctx, after, vulnBatch)
 	if err != nil {
 		log.Err(err).Msg("alert vulnerability sweep: error listing findings")
 		return
 	}
-	if len(findings) == 0 {
-		return
+	if w.settle {
+		// Only IDs the previous sweep listed; the rest waits a sweep.
+		limit := w.seen[kind]
+		if len(items) > 0 {
+			w.seen[kind] = items[len(items)-1].ID
+		}
+		settled := 0
+		for settled < len(items) && items[settled].ID <= limit {
+			settled++
+		}
+		items = items[:settled]
 	}
-	if hits := vulnHits(w.store.Snapshot().vulnFinding, findings, w.grant(ctx)); len(hits) > 0 {
-		w.worker.Enqueue(hits)
+	if len(items) > 0 {
+		if hits := vulnHits(w.store.Snapshot().vulnFinding, items, w.grant(ctx, kind)); len(hits) > 0 {
+			w.worker.Enqueue(hits)
+		}
+		after = items[len(items)-1].ID
 	}
-	// Saved after enqueueing: a failed save replays this batch next sweep,
-	// and the claim gate collapses the repeats inside the cooldown.
-	if err := w.cursor.save(ctx, findings[len(findings)-1].ID); err != nil {
+	// Saved every sweep, after enqueueing: a failed save replays this batch
+	// (the claim gate collapses repeats), and a quiet week does not expire
+	// the cursor while the watcher runs.
+	if err := cursor.save(ctx, after); err != nil {
 		log.Err(err).Msg("alert vulnerability sweep: error saving the cursor")
 	}
 }
@@ -216,10 +316,10 @@ func (w *VulnWatcher) Run(stop <-chan struct{}, interval time.Duration) {
 // grant meters a rule's hits for one environment. Without a budget, or when
 // Redis fails, it falls back to the per-sweep cap: alerting stays available
 // and still bounded.
-func (w *VulnWatcher) grant(ctx context.Context) func(r *compiledRule, env uint, n int) (int, bool) {
+func (w *VulnWatcher) grant(ctx context.Context, kind string) func(r *compiledRule, env uint, n int) (int, bool) {
 	return func(r *compiledRule, env uint, n int) (int, bool) {
 		if w.budget != nil {
-			granted, digest, err := w.budget.take(ctx, r.id, env, n)
+			granted, digest, err := w.budget.take(ctx, kind, r.id, env, n)
 			if err == nil {
 				return granted, digest
 			}
@@ -254,6 +354,10 @@ func vulnHits(rules []compiledRule, findings []FindingSnapshot, grant func(r *co
 				continue
 			}
 			if !vulnMatches(r.vulnMin, f.Severity, f.KEV) {
+				continue
+			}
+			// An escalation is news only to rules it newly matches.
+			if f.Escalated && vulnMatches(r.vulnMin, f.PrevSeverity, f.PrevKEV) {
 				continue
 			}
 			// An advisory can cover several packages on one node; it is
@@ -309,8 +413,20 @@ func nodeLabel(f FindingSnapshot) string {
 func vulnAdvisoryHit(r *compiledRule, group []FindingSnapshot) Hit {
 	f := group[0]
 	label := f.Severity
-	if f.KEV {
+	switch {
+	case f.Escalated && f.KEV && !f.PrevKEV:
+		label += ", now known exploited"
+	case f.Escalated:
+		label += ", was " + f.PrevSeverity
+		if f.KEV {
+			label += ", known exploited"
+		}
+	case f.KEV:
 		label += ", known exploited"
+	}
+	suffix := ""
+	if f.Escalated {
+		suffix = ":escalated" // apart from the finding's original hit
 	}
 	fix := "no fix yet"
 	if f.FixedVersion != "" {
@@ -323,7 +439,7 @@ func vulnAdvisoryHit(r *compiledRule, group []FindingSnapshot) Hit {
 	}
 	if len(group) == 1 {
 		h.NodeUUID = f.NodeUUID
-		h.Entity = f.NodeUUID + ":" + f.AdvisoryID
+		h.Entity = f.NodeUUID + ":" + f.AdvisoryID + suffix
 		h.Detail = truncateDetail(fmt.Sprintf("%s (%s) affects %s %s on %s (%s)",
 			f.AdvisoryID, label, f.Package, f.InstalledVersion, nodeLabel(f), fix))
 		return h
@@ -337,7 +453,7 @@ func vulnAdvisoryHit(r *compiledRule, group []FindingSnapshot) Hit {
 	if len(group) > maxVulnNodesInDetail {
 		detail += fmt.Sprintf(" and %d more", len(group)-maxVulnNodesInDetail)
 	}
-	h.Entity = f.AdvisoryID
+	h.Entity = f.AdvisoryID + suffix
 	h.Detail = truncateDetail(detail)
 	return h
 }
@@ -350,12 +466,16 @@ func vulnDigestHit(r *compiledRule, rest []string, byAdvisory map[string][]Findi
 		}
 	}
 	first := byAdvisory[rest[0]][0]
+	verb, entity := "newly affect", "vuln-digest"
+	if first.Escalated {
+		verb, entity = "became known exploited or more severe on", "vuln-digest:escalated"
+	}
 	return Hit{
 		RuleID: r.id, RuleName: r.name,
 		EnvironmentID: first.EnvironmentID, Environment: first.Environment,
-		Entity: "vuln-digest",
-		Detail: truncateDetail(fmt.Sprintf("%d more advisories newly affect %d node(s) in %s; this rule notifies at most %d advisories per hour, so see the Vulnerabilities page for the rest",
-			len(rest), len(nodes), first.Environment, maxVulnHitsPerRule)),
+		Entity: entity,
+		Detail: truncateDetail(fmt.Sprintf("%d more advisories %s %d node(s) in %s; this rule notifies at most %d advisories per hour, so see the Vulnerabilities page for the rest",
+			len(rest), verb, len(nodes), first.Environment, maxVulnHitsPerRule)),
 		CooldownMinutes: r.cooldownMinutes, Channels: r.channels,
 	}
 }

@@ -125,3 +125,27 @@ func TestEvidenceErrorsPropagate(t *testing.T) {
 		t.Fatal("an evidence error must not read as a clean score")
 	}
 }
+
+// A posture query that writes the category the evidence owns must not be
+// graded as evidence: only the evidence source speaks for its rules.
+func TestPostureRecordsCannotImpersonateEvidence(t *testing.T) {
+	pm := newTestManager(t)
+	pm.Evidence = &fakeEvidence{records: map[string][]NodePosture{}}
+	if err := pm.DB.Create(&NodePosture{NodeUUID: "N1", Category: "graded", RowCount: 1, Summary: `[{"level":"none"}]`}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	score, err := pm.ScoreNode("N1")
+	if err != nil {
+		t.Fatalf("ScoreNode: %v", err)
+	}
+	if len(score.Controls) != 0 {
+		t.Fatalf("a posture record graded the evidence control: %+v", score.Controls)
+	}
+	out, err := pm.GetSummaryByNodes([]string{"N1"})
+	if err != nil {
+		t.Fatalf("GetSummaryByNodes: %v", err)
+	}
+	if _, ok := out["N1"]; ok {
+		t.Fatalf("summary from an impersonating record: %+v", out["N1"])
+	}
+}

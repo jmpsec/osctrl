@@ -49,6 +49,8 @@ export interface VulnSummary {
   kev: number;
   /** Open possible (NVD CPE) findings. kev, affected_nodes and the top lists count confirmed findings only. */
   possible: number;
+  /** Open possible findings that are known-exploited, which kev leaves out. */
+  kev_possible: number;
   affected_nodes: number;
   not_assessed: number;
   top_advisories: VulnCountRow[];

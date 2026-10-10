@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -139,13 +140,14 @@ func (s *OSVSource) importRecords(ctx context.Context, dir string, ids []string)
 		batch = append(batch, p)
 		res.Written++
 		if len(batch) == storeBatch {
-			if err := s.store(batch); err != nil {
+			if err := s.store(batch, &res); err != nil {
 				return res, err
 			}
 			batch = batch[:0]
 		}
 	}
-	return res, s.store(batch)
+	err := s.store(batch, &res) // before res is read: it updates the counts
+	return res, err
 }
 
 // importArchive loads <dir>/all.zip. Entries are parsed in memory and never
@@ -191,13 +193,14 @@ func (s *OSVSource) importArchive(ctx context.Context, dir string) (SyncResult, 
 		batch = append(batch, p)
 		res.Written++
 		if len(batch) == storeBatch {
-			if err := s.store(batch); err != nil {
+			if err := s.store(batch, &res); err != nil {
 				return res, time.Time{}, err
 			}
 			batch = batch[:0]
 		}
 	}
-	return res, newest, s.store(batch)
+	err = s.store(batch, &res) // before res is read: it updates the counts
+	return res, newest, err
 }
 
 func readEntry(f *zip.File) ([]byte, error) {
@@ -216,18 +219,54 @@ func readEntry(f *zip.File) ([]byte, error) {
 	return raw, nil
 }
 
-func (s *OSVSource) store(batch []parsedAdvisory) error {
-	if len(batch) == 0 {
-		return nil
+// store writes a batch; records the database rejects move from Written to
+// Skipped.
+func (s *OSVSource) store(batch []parsedAdvisory, res *SyncResult) error {
+	skipped, err := storeEach(s.db, batch, nil)
+	res.Written -= skipped
+	res.Skipped += skipped
+	return err
+}
+
+// storeEach stores a batch in one transaction. If that fails it retries
+// record by record, each in its own transaction, so one record the database
+// rejects is skipped and counted instead of failing the batch on every
+// retry. No savepoints on the happy path: on Postgres, thousands of
+// subtransactions per transaction would slow every other session. When every
+// record fails, the database is the problem: the first error is returned.
+// skip, when set, leaves records out unstored.
+func storeEach(db *gorm.DB, batch []parsedAdvisory, skip func(id string) bool) (int, error) {
+	var todo []parsedAdvisory
+	for _, p := range batch {
+		if skip == nil || !skip(p.Advisory.ID) {
+			todo = append(todo, p)
+		}
 	}
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		for _, p := range batch {
+	if len(todo) == 0 {
+		return 0, nil
+	}
+	batchErr := db.Transaction(func(tx *gorm.DB) error {
+		for _, p := range todo {
 			if err := storeAdvisory(tx, p); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+	if batchErr == nil {
+		return 0, nil
+	}
+	skipped := 0
+	for _, p := range todo {
+		if err := db.Transaction(func(tx *gorm.DB) error { return storeAdvisory(tx, p) }); err != nil {
+			log.Warn().Err(err).Str("advisory", p.Advisory.ID).Msg("vulns: advisory not stored")
+			skipped++
+		}
+	}
+	if skipped == len(todo) {
+		return 0, batchErr
+	}
+	return skipped, nil
 }
 
 // storeAdvisory replaces everything one record contributed. A withdrawn

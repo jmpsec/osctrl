@@ -415,6 +415,11 @@ func truncateDetail(s string) string {
 	return s
 }
 
+// matchesText reports whether a source's rules match log text.
+func matchesText(source string) bool {
+	return source != SourceNodeInactive && source != SourceNodeRecovered && source != SourceVulnFinding
+}
+
 // CompileRule validates and compiles one rule into its matcher form.
 // Returns an error when the regex is invalid or the pattern is too
 // long — callers (manager Create/Update) must reject such rules before
@@ -429,6 +434,12 @@ func CompileRule(rule AlertRule) (compiledRule, error) {
 		matchFieldLower: strings.ToLower(strings.TrimSpace(rule.MatchField)),
 		cooldownMinutes: rule.CooldownMinutes,
 		vulnMin:         normalizeVulnMin(rule.VulnMinSeverity),
+	}
+	// Node-state and vulnerability rules match no text: their pattern
+	// fields are ignored, as validation ignores them, so stray values never
+	// keep a stored rule from loading.
+	if !matchesText(rule.Source) {
+		return cr, validateChannels(rule.ChannelIDs, &cr)
 	}
 	if len(rule.MatchValue) > MaxPatternLen {
 		return cr, errPatternTooLong

@@ -45,7 +45,7 @@ function summary(overrides: Partial<VulnSummary> = {}): VulnSummary {
   return {
     loaded: true, stale: false,
     by_severity: { critical: { confirmed: 2 }, medium: { confirmed: 1 } },
-    kev: 2, possible: 0, affected_nodes: 2, not_assessed: 5, top_advisories: [], top_packages: [],
+    kev: 2, possible: 0, kev_possible: 0, affected_nodes: 2, not_assessed: 5, top_advisories: [], top_packages: [],
     ...overrides,
   };
 }
@@ -108,6 +108,12 @@ describe('VulnerabilitiesPage', () => {
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('Possible matches not counted: 4')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Critical/ })).toHaveTextContent('6');
+  });
+
+  it('notes the possible known-exploited matches the KEV card leaves out', async () => {
+    mockSummary.mockResolvedValue(summary({ kev: 2, kev_possible: 3 }));
+    renderPage();
+    expect(await screen.findByText('Possible matches not counted: 3')).toBeInTheDocument();
   });
 
   it('filters by confidence, starting from the first page', async () => {

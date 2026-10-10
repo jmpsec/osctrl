@@ -501,7 +501,11 @@ func (pm *PostureManager) GetSummaryByNodes(nodeUUIDs []string) (map[string]*typ
 		return nil, err
 	}
 	grouped := make(map[string][]NodePosture)
+	owned := pm.evidenceOwned()
 	for _, record := range records {
+		if owned[record.Category] {
+			continue
+		}
 		grouped[record.NodeUUID] = append(grouped[record.NodeUUID], record)
 	}
 	extra, err := pm.evidenceFor(upperUUIDs)

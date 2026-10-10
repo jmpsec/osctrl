@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeConsolePanel } from './NodeConsolePage';
@@ -21,9 +21,12 @@ const liveUpdates = vi.hoisted(() => ({
 vi.mock('$/api/events', () => ({ readEvents: liveUpdates.readEvents }));
 vi.mock('$/api/features', () => ({ getFeatures: liveUpdates.getFeatures }));
 
+// Stable, like the router's navigate: a new function per render would
+// re-run the console's effects (a new session and heartbeat) every render.
+const navigate = vi.hoisted(() => vi.fn());
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigate,
 }));
 
 vi.mock('$/api/console', () => ({
@@ -157,6 +160,9 @@ describe('NodeConsolePanel', () => {
     const input = await screen.findByLabelText(/console input/i);
     await waitFor(() => expect(input).not.toBeDisabled());
 
+    // One console, one session and one heartbeat: nothing re-opens them on
+    // a re-render.
+    expect(consoleApi.createConsoleSession).toHaveBeenCalledTimes(1);
     expect(intervals).toHaveLength(1);
     intervals[0]();
 
@@ -222,14 +228,17 @@ describe('NodeConsolePanel', () => {
     fireEvent.change(input, { target: { value: 'sql' } });
     fireEvent.submit(input.closest('form')!);
 
+    // The command bar's prompt; the scrollback keeps the prompt each line
+    // was typed at, like a terminal.
+    const commandBar = within(input.closest('form')!);
     await screen.findByText('entering osquery mode');
-    expect(screen.getByText('osquery>')).toBeInTheDocument();
+    expect(commandBar.getByText('osquery>')).toBeInTheDocument();
 
     fireEvent.change(input, { target: { value: '.exit' } });
     fireEvent.submit(input.closest('form')!);
 
     await screen.findByText('leaving osquery mode');
-    expect(screen.queryByText('osquery>')).not.toBeInTheDocument();
+    expect(commandBar.queryByText('osquery>')).not.toBeInTheDocument();
   });
 
   it('sends osquery mode commands with the osquery_mode flag', async () => {

@@ -12091,6 +12091,9 @@ components:
           type: object
         kev:
           type: integer
+        kev_possible:
+          description: KEVPossible counts open possible findings that are known-exploited.
+          type: integer
         loaded:
           type: boolean
         not_assessed:

@@ -111,6 +111,7 @@ func TestSummaryCountsPossibleFindingsApart(t *testing.T) {
 	s, err := r.Summary(1)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), s.Possible)
+	assert.Equal(t, int64(1), s.KEVPossible, "known-exploited possible findings are counted apart too")
 	assert.Equal(t, int64(1), s.BySeverity[SeverityCritical][ConfidencePossible])
 	assert.Equal(t, int64(2), s.KEV, "headline counts are confirmed only")
 	assert.Equal(t, int64(2), s.AffectedNodes)
