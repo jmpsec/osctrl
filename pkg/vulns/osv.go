@@ -68,6 +68,7 @@ func parseOSV(raw []byte) (parsedAdvisory, error) {
 	p := parsedAdvisory{Withdrawn: rec.Withdrawn != nil}
 	p.Advisory = Advisory{
 		ID:        clipTo(rec.ID, 128),
+		Source:    AdvisorySourceOSV,
 		Summary:   clipTo(rec.Summary, maxSummaryLen),
 		Details:   clipTo(rec.Details, maxDetailsLen),
 		Published: rec.Published,

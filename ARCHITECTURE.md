@@ -75,7 +75,7 @@ Main runtime components:
 - `pkg/mcp`: MCP server registration, tool schemas, read tools, and separately enabled write tools shared by standalone and hosted transports.
 - `pkg/apiclient`: authenticated REST client used by `osctrl-cli` and standalone `osctrl-mcp`.
 - `pkg/posture`: optional posture ingestion, checks, and scoring.
-- `pkg/vulns`: optional vulnerability monitoring — inventory ingestion (TLS), OSV/CISA KEV feed sync, matching and findings (API worker), read model. It also supplies posture score evidence and the advisory-feeds health component.
+- `pkg/vulns`: optional vulnerability monitoring — inventory ingestion (TLS), OSV/CISA KEV (and optional NVD) feed sync, matching and findings (API worker), read model. It also supplies posture score evidence and the advisory-feeds health component.
 - `pkg/serviceconfig`, `pkg/servicecommands`: persisted service sections and DB-mediated control requests between API and TLS processes.
 - `deploy`: Docker, nginx, systemd, osquery assets, sample YAML configs.
 - `tools`: helper scripts, Bruno collections, release tooling.
@@ -411,6 +411,7 @@ Feature-owned tables are migrated only when their manager is initialized. In par
   - `pkg/vulns.Alias` -> `vuln_aliases`
   - `pkg/vulns.Affected` -> `vuln_affected`
   - `pkg/vulns.KEV` -> `vuln_kev`
+  - `pkg/vulns.CPEProduct` -> `vuln_cpe_products`
   - `pkg/vulns.Finding` -> `vuln_findings`
   - `pkg/vulns.SyncState` -> `vuln_sync_state`
   - `pkg/vulns.WorkerState` -> `vuln_worker_state`

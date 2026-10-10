@@ -51,6 +51,41 @@ func (f *matchFixture) synced(t *testing.T, dir string) {
 	require.NoError(t, recordSuccess(f.db, osvSourcePrefix+dir, now, SyncResult{}, now))
 }
 
+// cpe adds an NVD CVE affecting vendor:product and records the NVD sync.
+func (f *matchFixture) cpe(t *testing.T, id, severity, vendorProduct string, ranges []cpeRange, versions []string) {
+	t.Helper()
+	vendor, product, _ := strings.Cut(vendorProduct, ":")
+	if ranges == nil {
+		ranges = []cpeRange{}
+	}
+	if versions == nil {
+		versions = []string{}
+	}
+	rawRanges, _ := json.Marshal(ranges)
+	rawVersions, _ := json.Marshal(versions)
+	require.NoError(t, f.db.Create(&Advisory{ID: id, Source: AdvisorySourceNVD, Severity: severity}).Error)
+	require.NoError(t, f.db.Create(&Affected{AdvisoryID: id, Ecosystem: cpeEcosystem, Package: vendorProduct,
+		Ranges: string(rawRanges), Versions: string(rawVersions)}).Error)
+	require.NoError(t, f.db.FirstOrCreate(&CPEProduct{Vendor: vendor, Product: product}).Error)
+	now := f.clock.now()
+	require.NoError(t, recordSuccess(f.db, sourceNVD, now, SyncResult{}, now))
+}
+
+// windowsNode has three programs NVD lists, and one Python package for the
+// confirmed path.
+func (f *matchFixture) windowsNode(t *testing.T) {
+	t.Helper()
+	f.node(t, "W1", "windows", "10.0.22631", "10",
+		NodeSoftware{Category: CategoryPrograms, Name: "Mozilla Firefox (x64 en-US)", Version: "128.0.3", Vendor: "Mozilla"},
+		NodeSoftware{Category: CategoryPrograms, Name: "Google Chrome", Version: "120.0.6099.71", Vendor: "Google LLC"},
+		NodeSoftware{Category: CategoryPrograms, Name: "7-Zip 23.01 (x64)", Version: "23.01", Vendor: "Igor Pavlov"},
+		NodeSoftware{Category: CategoryPython, Name: "requests", Version: "2.31.0"})
+	f.cpe(t, "CVE-2026-1000", SeverityCritical, "mozilla:firefox", []cpeRange{{EndExcluding: "130.0"}}, nil)
+	f.cpe(t, "CVE-2026-1001", SeverityHigh, "google:chrome", []cpeRange{{EndExcluding: "119.0"}}, nil)
+	f.cpe(t, "CVE-2026-1002", SeverityHigh, "7-zip:7-zip", nil, []string{"23.01"})
+	f.synced(t, "PyPI")
+}
+
 func (f *matchFixture) findings(t *testing.T, uuid string) []Finding {
 	t.Helper()
 	var out []Finding
@@ -180,4 +215,68 @@ func TestMatchedAtIsTheStartTime(t *testing.T) {
 	var state NodeState
 	require.NoError(t, f.db.First(&state, "node_uuid = ?", "N1").Error)
 	assert.Equal(t, start, state.MatchedAt.UTC())
+}
+
+func TestMatchCPERecordsPossibleFindings(t *testing.T) {
+	f := newMatchFixture(t)
+	f.matcher.CPE = true
+	f.windowsNode(t)
+	require.NoError(t, f.matcher.MatchNode("W1"))
+
+	got := f.findings(t, "W1")
+	require.Len(t, got, 2)
+	assert.Equal(t, "CVE-2026-1000", got[0].AdvisoryID)
+	assert.Equal(t, ConfidencePossible, got[0].Confidence)
+	assert.Equal(t, cpeEcosystem, got[0].Ecosystem)
+	assert.Equal(t, "mozilla:firefox", got[0].Package)
+	assert.Equal(t, "128.0.3", got[0].InstalledVersion)
+	assert.Equal(t, "130.0", got[0].FixedVersion)
+	assert.Equal(t, SeverityCritical, got[0].Severity)
+	assert.Equal(t, "CVE-2026-1002", got[1].AdvisoryID, "7-Zip's publisher is no CPE vendor, but only one vendor ships 7-zip")
+
+	var state NodeState
+	require.NoError(t, f.db.First(&state, "node_uuid = ?", "W1").Error)
+	assert.Zero(t, state.NotAssessed)
+	assert.Equal(t, 1, state.Assessed, "only the Python package counts as assessed for scoring")
+}
+
+func TestMatchCPEIsNotAssessedWhileNVDIsOff(t *testing.T) {
+	f := newMatchFixture(t)
+	f.windowsNode(t) // NVD data left from an earlier run; --vuln-nvd-enabled is off now
+	require.NoError(t, f.matcher.MatchNode("W1"))
+	assert.Empty(t, f.findings(t, "W1"))
+	var state NodeState
+	require.NoError(t, f.db.First(&state, "node_uuid = ?", "W1").Error)
+	assert.Equal(t, 3, state.NotAssessed)
+	assert.Equal(t, 1, state.Assessed)
+}
+
+// Without a vendor (Homebrew, Chocolatey) a product two vendors ship matches
+// neither: exact lookups only, no guessing.
+func TestMatchCPENeedsAnUnambiguousProduct(t *testing.T) {
+	f := newMatchFixture(t)
+	f.matcher.CPE = true
+	f.node(t, "M1", "darwin", "14.5", "14",
+		NodeSoftware{Category: CategoryHomebrew, Name: "jq", Version: "1.6"},
+		NodeSoftware{Category: CategoryHomebrew, Name: "openssl@3", Version: "3.0.1"})
+	f.cpe(t, "CVE-2026-2000", SeverityHigh, "jqlang:jq", []cpeRange{{EndExcluding: "1.7.1"}}, nil)
+	f.cpe(t, "CVE-2026-2001", SeverityHigh, "stedolan:jq", []cpeRange{{EndExcluding: "1.7"}}, nil)
+	f.cpe(t, "CVE-2026-2002", SeverityHigh, "openssl:openssl", []cpeRange{{StartIncluding: "3.0.0", EndExcluding: "3.0.7"}}, nil)
+	require.NoError(t, f.matcher.MatchNode("M1"))
+	got := f.findings(t, "M1")
+	require.Len(t, got, 1)
+	assert.Equal(t, "openssl:openssl", got[0].Package)
+}
+
+// Apple's Terminal must not take on the CVEs of another vendor's "terminal":
+// apple is a CPE vendor, so it contradicts the single-vendor fallback.
+func TestMatchCPEKnownVendorBlocksTheFallback(t *testing.T) {
+	f := newMatchFixture(t)
+	f.matcher.CPE = true
+	f.node(t, "M1", "darwin", "14.5", "14",
+		NodeSoftware{Category: CategoryApps, Name: "Terminal", Version: "2.14", Vendor: "com.apple.Terminal"})
+	f.cpe(t, "CVE-2026-3000", SeverityHigh, "apple:safari", []cpeRange{{EndExcluding: "17.5"}}, nil)
+	f.cpe(t, "CVE-2026-3001", SeverityHigh, "acme:terminal", []cpeRange{{EndExcluding: "9.0"}}, nil)
+	require.NoError(t, f.matcher.MatchNode("M1"))
+	assert.Empty(t, f.findings(t, "M1"))
 }

@@ -33,8 +33,12 @@ export function FindingsTable({ env, findings, onOpenAdvisory, showNode = false 
           </tr>
         </thead>
         <tbody>
+          {/* Possible (NVD name) matches stay visible but recede: they may be false positives. */}
           {findings.map((f) => (
-            <tr key={f.id} className="border-b border-[color:var(--border)] align-top last:border-0">
+            <tr
+              key={f.id}
+              className={`border-b border-[color:var(--border)] align-top last:border-0${f.confidence === 'possible' ? ' opacity-70' : ''}`}
+            >
               <td className={TD}>
                 <button
                   type="button"

@@ -57,13 +57,19 @@ func gradeVulnerabilities(data map[string][]map[string]interface{}) (string, str
 	return "pass", "No open vulnerability findings in the matched inventory", posture.SeverityCritical
 }
 
+// confirmedCategories hold packages matched against exact ecosystem feeds.
+// CPE categories are left out: a name-based NVD match is a hint, so it can
+// neither pass nor warn the control.
+var confirmedCategories = []string{CategoryDeb, CategoryRPM, CategoryPython, CategoryNPM}
+
 // ScoreEvidence implements posture.EvidenceSource: one record per node with
 // the counts of its open confirmed findings.
 //
 // A node gets a record only once advisory data is loaded and the node either
-// has findings, or has been matched with at least one assessed package.
-// Anything less would let an unassessed node pass (Amazon Linux, an OS-only
-// Windows node, an ecosystem whose feed never synced). A node with findings
+// has confirmed findings, or has been matched with at least one package
+// assessed against an exact ecosystem feed. Anything less would let an
+// unassessed node pass (Amazon Linux, an OS-only Windows node, an ecosystem
+// whose feed never synced, a node only NVD names cover). A node with findings
 // stays evaluated while an advisory sync has cleared its matched_at, so its
 // score does not flicker after every sync.
 func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePosture, error) {
@@ -76,7 +82,7 @@ func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePos
 		return out, nil
 	}
 	matched := map[string]bool{}
-	notAssessed := map[string]int{}
+	assessed := map[string]int{}
 	packages := map[string]int{}
 	counts := map[string]map[string]int{}
 	for chunk := range slices.Chunk(nodeUUIDs, queryChunk) {
@@ -86,14 +92,14 @@ func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePos
 		}
 		for _, s := range states {
 			matched[s.NodeUUID] = s.MatchedAt != nil
-			notAssessed[s.NodeUUID] = s.NotAssessed
+			assessed[s.NodeUUID] = s.Assessed
 		}
 		var software []struct {
 			NodeUUID string
 			Total    int
 		}
 		if err := r.DB.Model(&NodeSoftware{}).Select("node_uuid, COUNT(*) AS total").
-			Where("node_uuid IN ?", chunk).Group("node_uuid").Scan(&software).Error; err != nil {
+			Where("node_uuid IN ? AND category IN ?", chunk, confirmedCategories).Group("node_uuid").Scan(&software).Error; err != nil {
 			return nil, err
 		}
 		for _, s := range software {
@@ -127,13 +133,13 @@ func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePos
 	now := r.now()
 	for _, uuid := range nodeUUIDs {
 		c, hasFindings := counts[uuid]
-		if !hasFindings && (!matched[uuid] || packages[uuid]-notAssessed[uuid] <= 0) {
+		if !hasFindings && (!matched[uuid] || assessed[uuid] == 0) {
 			continue
 		}
 		summary, err := json.Marshal([]map[string]int{{
 			SeverityCritical: c[SeverityCritical], SeverityHigh: c[SeverityHigh], SeverityMedium: c[SeverityMedium],
 			SeverityLow: c[SeverityLow], SeverityUnknown: c[SeverityUnknown], "kev": c["kev"],
-			"not_assessed": notAssessed[uuid],
+			"not_assessed": max(0, packages[uuid]-assessed[uuid]),
 		}})
 		if err != nil {
 			return nil, err

@@ -690,3 +690,15 @@ func TestResolve_NilOptionalSection_DBValueIgnored(t *testing.T) {
 	// cfg.Debug is still nil — Resolve skipped it because the pointer was nil.
 	assert.Nil(t, cfg.Debug)
 }
+
+// The NVD API key is a secret: it must never be copied into service_config,
+// which admins can read and edit through the API.
+func TestSeed_NeverStoresTheNVDAPIKey(t *testing.T) {
+	cfg := testAPIParams()
+	cfg.Service.VulnNVDAPIKey = "nvd-secret-123"
+	values, err := sectionValues(config.ServiceAPI, cfg)
+	require.NoError(t, err)
+	for name, v := range values {
+		assert.NotContains(t, v, "nvd-secret-123", "section %s", name)
+	}
+}

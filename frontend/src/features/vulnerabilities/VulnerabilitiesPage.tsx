@@ -7,6 +7,7 @@ import {
   getVulnSummary,
   listVulnFindings,
   VULN_PAGE_SIZE,
+  type VulnConfidence,
   type VulnFindingFilter,
   type VulnSeverity,
   type VulnState,
@@ -14,6 +15,7 @@ import {
 } from '$/api/vulnerabilities';
 import { getMe } from '$/api/users';
 import { usePageTitle } from '$/lib/usePageTitle';
+import { useLocale } from '$/i18n/useLocale';
 import { StatCard } from '$/components/data/StatCard';
 import { FilterChip } from '$/components/data/FilterChip';
 import { Pagination } from '$/components/data/Pagination';
@@ -26,12 +28,16 @@ import { FreshnessBanner } from './FreshnessBanner';
 import { AdvisoryModal } from './AdvisoryModal';
 import { FeedsCard } from './FeedsCard';
 
-function severityCount(summary: VulnSummary, severity: VulnSeverity): number {
-  return Object.values(summary.by_severity[severity] ?? {}).reduce((n, v) => n + (v ?? 0), 0);
+/** Open findings of one severity: of one confidence, or of both when none is given. */
+function severityCount(summary: VulnSummary, severity: VulnSeverity, confidence?: VulnConfidence): number {
+  const counts = summary.by_severity[severity] ?? {};
+  if (confidence) return counts[confidence] ?? 0;
+  return Object.values(counts).reduce((n, v) => n + (v ?? 0), 0);
 }
 
 export function VulnerabilitiesPage() {
   const { t } = useTranslation();
+  const { formatNumber } = useLocale();
   usePageTitle(t('pageTitle.vulnerabilities'));
   const { env } = useParams({ from: '/_app/env/$env/vulnerabilities' });
   // Filters and page live in the URL (see ./search): Back restores them, and
@@ -39,6 +45,7 @@ export function VulnerabilitiesPage() {
   const search = useSearch({ from: '/_app/env/$env/vulnerabilities' });
   const navigate = useNavigate({ from: '/_app/env/$env/vulnerabilities' });
   const severity = search.severity;
+  const confidence = search.confidence;
   const state: VulnState = search.state ?? 'open';
   const kevOnly = search.kev === true;
   const page = search.page ?? 1;
@@ -51,7 +58,7 @@ export function VulnerabilitiesPage() {
     queryFn: () => getVulnSummary(env),
     staleTime: 30_000,
   });
-  const filter: VulnFindingFilter = { severity, state, kev: kevOnly, page, page_size: VULN_PAGE_SIZE };
+  const filter: VulnFindingFilter = { severity, confidence, state, kev: kevOnly, page, page_size: VULN_PAGE_SIZE };
   const findings = useQuery({
     queryKey: ['vuln-findings', env, filter],
     queryFn: () => listVulnFindings(env, filter),
@@ -70,6 +77,7 @@ export function VulnerabilitiesPage() {
         if (!next.kev) delete next.kev;
         if (next.page === undefined || next.page <= 1) delete next.page;
         if (next.severity === undefined) delete next.severity;
+        if (next.confidence === undefined) delete next.confidence;
         return next;
       },
     });
@@ -84,7 +92,7 @@ export function VulnerabilitiesPage() {
   const s = summary.data;
   const rows = findings.data?.findings ?? [];
   const total = findings.data?.total ?? 0;
-  const openTotal = s ? SEVERITIES.reduce((n, sev) => n + severityCount(s, sev), 0) : 0;
+  const openTotal = s ? SEVERITIES.reduce((n, sev) => n + severityCount(s, sev, 'confirmed'), 0) : 0;
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6">
@@ -100,7 +108,12 @@ export function VulnerabilitiesPage() {
 
       {s && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label={t('vulns.openFindings')} value={openTotal} halo="warning" />
+          <StatCard
+            label={t('vulns.openFindings')}
+            value={openTotal}
+            halo="warning"
+            sublabel={s.possible > 0 ? t('vulns.possibleExcluded', { count: formatNumber(s.possible) }) : undefined}
+          />
           <StatCard label={t('vulns.kev')} value={s.kev} halo="danger" />
           <StatCard label={t('vulns.affectedNodes')} value={s.affected_nodes} halo="info" />
           <StatCard label={t('vulns.notAssessed')} value={s.not_assessed} sublabel={t('vulns.notAssessedHint')} />
@@ -117,7 +130,7 @@ export function VulnerabilitiesPage() {
           <FilterChip
             key={sev}
             label={t(`vulns.severity.${sev}`)}
-            count={s ? severityCount(s, sev) : undefined}
+            count={s ? severityCount(s, sev, confidence) : undefined}
             selected={severity === sev}
             onClick={() => changeFilter({ severity: sev })}
           />
@@ -129,6 +142,18 @@ export function VulnerabilitiesPage() {
             onChange={(e) => changeFilter({ kev: e.target.checked })}
           />
           {t('vulns.kevOnly')}
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-[color:var(--text-2)]">
+          {t('vulns.filterConfidence')}
+          <select
+            value={confidence ?? ''}
+            onChange={(e) => changeFilter({ confidence: (e.target.value || undefined) as VulnConfidence | undefined })}
+            className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] px-2 py-1 text-xs text-[color:var(--text-1)]"
+          >
+            <option value="">{t('vulns.confidenceAll')}</option>
+            <option value="confirmed">{t('vulns.confidence.confirmed')}</option>
+            <option value="possible">{t('vulns.confidence.possible')}</option>
+          </select>
         </label>
         <label className="flex items-center gap-1.5 text-xs text-[color:var(--text-2)]">
           {t('vulns.filterState')}

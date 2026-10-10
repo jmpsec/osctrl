@@ -56,7 +56,10 @@ func markLoaded(t *testing.T, r *Reader) {
 func TestScoreEvidenceNeedsLoadedAdvisoryData(t *testing.T) {
 	r := evidenceReader(t)
 	matched := r.now()
-	require.NoError(t, r.DB.Create(&NodeState{NodeUUID: "N1", InventoryAt: matched, MatchedAt: &matched}).Error)
+	// Matched with an assessed package: only the missing advisory data
+	// keeps it out.
+	require.NoError(t, r.DB.Create(&NodeState{NodeUUID: "N1", InventoryAt: matched, MatchedAt: &matched, Assessed: 1}).Error)
+	require.NoError(t, r.DB.Create(&NodeSoftware{NodeUUID: "N1", Category: CategoryDeb, Name: "bash", Version: "5.2-1"}).Error)
 	out, err := r.ScoreEvidence([]string{"N1"})
 	require.NoError(t, err)
 	assert.Empty(t, out)
@@ -68,12 +71,12 @@ func TestScoreEvidenceCountsOpenConfirmedFindings(t *testing.T) {
 	matched := r.now()
 	resolved := r.now()
 	require.NoError(t, r.DB.Create(&[]NodeState{
-		{NodeUUID: "CLEAN", InventoryAt: matched, MatchedAt: &matched},
+		{NodeUUID: "CLEAN", InventoryAt: matched, MatchedAt: &matched, Assessed: 1},
 		{NodeUUID: "PENDING", InventoryAt: matched},
 		// Nothing assessable (Amazon Linux, or an OS-only Windows node).
 		{NodeUUID: "AMZN", InventoryAt: matched, MatchedAt: &matched, NotAssessed: 2},
 		{NodeUUID: "BARE", InventoryAt: matched, MatchedAt: &matched},
-		{NodeUUID: "PARTIAL", InventoryAt: matched, MatchedAt: &matched, NotAssessed: 1},
+		{NodeUUID: "PARTIAL", InventoryAt: matched, MatchedAt: &matched, NotAssessed: 1, Assessed: 1},
 	}).Error)
 	require.NoError(t, r.DB.Create(&[]NodeSoftware{
 		{NodeUUID: "CLEAN", Category: CategoryDeb, Name: "bash", Version: "5.2-1"},
@@ -110,7 +113,7 @@ func TestPostureScoresVulnerabilities(t *testing.T) {
 	matched := r.now()
 	require.NoError(t, r.DB.Create(&[]NodeState{
 		{NodeUUID: "N1", InventoryAt: matched, MatchedAt: &matched},
-		{NodeUUID: "CLEAN", InventoryAt: matched, MatchedAt: &matched},
+		{NodeUUID: "CLEAN", InventoryAt: matched, MatchedAt: &matched, Assessed: 1},
 	}).Error)
 	require.NoError(t, r.DB.Create(&Finding{NodeUUID: "N1", AdvisoryID: "A1", Ecosystem: "e", Package: "p1",
 		Severity: SeverityMedium, KEV: true, Confidence: ConfidenceConfirmed}).Error)
@@ -128,4 +131,32 @@ func TestPostureScoresVulnerabilities(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, clean.Controls, 1)
 	assert.Equal(t, "pass", clean.Controls[0].Status)
+}
+
+// A name-based NVD match is a hint: CPE-only packages neither pass nor warn
+// the control, and possible findings are not findings for scoring.
+func TestScoreEvidenceIgnoresCPEPackages(t *testing.T) {
+	r := evidenceReader(t)
+	markLoaded(t, r)
+	matched := r.now()
+	require.NoError(t, r.DB.Create(&[]NodeState{
+		{NodeUUID: "WIN", InventoryAt: matched, MatchedAt: &matched},
+		{NodeUUID: "MAC", InventoryAt: matched, MatchedAt: &matched, NotAssessed: 2, Assessed: 1},
+	}).Error)
+	require.NoError(t, r.DB.Create(&[]NodeSoftware{
+		{NodeUUID: "WIN", Category: CategoryPrograms, Name: "Mozilla Firefox", Version: "128.0.3"},
+		{NodeUUID: "WIN", Category: CategoryPrograms, Name: "7-Zip", Version: "23.01"},
+		{NodeUUID: "MAC", Category: CategoryPython, Name: "requests", Version: "2.31.0"},
+		{NodeUUID: "MAC", Category: CategoryApps, Name: "Firefox", Version: "128.0.3"},
+		{NodeUUID: "MAC", Category: CategoryApps, Name: "Slack", Version: "4.0"},
+	}).Error)
+	require.NoError(t, r.DB.Create(&Finding{NodeUUID: "WIN", AdvisoryID: "CVE-2026-1000", Ecosystem: cpeEcosystem,
+		Package: "mozilla:firefox", Severity: SeverityCritical, Confidence: ConfidencePossible}).Error)
+
+	out, err := r.ScoreEvidence([]string{"WIN", "MAC"})
+	require.NoError(t, err)
+	assert.NotContains(t, out, "WIN", "a node assessed only through CPE is unevaluated")
+	require.Contains(t, out, "MAC")
+	assert.JSONEq(t, `[{"critical":0,"high":0,"medium":0,"low":0,"unknown":0,"kev":0,"not_assessed":0}]`, out["MAC"][0].Summary,
+		"apps NVD could not assess do not make the Python inventory less clean")
 }

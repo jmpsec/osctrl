@@ -11960,6 +11960,11 @@ components:
       type: object
     vulns.Advisory:
       properties:
+        cvss_from:
+          description: |-
+            CVSSFrom is the aliased NVD CVE an OSV record without its own CVSS
+            borrowed its score from. Empty when the score is the record's own.
+          type: string
         cvss_score:
           type: number
         cvss_vector:
@@ -11975,6 +11980,11 @@ components:
         published:
           type: string
         severity:
+          type: string
+        source:
+          description: |-
+            Source is the feed that owns the record. Existing rows predate NVD
+            support and are OSV records.
           type: string
         summary:
           type: string
@@ -12084,6 +12094,11 @@ components:
         loaded:
           type: boolean
         not_assessed:
+          type: integer
+        possible:
+          description: |-
+            Possible counts open possible (NVD CPE) findings. KEV, AffectedNodes
+            and the top lists count confirmed findings only.
           type: integer
         stale:
           type: boolean

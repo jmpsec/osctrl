@@ -25,6 +25,8 @@ func (e statusError) Error() string { return fmt.Sprintf("GET %s: HTTP %d", e.ur
 type fetcher struct {
 	client   *http.Client
 	maxBytes int64
+	// header is added to every request (the NVD apiKey). Never logged.
+	header http.Header
 }
 
 func (f fetcher) open(ctx context.Context, url string) (io.ReadCloser, error) {
@@ -33,6 +35,11 @@ func (f fetcher) open(ctx context.Context, url string) (io.ReadCloser, error) {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "osctrl-vulns")
+	for k, vs := range f.header {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
 	resp, err := f.client.Do(req)
 	if err != nil {
 		return nil, err

@@ -42,6 +42,11 @@ type Config struct {
 	Retention    time.Duration
 	MaxDownload  int64
 	HTTPClient   *http.Client
+	// NVD CPE matching (--vuln-nvd-*). The key is a secret: it travels only
+	// as a request header.
+	NVDEnabled bool
+	NVDURL     string
+	NVDAPIKey  string
 }
 
 // Worker syncs feeds and keeps findings current. Every osctrl-api replica
@@ -52,6 +57,7 @@ type Worker struct {
 	owner   string
 	fetch   fetcher
 	osv     *OSVSource
+	nvd     *NVDSource // nil while --vuln-nvd-enabled is off
 	matcher *Matcher
 	now     func() time.Time
 }
@@ -75,7 +81,14 @@ func NewWorker(db *gorm.DB, cfg Config) (*Worker, error) {
 	if cfg.KEVURL == "" {
 		cfg.KEVURL = DefaultKEVURL
 	}
-	for _, raw := range []string{cfg.OSVURL, cfg.KEVURL} {
+	if cfg.NVDEnabled && cfg.NVDURL == "" {
+		cfg.NVDURL = DefaultNVDURL
+	}
+	urls := []string{cfg.OSVURL, cfg.KEVURL}
+	if cfg.NVDEnabled {
+		urls = append(urls, cfg.NVDURL)
+	}
+	for _, raw := range urls {
 		u, err := url.Parse(raw)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			return nil, fmt.Errorf("feed URL %q must be an http or https URL", raw)
@@ -103,7 +116,10 @@ func NewWorker(db *gorm.DB, cfg Config) (*Worker, error) {
 	}
 	clock := func() time.Time { return w.now() }
 	w.osv = &OSVSource{db: db, baseURL: cfg.OSVURL, fetch: w.fetch, now: clock}
-	w.matcher = &Matcher{DB: db, now: clock}
+	if cfg.NVDEnabled {
+		w.nvd = newNVDSource(db, cfg.NVDURL, cfg.NVDAPIKey, w.fetch, clock)
+	}
+	w.matcher = &Matcher{DB: db, now: clock, CPE: cfg.NVDEnabled}
 	return w, nil
 }
 
@@ -148,6 +164,11 @@ func (w *Worker) Tick(ctx context.Context) error {
 	var ws WorkerState
 	if err := w.db.Where("name = ?", workerName).First(&ws).Error; err != nil {
 		return err
+	}
+	if w.nvd == nil {
+		if err := dropNVD(w.db, w.now()); err != nil {
+			return err
+		}
 	}
 	dirs, err := w.ecosystemDirs()
 	if err != nil {
@@ -237,19 +258,23 @@ func (w *Worker) syncDue(ws WorkerState, dirs []string) (bool, error) {
 	if ws.LastSyncFailed {
 		return true, nil
 	}
-	if len(dirs) == 0 {
-		return false, nil
+	// A new ecosystem appeared in the fleet, or NVD was turned on, since the
+	// last sync.
+	sources := make([]string, 0, len(dirs)+1)
+	for _, d := range dirs {
+		sources = append(sources, osvSourcePrefix+d)
 	}
-	// A new ecosystem appeared in the fleet since the last sync.
-	sources := make([]string, len(dirs))
-	for i, d := range dirs {
-		sources[i] = osvSourcePrefix + d
+	if w.nvd != nil {
+		sources = append(sources, sourceNVD)
+	}
+	if len(sources) == 0 {
+		return false, nil
 	}
 	var synced int64
 	if err := w.db.Model(&SyncState{}).Where("source IN ? AND last_success IS NOT NULL", sources).Count(&synced).Error; err != nil {
 		return false, err
 	}
-	return int(synced) < len(dirs), nil
+	return int(synced) < len(sources), nil
 }
 
 func (w *Worker) syncAll(ctx context.Context, dirs []string) {
@@ -263,6 +288,15 @@ func (w *Worker) syncAll(ctx context.Context, dirs []string) {
 			continue
 		}
 		changed = changed || res.Written > 0
+	}
+	if w.nvd != nil {
+		res, err := w.nvd.Sync(ctx)
+		if err != nil {
+			failed = true
+			log.Warn().Err(err).Msg("vulns: NVD sync failed")
+		} else {
+			changed = changed || res.Written > 0
+		}
 	}
 	if err := syncKEV(ctx, w.db, w.fetch, w.cfg.KEVURL, w.now()); err != nil {
 		failed = true
@@ -280,7 +314,9 @@ func (w *Worker) syncAll(ctx context.Context, dirs []string) {
 		}
 	}
 	if err := w.db.Model(&WorkerState{}).Where("name = ?", workerName).
-		Updates(map[string]any{"last_sync_at": start, "last_sync_failed": failed}).Error; err != nil {
+		// The end time: a long failed sync then waits failureRetry before
+		// running again instead of starving matching.
+		Updates(map[string]any{"last_sync_at": w.now(), "last_sync_failed": failed}).Error; err != nil {
 		log.Warn().Err(err).Msg("vulns: recording sync failed")
 	}
 	// A request made while this sync ran is kept for the next tick.

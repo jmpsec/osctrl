@@ -18,6 +18,8 @@ const queryChunk = 500
 type Matcher struct {
 	DB  *gorm.DB
 	now func() time.Time
+	// CPE turns on name matching against NVD data (--vuln-nvd-enabled).
+	CPE bool
 }
 
 type findingKey struct{ advisory, ecosystem, pkg string }
@@ -45,14 +47,26 @@ func (m *Matcher) MatchNode(nodeUUID string) error {
 	osKey := OSKey(state.OSPlatform, state.OSVersion, state.OSMajor)
 
 	unassessed := map[uint]bool{}
+	assessed := map[uint]bool{} // checked against an OSV feed
+	var cpePackages []NodeSoftware
 	byEco := map[string]map[string][]NodeSoftware{} // ecosystem → package key → installed
 	for _, sw := range software {
+		if cpeCategories[sw.Category] {
+			// Matched by name against NVD, only while NVD is on and synced.
+			if !m.CPE || !synced[cpeEcosystem] || !assessableVersion(sw.Version) {
+				unassessed[sw.ID] = true
+				continue
+			}
+			cpePackages = append(cpePackages, sw)
+			continue
+		}
 		eco := ecosystemFor(sw.Category, osKey)
 		dir, _, _ := strings.Cut(eco, ":")
 		if eco == "" || !synced[dir] || !assessableVersion(sw.Version) {
 			unassessed[sw.ID] = true
 			continue
 		}
+		assessed[sw.ID] = true
 		pkgs := byEco[eco]
 		if pkgs == nil {
 			pkgs = map[string][]NodeSoftware{}
@@ -100,17 +114,104 @@ func (m *Matcher) MatchNode(nodeUUID string) error {
 			}
 		}
 	}
+	if err := m.matchCPE(nodeUUID, envID, cpePackages, found, unassessed); err != nil {
+		return err
+	}
+	confirmed := 0
+	for id := range assessed {
+		if !unassessed[id] {
+			confirmed++
+		}
+	}
 	if err := m.copyAdvisoryFlags(found); err != nil {
 		return err
 	}
 	return m.DB.Transaction(func(tx *gorm.DB) error {
-		return persistFindings(tx, nodeUUID, envID, found, len(unassessed), start)
+		return persistFindings(tx, nodeUUID, envID, found, len(unassessed), confirmed, start)
 	})
 }
 
-// syncedDirs returns the OSV directories that have synced successfully. A
-// package in any other ecosystem is not assessed: an empty advisory table is
-// not a clean bill of health.
+// matchCPE adds possible findings for packages matched by name against NVD
+// CPE data. A version that cannot be compared is not assessed.
+func (m *Matcher) matchCPE(nodeUUID string, envID uint, pkgs []NodeSoftware, found map[findingKey]Finding, unassessed map[uint]bool) error {
+	if len(pkgs) == 0 {
+		return nil
+	}
+	type candidates struct{ vendors, products []string }
+	cands := make([]candidates, len(pkgs))
+	wanted, vendorNames := map[string]bool{}, map[string]bool{}
+	for i, sw := range pkgs {
+		v, p := cpeCandidates(sw)
+		cands[i] = candidates{v, p}
+		for _, name := range p {
+			wanted[name] = true
+		}
+		for _, name := range v {
+			vendorNames[name] = true
+		}
+	}
+	known := map[string]bool{} // candidate vendors that are CPE vendors
+	for chunk := range slices.Chunk(slices.Sorted(maps.Keys(vendorNames)), queryChunk) {
+		var listed []string
+		if err := m.DB.Model(&CPEProduct{}).Distinct("vendor").Where("vendor IN ?", chunk).Pluck("vendor", &listed).Error; err != nil {
+			return err
+		}
+		for _, v := range listed {
+			known[v] = true
+		}
+	}
+	byProduct := map[string][]string{}
+	for chunk := range slices.Chunk(slices.Sorted(maps.Keys(wanted)), queryChunk) {
+		var rows []CPEProduct
+		if err := m.DB.Where("product IN ?", chunk).Find(&rows).Error; err != nil {
+			return err
+		}
+		for _, r := range rows {
+			byProduct[r.Product] = append(byProduct[r.Product], r.Vendor)
+		}
+	}
+	byKey := map[string][]NodeSoftware{} // vendor:product → installed
+	for i, sw := range pkgs {
+		for _, key := range resolveCPE(cands[i].vendors, cands[i].products, byProduct, known) {
+			byKey[key] = append(byKey[key], sw)
+		}
+	}
+	for chunk := range slices.Chunk(slices.Sorted(maps.Keys(byKey)), queryChunk) {
+		var affected []Affected
+		if err := m.DB.Where("ecosystem = ? AND package IN ?", cpeEcosystem, chunk).Find(&affected).Error; err != nil {
+			return err
+		}
+		for _, a := range affected {
+			var ranges []cpeRange
+			var versions []string
+			if json.Unmarshal([]byte(a.Ranges), &ranges) != nil || json.Unmarshal([]byte(a.Versions), &versions) != nil {
+				log.Warn().Str("advisory", a.AdvisoryID).Msg("vulns: unreadable CPE row")
+				continue
+			}
+			for _, sw := range byKey[a.Package] {
+				hit, fixed, err := cpeAffected(sw.Version, ranges, versions)
+				if err != nil {
+					unassessed[sw.ID] = true
+					continue
+				}
+				key := findingKey{a.AdvisoryID, cpeEcosystem, a.Package}
+				if _, dup := found[key]; !hit || dup {
+					continue
+				}
+				found[key] = Finding{
+					NodeUUID: nodeUUID, EnvironmentID: envID, AdvisoryID: a.AdvisoryID,
+					Ecosystem: cpeEcosystem, Package: a.Package, InstalledVersion: sw.Version,
+					FixedVersion: clip(fixed), Confidence: ConfidencePossible, Severity: SeverityUnknown,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// syncedDirs returns the OSV directories that have synced successfully, and
+// "cpe" once NVD has. A package in any other ecosystem is not assessed: an
+// empty advisory table is not a clean bill of health.
 func syncedDirs(db *gorm.DB) (map[string]bool, error) {
 	var sources []string
 	if err := db.Model(&SyncState{}).Where("last_success IS NOT NULL").Pluck("source", &sources).Error; err != nil {
@@ -120,6 +221,9 @@ func syncedDirs(db *gorm.DB) (map[string]bool, error) {
 	for _, s := range sources {
 		if dir, ok := strings.CutPrefix(s, osvSourcePrefix); ok {
 			out[dir] = true
+		}
+		if s == sourceNVD {
+			out[cpeEcosystem] = true
 		}
 	}
 	return out, nil
@@ -149,7 +253,7 @@ func (m *Matcher) copyAdvisoryFlags(found map[findingKey]Finding) error {
 	return nil
 }
 
-func persistFindings(tx *gorm.DB, nodeUUID string, envID uint, found map[findingKey]Finding, notAssessed int, now time.Time) error {
+func persistFindings(tx *gorm.DB, nodeUUID string, envID uint, found map[findingKey]Finding, notAssessed, assessed int, now time.Time) error {
 	var existing []Finding
 	if err := tx.Where("node_uuid = ?", nodeUUID).Find(&existing).Error; err != nil {
 		return err
@@ -190,6 +294,6 @@ func persistFindings(tx *gorm.DB, nodeUUID string, envID uint, found map[finding
 	}
 	return tx.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_uuid"}},
-		DoUpdates: clause.AssignmentColumns([]string{"matched_at", "not_assessed"}),
-	}).Create(&NodeState{NodeUUID: nodeUUID, EnvironmentID: envID, MatchedAt: &now, NotAssessed: notAssessed}).Error
+		DoUpdates: clause.AssignmentColumns([]string{"matched_at", "not_assessed", "assessed"}),
+	}).Create(&NodeState{NodeUUID: nodeUUID, EnvironmentID: envID, MatchedAt: &now, NotAssessed: notAssessed, Assessed: assessed}).Error
 }

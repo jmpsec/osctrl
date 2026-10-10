@@ -5,11 +5,15 @@ import "github.com/jmpsec/osctrl/pkg/posture"
 const inventoryInterval = 86400 // daily
 
 var inventoryQueries = map[string]string{
-	CategoryOS:     "SELECT name, version, major, minor, platform, platform_like, codename FROM os_version",
-	CategoryDeb:    "SELECT name, version, source, arch FROM deb_packages WHERE status = 'install ok installed'",
-	CategoryRPM:    "SELECT name, version, release, epoch, arch, source, vendor FROM rpm_packages",
-	CategoryPython: "SELECT name, version, path FROM python_packages",
-	CategoryNPM:    "SELECT name, version, path FROM npm_packages",
+	CategoryOS:         "SELECT name, version, major, minor, platform, platform_like, codename FROM os_version",
+	CategoryDeb:        "SELECT name, version, source, arch FROM deb_packages WHERE status = 'install ok installed'",
+	CategoryRPM:        "SELECT name, version, release, epoch, arch, source, vendor FROM rpm_packages",
+	CategoryPython:     "SELECT name, version, path FROM python_packages",
+	CategoryNPM:        "SELECT name, version, path FROM npm_packages",
+	CategoryHomebrew:   "SELECT name, version, type FROM homebrew_packages",
+	CategoryPrograms:   "SELECT name, version, publisher FROM programs",
+	CategoryApps:       "SELECT name, bundle_name, bundle_identifier, bundle_short_version FROM apps",
+	CategoryChocolatey: "SELECT name, version FROM chocolatey_packages",
 }
 
 func profile(id, name, platform string, categories ...string) posture.PostureProfile {
@@ -37,8 +41,8 @@ func profile(id, name, platform string, categories ...string) posture.PosturePro
 func Profiles() []posture.PostureProfile {
 	return []posture.PostureProfile{
 		profile("vuln-linux", "Vulnerability inventory (Linux)", "linux", CategoryOS, CategoryDeb, CategoryRPM, CategoryPython, CategoryNPM),
-		profile("vuln-darwin", "Vulnerability inventory (macOS)", "darwin", CategoryOS, CategoryPython, CategoryNPM),
-		profile("vuln-windows", "Vulnerability inventory (Windows)", "windows", CategoryOS, CategoryPython, CategoryNPM),
+		profile("vuln-darwin", "Vulnerability inventory (macOS)", "darwin", CategoryOS, CategoryPython, CategoryNPM, CategoryHomebrew, CategoryApps),
+		profile("vuln-windows", "Vulnerability inventory (Windows)", "windows", CategoryOS, CategoryPython, CategoryNPM, CategoryPrograms, CategoryChocolatey),
 	}
 }
 

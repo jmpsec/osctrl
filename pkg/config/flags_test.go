@@ -242,7 +242,7 @@ func TestVulnFeedFlags(t *testing.T) {
 	for _, f := range initVulnFlags(params) {
 		names[f.Names()[0]] = true
 	}
-	for _, want := range []string{"vuln-osv-url", "vuln-kev-url", "vuln-ecosystems", "vuln-sync-hours", "vuln-retention-days", "vuln-max-download-mb"} {
+	for _, want := range []string{"vuln-osv-url", "vuln-kev-url", "vuln-ecosystems", "vuln-sync-hours", "vuln-retention-days", "vuln-max-download-mb", "vuln-nvd-enabled", "vuln-nvd-url", "vuln-nvd-api-key"} {
 		if !names[want] {
 			t.Errorf("missing --%s", want)
 		}
@@ -252,4 +252,20 @@ func TestVulnFeedFlags(t *testing.T) {
 			t.Fatal("feed flags must not be shared with osctrl-tls")
 		}
 	}
+}
+
+func TestVulnNVDFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Service: &YAMLConfigurationService{}}
+	for _, flag := range initVulnFlags(params) {
+		if f, ok := flag.(*cli.BoolFlag); ok && f.Name == "vuln-nvd-enabled" {
+			if f.Value {
+				t.Fatal("vuln-nvd-enabled flag default: got true want false")
+			}
+			if f.Destination != &params.Service.VulnNVDEnabled {
+				t.Fatal("vuln-nvd-enabled flag destination does not wire Service.VulnNVDEnabled")
+			}
+			return
+		}
+	}
+	t.Fatal("missing vuln-nvd-enabled flag")
 }
