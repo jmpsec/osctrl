@@ -156,6 +156,19 @@ type Finding struct {
 
 func (Finding) TableName() string { return "vuln_findings" }
 
+// Escalation records an open confirmed finding that became known-exploited
+// or rose in severity: news the alert watcher reports once, by ID, like a
+// new finding. Rows are pruned after escalationRetention.
+type Escalation struct {
+	ID           uint   `gorm:"primarykey"`
+	FindingID    uint   `gorm:"index"`
+	PrevSeverity string `gorm:"type:varchar(16)"`
+	PrevKEV      bool
+	CreatedAt    time.Time `gorm:"index"`
+}
+
+func (Escalation) TableName() string { return "vuln_escalations" }
+
 // SyncState is one feed's progress: "osv:<dir>" or "kev". Cursor only
 // advances after a successful sync.
 type SyncState struct {
@@ -166,6 +179,10 @@ type SyncState struct {
 	LastSkipped int        `json:"last_skipped"`
 	LastError   string     `gorm:"type:text" json:"last_error"`
 	LastErrorAt *time.Time `json:"last_error_at"`
+	// ResumeIndex and ResumeStart let a full NVD sync that failed part-way
+	// continue from its next page; ResumeStart is when that sync began.
+	ResumeIndex int        `json:"-"`
+	ResumeStart *time.Time `json:"-"`
 }
 
 func (SyncState) TableName() string { return "vuln_sync_state" }
@@ -180,6 +197,12 @@ type WorkerState struct {
 	LastSyncAt      *time.Time `json:"last_sync_at"`
 	LastSyncFailed  bool       `json:"last_sync_failed"`
 	LastHousekeepAt *time.Time `json:"-"`
+	// NVDActiveAt is the last tick of a replica with --vuln-nvd-enabled.
+	// Replicas with NVD off keep NVD data while it is recent.
+	NVDActiveAt *time.Time `json:"-"`
+	// NVDActiveBy is the host that stamped NVDActiveAt: a host's own stamp,
+	// from before it restarted with NVD off, does not delay the drop.
+	NVDActiveBy string `gorm:"type:varchar(255)" json:"-"`
 }
 
 func (WorkerState) TableName() string { return "vuln_worker_state" }
@@ -187,6 +210,31 @@ func (WorkerState) TableName() string { return "vuln_worker_state" }
 // Migrate creates the vulnerability tables. Called only when the feature is
 // enabled, so a disabled deployment never has them.
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&NodeSoftware{}, &NodeState{}, &Advisory{}, &Alias{},
-		&Affected{}, &KEV{}, &CPEProduct{}, &Finding{}, &SyncState{}, &WorkerState{})
+	// vuln_node_state.assessed arrived with NVD support. Earlier rows read 0,
+	// which posture treats as "nothing assessed", so adding the column
+	// re-matches every node once instead of after the next advisory change.
+	rematch := db.Migrator().HasTable(&NodeState{}) && !hasColumn(db, &NodeState{}, "assessed")
+	if err := db.AutoMigrate(&NodeSoftware{}, &NodeState{}, &Advisory{}, &Alias{},
+		&Affected{}, &KEV{}, &CPEProduct{}, &Finding{}, &Escalation{}, &SyncState{}, &WorkerState{}); err != nil {
+		return err
+	}
+	if rematch {
+		return db.Model(&NodeState{}).Where("1 = 1").Update("matched_at", nil).Error
+	}
+	return nil
+}
+
+// hasColumn checks a column by exact name. GORM's SQLite HasColumn matches
+// the table's SQL text, where "not_assessed" contains "assessed".
+func hasColumn(db *gorm.DB, model any, name string) bool {
+	cols, err := db.Migrator().ColumnTypes(model)
+	if err != nil {
+		return false
+	}
+	for _, c := range cols {
+		if c.Name() == name {
+			return true
+		}
+	}
+	return false
 }

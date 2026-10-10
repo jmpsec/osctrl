@@ -236,3 +236,37 @@ func TestOSVEscapesEcosystemDirectories(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"RHSA-2026:76750"}, advisoryIDs(t, s))
 }
+
+func TestOSVSkipsARecordTheDatabaseRejects(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/Debian/all.zip", zipOf(t, map[string]string{
+		"DSA-6-1.json": debianRecord("DSA-6-1", "2026-10-01T00:00:00Z", "3.0.13-1"),
+		"DSA-7-1.json": debianRecord("DSA-7-1", "2026-10-01T00:00:00Z", "3.0.13-1"),
+	}))
+	s := newTestOSV(t, srv.URL, newClock())
+	require.NoError(t, s.db.Exec(`CREATE TRIGGER reject_bad BEFORE INSERT ON vuln_advisories
+		WHEN NEW.id = 'DSA-6-1' BEGIN SELECT RAISE(ABORT, 'rejected'); END`).Error)
+	res, err := s.Sync(context.Background(), "Debian")
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.Written)
+	assert.Equal(t, 1, res.Skipped)
+	assert.Equal(t, []string{"DSA-7-1"}, advisoryIDs(t, s))
+}
+
+// When every record fails the database is the problem, not the records: the
+// sync fails (keeping its cursor) instead of reporting them all skipped.
+func TestOSVFailsWhenTheDatabaseRejectsEverything(t *testing.T) {
+	fs, srv := newFeedServer(t)
+	fs.set("/Debian/all.zip", zipOf(t, map[string]string{
+		"DSA-6-1.json": debianRecord("DSA-6-1", "2026-10-01T00:00:00Z", "3.0.13-1"),
+		"DSA-7-1.json": debianRecord("DSA-7-1", "2026-10-01T00:00:00Z", "3.0.13-1"),
+	}))
+	s := newTestOSV(t, srv.URL, newClock())
+	require.NoError(t, s.db.Exec(`CREATE TRIGGER reject_all BEFORE INSERT ON vuln_advisories
+		BEGIN SELECT RAISE(ABORT, 'database unavailable'); END`).Error)
+	_, err := s.Sync(context.Background(), "Debian")
+	require.Error(t, err)
+	var n int64
+	require.NoError(t, s.db.Model(&SyncState{}).Where("source = ? AND last_success IS NOT NULL", "osv:Debian").Count(&n).Error)
+	assert.Zero(t, n)
+}

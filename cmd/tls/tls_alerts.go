@@ -97,6 +97,20 @@ func (s *tlsFindingSource) FindingsAfter(ctx context.Context, afterID uint, limi
 	if err != nil {
 		return nil, err
 	}
+	return s.snapshots(rows), nil
+}
+
+// EscalationsAfter implements alerts.FindingSource.
+func (s *tlsFindingSource) EscalationsAfter(ctx context.Context, afterID uint, limit int) ([]alerts.FindingSnapshot, error) {
+	rows, err := s.inv.EscalationsAfter(ctx, afterID, limit)
+	if err != nil {
+		return nil, err
+	}
+	return s.snapshots(rows), nil
+}
+
+// snapshots converts feed rows, adding environment names.
+func (s *tlsFindingSource) snapshots(rows []vulns.NewFinding) []alerts.FindingSnapshot {
 	names := map[uint]string{}
 	out := make([]alerts.FindingSnapshot, 0, len(rows))
 	for _, r := range rows {
@@ -113,12 +127,18 @@ func (s *tlsFindingSource) FindingsAfter(ctx context.Context, afterID uint, limi
 			AdvisoryID: r.AdvisoryID, Package: r.Package,
 			InstalledVersion: r.InstalledVersion, FixedVersion: r.FixedVersion,
 			Severity: r.Severity, KEV: r.KEV,
+			Escalated: r.Escalated, PrevSeverity: r.PrevSeverity, PrevKEV: r.PrevKEV,
 		})
 	}
-	return out, nil
+	return out
 }
 
 // LatestFindingID implements alerts.FindingSource.
 func (s *tlsFindingSource) LatestFindingID(ctx context.Context) (uint, error) {
 	return s.inv.LatestFindingID(ctx)
+}
+
+// LatestEscalationID implements alerts.FindingSource.
+func (s *tlsFindingSource) LatestEscalationID(ctx context.Context) (uint, error) {
+	return s.inv.LatestEscalationID(ctx)
 }

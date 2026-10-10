@@ -270,6 +270,11 @@ func persistFindings(tx *gorm.DB, nodeUUID string, envID uint, found map[finding
 			continue
 		}
 		delete(found, key)
+		if e.ResolvedAt == nil && e.Confidence == ConfidenceConfirmed && escalated(e.Severity, e.KEV, f.Severity, f.KEV) {
+			if err := tx.Create(&Escalation{FindingID: e.ID, PrevSeverity: e.Severity, PrevKEV: e.KEV, CreatedAt: now}).Error; err != nil {
+				return err
+			}
+		}
 		if err := tx.Model(&Finding{}).Where("id = ?", e.ID).Updates(map[string]any{
 			"environment_id":    envID,
 			"installed_version": f.InstalledVersion,

@@ -70,3 +70,31 @@ func TestTLSFindingSourceAddsTheEnvironmentName(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, got[0].ID, latest)
 }
+
+func TestTLSFindingSourceListsEscalations(t *testing.T) {
+	dsn := "file:" + strings.NewReplacer("/", "_").Replace(t.Name()) + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	require.NoError(t, err)
+	envs := environments.CreateEnvironment(db)
+	nodes.CreateNodes(db)
+	inv, err := vulns.NewInventory(db)
+	require.NoError(t, err)
+	env := environments.TLSEnvironment{UUID: "env-a", Name: "prod"}
+	require.NoError(t, db.Create(&env).Error)
+	f := vulns.Finding{NodeUUID: "N1", EnvironmentID: env.ID, AdvisoryID: "DSA-1", Ecosystem: "Debian:12",
+		Package: "openssl", Severity: "high", KEV: true, Confidence: vulns.ConfidenceConfirmed}
+	require.NoError(t, db.Create(&f).Error)
+	require.NoError(t, db.Create(&vulns.Escalation{FindingID: f.ID, PrevSeverity: "high", CreatedAt: time.Now()}).Error)
+
+	s := newTLSFindingSource(inv, envs)
+	got, err := s.EscalationsAfter(context.Background(), 0, 10)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.True(t, got[0].Escalated)
+	require.Equal(t, "prod", got[0].Environment)
+	require.Equal(t, "high", got[0].PrevSeverity)
+	require.False(t, got[0].PrevKEV)
+	latest, err := s.LatestEscalationID(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, got[0].ID, latest)
+}

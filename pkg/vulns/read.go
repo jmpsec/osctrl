@@ -130,7 +130,9 @@ type Summary struct {
 	KEV        int64                       `json:"kev"`
 	// Possible counts open possible (NVD CPE) findings. KEV, AffectedNodes
 	// and the top lists count confirmed findings only.
-	Possible      int64      `json:"possible"`
+	Possible int64 `json:"possible"`
+	// KEVPossible counts open possible findings that are known-exploited.
+	KEVPossible   int64      `json:"kev_possible"`
 	AffectedNodes int64      `json:"affected_nodes"`
 	NotAssessed   int64      `json:"not_assessed"`
 	TopAdvisories []CountRow `json:"top_advisories"`
@@ -162,6 +164,9 @@ func (r *Reader) Summary(envID uint) (Summary, error) {
 		return s, err
 	}
 	if err := open().Where("confidence = ?", ConfidencePossible).Count(&s.Possible).Error; err != nil {
+		return s, err
+	}
+	if err := open().Where("confidence = ? AND kev = ?", ConfidencePossible, true).Count(&s.KEVPossible).Error; err != nil {
 		return s, err
 	}
 	if err := confirmed().Distinct("node_uuid").Count(&s.AffectedNodes).Error; err != nil {

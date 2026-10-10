@@ -280,3 +280,38 @@ func TestMatchCPEKnownVendorBlocksTheFallback(t *testing.T) {
 	require.NoError(t, f.matcher.MatchNode("M1"))
 	assert.Empty(t, f.findings(t, "M1"))
 }
+
+// A re-match that sees a raised severity before refreshFlags did records the
+// escalation too.
+func TestMatchRecordsEscalations(t *testing.T) {
+	f := newMatchFixture(t)
+	f.node(t, "N1", "debian", "12", "12", NodeSoftware{Category: CategoryDeb, Name: "openssl", Version: "3.0.11-1"})
+	f.advisory(t, "DSA-1-1", SeverityMedium, "Debian:12", "openssl", fixedAt("0", "3.0.13-1"))
+	require.NoError(t, f.matcher.MatchNode("N1"))
+	require.NoError(t, f.db.Model(&Advisory{}).Where("id = ?", "DSA-1-1").Update("severity", SeverityCritical).Error)
+	f.clock.advance(time.Hour)
+	require.NoError(t, f.matcher.MatchNode("N1"))
+	var got []Escalation
+	require.NoError(t, f.db.Find(&got).Error)
+	require.Len(t, got, 1)
+	assert.Equal(t, SeverityMedium, got[0].PrevSeverity)
+}
+
+// Reopening is not news (the spec's "a reopen causes no re-alert"), even if
+// the advisory grew more severe while the finding was resolved.
+func TestMatchReopenRecordsNoEscalation(t *testing.T) {
+	f := newMatchFixture(t)
+	f.node(t, "N1", "debian", "12", "12", NodeSoftware{Category: CategoryDeb, Name: "openssl", Version: "3.0.11-1"})
+	f.advisory(t, "DSA-1-1", SeverityMedium, "Debian:12", "openssl", fixedAt("0", "3.0.13-1"))
+	require.NoError(t, f.matcher.MatchNode("N1"))
+	f.clock.advance(time.Hour)
+	require.NoError(t, f.db.Model(&NodeSoftware{}).Where("node_uuid = ?", "N1").Update("version", "3.0.13-1").Error)
+	require.NoError(t, f.matcher.MatchNode("N1")) // resolved
+	require.NoError(t, f.db.Model(&Advisory{}).Where("id = ?", "DSA-1-1").Update("severity", SeverityCritical).Error)
+	f.clock.advance(time.Hour)
+	require.NoError(t, f.db.Model(&NodeSoftware{}).Where("node_uuid = ?", "N1").Update("version", "3.0.11-1").Error)
+	require.NoError(t, f.matcher.MatchNode("N1")) // reopened, now critical
+	var n int64
+	require.NoError(t, f.db.Model(&Escalation{}).Count(&n).Error)
+	assert.Zero(t, n)
+}

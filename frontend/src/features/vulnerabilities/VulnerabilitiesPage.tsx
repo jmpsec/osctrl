@@ -114,7 +114,12 @@ export function VulnerabilitiesPage() {
             halo="warning"
             sublabel={s.possible > 0 ? t('vulns.possibleExcluded', { count: formatNumber(s.possible) }) : undefined}
           />
-          <StatCard label={t('vulns.kev')} value={s.kev} halo="danger" />
+          <StatCard
+            label={t('vulns.kev')}
+            value={s.kev}
+            halo="danger"
+            sublabel={s.kev_possible > 0 ? t('vulns.possibleExcluded', { count: formatNumber(s.kev_possible) }) : undefined}
+          />
           <StatCard label={t('vulns.affectedNodes')} value={s.affected_nodes} halo="info" />
           <StatCard label={t('vulns.notAssessed')} value={s.not_assessed} sublabel={t('vulns.notAssessedHint')} />
         </div>

@@ -2,6 +2,7 @@ package vulns
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ func TestRefreshFlagsBorrowsTheAliasedNVDScore(t *testing.T) {
 	require.NoError(t, db.Create(&Finding{NodeUUID: "N1", AdvisoryID: "DSA-1", Ecosystem: "Debian:12", Package: "openssl",
 		Severity: SeverityUnknown, Confidence: ConfidenceConfirmed}).Error)
 
-	require.NoError(t, refreshFlags(db))
+	require.NoError(t, refreshFlags(db, time.Now()))
 	dsa1 := advisoryByID(t, db, "DSA-1")
 	assert.Equal(t, SeverityCritical, dsa1.Severity, "the highest-scored alias wins")
 	assert.Equal(t, "CVE-2", dsa1.CVSSFrom)
@@ -47,7 +48,7 @@ func TestRefreshFlagsBorrowsTheAliasedNVDScore(t *testing.T) {
 
 	// The CVE goes away (NVD turned off): the borrowed score goes with it.
 	require.NoError(t, db.Where("source = ?", AdvisorySourceNVD).Delete(&Advisory{}).Error)
-	require.NoError(t, refreshFlags(db))
+	require.NoError(t, refreshFlags(db, time.Now()))
 	dsa1 = advisoryByID(t, db, "DSA-1")
 	assert.Equal(t, SeverityUnknown, dsa1.Severity)
 	assert.Empty(t, dsa1.CVSSFrom)

@@ -74,3 +74,23 @@ func TestVulnRuleRoundTripAndSnapshot(t *testing.T) {
 		t.Fatal("a snapshot with only a vulnerability rule is not empty")
 	}
 }
+
+// Rules that match no text ignore pattern fields: a stray match_type on a
+// vulnerability or node-state rule must not keep it from loading.
+func TestNonPatternRulesIgnorePatternFields(t *testing.T) {
+	m := newTestManager(t)
+	for _, src := range []string{SourceVulnFinding, SourceNodeInactive} {
+		if _, err := m.CreateRule(AlertRule{Name: src, Source: src, VulnMinSeverity: VulnMinKEV,
+			MatchType: "Substring", MatchValue: "x", Enabled: true}); err != nil {
+			t.Fatalf("create %s: %v", src, err)
+		}
+	}
+	store := NewStore()
+	if err := m.LoadSnapshot(store); err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	rs := store.Snapshot()
+	if len(rs.vulnFinding) != 1 || len(rs.nodeInactive) != 1 {
+		t.Fatalf("stored rules must load: vuln=%d inactive=%d", len(rs.vulnFinding), len(rs.nodeInactive))
+	}
+}

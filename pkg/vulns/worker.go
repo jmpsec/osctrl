@@ -31,6 +31,13 @@ const (
 	housekeepEach = time.Hour
 	matchBatch    = 500
 	staleNodeAge  = 30 * 24 * time.Hour
+	// escalationRetention keeps escalations long enough for any watcher
+	// that is running to read them.
+	escalationRetention = 30 * 24 * time.Hour
+	// nvdDropAfter is how long a replica with NVD off waits after the last
+	// NVD-enabled tick before deleting NVD data: replicas configured apart
+	// would otherwise delete and fully resync it on every lease handover.
+	nvdDropAfter = time.Hour
 )
 
 // Config is the worker's view of the --vuln-* flags.
@@ -55,6 +62,7 @@ type Worker struct {
 	db      *gorm.DB
 	cfg     Config
 	owner   string
+	host    string // stable across restarts, unlike owner
 	fetch   fetcher
 	osv     *OSVSource
 	nvd     *NVDSource // nil while --vuln-nvd-enabled is off
@@ -110,6 +118,7 @@ func NewWorker(db *gorm.DB, cfg Config) (*Worker, error) {
 	w := &Worker{
 		db:    db,
 		cfg:   cfg,
+		host:  host,
 		owner: fmt.Sprintf("%s-%d-%x", host, os.Getpid(), rand.Uint64()),
 		fetch: fetcher{client: cfg.HTTPClient, maxBytes: cfg.MaxDownload},
 		now:   time.Now,
@@ -165,7 +174,15 @@ func (w *Worker) Tick(ctx context.Context) error {
 	if err := w.db.Where("name = ?", workerName).First(&ws).Error; err != nil {
 		return err
 	}
-	if w.nvd == nil {
+	switch {
+	case w.nvd != nil:
+		if err := w.db.Model(&WorkerState{}).Where("name = ?", workerName).
+			Updates(map[string]any{"nvd_active_at": w.now(), "nvd_active_by": w.host}).Error; err != nil {
+			return err
+		}
+	case ws.NVDActiveAt != nil && ws.NVDActiveBy != w.host && w.now().Sub(*ws.NVDActiveAt) < nvdDropAfter:
+		log.Warn().Msg("vulns: another osctrl-api replica runs with --vuln-nvd-enabled; keeping NVD data. Set the flag the same on every replica.")
+	default:
 		if err := dropNVD(w.db, w.now()); err != nil {
 			return err
 		}
@@ -303,7 +320,7 @@ func (w *Worker) syncAll(ctx context.Context, dirs []string) {
 		log.Warn().Err(err).Msg("vulns: KEV sync failed")
 	}
 	if changed {
-		if err := refreshFlags(w.db); err != nil {
+		if err := refreshFlags(w.db, w.now()); err != nil {
 			log.Warn().Err(err).Msg("vulns: refreshing advisory flags failed")
 		}
 		// ponytail: any advisory change re-matches the whole fleet (one
@@ -350,6 +367,9 @@ func (w *Worker) housekeep() error {
 		if err := w.db.Where("resolved_at IS NOT NULL AND resolved_at < ?", now.Add(-w.cfg.Retention)).Delete(&Finding{}).Error; err != nil {
 			return err
 		}
+	}
+	if err := w.db.Where("created_at < ?", now.Add(-escalationRetention)).Delete(&Escalation{}).Error; err != nil {
+		return err
 	}
 	known := w.db.Model(&nodes.OsqueryNode{}).Select("uuid")
 	for _, model := range []any{&NodeSoftware{}, &Finding{}, &NodeState{}} {

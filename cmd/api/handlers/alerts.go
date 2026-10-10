@@ -298,8 +298,13 @@ func (h *HandlersApi) AlertRulesUpdateHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
 		return
 	}
-	if !h.vulnRuleAllowed(w, body.Source) {
-		return
+	// Only turning a rule into a vulnerability rule needs the feature: an
+	// existing one stays editable, so it can be disabled while the feature
+	// is off.
+	if existing, err := mgr.GetRule(id); err != nil || existing.Source != alerts.SourceVulnFinding {
+		if !h.vulnRuleAllowed(w, body.Source) {
+			return
+		}
 	}
 	row, err := mgr.UpdateRule(id, alerts.AlertRule{
 		Name:            body.Name,

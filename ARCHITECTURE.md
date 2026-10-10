@@ -413,6 +413,7 @@ Feature-owned tables are migrated only when their manager is initialized. In par
   - `pkg/vulns.KEV` -> `vuln_kev`
   - `pkg/vulns.CPEProduct` -> `vuln_cpe_products`
   - `pkg/vulns.Finding` -> `vuln_findings`
+  - `pkg/vulns.Escalation` -> `vuln_escalations`
   - `pkg/vulns.SyncState` -> `vuln_sync_state`
   - `pkg/vulns.WorkerState` -> `vuln_worker_state`
 - Alerts:

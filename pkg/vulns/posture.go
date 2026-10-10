@@ -66,10 +66,10 @@ var confirmedCategories = []string{CategoryDeb, CategoryRPM, CategoryPython, Cat
 // the counts of its open confirmed findings.
 //
 // A node gets a record only once advisory data is loaded and the node either
-// has confirmed findings, or has been matched with at least one package
-// assessed against an exact ecosystem feed. Anything less would let an
+// has confirmed findings, or its last match assessed at least one package
+// against an exact ecosystem feed. Anything less would let an
 // unassessed node pass (Amazon Linux, an OS-only Windows node, an ecosystem
-// whose feed never synced, a node only NVD names cover). A node with findings
+// whose feed never synced, a node only NVD names cover). An evaluated node
 // stays evaluated while an advisory sync has cleared its matched_at, so its
 // score does not flicker after every sync.
 func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePosture, error) {
@@ -81,7 +81,7 @@ func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePos
 	if !loaded || len(nodeUUIDs) == 0 {
 		return out, nil
 	}
-	matched := map[string]bool{}
+	now := r.now()
 	assessed := map[string]int{}
 	packages := map[string]int{}
 	counts := map[string]map[string]int{}
@@ -91,8 +91,11 @@ func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePos
 			return nil, err
 		}
 		for _, s := range states {
-			matched[s.NodeUUID] = s.MatchedAt != nil
-			assessed[s.NodeUUID] = s.Assessed
+			// A node silent past staleNodeAge is never re-matched against
+			// new advisories, so its clean result no longer counts.
+			if s.InventoryAt.After(now.Add(-staleNodeAge)) {
+				assessed[s.NodeUUID] = s.Assessed
+			}
 		}
 		var software []struct {
 			NodeUUID string
@@ -130,10 +133,12 @@ func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePos
 			}
 		}
 	}
-	now := r.now()
 	for _, uuid := range nodeUUIDs {
 		c, hasFindings := counts[uuid]
-		if !hasFindings && (!matched[uuid] || assessed[uuid] == 0) {
+		// Assessed is set by matching and survives the fleet-wide reset of
+		// matched_at after each advisory sync, so a clean node keeps its
+		// last assessment until it is re-matched.
+		if !hasFindings && assessed[uuid] == 0 {
 			continue
 		}
 		summary, err := json.Marshal([]map[string]int{{

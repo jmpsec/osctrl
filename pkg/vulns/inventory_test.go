@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func newTestInventory(t *testing.T) (*Inventory, *fixedClock) {
@@ -178,4 +181,30 @@ func TestIngestApplicationCategories(t *testing.T) {
 	assert.Equal(t, "2.1", byName["Tool"].Version, "without a bundle name the .app suffix is dropped")
 	assert.Equal(t, "3.3.1", byName["openssl@3"].Version)
 	assert.Equal(t, "23.1.0", byName["7zip"].Version)
+}
+
+// Rows from before vuln_node_state.assessed read 0, which posture treats as
+// "nothing assessed". Adding the column re-matches every node once, so clean
+// nodes do not lose the control until the next advisory change.
+func TestMigrateRematchesNodesFromBeforeAssessed(t *testing.T) {
+	dsn := "file:" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name()) + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	require.NoError(t, db.Exec(`CREATE TABLE vuln_node_state (node_uuid varchar(64) PRIMARY KEY, environment_id integer,
+		os_platform varchar(64), os_version varchar(128), os_major varchar(16), inventory_at datetime, matched_at datetime, not_assessed integer)`).Error)
+	require.NoError(t, db.Exec(`INSERT INTO vuln_node_state (node_uuid, inventory_at, matched_at) VALUES ('N1', '2026-10-01 00:00:00', '2026-10-01 00:00:00')`).Error)
+
+	require.NoError(t, Migrate(db))
+	var s NodeState
+	require.NoError(t, db.First(&s, "node_uuid = ?", "N1").Error)
+	assert.Nil(t, s.MatchedAt, "re-matched once the column exists")
+
+	now := time.Now()
+	require.NoError(t, db.Model(&NodeState{}).Where("node_uuid = ?", "N1").Update("matched_at", now).Error)
+	require.NoError(t, Migrate(db))
+	require.NoError(t, db.First(&s, "node_uuid = ?", "N1").Error)
+	assert.NotNil(t, s.MatchedAt, "later migrations leave matching alone")
 }

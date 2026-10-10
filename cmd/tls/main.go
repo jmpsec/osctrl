@@ -464,6 +464,11 @@ func osctrlService() {
 		if alertsWorker != nil {
 			alerts.RegisterWorkerMetrics(prometheus.DefaultRegisterer, alertsWorker)
 		}
+		// Vulnerability feeds, findings and the matching queue, read from
+		// the database the osctrl-api worker writes (--vuln-enabled here).
+		if vulnInventory != nil {
+			vulns.RegisterMetrics(prometheus.DefaultRegisterer, vulnInventory.DB)
+		}
 		// Creating a new prometheus service
 		prometheusServer := http.NewServeMux()
 		prometheusServer.Handle("/metrics", promhttp.Handler())
