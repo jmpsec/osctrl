@@ -13,6 +13,10 @@ export interface Features {
   /** Health/system status (--health-enabled). When false the health routes
    * are absent and the SPA hides the Health section. */
   health?: boolean;
+  /** Vulnerability monitoring (--vuln-enabled). When false the
+   * /api/v1/vulnerabilities routes are absent and the SPA hides every
+   * vulnerability surface. */
+  vulnerabilities?: boolean;
   accelerated: boolean;
   console?: boolean;
   file_explorer: boolean;
