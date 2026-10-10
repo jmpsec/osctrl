@@ -314,4 +314,24 @@ func TestMatchReopenRecordsNoEscalation(t *testing.T) {
 	var n int64
 	require.NoError(t, f.db.Model(&Escalation{}).Count(&n).Error)
 	assert.Zero(t, n)
+	got := f.findings(t, "N1")
+	require.NotNil(t, got[0].ReopenedAt)
+	assert.Equal(t, f.clock.now(), got[0].ReopenedAt.UTC())
+	assert.Equal(t, SeverityCritical, got[0].PeakSeverity)
+}
+
+// The matcher measures escalations against the peak too.
+func TestMatchEscalatesOnlyAboveThePeak(t *testing.T) {
+	f := newMatchFixture(t)
+	f.node(t, "N1", "debian", "12", "12", NodeSoftware{Category: CategoryDeb, Name: "openssl", Version: "3.0.11-1"})
+	f.advisory(t, "DSA-1-1", SeverityHigh, "Debian:12", "openssl", fixedAt("0", "3.0.13-1"))
+	require.NoError(t, f.matcher.MatchNode("N1"))
+	for _, sev := range []string{SeverityUnknown, SeverityHigh} {
+		require.NoError(t, f.db.Model(&Advisory{}).Where("id = ?", "DSA-1-1").Update("severity", sev).Error)
+		f.clock.advance(time.Hour)
+		require.NoError(t, f.matcher.MatchNode("N1"))
+	}
+	var n int64
+	require.NoError(t, f.db.Model(&Escalation{}).Count(&n).Error)
+	assert.Zero(t, n, "back to its peak is not news")
 }

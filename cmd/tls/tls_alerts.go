@@ -127,7 +127,7 @@ func (s *tlsFindingSource) snapshots(rows []vulns.NewFinding) []alerts.FindingSn
 			AdvisoryID: r.AdvisoryID, Package: r.Package,
 			InstalledVersion: r.InstalledVersion, FixedVersion: r.FixedVersion,
 			Severity: r.Severity, KEV: r.KEV,
-			Escalated: r.Escalated, PrevSeverity: r.PrevSeverity, PrevKEV: r.PrevKEV,
+			Escalated: r.Escalated, PrevSeverity: r.PrevSeverity, PrevKEV: r.PrevKEV, FindingID: r.FindingID,
 		})
 	}
 	return out
