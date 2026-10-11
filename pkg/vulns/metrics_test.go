@@ -82,3 +82,19 @@ func TestMetricsFailClosed(t *testing.T) {
 	require.NoError(t, sqlDB.Close())
 	assert.Empty(t, gather(t, c))
 }
+
+// After a failed read the database is left alone until metricsTTL passes.
+func TestMetricsFailedReadIsNotRetriedWithinTheTTL(t *testing.T) {
+	db := newTestDB(t)
+	clock := newClock()
+	c := newMetricsCollector(db, clock.now)
+	require.NoError(t, db.Migrator().DropTable(&Advisory{}))
+	assert.Empty(t, gather(t, c))
+
+	require.NoError(t, db.AutoMigrate(&Advisory{}))
+	require.NoError(t, db.Create(&Advisory{ID: "DSA-1", Severity: SeverityHigh}).Error)
+	assert.Empty(t, gather(t, c), "retried inside the TTL")
+
+	clock.advance(metricsTTL)
+	assert.Equal(t, float64(1), gather(t, c)["osctrl_vuln_advisories"])
+}
