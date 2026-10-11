@@ -49,6 +49,7 @@ type metricsCollector struct {
 	mu      sync.Mutex
 	readAt  time.Time
 	reading *metricsReading
+	failAt  time.Time // last failed read; zero when the last read worked
 }
 
 func newMetricsCollector(db *gorm.DB, now func() time.Time) *metricsCollector {
@@ -91,14 +92,20 @@ func (c *metricsCollector) read() *metricsReading {
 	if c.reading != nil && now.Sub(c.readAt) < metricsTTL {
 		return c.reading
 	}
+	// A stalled database is not asked again for a minute, so scrapes do not
+	// each wait out the timeout.
+	if !c.failAt.IsZero() && now.Sub(c.failAt) < metricsTTL {
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), metricsTimeout)
 	defer cancel()
 	r, err := c.query(ctx, now)
 	if err != nil {
 		log.Warn().Err(err).Msg("vulns: reading metrics failed")
+		c.failAt = now
 		return nil
 	}
-	c.reading, c.readAt = r, now
+	c.reading, c.readAt, c.failAt = r, now, time.Time{}
 	return r
 }
 
