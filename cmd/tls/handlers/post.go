@@ -930,7 +930,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check if provided secret is valid and if so, prepare flags
 	if h.checkValidSecret(t.Secret, env) {
-		flagsStr, err := h.Envs.GenerateFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
+		flagsStr, err := h.Envs.NodeFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
 		if err != nil {
 			log.Err(err).Msg("error generating flags")
 			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
@@ -1046,7 +1046,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Check if provided secret is valid and if so, prepare flags
 	if h.checkValidSecret(t.Secret, env) {
-		flagsStr, err := h.Envs.GenerateFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
+		flagsStr, err := h.Envs.NodeFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
 		if err != nil {
 			log.Err(err).Msg("error generating flags")
 			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))

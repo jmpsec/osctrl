@@ -938,7 +938,5 @@ func (h *HandlersApi) EnvCertUploadHandler(w http.ResponseWriter, r *http.Reques
 func substitutePlatformPaths(flags, envName, dir, sep string) string {
 	secretPath := dir + sep + "osctrl-" + envName + ".secret"
 	certPath := dir + sep + "osctrl-" + envName + ".crt"
-	out := strings.ReplaceAll(flags, "__SECRET_FILE__", secretPath)
-	out = strings.ReplaceAll(out, "__CERT_FILE__", certPath)
-	return out
+	return environments.FillFlagPaths(flags, secretPath, certPath)
 }
