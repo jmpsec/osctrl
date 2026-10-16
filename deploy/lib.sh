@@ -414,15 +414,15 @@ function prepare_deployment() {
   install_yq
   install_nvm
 
-  # Install go 1.27.1 if not present
+  # Install go 1.27.2 if not present
   if ! [ -x "$(command -v go)" ]; then
     install_go_27
   fi
 }
 
-# Install go 1.27.1 from tgz
+# Install go 1.27.2 from tgz
 function install_go_27() {
-  local __version="1.27.1"
+  local __version="1.27.2"
   local __arch="$(uname -m)"
   if [[ "$__arch" == "x86_64" ]]; then
     __arch="amd64"
