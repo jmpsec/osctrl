@@ -3,6 +3,7 @@ package environments
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -208,6 +209,28 @@ func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, cer
 		FlagReadMaxValue:  GenReadMaxFlag(ReadMaxValue),
 	}
 	return ParseFlagTemplate("flags", FlagsTemplate, data), nil
+}
+
+// FillFlagPaths replaces the secret and certificate placeholders in flags.
+// An empty path keeps its placeholder, as GenerateFlags does.
+func FillFlagPaths(flags, secretPath, certPath string) string {
+	if secretPath != "" {
+		flags = strings.ReplaceAll(flags, EmptyFlagSecret, secretPath)
+	}
+	if certPath != "" {
+		flags = strings.ReplaceAll(flags, EmptyFlagCert, certPath)
+	}
+	return flags
+}
+
+// NodeFlags is the flagfile a node of env runs with: the environment's
+// stored flags, which operators edit, with the paths filled. Environments
+// with no stored flags get the generated defaults.
+func (environment *EnvManager) NodeFlags(env TLSEnvironment, secretPath, certPath string, osqCfg config.YAMLConfigurationOsquery) (string, error) {
+	if strings.TrimSpace(env.Flags) == "" {
+		return environment.GenerateFlags(env, secretPath, certPath, osqCfg)
+	}
+	return FillFlagPaths(env.Flags, secretPath, certPath), nil
 }
 
 // GenerateFlagsEnv to generate flags by environment name
