@@ -415,7 +415,7 @@ func init() {
 						},
 						&cli.StringFlag{
 							Name:    "platform",
-							Aliases: []string{"p"},
+							Aliases: []string{"P"},
 							Usage:   "Node platform(s) to be used. Comma separated for multiple values",
 						},
 						&cli.StringFlag{
