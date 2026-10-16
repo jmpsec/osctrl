@@ -31,7 +31,7 @@ repos:
       - id: go-unit-tests
 
   - repo: https://github.com/golangci/golangci-lint
-    rev: v2.13.2
+    rev: v2.14.0
     hooks:
       - id: golangci-lint
         args: [--config=.golangci.yml]
