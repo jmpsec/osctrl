@@ -79,7 +79,8 @@ type HandlersTLS struct {
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.YAMLConfigurationDebug
 	AuditLog        *auditlog.AuditLogManager
-	NodeConfig      *nodeconfig.Manager // nil: per-node config overrides are inert
+	NodeConfig      *nodeconfig.Manager      // nil: per-node config overrides are inert
+	FlagsOverrides  *nodeconfig.FlagsManager // nil: per-node flags overrides are inert
 	// DBHealth, when wired via WithDBHealth, lets HealthHandler
 	// report backend degradation. nil means "no monitor" and the
 	// health endpoint reports healthy as before.
@@ -144,6 +145,13 @@ func WithSessionHints(hints *cache.SessionHints) Option {
 func WithNodeConfig(m *nodeconfig.Manager) Option {
 	return func(h *HandlersTLS) {
 		h.NodeConfig = m
+	}
+}
+
+// WithFlagsOverrides enables per-node osquery flags overrides for osctrld.
+func WithFlagsOverrides(m *nodeconfig.FlagsManager) Option {
+	return func(h *HandlersTLS) {
+		h.FlagsOverrides = m
 	}
 }
 

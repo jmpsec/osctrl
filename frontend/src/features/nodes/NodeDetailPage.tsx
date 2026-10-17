@@ -8,7 +8,7 @@ import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Archive, Bell, Copy, FileArchive, PlayCircle, RefreshCw, Tag, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { getNode, getNodeConfig, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
+import { getNode, getNodeConfig, getNodeFlags, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
 import { runCarve } from '$/api/carves';
 import { runQuery } from '$/api/queries';
 import { listSavedQueries } from '$/api/saved-queries';
@@ -737,7 +737,14 @@ export function NodeDetailPage() {
     enabled: canAdminNode,
     staleTime: 10_000,
   });
+  const { data: nodeFlags } = useQuery({
+    queryKey: ['node-flags', env, uuid],
+    queryFn: () => getNodeFlags(env, uuid),
+    enabled: canAdminNode,
+    staleTime: 10_000,
+  });
   const hasConfigOverride = nodeConfig !== undefined && nodeConfig.override !== '';
+  const hasFlagsOverride = nodeFlags !== undefined && nodeFlags.override !== '';
 
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => {
@@ -1150,6 +1157,19 @@ export function NodeDetailPage() {
         </div>
       )}
 
+      {hasFlagsOverride && nodeFlags && (
+        <div
+          role="status"
+          className="mb-4 rounded-md border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-3 py-2 text-sm text-[color:var(--text-1)]"
+        >
+          This node has a flags override, set by {nodeFlags.updated_by} on {isoDate(nodeFlags.updated_at)}.
+          {nodeFlags.expires_at &&
+            (nodeFlags.expired
+              ? ` It expired on ${isoDate(nodeFlags.expires_at)} and is no longer applied.`
+              : ` It expires ${isoDate(nodeFlags.expires_at)}.`)}
+        </div>
+      )}
+
       {/* ── Tabs ── */}
       <div className="border-b border-[color:var(--border)] mb-4">
         <nav
@@ -1179,7 +1199,7 @@ export function NodeDetailPage() {
               )}
             >
               {label}
-              {id === 'configuration' && hasConfigOverride && (
+              {id === 'configuration' && (hasConfigOverride || hasFlagsOverride) && (
                 <span
                   data-testid="config-override-dot"
                   aria-label="has override"

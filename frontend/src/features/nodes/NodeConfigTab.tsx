@@ -6,31 +6,14 @@ import { buttonClasses } from '$/components/atoms/Button';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
-import { cn } from '$/lib/cn';
-
-type View = 'applied' | 'environment' | 'override' | 'diff';
-
-const VIEWS: { id: View; label: string }[] = [
-  { id: 'applied', label: 'Applied' },
-  { id: 'environment', label: 'Environment' },
-  { id: 'override', label: 'Node override' },
-  { id: 'diff', label: 'Diff' },
-];
+import { NodeFlagsView } from './NodeFlagsView';
+import { plainBtn, toLocalInput, VIEWS, warnBtn, type View } from './overrideShared';
 
 const EDITOR_LABELS: Record<Exclude<View, 'diff'>, string> = {
   applied: 'Applied configuration',
   environment: 'Environment configuration',
   override: 'Node override configuration',
 };
-
-const warnBtn = cn(
-  'px-3 py-1.5 text-xs font-medium rounded transition-colors',
-  'bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.16)] text-[color:var(--warning)]',
-  'hover:bg-[rgba(var(--warning-r),var(--warning-g),var(--warning-b),0.24)]',
-  'disabled:opacity-40 disabled:cursor-not-allowed',
-);
-const plainBtn =
-  'px-3 py-1.5 text-xs font-medium rounded border border-[color:var(--border)] text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
 
 /**
  * Pretty-print both configs with object keys sorted so equal configs serialize
@@ -54,16 +37,7 @@ function canonicalPair(a: string, b: string): [string, string] {
   }
 }
 
-/** ISO timestamp -> value for <input type="datetime-local"> (local time). */
-function toLocalInput(iso: string | null): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {
+function ConfigView({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {
   const qc = useQueryClient();
   const queryKey = ['node-config', env, uuid];
   const { data, isLoading, error } = useQuery({
@@ -279,6 +253,35 @@ export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: stri
             </div>
           </div>
         </ModalShell>
+      )}
+    </div>
+  );
+}
+
+type Kind = 'configuration' | 'flags';
+
+/** Per-node overrides: osquery configuration (JSON) or startup flags (flagfile). */
+export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {
+  const [kind, setKind] = useState<Kind>('configuration');
+  return (
+    <div className="space-y-3">
+      <div role="group" aria-label="Override type" className="flex gap-1">
+        {(['configuration', 'flags'] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={kind === k}
+            onClick={() => setKind(k)}
+            className={buttonClasses({ variant: kind === k ? 'primary' : 'ghost', size: 'sm' })}
+          >
+            {k === 'configuration' ? 'Configuration' : 'Flags'}
+          </button>
+        ))}
+      </div>
+      {kind === 'configuration' ? (
+        <ConfigView env={env} uuid={uuid} hostname={hostname} />
+      ) : (
+        <NodeFlagsView env={env} uuid={uuid} hostname={hostname} />
       )}
     </div>
   );

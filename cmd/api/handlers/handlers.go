@@ -94,6 +94,7 @@ type HandlersApi struct {
 	PostureEnabled       bool
 	Vulns                *vulns.Reader // nil when --vuln-enabled is off
 	NodeConfig           *nodeconfig.Manager
+	FlagsOverrides       *nodeconfig.FlagsManager
 	// MFA owns the second-factor tables. Nil disables every MFA route.
 	MFA *mfa.Manager
 	// WebAuthn is nil when no RP ID or origin could be resolved, which
@@ -312,6 +313,13 @@ func WithPosture(pm *posture.PostureManager) HandlersOption {
 func WithNodeConfig(m *nodeconfig.Manager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.NodeConfig = m
+	}
+}
+
+// WithFlagsOverrides wires the per-node osquery flags override manager.
+func WithFlagsOverrides(m *nodeconfig.FlagsManager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.FlagsOverrides = m
 	}
 }
 

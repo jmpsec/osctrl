@@ -44,6 +44,18 @@ type FlagsRequest struct {
 	Secret     string `json:"secret"`
 	SecrefFile string `json:"secretFile"`
 	CertFile   string `json:"certFile"`
+	// UUID and Apply are sent by osctrld for its service sync; older osctrld
+	// sends neither. Both are untrusted node input.
+	UUID  string              `json:"uuid,omitempty"`
+	Apply *OsctrldApplyStatus `json:"apply,omitempty"`
+}
+
+// OsctrldApplyStatus is what osctrld reports about its last flags apply.
+type OsctrldApplyStatus struct {
+	Result string    `json:"result"`
+	SHA256 string    `json:"sha256"`
+	Error  string    `json:"error,omitempty"`
+	At     time.Time `json:"at"`
 }
 
 // CertRequest to retrieve certificate
@@ -120,6 +132,37 @@ type NodeConfigResponse struct {
 
 // NodeConfigRequest sets a node's osquery configuration override.
 type NodeConfigRequest struct {
+	Override  string     `json:"override"`
+	ExpiresAt *time.Time `json:"expires_at"`
+}
+
+// NodeFlagsResponse is a node's osquery flags override state. Environment and
+// Applied keep the __SECRET_FILE__ and __CERT_FILE__ placeholders. Applied
+// equals Environment when there is no override or it has expired.
+type NodeFlagsResponse struct {
+	Environment string             `json:"environment"`
+	Override    string             `json:"override"`
+	Applied     string             `json:"applied"`
+	ExpiresAt   *time.Time         `json:"expires_at"`
+	Expired     bool               `json:"expired"`
+	UpdatedBy   string             `json:"updated_by"`
+	UpdatedAt   *time.Time         `json:"updated_at"`
+	Conflicts   []string           `json:"conflicts"`
+	Osctrld     *OsctrldStatusView `json:"osctrld"`
+}
+
+// OsctrldStatusView is the node's last osctrld flags fetch and apply result.
+// The apply fields are reported by the host and are untrusted.
+type OsctrldStatusView struct {
+	LastFetchedAt   time.Time  `json:"last_fetched_at"`
+	ApplyResult     string     `json:"apply_result"`
+	ApplyError      string     `json:"apply_error"`
+	ApplyAt         *time.Time `json:"apply_at"`
+	RejectedCurrent bool       `json:"rejected_current"`
+}
+
+// NodeFlagsRequest sets a node's osquery flags override.
+type NodeFlagsRequest struct {
 	Override  string     `json:"override"`
 	ExpiresAt *time.Time `json:"expires_at"`
 }

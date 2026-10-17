@@ -64,7 +64,7 @@ Main runtime components:
 - `pkg/environments`: environment model, enrollment/config path metadata, package/script metadata.
 - `pkg/health`: deployment health — the `service_status` heartbeat table, component status derivation (operational/degraded/down/stale/unknown), Go runtime snapshots, and a 24h-refreshed upgrade-version cache. Gated by `--health-enabled` (default off).
 - `pkg/nodes`: node registry, lookup, archive, metadata updates.
-- `pkg/nodeconfig`: per-node osquery configuration overrides (validation, deep merge, Redis-backed cache).
+- `pkg/nodeconfig`: per-node osquery configuration and flags overrides (validation, merge rules, Redis-backed caches) and the osctrld status record.
 - `pkg/queries`: distributed query definitions, targets, node-query state, saved queries.
 - `pkg/carves`: file carving metadata and storage backends (`db`, `local`, `s3`).
 - `pkg/logging`: TLS log pipeline, sink implementations (`db`, `file`, `stdout`, `graylog`, `splunk`, `logstash`, `kinesis`, `s3`, `kafka`, `elastic`), and DB/S3 readers.
@@ -321,7 +321,9 @@ Concrete example for config:
 6. It queues a `lastSeenUpdate` in the batch writer.
 7. It returns `env.Configuration` as the osquery config payload, with the node's per-node override (`pkg/nodeconfig`) deep-merged on top when one exists and has not expired.
 
-Per-node configuration overrides are admin-only (environment admin, enforced server-side and audited) and layered on the environment configuration: objects merge key by key, other values replace, and environment changes keep reaching the node. Options that keep the host connected to osctrl (e.g. config/logger/distributed/enroll TLS settings, host identifier) and `null` values are refused. The override applies only while the node is in the environment it was saved for, and an invalid stored override falls back to the environment configuration. An override may carry an expiry (none by default); an expired one stops applying and stays listed until removed. Changes take effect on the host's next config fetch; osquery does not reset options that the environment doesn't set, so those keep their overridden value until osquery restarts. Flags overrides are not available yet because osctrld cannot identify the node.
+Per-node configuration overrides are admin-only (environment admin, enforced server-side and audited) and layered on the environment configuration: objects merge key by key, other values replace, and environment changes keep reaching the node. Options that keep the host connected to osctrl (e.g. config/logger/distributed/enroll TLS settings, host identifier) and `null` values are refused. The override applies only while the node is in the environment it was saved for, and an invalid stored override falls back to the environment configuration. An override may carry an expiry (none by default); an expired one stops applying and stays listed until removed. Changes take effect on the host's next config fetch; osquery does not reset options that the environment doesn't set, so those keep their overridden value until osquery restarts.
+
+Per-node flags overrides (`GET|PUT|DELETE /api/v1/nodes/{env}/node/{uuid}/flags`, same admin/audit/expiry rules) follow the same model for the osquery flagfile. The text is one flag per line (`--name` or `--name=value`); connection flags (including their `no<name>` forms) are refused, while flags also set as configuration options are listed as conflicts (a warning, not refused). The override merges into the environment flags by name (replacing a flag in place, appending new ones). Only `osctrld` reads flags, and only in service mode, so the override reaches a host when osctrld's sync request carries that host's osquery UUID (`uuid`, from `system_info.uuid`) and the UUID matches the node: `osctrl-tls` then merges the active override into the osctrld `flags` and `verify` responses and records the fetch in `node_osctrld_status`. osctrld reports the outcome of its last flags change (`apply`); because osquery exits on a flag it rejects, osctrld checks that `osqueryd` stays running after a restart, otherwise restores the environment flags, restarts, reports `rejected` and does not re-apply that content while it is served. Flags apply on the next sync (default 60 minutes) with an osquery restart and fully revert on removal or expiry. Deleting a node (API or CLI) removes its overrides and osctrld status.
 
 ### Steady-state database load
 
@@ -380,6 +382,8 @@ Feature-owned tables are migrated only when their manager is initialized. In par
   - `pkg/nodes.OsqueryNode` -> `osquery_nodes`
   - `pkg/nodes.ArchiveOsqueryNode` -> `archive_osquery_nodes`
   - `pkg/nodeconfig.Override` -> `node_config_overrides`
+  - `pkg/nodeconfig.FlagsOverride` -> `node_flags_overrides`
+  - `pkg/nodeconfig.OsctrldStatus` -> `node_osctrld_status`
 - Users and auth:
   - `pkg/users.AdminUser` -> `admin_users`
   - `pkg/users.UserPermission` -> `user_permissions`
