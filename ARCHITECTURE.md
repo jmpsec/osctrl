@@ -65,6 +65,7 @@ Main runtime components:
 - `pkg/health`: deployment health — the `service_status` heartbeat table, component status derivation (operational/degraded/down/stale/unknown), Go runtime snapshots, and a 24h-refreshed upgrade-version cache. Gated by `--health-enabled` (default off).
 - `pkg/nodes`: node registry, lookup, archive, metadata updates.
 - `pkg/nodeconfig`: per-node osquery configuration and flags overrides (validation, merge rules, Redis-backed caches) and the osctrld status record.
+- `pkg/extensions`: osquery extension library (files up to 64 MB stored in the database as 1 MiB chunks shared by SHA-256), environment and host assignments, per-node status, and the serve-time enforcement of who may receive what.
 - `pkg/queries`: distributed query definitions, targets, node-query state, saved queries.
 - `pkg/carves`: file carving metadata and storage backends (`db`, `local`, `s3`).
 - `pkg/logging`: TLS log pipeline, sink implementations (`db`, `file`, `stdout`, `graylog`, `splunk`, `logstash`, `kinesis`, `s3`, `kafka`, `elastic`), and DB/S3 readers.
@@ -325,6 +326,15 @@ Per-node configuration overrides are admin-only (environment admin, enforced ser
 
 Per-node flags overrides (`GET|PUT|DELETE /api/v1/nodes/{env}/node/{uuid}/flags`, same admin/audit/expiry rules) follow the same model for the osquery flagfile. The text is one flag per line (`--name` or `--name=value`); connection flags (including their `no<name>` forms) are refused, while flags also set as configuration options are listed as conflicts (a warning, not refused). The override merges into the environment flags by name (replacing a flag in place, appending new ones). Only `osctrld` reads flags, and only in service mode, so the override reaches a host when osctrld's sync request carries that host's osquery UUID (`uuid`, from `system_info.uuid`) and the UUID matches the node: `osctrl-tls` then merges the active override into the osctrld `flags` and `verify` responses and records the fetch in `node_osctrld_status`. osctrld reports the outcome of its last flags change (`apply`); because osquery exits on a flag it rejects, osctrld checks that `osqueryd` stays running after a restart, otherwise restores the environment flags, restarts, reports `rejected` and does not re-apply that content while it is served. Flags apply on the next sync (default 60 minutes) with an osquery restart and fully revert on removal or expiry. Deleting a node (API or CLI) removes its overrides and osctrld status.
 
+
+### osquery extensions
+
+`pkg/extensions` delivers osquery extension binaries to hosts through `osctrld`. Only super admins manage the library under `/api/v1/extensions`: `POST` creates an extension (JSON), and a multipart `PUT /api/v1/extensions/{id}/files/{platform}/{arch}` (field `file`, ≤ 64 MB) uploads the binary for one platform/architecture. A file is stored in the database as 1 MiB chunks keyed by SHA-256, so identical content is stored once. Assignment follows the risk of the extension: environment admins assign ordinary extensions to an environment (`/api/v1/environments/extensions/{env}[/{id}]`), while extensions marked as executing commands are assigned only by super admins, per host and with an optional expiry (`/api/v1/nodes/{env}/node/{uuid}/extensions[/{id}]`; environment admins can view them, and the expiry key must be present in the request). The split is enforced when serving, not only in the API: an environment assignment never delivers a command-execution extension, and each host's list is computed per host (the environment's extensions plus that host's own unexpired command-execution assignments). Downloads are authorised by the environment secret and limited, by content hash, to files assigned in that environment, not per host. Extension names are unique ignoring case, since hosts may have case-insensitive file systems. Deleting a node removes its assignments and statuses; deleting an extension removes the statuses reported for it; removing a host assignment removes that host's status for it, unless the status is `kept`. `osctrld` reports a removal as `removed`, or as `kept` when it failed and the extension is still on the host (repeated every sync while it stays); a `kept` command-execution extension the host has no unexpired assignment for (removed or expired) is flagged on the node page, ahead of the expired wording, until a later report replaces it, and meanwhile the extension cannot be deleted from the library or have command execution switched off.
+
+`osctrl-tls`, under `osctrld.enabled`, serves `POST /{env}/osctrld-extensions` (the list for the host's UUID and platform/architecture, which also records the status `osctrld` reports; a request without platform and architecture, from an `osctrld` that predates extensions, gets an empty list) and `POST /{env}/osctrld-extension` (download, body `{secret, sha256}`; the hash must belong to a file assigned to the environment or, unexpired, to a host in it). Hosts must run `osctrld` in service mode and pick up changes on its next sync (default 60 minutes). `osctrld` verifies size and SHA-256, installs files root-owned, manages only its own autoload lines (the autoload file must be a `*.load` file directly in osquery's base directory, otherwise it is refused and reported), checks that each extension's process runs after the osquery restart, and rolls back failures and reports them; the node page shows the per-extension status. The operator UI exposes Admin › Extensions (library), the environment Configuration › Extensions tab and the node Configuration › Extensions view.
+
+Because uploads go through nginx, the `/api/` location in the frontend configs allows 65 MB bodies. The direct API vhost that `deploy/provision.sh` builds from `deploy/nginx/ssl.conf` inherits the global `client_max_body_size 20M` from `deploy/nginx/nginx.conf`, so uploads over 20 MB through it fail until `client_max_body_size` is raised for that vhost.
+
 ### Steady-state database load
 
 - Node check-ins are coalesced per TLS process and persisted in parameterized bulk updates of at most 100 nodes. Each node retains its observation timestamp, normalized to database precision; older observations cannot replace newer timestamps or IPs. Equal stored timestamps keep the first persisted IP. The existing writer batch size, timeout, and buffer settings still control collection. The queue remains process-local and best-effort on shutdown or database errors; it is not a durable heartbeat store.
@@ -384,6 +394,9 @@ Feature-owned tables are migrated only when their manager is initialized. In par
   - `pkg/nodeconfig.Override` -> `node_config_overrides`
   - `pkg/nodeconfig.FlagsOverride` -> `node_flags_overrides`
   - `pkg/nodeconfig.OsctrldStatus` -> `node_osctrld_status`
+- Extensions:
+  - `pkg/extensions.Extension` -> `extensions`; `ExtensionFile` -> `extension_files`; `ExtensionChunk` -> `extension_chunks`
+  - `pkg/extensions.EnvExtension` -> `env_extensions`; `NodeExtension` -> `node_extensions`; `NodeExtensionStatus` -> `node_extension_statuses`
 - Users and auth:
   - `pkg/users.AdminUser` -> `admin_users`
   - `pkg/users.UserPermission` -> `user_permissions`
@@ -445,7 +458,7 @@ Redis-only state such as activity rollups, query-dispatch hints, and alert coold
 - Production-oriented assets live under `deploy/`:
   - sample YAML configs in `deploy/config/*.yml`
   - systemd unit template in `deploy/config/systemd.service`
-  - nginx config in `deploy/nginx/`
+  - nginx config in `deploy/nginx/` (extension uploads need `client_max_body_size` of 65m on the API location; the direct API vhost from `provision.sh` inherits 20M, see the osquery extensions section)
   - Dockerfiles in `deploy/cicd/docker/` and `deploy/docker/dockerfiles/`
 - Tagged releases publish direct `osctrl-mcp` binaries for Linux, macOS, and Windows on amd64 and arm64. Branch CI retains snapshot MCP binaries as workflow artifacts. MCP is not currently shipped as a container or native OS package.
 - GoReleaser creates DEB and RPM packages for `osctrl-tls`, `osctrl-api`, and `osctrl-cli`.

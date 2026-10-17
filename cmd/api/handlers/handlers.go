@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/events"
+	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/health"
@@ -95,6 +96,7 @@ type HandlersApi struct {
 	Vulns                *vulns.Reader // nil when --vuln-enabled is off
 	NodeConfig           *nodeconfig.Manager
 	FlagsOverrides       *nodeconfig.FlagsManager
+	Extensions           *extensions.Manager
 	// MFA owns the second-factor tables. Nil disables every MFA route.
 	MFA *mfa.Manager
 	// WebAuthn is nil when no RP ID or origin could be resolved, which
@@ -320,6 +322,13 @@ func WithNodeConfig(m *nodeconfig.Manager) HandlersOption {
 func WithFlagsOverrides(m *nodeconfig.FlagsManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.FlagsOverrides = m
+	}
+}
+
+// WithExtensions wires the osquery extensions library.
+func WithExtensions(m *extensions.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Extensions = m
 	}
 }
 

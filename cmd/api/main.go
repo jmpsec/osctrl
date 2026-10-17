@@ -28,6 +28,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/events"
+	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/health"
@@ -122,6 +123,8 @@ const (
 	// API log sinks path
 	apiLogSinksPath = "/log-sinks"
 	apiAlertsPath   = "/alerts"
+	// API osquery extensions library path
+	apiExtensionsPath = "/extensions"
 	// API health / system status path
 	apiHealthPath        = "/health"
 	apiAuthProvidersPath = "/auth-providers"
@@ -460,6 +463,10 @@ func osctrlAPIService() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize node flags overrides")
 	}
+	extensionsMgr, err := extensions.NewManager(db.Conn)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize osquery extensions")
+	}
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, 0)
@@ -690,6 +697,7 @@ func osctrlAPIService() {
 		handlers.WithNodes(nodesmgr),
 		handlers.WithNodeConfig(nodeConfigMgr),
 		handlers.WithFlagsOverrides(nodeFlagsMgr),
+		handlers.WithExtensions(extensionsMgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithConsole(consolemgr),
 		handlers.WithFileExplorer(fileexplorermgr),
@@ -858,6 +866,35 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"DELETE "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/flags",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeFlagsDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: osquery extensions library (super admin)
+	muxAPI.Handle(
+		"GET "+_apiPath(apiExtensionsPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ExtensionsListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiExtensionsPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ExtensionsCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PATCH "+_apiPath(apiExtensionsPath)+"/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ExtensionsUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiExtensionsPath)+"/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ExtensionsDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PUT "+_apiPath(apiExtensionsPath)+"/{id}/files/{platform}/{arch}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ExtensionFilePutHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiExtensionsPath)+"/{id}/files/{platform}/{arch}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ExtensionFileDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: node extensions (view: environment admin; assign/remove: super admin)
+	muxAPI.Handle(
+		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/extensions",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeExtensionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PUT "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/extensions/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeExtensionAssignHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/extensions/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeExtensionRemoveHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiNodesPath)+"/{env}/delete",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
@@ -1209,6 +1246,17 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"PATCH "+_apiPath(apiEnvironmentsPath)+"/packages/{env}/{id}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvPackageUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: environment extensions (environment admin). Same shape as packages:
+	// /{env}/extensions would overlap /map/{target} and friends in ServeMux.
+	muxAPI.Handle(
+		"GET "+_apiPath(apiEnvironmentsPath)+"/extensions/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvExtensionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PUT "+_apiPath(apiEnvironmentsPath)+"/extensions/{env}/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvExtensionAssignHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiEnvironmentsPath)+"/extensions/{env}/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvExtensionRemoveHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: tags by environment
 	muxAPI.Handle(
 		"GET "+_apiPath(apiTagsPath),

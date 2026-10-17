@@ -9,6 +9,7 @@ import {
   DatabaseBackup,
   Download,
   FileSearch,
+  Puzzle,
   FileStack,
   HeartPulse,
   LayoutDashboard,
@@ -257,6 +258,8 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
     pathname.startsWith('/_app/config') || pathname.startsWith('/config');
   const isLogSinksActive =
     pathname.startsWith('/_app/log-sinks') || pathname.startsWith('/log-sinks');
+  const isExtensionsActive =
+    pathname.startsWith('/_app/extensions') || pathname.startsWith('/extensions');
   const isAlertsActive =
     pathname.startsWith('/_app/alerts') || pathname.startsWith('/alerts');
   const isHealth = pathname.startsWith('/_app/health') || pathname.startsWith('/health');
@@ -588,6 +591,15 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.logSinks')}
             </NavItem>}
+            <NavItem
+              collapsed={collapsed}
+              active={isExtensionsActive}
+              to="/_app/extensions"
+              tone="violet"
+              icon={<Puzzle size={14} strokeWidth={1.8} />}
+            >
+              {t('nav.extensions')}
+            </NavItem>
             {features?.alerts && <NavItem
               collapsed={collapsed}
               active={isAlertsActive}

@@ -11,7 +11,7 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { NodeDetailPage } from './NodeDetailPage';
-import type { NodeConfig, NodeFlags, NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag, PostureScore } from '$/api/types';
+import type { NodeConfig, NodeExtensions, NodeFlags, NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag, PostureScore } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
 import type { Features } from '$/api/features';
 
@@ -20,6 +20,7 @@ const mockListNodeLogs = vi.fn<() => Promise<unknown>>();
 const mockDeleteNode = vi.fn<() => Promise<{ message: string }>>();
 const mockGetNodeConfig = vi.fn<() => Promise<NodeConfig>>();
 const mockGetNodeFlags = vi.fn<() => Promise<NodeFlags>>();
+const mockGetNodeExtensions = vi.fn<() => Promise<NodeExtensions>>();
 const mockGetNodePosture = vi.fn<() => Promise<NodePosture[]>>();
 const mockGetNodePostureScore = vi.fn<() => Promise<PostureScore>>();
 const mockGetMe = vi.fn<() => Promise<unknown>>();
@@ -42,6 +43,10 @@ vi.mock('$/api/nodes', () => ({
   getNodeFlags: (...args: unknown[]) => mockGetNodeFlags(...(args as [])),
   getNodePosture: (...args: unknown[]) => mockGetNodePosture(...(args as [])),
   getNodePostureScore: (...args: unknown[]) => mockGetNodePostureScore(...(args as [])),
+}));
+
+vi.mock('$/api/extensions', () => ({
+  getNodeExtensions: (...args: unknown[]) => mockGetNodeExtensions(...(args as [])),
 }));
 
 vi.mock('$/api/users', () => ({
@@ -185,6 +190,26 @@ function makeNodeFlags(overrides: Partial<NodeFlags> = {}): NodeFlags {
     osctrld: null,
     ...overrides,
   };
+}
+
+function makeNodeExtensions(overrides: Partial<NodeExtensions> = {}): NodeExtensions {
+  return { effective: [], assignments: [], status: [], library: null, ...overrides };
+}
+
+function hostAssignment(o: Partial<NonNullable<NodeExtensions['assignments']>[number]> = {}) {
+  return {
+    extension_id: 9,
+    name: 'cmd-ext',
+    expires_at: null,
+    expired: false,
+    created_by: 'root',
+    created_at: '2026-10-03T10:00:00Z',
+    ...o,
+  };
+}
+
+function extStatus(result: string, o: Partial<NonNullable<NodeExtensions['status']>[number]> = {}) {
+  return { name: 'cmd-ext', sha256: 'bb', result, error: '', at: null, reported_at: '2026-10-03T11:00:00Z', ...o };
 }
 
 function makeActivityBuckets(): NodeActivityBucket[] {
@@ -333,6 +358,7 @@ describe('NodeDetailPage', () => {
     mockGetNodePosture.mockResolvedValue([]);
     mockGetNodeConfig.mockResolvedValue(makeNodeConfig());
     mockGetNodeFlags.mockResolvedValue(makeNodeFlags());
+    mockGetNodeExtensions.mockResolvedValue(makeNodeExtensions());
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
     mockListAlertRules.mockResolvedValue([]);
     mockListEnvironments.mockResolvedValue([{ id: 5, name: 'test-env', uuid: 'env-uuid-1' }]);
@@ -1227,6 +1253,7 @@ describe('NodeDetailPage', () => {
     expect(screen.queryByRole('tab', { name: /Configuration/ })).not.toBeInTheDocument();
     expect(mockGetNodeConfig).not.toHaveBeenCalled();
     expect(mockGetNodeFlags).not.toHaveBeenCalled();
+    expect(mockGetNodeExtensions).not.toHaveBeenCalled();
   });
 
   it('shows the banner and tab dot for a flags-only override', async () => {
@@ -1269,5 +1296,114 @@ describe('NodeDetailPage', () => {
     await waitFor(() => expect(mockGetNodeFlags).toHaveBeenCalled());
     await screen.findByRole('heading', { name: 'web-server-01' });
     expect(screen.queryByText(/has a flags override/)).not.toBeInTheDocument();
+  });
+
+  describe('command execution banner', () => {
+    const allowed = 'Command execution is allowed on this host via cmd-ext, set by root on 2026-10-03.';
+
+    it('says allowed only when the last status is ok', async () => {
+      mockGetNodeExtensions.mockResolvedValue(
+        makeNodeExtensions({ assignments: [hostAssignment()], status: [extStatus('ok')] }),
+      );
+      renderWithProviders(makeTestRouter());
+      expect(await screen.findByText(allowed)).toBeInTheDocument();
+      expect(screen.queryByText(/is not running/)).not.toBeInTheDocument();
+      expect(within(screen.getByRole('tab', { name: /Configuration/ })).getByTestId('config-override-dot')).toBeInTheDocument();
+    });
+
+    it('adds the expiry to the allowed wording', async () => {
+      mockGetNodeExtensions.mockResolvedValue(
+        makeNodeExtensions({
+          assignments: [hostAssignment({ expires_at: '2099-01-02T10:00:00Z' })],
+          status: [extStatus('ok')],
+        }),
+      );
+      renderWithProviders(makeTestRouter());
+      expect(await screen.findByText(`${allowed} It expires 2099-01-02.`)).toBeInTheDocument();
+    });
+
+    it('uses the expired wording for an expired assignment whose status is still ok', async () => {
+      mockGetNodeExtensions.mockResolvedValue(
+        makeNodeExtensions({
+          assignments: [hostAssignment({ expires_at: '2026-10-05T10:00:00Z', expired: true })],
+          status: [extStatus('ok')],
+        }),
+      );
+      renderWithProviders(makeTestRouter());
+      expect(
+        await screen.findByText('Command execution via cmd-ext expired on 2026-10-05 and is no longer applied.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/is allowed on this host/)).not.toBeInTheDocument();
+    });
+
+    it('does not claim it runs when the ok status says extensions are disabled', async () => {
+      mockGetNodeExtensions.mockResolvedValue(
+        makeNodeExtensions({
+          assignments: [hostAssignment()],
+          status: [extStatus('ok', { error: 'extensions are disabled by flags' })],
+        }),
+      );
+      renderWithProviders(makeTestRouter());
+      expect(
+        await screen.findByText('Command execution was assigned to this host via cmd-ext but is not running.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/is allowed on this host/)).not.toBeInTheDocument();
+    });
+
+    it('warns when a removed extension is still on the host, error as plain text', async () => {
+      mockGetNodeExtensions.mockResolvedValue(
+        makeNodeExtensions({ status: [extStatus('kept', { error: '<b>still here</b>', lingering: true })] }),
+      );
+      renderWithProviders(makeTestRouter());
+      const banner = await screen.findByText(
+        'Command execution via cmd-ext was removed, but osctrld could not remove it from this host: <b>still here</b>',
+      );
+      expect(banner).toHaveAttribute('role', 'alert');
+      expect(banner.querySelector('b')).toBeNull();
+      expect(within(screen.getByRole('tab', { name: /Configuration/ })).getByTestId('config-override-dot')).toBeInTheDocument();
+    });
+
+    it('shows the lingering warning, not the expired wording, for an expired assignment osctrld kept', async () => {
+      mockGetNodeExtensions.mockResolvedValue(
+        makeNodeExtensions({
+          assignments: [hostAssignment({ expires_at: '2026-10-05T10:00:00Z', expired: true })],
+          status: [extStatus('kept', { error: 'cannot move', lingering: true })],
+        }),
+      );
+      renderWithProviders(makeTestRouter());
+      expect(
+        await screen.findByText('Command execution via cmd-ext was removed, but osctrld could not remove it from this host: cannot move'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/expired on .* and is no longer applied/)).not.toBeInTheDocument();
+    });
+
+    it('does not warn about a stale ok reported after the removal', async () => {
+      mockGetNodeExtensions.mockResolvedValue(makeNodeExtensions({ status: [extStatus('ok')] }));
+      renderWithProviders(makeTestRouter());
+      await waitFor(() => expect(mockGetNodeExtensions).toHaveBeenCalled());
+      await screen.findByRole('heading', { name: 'web-server-01' });
+      expect(screen.queryByText(/Command execution/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['rejected status', [extStatus('rejected')]],
+      ['no status yet', []],
+    ])('says it is not running with %s', async (_n, status) => {
+      mockGetNodeExtensions.mockResolvedValue(makeNodeExtensions({ assignments: [hostAssignment()], status }));
+      renderWithProviders(makeTestRouter());
+      expect(
+        await screen.findByText('Command execution was assigned to this host via cmd-ext but is not running.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/is allowed on this host/)).not.toBeInTheDocument();
+    });
+
+    it('shows no banner or dot without a host assignment', async () => {
+      renderWithProviders(makeTestRouter());
+      await waitFor(() => expect(mockGetNodeExtensions).toHaveBeenCalled());
+      await screen.findByRole('heading', { name: 'web-server-01' });
+      expect(screen.queryByText(/Command execution/)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('config-override-dot')).not.toBeInTheDocument();
+    });
   });
 });

@@ -10,6 +10,7 @@ const api = vi.hoisted(() => ({
   putNodeConfig: vi.fn(),
   deleteNodeConfig: vi.fn(),
   getNodeFlags: vi.fn(),
+  getNodeExtensions: vi.fn(),
 }));
 
 vi.mock('$/api/nodes', () => ({
@@ -17,6 +18,10 @@ vi.mock('$/api/nodes', () => ({
   putNodeConfig: api.putNodeConfig,
   deleteNodeConfig: api.deleteNodeConfig,
   getNodeFlags: api.getNodeFlags,
+}));
+
+vi.mock('$/api/extensions', () => ({
+  getNodeExtensions: api.getNodeExtensions,
 }));
 
 // Monaco pulls in a heavy worker — stub it with a textarea.
@@ -241,5 +246,17 @@ describe('NodeConfigTab', () => {
 
     await user.click(screen.getByRole('button', { name: 'Configuration' }));
     expect(await screen.findByLabelText('Applied configuration')).toBeInTheDocument();
+  });
+
+  it('has an Extensions view alongside Configuration and Flags', async () => {
+    api.getNodeExtensions.mockResolvedValue({ effective: [], assignments: [], status: [], library: null });
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findByLabelText('Applied configuration');
+    expect(api.getNodeExtensions).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Extensions' }));
+    expect(screen.getByRole('button', { name: 'Extensions' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByText('No extensions apply to this host.')).toBeInTheDocument();
+    expect(api.getNodeExtensions).toHaveBeenCalledWith('prod', 'uuid-1');
   });
 });

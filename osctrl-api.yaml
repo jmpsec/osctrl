@@ -3161,6 +3161,177 @@ paths:
       summary: Update environment expiration
       tags:
         - environments
+  "/api/v1/environments/extensions/{env}":
+    get:
+      description: Returns the extensions assigned to the environment and the ordinary
+        extensions that can be assigned to it. Command-execution extensions are
+        only assigned to nodes. Environment admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.EnvironmentExtensionsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get environment extensions
+      tags:
+        - environments
+  "/api/v1/environments/extensions/{env}/{id}":
+    delete:
+      description: Removes an extension from the environment. 404 when it is not
+        assigned to the environment. Environment admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Extension ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.EnvironmentExtensionsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Remove extension from environment
+      tags:
+        - environments
+    put:
+      description: Assigns an ordinary extension to every node of the environment.
+        Command-execution extensions are refused with 409. Environment admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Extension ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.EnvironmentExtensionsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Command-execution extension
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Assign extension to environment
+      tags:
+        - environments
   "/api/v1/environments/inactive-hours/{env}":
     delete:
       parameters:
@@ -3606,6 +3777,361 @@ paths:
       summary: Subscribe to resource change notifications
       tags:
         - Events
+  /api/v1/extensions:
+    get:
+      description: Returns the extensions library with each extension's files and
+        assignment counts. Super admins only.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/types.ExtensionView"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List osquery extensions
+      tags:
+        - extensions
+    post:
+      description: Adds an extension to the library. Command-execution extensions can
+        only be assigned to individual nodes. Super admins only.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.ExtensionCreateRequest"
+        description: Extension
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ExtensionView"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Create an osquery extension
+      tags:
+        - extensions
+  "/api/v1/extensions/{id}":
+    delete:
+      description: Removes an extension and its files. Refused while it is assigned to
+        any environment or node, or, for a command-execution extension, while a
+        host reports it kept (osctrld could not remove it). Super admins only.
+      parameters:
+        - description: Extension ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Extension is assigned, or still on a host that could not remove it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Delete an osquery extension
+      tags:
+        - extensions
+    patch:
+      description: Changes the fields that are set. Command execution can only change
+        while the extension is not assigned, and cannot be switched off while a
+        host reports it kept (osctrld could not remove it). Super admins only.
+      parameters:
+        - description: Extension ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.ExtensionUpdateRequest"
+        description: Fields to change
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ExtensionView"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Extension is assigned, or still on a host that could not remove it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Update an osquery extension
+      tags:
+        - extensions
+  "/api/v1/extensions/{id}/files/{platform}/{arch}":
+    delete:
+      description: Removes the binary for one platform and arch. Super admins only.
+      parameters:
+        - description: Extension ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - description: Platform
+          in: path
+          name: platform
+          required: true
+          schema:
+            type: string
+        - description: Architecture
+          in: path
+          name: arch
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Delete an osquery extension file
+      tags:
+        - extensions
+    put:
+      description: "Stores or replaces the binary for one platform and arch from the
+        multipart field `file` (at most 64 MiB). Platforms: darwin (amd64,
+        arm64, universal), linux (amd64, arm64), windows (amd64). Super admins
+        only."
+      parameters:
+        - description: Extension ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - description: Platform
+          in: path
+          name: platform
+          required: true
+          schema:
+            type: string
+        - description: Architecture
+          in: path
+          name: arch
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  description: Extension binary
+                  type: string
+                  format: binary
+              required:
+                - file
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ExtensionFileView"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Upload an osquery extension file
+      tags:
+        - extensions
   /api/v1/features:
     get:
       responses:
@@ -5642,6 +6168,215 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Set node configuration override
+      tags:
+        - nodes
+  "/api/v1/nodes/{env}/node/{uuid}/extensions":
+    get:
+      description: Returns the extensions the node should run, its command-execution
+        assignments and the last status its osctrld reported. Status fields
+        other than reported_at and lingering come from the host and are
+        untrusted. lingering marks a command-execution extension the node has no
+        unexpired assignment for that osctrld reports as kept, i.e. could not
+        remove. library, the command-execution extensions that can be assigned,
+        is null unless the caller is a super admin.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.NodeExtensionsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get node extensions
+      tags:
+        - nodes
+  "/api/v1/nodes/{env}/node/{uuid}/extensions/{id}":
+    delete:
+      description: Removes the extension's assignment to the node. 404 when the node
+        has no assignment of that extension. Super admins only.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+        - description: Extension ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.NodeExtensionsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Remove command-execution extension from node
+      tags:
+        - nodes
+    put:
+      description: 'Allows command execution on the node through the extension until
+        expires_at. The body must be exactly {"expires_at": ...}: a future RFC
+        3339 time, or an explicit null for no expiry. A missing expires_at, any
+        other key or trailing data is refused with 400. Ordinary extensions are
+        refused with 409. Super admins only.'
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+        - description: Extension ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.NodeExtensionAssignRequest"
+        description: Expiry
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.NodeExtensionsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Not a command-execution extension
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Assign command-execution extension to node
       tags:
         - nodes
   "/api/v1/nodes/{env}/node/{uuid}/flags":
@@ -11821,6 +12556,96 @@ components:
         type:
           type: string
       type: object
+    types.EnvironmentExtensionsResponse:
+      properties:
+        assigned:
+          items:
+            $ref: "#/components/schemas/types.ExtensionSummary"
+          type: array
+        available:
+          items:
+            $ref: "#/components/schemas/types.ExtensionSummary"
+          type: array
+      type: object
+    types.ExtensionCreateRequest:
+      properties:
+        command_execution:
+          type: boolean
+        description:
+          type: string
+        name:
+          type: string
+        version:
+          type: string
+      type: object
+    types.ExtensionFileView:
+      properties:
+        arch:
+          type: string
+        filename:
+          type: string
+        platform:
+          type: string
+        sha256:
+          type: string
+        size:
+          type: integer
+        updated_at:
+          type: string
+        updated_by:
+          type: string
+      type: object
+    types.ExtensionSummary:
+      properties:
+        command_execution:
+          type: boolean
+        description:
+          type: string
+        id:
+          type: integer
+        name:
+          type: string
+        platforms:
+          items:
+            type: string
+          type: array
+        version:
+          type: string
+      type: object
+    types.ExtensionUpdateRequest:
+      properties:
+        command_execution:
+          type: boolean
+        description:
+          type: string
+        version:
+          type: string
+      type: object
+    types.ExtensionView:
+      properties:
+        command_execution:
+          type: boolean
+        created_by:
+          type: string
+        description:
+          type: string
+        environments:
+          type: integer
+        files:
+          items:
+            $ref: "#/components/schemas/types.ExtensionFileView"
+          type: array
+        id:
+          type: integer
+        name:
+          type: string
+        nodes:
+          type: integer
+        updated_at:
+          type: string
+        version:
+          type: string
+      type: object
     types.GetPermissionsResponse:
       properties:
         permissions:
@@ -11963,6 +12788,82 @@ components:
           $ref: "#/components/schemas/types.OsqueryRuntime"
         system:
           $ref: "#/components/schemas/types.SystemInfo"
+      type: object
+    types.NodeExtensionAssignRequest:
+      properties:
+        expires_at:
+          type: string
+      required:
+        - expires_at
+      type: object
+    types.NodeExtensionAssignment:
+      properties:
+        created_at:
+          type: string
+        created_by:
+          type: string
+        expired:
+          type: boolean
+        expires_at:
+          type: string
+        extension_id:
+          type: integer
+        name:
+          type: string
+      type: object
+    types.NodeExtensionEffective:
+      properties:
+        available:
+          type: boolean
+        command_execution:
+          type: boolean
+        name:
+          type: string
+        platforms:
+          items:
+            type: string
+          type: array
+        source:
+          type: string
+      type: object
+    types.NodeExtensionStatusView:
+      properties:
+        at:
+          type: string
+        error:
+          type: string
+        lingering:
+          description: Lingering is set by osctrl when osctrld reports a command-execution
+            extension as kept (its removal failed) and the node has no unexpired
+            assignment for it.
+          type: boolean
+        name:
+          type: string
+        reported_at:
+          type: string
+        result:
+          type: string
+        sha256:
+          type: string
+      type: object
+    types.NodeExtensionsResponse:
+      properties:
+        assignments:
+          items:
+            $ref: "#/components/schemas/types.NodeExtensionAssignment"
+          type: array
+        effective:
+          items:
+            $ref: "#/components/schemas/types.NodeExtensionEffective"
+          type: array
+        library:
+          items:
+            $ref: "#/components/schemas/types.ExtensionSummary"
+          type: array
+        status:
+          items:
+            $ref: "#/components/schemas/types.NodeExtensionStatusView"
+          type: array
       type: object
     types.NodeFlagsRequest:
       properties:

@@ -693,3 +693,96 @@ export interface NodeFlagsRequest {
   /** RFC3339; null/omitted for no expiry. */
   expires_at?: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Extensions (osquery extension library; super admin only)
+// ---------------------------------------------------------------------------
+
+/** One extension binary for a platform/arch (wire shape of ExtensionFileView). */
+export interface ExtensionFile {
+  platform: string;
+  arch: string;
+  size: number;
+  sha256: string;
+  filename: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+/** Wire shape of ExtensionView. `environments`/`nodes` count assignments. */
+export interface Extension {
+  id: number;
+  name: string;
+  description: string;
+  version: string;
+  command_execution: boolean;
+  files: ExtensionFile[];
+  environments: number;
+  nodes: number;
+  created_by: string;
+  updated_at: string;
+}
+
+export interface ExtensionCreateRequest {
+  name: string;
+  description: string;
+  version: string;
+  command_execution: boolean;
+}
+
+export type ExtensionUpdateRequest = Partial<Omit<ExtensionCreateRequest, 'name'>>;
+
+/** Wire shape of ExtensionSummary: a library entry as offered for assignment. */
+export interface ExtensionSummary {
+  id: number;
+  name: string;
+  description: string;
+  version: string;
+  command_execution: boolean;
+  platforms: string[];
+}
+
+/** GET/PUT/DELETE /environments/extensions/{env}. `available` never has command-execution extensions. */
+export interface EnvExtensions {
+  assigned: ExtensionSummary[];
+  available: ExtensionSummary[];
+}
+
+export interface NodeExtensionEffective {
+  name: string;
+  source: 'environment' | 'host';
+  command_execution: boolean;
+  platforms: string[];
+  /** Whether a file exists for the host's platform. */
+  available: boolean;
+}
+
+export interface NodeExtensionAssignment {
+  extension_id: number;
+  name: string;
+  expires_at: string | null;
+  expired: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+/** Last status osctrld reported for one extension. Every field but reported_at is host-reported (untrusted). */
+export interface NodeExtensionStatus {
+  name: string;
+  sha256: string;
+  /** ok or rejected for an install or update; removed or kept for a removal that worked or failed. */
+  result: string;
+  error: string;
+  at: string | null;
+  reported_at: string;
+  /** Set by osctrl: a command-execution extension osctrld reported kept while the host has no unexpired assignment for it. */
+  lingering?: boolean;
+}
+
+export interface NodeExtensions {
+  effective: NodeExtensionEffective[] | null;
+  assignments: NodeExtensionAssignment[] | null;
+  status: NodeExtensionStatus[] | null;
+  /** Command-execution extensions that can be assigned; null unless the caller is a super admin. */
+  library: ExtensionSummary[] | null;
+}

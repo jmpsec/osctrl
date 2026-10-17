@@ -48,6 +48,12 @@ const (
 	DefaultVerifyPath string = "osctrld-verify"
 	// DefaultScriptPath
 	DefaultScriptPath string = "osctrld-script"
+	// DefaultExtensionsPath for osctrld to list its osquery extensions
+	DefaultExtensionsPath string = "osctrld-extensions"
+	// DefaultExtensionPath for osctrld to download one extension; the SHA-256
+	// goes in the body, since /{env}/osctrld-extension/{sha256} would conflict
+	// with /{env}/{secret}/osquery-config in ServeMux
+	DefaultExtensionPath string = "osctrld-extension"
 	// DefaultConfigEndpointPath
 	DefaultConfigEndpointPath string = "osquery-config"
 )
