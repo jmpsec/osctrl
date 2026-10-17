@@ -106,6 +106,24 @@ type ApiNodeGenericRequest struct {
 	UUID string `json:"uuid"`
 }
 
+// NodeConfigResponse is a node's osquery configuration override state.
+// Applied equals Environment when there is no override or it has expired.
+type NodeConfigResponse struct {
+	Environment string     `json:"environment"`
+	Override    string     `json:"override"`
+	Applied     string     `json:"applied"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	Expired     bool       `json:"expired"`
+	UpdatedBy   string     `json:"updated_by"`
+	UpdatedAt   *time.Time `json:"updated_at"`
+}
+
+// NodeConfigRequest sets a node's osquery configuration override.
+type NodeConfigRequest struct {
+	Override  string     `json:"override"`
+	ExpiresAt *time.Time `json:"expires_at"`
+}
+
 // ApiNodeTagRequest to receive tag node requests
 type ApiNodeTagRequest struct {
 	UUID   string `json:"uuid"`

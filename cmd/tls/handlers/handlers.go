@@ -16,6 +16,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -78,6 +79,7 @@ type HandlersTLS struct {
 	DebugHTTP       *zerolog.Logger
 	DebugHTTPConfig *config.YAMLConfigurationDebug
 	AuditLog        *auditlog.AuditLogManager
+	NodeConfig      *nodeconfig.Manager // nil: per-node config overrides are inert
 	// DBHealth, when wired via WithDBHealth, lets HealthHandler
 	// report backend degradation. nil means "no monitor" and the
 	// health endpoint reports healthy as before.
@@ -135,6 +137,13 @@ func WithSettingsCache(settingsCache *settings.RedisSettingsCache) Option {
 func WithSessionHints(hints *cache.SessionHints) Option {
 	return func(h *HandlersTLS) {
 		h.SessionHints = hints
+	}
+}
+
+// WithNodeConfig enables per-node osquery configuration overrides.
+func WithNodeConfig(m *nodeconfig.Manager) Option {
+	return func(h *HandlersTLS) {
+		h.NodeConfig = m
 	}
 }
 

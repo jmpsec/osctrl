@@ -6,12 +6,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
 )
+
+// deleteNodeOverride removes the config override of a node just deleted by
+// UUID. ArchiveDeleteByUUID matches the uppercased UUID, so that is the node
+// row's key. A failure is logged, not returned: the node is already gone.
+// ponytail: the CLI has no Redis, so osctrl-tls may keep a cached copy for up
+// to the cache TTL; it only applies if the same UUID re-enrolls in that window.
+func deleteNodeOverride(uuid string) {
+	m, err := nodeconfig.NewManager(nodesmgr.DB, nil)
+	if err == nil {
+		err = m.Delete(context.Background(), strings.ToUpper(uuid))
+	}
+	if err != nil {
+		log.Err(err).Msgf("error removing config override of deleted node %s", uuid)
+	}
+}
 
 // Helper function to convert a slice of nodes into the data expected for output
 func nodesToData(nds []nodes.OsqueryNode, header []string) [][]string {
@@ -135,6 +153,7 @@ func deleteNode(ctx context.Context, cmd *cli.Command) error {
 		if err := nodesmgr.ArchiveDeleteByUUID(uuid); err != nil {
 			return fmt.Errorf("error deleting - %w", err)
 		}
+		deleteNodeOverride(uuid)
 		// Audit log
 		auditlogsmgr.NodeAction(getShellUsername(), "delete node "+uuid, "CLI", 0)
 	} else if apiFlag {

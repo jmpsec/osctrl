@@ -20,6 +20,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/mfa"
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -92,6 +93,7 @@ type HandlersApi struct {
 	Posture              *posture.PostureManager
 	PostureEnabled       bool
 	Vulns                *vulns.Reader // nil when --vuln-enabled is off
+	NodeConfig           *nodeconfig.Manager
 	// MFA owns the second-factor tables. Nil disables every MFA route.
 	MFA *mfa.Manager
 	// WebAuthn is nil when no RP ID or origin could be resolved, which
@@ -303,6 +305,13 @@ func WithGeoIP(g *geoip.GeoIPResolver) HandlersOption {
 func WithPosture(pm *posture.PostureManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Posture = pm
+	}
+}
+
+// WithNodeConfig wires the per-node osquery configuration override manager.
+func WithNodeConfig(m *nodeconfig.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.NodeConfig = m
 	}
 }
 

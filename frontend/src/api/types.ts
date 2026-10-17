@@ -649,3 +649,20 @@ export interface PostureScore {
   warn_count: number;
   fail_count: number;
 }
+
+/** Per-node osquery configuration override (GET/PUT/DELETE .../node/{uuid}/config). */
+export interface NodeConfig {
+  environment: string;
+  override: string;
+  applied: string;
+  expires_at: string | null;
+  expired: boolean;
+  updated_by: string;
+  updated_at: string | null;
+}
+
+export interface NodeConfigRequest {
+  override: string;
+  /** RFC3339; null/omitted for no expiry. */
+  expires_at?: string | null;
+}

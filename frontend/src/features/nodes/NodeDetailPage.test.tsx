@@ -11,13 +11,14 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { NodeDetailPage } from './NodeDetailPage';
-import type { NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag, PostureScore } from '$/api/types';
+import type { NodeConfig, NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag, PostureScore } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
 import type { Features } from '$/api/features';
 
 const mockGetNode = vi.fn<() => Promise<OsqueryNode>>();
 const mockListNodeLogs = vi.fn<() => Promise<unknown>>();
 const mockDeleteNode = vi.fn<() => Promise<{ message: string }>>();
+const mockGetNodeConfig = vi.fn<() => Promise<NodeConfig>>();
 const mockGetNodePosture = vi.fn<() => Promise<NodePosture[]>>();
 const mockGetNodePostureScore = vi.fn<() => Promise<PostureScore>>();
 const mockGetMe = vi.fn<() => Promise<unknown>>();
@@ -36,6 +37,7 @@ vi.mock('$/api/nodes', () => ({
   getNode: (...args: unknown[]) => mockGetNode(...(args as [])),
   listNodeLogs: (...args: unknown[]) => mockListNodeLogs(...(args as [])),
   deleteNode: (...args: unknown[]) => mockDeleteNode(...(args as [])),
+  getNodeConfig: (...args: unknown[]) => mockGetNodeConfig(...(args as [])),
   getNodePosture: (...args: unknown[]) => mockGetNodePosture(...(args as [])),
   getNodePostureScore: (...args: unknown[]) => mockGetNodePostureScore(...(args as [])),
 }));
@@ -90,6 +92,10 @@ vi.mock('$/api/alerts', () => ({
 vi.mock('$/api/tags', () => ({
   listEnvTags: (...args: unknown[]) => mockListEnvTags(...(args as [])),
   tagNode: (...args: unknown[]) => mockTagNode(...(args as [])),
+}));
+
+vi.mock('./NodeConfigTab', () => ({
+  NodeConfigTab: () => <div data-testid="config-panel" />,
 }));
 
 vi.mock('./NodeFileExplorerTab', () => ({
@@ -147,6 +153,19 @@ function makeNode(overrides: Partial<OsqueryNode> = {}): OsqueryNode {
     user_id: 1,
     environment_id: 1,
     extra_data: '',
+    ...overrides,
+  };
+}
+
+function makeNodeConfig(overrides: Partial<NodeConfig> = {}): NodeConfig {
+  return {
+    environment: '{}',
+    override: '',
+    applied: '{}',
+    expires_at: null,
+    expired: false,
+    updated_by: '',
+    updated_at: null,
     ...overrides,
   };
 }
@@ -295,6 +314,7 @@ describe('NodeDetailPage', () => {
     });
     mockDeleteNode.mockResolvedValue({ message: 'ok' });
     mockGetNodePosture.mockResolvedValue([]);
+    mockGetNodeConfig.mockResolvedValue(makeNodeConfig());
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
     mockListAlertRules.mockResolvedValue([]);
     mockListEnvironments.mockResolvedValue([{ id: 5, name: 'test-env', uuid: 'env-uuid-1' }]);
@@ -1132,5 +1152,61 @@ describe('NodeDetailPage', () => {
         }),
       );
     });
+  });
+  it('shows the override banner and tab dot when an override exists', async () => {
+    mockGetNodeConfig.mockResolvedValue(
+      makeNodeConfig({
+        override: '{"options":{}}',
+        updated_by: 'alice',
+        updated_at: '2026-10-01T10:00:00Z',
+        expires_at: '2099-01-02T10:00:00Z',
+      }),
+    );
+    renderWithProviders(makeTestRouter());
+    expect(
+      await screen.findByText(
+        'This node has a configuration override, set by alice on 2026-10-01. It expires 2099-01-02.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(screen.getByRole('tab', { name: /Configuration/ })).getByTestId('config-override-dot')).toBeInTheDocument();
+  });
+
+  it('shows expired wording when the override has expired', async () => {
+    mockGetNodeConfig.mockResolvedValue(
+      makeNodeConfig({
+        override: '{"options":{}}',
+        updated_by: 'alice',
+        updated_at: '2026-10-01T10:00:00Z',
+        expires_at: '2026-10-05T10:00:00Z',
+        expired: true,
+      }),
+    );
+    renderWithProviders(makeTestRouter());
+    expect(
+      await screen.findByText(
+        'This node has a configuration override, set by alice on 2026-10-01. It expired on 2026-10-05 and is no longer applied.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('no banner without an override', async () => {
+    renderWithProviders(makeTestRouter());
+    await waitFor(() => expect(mockGetNodeConfig).toHaveBeenCalled());
+    await screen.findByRole('heading', { name: 'web-server-01' });
+    expect(screen.queryByText(/has a configuration override/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('config-override-dot')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Configuration' })).toBeInTheDocument();
+  });
+
+  it('does not fetch the override or show the Configuration tab for non-admins', async () => {
+    mockGetMe.mockResolvedValue({
+      admin: false,
+      permissions: { 'env-uuid-1': { user: true, query: true, carve: false, admin: false } },
+    });
+    renderWithProviders(makeTestRouter());
+    await screen.findByRole('heading', { name: 'web-server-01' });
+    await waitFor(() => expect(mockListEnvironments).toHaveBeenCalled());
+    expect(screen.queryByRole('tab', { name: /Configuration/ })).not.toBeInTheDocument();
+    expect(mockGetNodeConfig).not.toHaveBeenCalled();
   });
 });

@@ -27,6 +27,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -258,6 +259,10 @@ func osctrlService() {
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
+	nodeConfigMgr, err := nodeconfig.NewManager(db.Conn, redis.Client)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize node configuration overrides")
+	}
 	var posturemgr *posture.PostureManager
 	if flagParams.Service.PostureEnabled {
 		posture.SetPrefix(flagParams.Service.PostureQueryPrefix)
@@ -523,6 +528,7 @@ func osctrlService() {
 		handlers.WithEnvs(envs),
 		handlers.WithEnvCache(envCache),
 		handlers.WithNodes(nodesmgr),
+		handlers.WithNodeConfig(nodeConfigMgr),
 		handlers.WithTags(tagsmgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),

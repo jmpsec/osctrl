@@ -34,6 +34,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/mfa"
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/osquery"
 	"github.com/jmpsec/osctrl/pkg/posture"
@@ -451,6 +452,10 @@ func osctrlAPIService() {
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
+	nodeConfigMgr, err := nodeconfig.NewManager(db.Conn, redis.Client)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize node configuration overrides")
+	}
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, 0)
@@ -675,6 +680,7 @@ func osctrlAPIService() {
 		handlers.WithUsers(apiUsers),
 		handlers.WithTags(tagsmgr),
 		handlers.WithNodes(nodesmgr),
+		handlers.WithNodeConfig(nodeConfigMgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithConsole(consolemgr),
 		handlers.WithFileExplorer(fileexplorermgr),
@@ -823,6 +829,16 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{node}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: per-node osquery configuration override
+	muxAPI.Handle(
+		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/config",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeConfigGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PUT "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/config",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeConfigPutHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/config",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeConfigDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiNodesPath)+"/{env}/delete",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

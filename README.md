@@ -44,6 +44,7 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 
 - **Modern operator UI**: React SPA powered by `osctrl-api`, with views for nodes, environments, queries, saved queries, carves, tags, users, enrollment, audit log, service configuration, log sinks, auth providers, alerting, node activity, and optional posture data.
 - **Node console**: Read-only console for a specific node using hidden accelerated distributed queries. It supports shell-like commands such as `pwd`, `cd`, `ls`, `stat`, `ps`, `sql`, `osquery`, `.tables`, and `get` for permission-checked file carves.
+- **Per-node configuration overrides**: Environment admins can layer a JSON override on one node's osquery configuration from the node page, with optional expiry. Connection settings are protected, every change is audited, and options the environment doesn't set keep their overridden value on the host until osquery restarts.
 - **File explorer**: Accelerated per-node directory listing and stat requests backed by osquery distributed queries.
 - **Accelerated distributed queries**: Optional osquery accelerated query reads, defaulting to a 5 second interval when enabled. Console acceleration is scoped to the target node and fresh active console sessions.
 - **osquery schema awareness**: Ships osquery table metadata through 5.23.1 and exposes authenticated table metadata to the UI/API for query authoring and console `.tables`.

@@ -8,7 +8,7 @@ import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Archive, Bell, Copy, FileArchive, PlayCircle, RefreshCw, Tag, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { getNode, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
+import { getNode, getNodeConfig, listNodeLogs, deleteNode, getNodePosture, getNodePostureScore } from '$/api/nodes';
 import { runCarve } from '$/api/carves';
 import { runQuery } from '$/api/queries';
 import { listSavedQueries } from '$/api/saved-queries';
@@ -45,6 +45,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { SearchInput } from '$/components/data/SearchInput';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { HealthBadge, TagChips } from './nodeSignals';
+import { NodeConfigTab } from './NodeConfigTab';
 import { NodeFileExplorerTab } from './NodeFileExplorerTab';
 import { NodeVulnerabilitiesTab } from '$/features/vulnerabilities/NodeVulnerabilitiesTab';
 import { recomputePostureScore, controlKey } from './postureScore';
@@ -71,9 +72,12 @@ interface NodeHeatmapBucket {
 // Tabs
 // ---------------------------------------------------------------------------
 
-type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture' | 'vulnerabilities' | 'file-explorer';
+type Tab = 'details' | 'status-logs' | 'result-logs' | 'posture' | 'vulnerabilities' | 'file-explorer' | 'configuration';
 type NodeActionModal = 'query' | 'carve' | 'tag' | 'alert' | null;
 const TAG_TYPE_REGULAR = 6;
+
+/** UTC calendar date (YYYY-MM-DD) of an ISO timestamp, matching formatAbsolute's UTC. */
+const isoDate = (iso: string | null) => (iso ? iso.slice(0, 10) : '—');
 const POSTURE_QUERY_PREFIX = 'osctrl:posture:';
 
 // ---------------------------------------------------------------------------
@@ -628,6 +632,7 @@ const TABS = [
   { id: 'result-logs' as Tab, label: 'Result logs' },
   { id: 'posture' as Tab, label: 'Posture' },
   { id: 'vulnerabilities' as Tab, label: 'Vulnerabilities' },
+  { id: 'configuration' as Tab, label: 'Configuration' },
   { id: 'file-explorer' as Tab, label: 'File Explorer' },
 ] as const;
 
@@ -701,14 +706,48 @@ export function NodeDetailPage() {
   const fileExplorerEnabled = features?.file_explorer === true;
   const vulnsEnabled = features?.vulnerabilities === true;
   const alertsEnabled = features?.alerts === true;
+  // Decide whether to show destructive actions (Delete). The server
+  // requires AdminLevel on the env for DELETE; we mirror that gate
+  // in the UI so non-admins don't see a button that would 403.
+  // Super-admins bypass; env-scoped admins get it on their env(s).
+  const { data: me } = useQuery({
+    queryKey: ['users-me'],
+    queryFn: () => getMe(),
+    staleTime: 5 * 60_000,
+  });
+  const { data: envs } = useQuery({
+    queryKey: ['environments'],
+    queryFn: () => listEnvironments(),
+    staleTime: 60_000,
+  });
+  const envRow = envs?.find((e) => e.name === env);
+  const envUuid = envRow?.uuid;
+  const envID = envRow?.id;
+  const canAdminNode =
+    me?.admin === true ||
+    (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
+  // Admin-only on the server (every denial is audited), so don't fire it for
+  // other viewers. Shares its key with NodeConfigTab so saving/removing an
+  // override updates the banner and tab dot immediately. An expired override
+  // keeps its text (expired: true), so "has an override" is simply a non-empty
+  // override.
+  const { data: nodeConfig } = useQuery({
+    queryKey: ['node-config', env, uuid],
+    queryFn: () => getNodeConfig(env, uuid),
+    enabled: canAdminNode,
+    staleTime: 10_000,
+  });
+  const hasConfigOverride = nodeConfig !== undefined && nodeConfig.override !== '';
+
   const visibleTabs = useMemo(
     () => TABS.filter((tab) => {
       if (tab.id === 'posture') return postureEnabled;
       if (tab.id === 'vulnerabilities') return vulnsEnabled;
       if (tab.id === 'file-explorer') return fileExplorerEnabled;
+      if (tab.id === 'configuration') return canAdminNode;
       return true;
     }),
-    [fileExplorerEnabled, postureEnabled, vulnsEnabled],
+    [canAdminNode, fileExplorerEnabled, postureEnabled, vulnsEnabled],
   );
 
   useEffect(() => {
@@ -741,26 +780,6 @@ export function NodeDetailPage() {
     staleTime: 10_000,
   });
 
-  // Decide whether to show destructive actions (Delete). The server
-  // requires AdminLevel on the env for DELETE; we mirror that gate
-  // in the UI so non-admins don't see a button that would 403.
-  // Super-admins bypass; env-scoped admins get it on their env(s).
-  const { data: me } = useQuery({
-    queryKey: ['users-me'],
-    queryFn: () => getMe(),
-    staleTime: 5 * 60_000,
-  });
-  const { data: envs } = useQuery({
-    queryKey: ['environments'],
-    queryFn: () => listEnvironments(),
-    staleTime: 60_000,
-  });
-  const envRow = envs?.find((e) => e.name === env);
-  const envUuid = envRow?.uuid;
-  const envID = envRow?.id;
-  const canAdminNode =
-    me?.admin === true ||
-    (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
   const envAccess = envUuid !== undefined ? me?.permissions?.[envUuid] : undefined;
   const canQueryNode = canAdminNode || envAccess?.query === true;
   const canCarveNode = canAdminNode || envAccess?.carve === true;
@@ -1118,6 +1137,19 @@ export function NodeDetailPage() {
         </div>
       )}
 
+      {hasConfigOverride && nodeConfig && (
+        <div
+          role="status"
+          className="mb-4 rounded-md border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-3 py-2 text-sm text-[color:var(--text-1)]"
+        >
+          This node has a configuration override, set by {nodeConfig.updated_by} on {isoDate(nodeConfig.updated_at)}.
+          {nodeConfig.expires_at &&
+            (nodeConfig.expired
+              ? ` It expired on ${isoDate(nodeConfig.expires_at)} and is no longer applied.`
+              : ` It expires ${isoDate(nodeConfig.expires_at)}.`)}
+        </div>
+      )}
+
       {/* ── Tabs ── */}
       <div className="border-b border-[color:var(--border)] mb-4">
         <nav
@@ -1147,6 +1179,13 @@ export function NodeDetailPage() {
               )}
             >
               {label}
+              {id === 'configuration' && hasConfigOverride && (
+                <span
+                  data-testid="config-override-dot"
+                  aria-label="has override"
+                  className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--warning)] align-middle"
+                />
+              )}
             </button>
           ))}
         </nav>
@@ -1396,6 +1435,9 @@ export function NodeDetailPage() {
         )}
         {activeTab === 'vulnerabilities' && vulnsEnabled && (
           <NodeVulnerabilitiesTab env={env} uuid={uuid} />
+        )}
+        {activeTab === 'configuration' && canAdminNode && node && (
+          <NodeConfigTab env={env} uuid={uuid} hostname={node.hostname} />
         )}
         {activeTab === 'file-explorer' && fileExplorerEnabled && (
           <NodeFileExplorerTab env={env} uuid={uuid} />
