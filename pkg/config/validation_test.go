@@ -63,3 +63,13 @@ func TestValidateRateLimitsAcceptsDefaults(t *testing.T) {
 		t.Fatalf("default rate limits should validate: %v", err)
 	}
 }
+
+func TestValidateTLSConfigValuesRejectsLocalCarver(t *testing.T) {
+	err := ValidateTLSConfigValues(TLSConfiguration{
+		Service: YAMLConfigurationService{Auth: AuthNone},
+		Carver:  &YAMLConfigurationCarver{Type: CarverLocal},
+	})
+	if err == nil || !strings.Contains(err.Error(), `carver type "local" is not supported`) {
+		t.Fatalf("expected local carver to be rejected with a clear message, got %v", err)
+	}
+}

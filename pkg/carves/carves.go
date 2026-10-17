@@ -81,6 +81,38 @@ func CreateFileCarves(backend *gorm.DB, carverType string, s3 *CarverS3) *Carves
 	return c
 }
 
+// CreateFileCarvesFromConfig validates the carver configuration, initializes
+// the S3 carver when configured and creates the carves manager. A nil section
+// means the default database carver.
+func CreateFileCarvesFromConfig(backend *gorm.DB, cfg *config.YAMLConfigurationCarver) (*Carves, error) {
+	if cfg == nil {
+		return CreateFileCarves(backend, config.CarverDB, nil), nil
+	}
+	if err := config.ValidateCarverType(cfg.Type); err != nil {
+		return nil, err
+	}
+	var carverS3 *CarverS3
+	if cfg.Type == config.CarverS3 {
+		s3Cfg := config.S3Carver{}
+		if cfg.S3 != nil {
+			s3Cfg = *cfg.S3
+		}
+		switch {
+		case s3Cfg.Bucket == "":
+			return nil, fmt.Errorf("carver type s3 requires carver.s3.bucket (--carver-s3-bucket)")
+		case s3Cfg.Region == "":
+			return nil, fmt.Errorf("carver type s3 requires carver.s3.region (--carver-s3-region)")
+		case (s3Cfg.AccessKey == "") != (s3Cfg.SecretAccessKey == ""):
+			return nil, fmt.Errorf("carver type s3 requires both carver.s3.accessKey and secretAccessKey, or neither to use the default AWS credential chain")
+		}
+		var err error
+		if carverS3, err = CreateCarverS3(s3Cfg); err != nil {
+			return nil, fmt.Errorf("failed to initialize s3 carver - %w", err)
+		}
+	}
+	return CreateFileCarves(backend, cfg.Type, carverS3), nil
+}
+
 // CreateCarve to create a new carved file for a node
 func (c *Carves) CreateCarve(carve CarvedFile) error {
 	return c.DB.Create(&carve).Error // can be nil or err
@@ -132,7 +164,7 @@ func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) 
 // InitateBlock to initiate a block based on the configured carver
 func (c *Carves) InitateBlock(env, uuid, requestid, sessionid, data string, blockid int, envid uint) CarvedBlock {
 	var cData string
-	if c.Carver != config.CarverS3 {
+	if c.Carver != config.CarverS3 || c.S3 == nil {
 		cData = data
 	} else {
 		cData = GenerateS3Data(c.S3.S3Config.Bucket, env, uuid, sessionid, blockid)
@@ -357,11 +389,12 @@ func (c *Carves) Archive(sessionid, destPath string) (*CarveResult, error) {
 		return nil, fmt.Errorf("error getting blocks - %w", err)
 	}
 	switch c.Carver {
-	case config.CarverLocal:
-		return c.ArchiveLocal(destPath, carve, blocks)
 	case config.CarverDB:
 		return c.ArchiveLocal(destPath, carve, blocks)
 	case config.CarverS3:
+		if c.S3 == nil {
+			return nil, fmt.Errorf("s3 carver not initialized")
+		}
 		return c.S3.Archive(carve, blocks)
 	}
 	return nil, fmt.Errorf("unknown carver - %s", c.Carver)

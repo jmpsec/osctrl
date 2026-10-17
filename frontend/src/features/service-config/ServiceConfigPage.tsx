@@ -124,7 +124,7 @@ const FIELD_HELP: Record<string, string> = {
   'logger.Types': 'Optional multi-destination logging/export. Empty uses `type`.',
   'logger.AlwaysLog': 'Also persist status/on-demand query logs in DB even with external exporters.',
   'logger.DB': 'Separate DB destination for log records when loggerDBSame is false. Fields match the top-level db section.',
-  'carver.Type': 'Valid values: "local", "db", "s3". ("none" is documented in the sample YAML but rejected at startup.)',
+  'carver.Type': 'Valid values: "db", "s3".',
   'debug.ShowBody': 'Include request bodies. May contain secrets or node data.',
   'debug.TargetHostIdentifier': "When non-empty, only dump requests from the osquery node whose UUID (or enroll host_identifier) matches this value (case-insensitive). Empty dumps every request when enableHttp is true. Useful to isolate one host's traffic on a busy server.",
   // --- YAML-annotated: metrics / osctrld
@@ -219,7 +219,7 @@ const FIELD_HELP: Record<string, string> = {
   AccessKey: 'AWS access key ID.',
   SecretAccessKey: 'AWS secret access key.',
   // Local carver
-  CarvesDir: 'Local directory to store carved files.',
+  CarvesDir: 'Unused: the "local" carver is not supported.',
   // Kinesis
   Stream: 'Kinesis stream name.',
   Endpoint: 'Custom Kinesis endpoint URL (for localstack or VPC endpoints).',

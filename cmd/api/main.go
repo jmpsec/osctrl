@@ -487,8 +487,6 @@ func osctrlAPIService() {
 	}
 	consolemgr.SetLogReader(logReader)
 	fileexplorermgr.SetLogReader(logReader)
-	log.Info().Msg("Initialize carves")
-	filecarves = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, nil)
 	log.Info().Msg("Loading service settings")
 	if err := loadingSettings(settingsmgr, flagParams); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
@@ -522,6 +520,12 @@ func osctrlAPIService() {
 	log.Info().Msg("Resolving service config from DB")
 	if err := serviceConfigMgr.Resolve(config.ServiceAPI, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error resolving service config - %v", err)
+	}
+	// Carves are built from the resolved config so DB overrides apply.
+	log.Info().Msg("Initialize carves")
+	filecarves, err = carves.CreateFileCarvesFromConfig(db.Conn, flagParams.Carver)
+	if err != nil {
+		log.Fatal().Msgf("Error initializing carver - %v", err)
 	}
 	// Report whether this process can write its own config file. Only this
 	// process can know — osctrl-tls runs elsewhere and reports its own.
