@@ -3,6 +3,7 @@ package logging
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,12 +29,16 @@ type LoggerS3 struct {
 
 // CreateLoggerS3 to initialize the logger
 func CreateLoggerS3(s3Config *osctrl_config.S3Logger) (*LoggerS3, error) {
-	ctx := context.Background()
-	creds := credentials.NewStaticCredentialsProvider(s3Config.AccessKey, s3Config.SecretAccessKey, "")
-	cfg, err := config.LoadDefaultConfig(
-		ctx,
-		config.WithCredentialsProvider(creds), config.WithRegion(s3Config.Region),
-	)
+	if (s3Config.AccessKey == "") != (s3Config.SecretAccessKey == "") {
+		return nil, errors.New("s3 logger: accessKey and secretAccessKey must both be set or both be empty")
+	}
+	loadOpts := []func(*config.LoadOptions) error{config.WithRegion(s3Config.Region)}
+	// Without static keys, fall back to the default chain (env, shared config, IAM roles)
+	if s3Config.AccessKey != "" {
+		loadOpts = append(loadOpts, config.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(s3Config.AccessKey, s3Config.SecretAccessKey, "")))
+	}
+	cfg, err := config.LoadDefaultConfig(context.Background(), loadOpts...)
 	if err != nil {
 		return nil, err
 	}
