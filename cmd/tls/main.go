@@ -90,7 +90,6 @@ var (
 	logSinksMgr          *logsinks.LogSinksManager
 	handlersTLS          *handlers.HandlersTLS
 	tagsmgr              *tags.TagManager
-	carvers3             *carves.CarverS3
 	app                  *cli.Command
 	flags                []cli.Flag
 	serviceConfiguration config.TLSConfiguration
@@ -328,8 +327,6 @@ func osctrlService() {
 	tagsmgr = tags.CreateTagManager(db.Conn)
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
-	log.Info().Msg("Initialize carves")
-	filecarves = carves.CreateFileCarves(db.Conn, flagParams.Carver.Type, carvers3)
 	log.Info().Msg("Loading service settings")
 	if err := loadingSettings(settingsmgr, flagParams); err != nil {
 		log.Fatal().Msgf("Error loading settings - %v", err)
@@ -343,6 +340,12 @@ func osctrlService() {
 	log.Info().Msg("Resolving service config from DB")
 	if err := serviceConfigMgr.Resolve(config.ServiceTLS, flagParams, settings.NoEnvironmentID); err != nil {
 		log.Fatal().Msgf("Error resolving service config - %v", err)
+	}
+	// Carves are built from the resolved config so DB overrides apply.
+	log.Info().Msg("Initialize carves")
+	filecarves, err = carves.CreateFileCarvesFromConfig(db.Conn, flagParams.Carver)
+	if err != nil {
+		log.Fatal().Msgf("Error initializing carver - %v", err)
 	}
 	var queryDispatchTTL time.Duration
 	if flagParams.Osquery != nil {

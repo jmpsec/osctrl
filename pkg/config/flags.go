@@ -730,7 +730,7 @@ func initCarverFlags(params *ServiceParameters) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "carver-type",
 			Value:       CarverDB,
-			Usage:       "Carver to be used to receive files extracted from nodes",
+			Usage:       "Carver to be used to receive files extracted from nodes (db or s3)",
 			Sources:     cli.EnvVars("CARVER_TYPE"),
 			Destination: &params.Carver.Type,
 		},
@@ -765,7 +765,7 @@ func initCarverFlags(params *ServiceParameters) []cli.Flag {
 		&cli.StringFlag{
 			Name:        "carver-local-dir",
 			Value:       defCarvedFolder,
-			Usage:       "Local directory to store carved files",
+			Usage:       "Unused: the local carver is not supported",
 			Sources:     cli.EnvVars("CARVER_LOCAL_DIR"),
 			Destination: &params.Carver.Local.CarvesDir,
 		},

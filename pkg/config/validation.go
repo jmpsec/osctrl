@@ -26,11 +26,17 @@ var validLogging = map[string]bool{
 	LoggingHTTP:     true,
 }
 
-// Valid values for carver in configuration
-var validCarver = map[string]bool{
-	CarverDB:    true,
-	CarverLocal: true,
-	CarverS3:    true,
+// ValidateCarverType checks the carver type is one osctrl can run with.
+// "local" was accepted for years but never implemented: blocks were never
+// written to carvesDir, so it is rejected instead of failing every carve.
+func ValidateCarverType(carverType string) error {
+	switch carverType {
+	case CarverDB, CarverS3:
+		return nil
+	case CarverLocal:
+		return fmt.Errorf("carver type %q is not supported; use %q (blocks stored in the database) or %q", CarverLocal, CarverDB, CarverS3)
+	}
+	return fmt.Errorf("invalid carver method: %s", carverType)
 }
 
 const maxRateLimitBurst = 100000
@@ -132,8 +138,8 @@ func ValidateTLSConfigValues(cfg TLSConfiguration) error {
 		}
 	}
 	if cfg.Carver != nil {
-		if !validCarver[cfg.Carver.Type] {
-			return fmt.Errorf("invalid carver method: %s", cfg.Carver.Type)
+		if err := ValidateCarverType(cfg.Carver.Type); err != nil {
+			return err
 		}
 	}
 	if cfg.RateLimits != nil {

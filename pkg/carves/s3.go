@@ -41,12 +41,14 @@ type CarverS3 struct {
 
 // CreateCarverS3 to initialize the carver
 func CreateCarverS3(s3Config osctrl_config.S3Carver) (*CarverS3, error) {
-	ctx := context.Background()
-	creds := credentials.NewStaticCredentialsProvider(s3Config.AccessKey, s3Config.SecretAccessKey, "")
-	cfg, err := config.LoadDefaultConfig(
-		ctx,
-		config.WithCredentialsProvider(creds), config.WithRegion(s3Config.Region),
-	)
+	opts := []func(*config.LoadOptions) error{config.WithRegion(s3Config.Region)}
+	// Static keys are optional; without them the default chain (env, shared
+	// files, instance or task role) is used.
+	if s3Config.AccessKey != "" {
+		creds := credentials.NewStaticCredentialsProvider(s3Config.AccessKey, s3Config.SecretAccessKey, "")
+		opts = append(opts, config.WithCredentialsProvider(creds))
+	}
+	cfg, err := config.LoadDefaultConfig(context.Background(), opts...)
 	if err != nil {
 		return nil, err
 	}
