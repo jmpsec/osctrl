@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -301,7 +302,8 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
 		return
 	}
-	if _, err := h.Nodes.GetByUUIDEnv(n.UUID, env.ID); err != nil {
+	node, err := h.Nodes.GetByUUIDEnv(n.UUID, env.ID)
+	if err != nil {
 		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
 		return
 	}
@@ -312,6 +314,10 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		}
 		return
+	}
+	// The node is gone either way; a leftover override is logged, not fatal.
+	if err := h.NodeConfig.Delete(context.WithoutCancel(r.Context()), node.UUID); err != nil {
+		log.Err(err).Msgf("error removing config override of deleted node %s", node.UUID)
 	}
 	log.Debug().Msgf("Deleted node %s", n.UUID)
 	h.AuditLog.NodeAction(ctx[ctxUser], "deleted node "+n.UUID, strings.Split(r.RemoteAddr, ":")[0], env.ID)

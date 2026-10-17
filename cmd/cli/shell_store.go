@@ -879,6 +879,7 @@ func (s *dbStore) DeleteNode(_, identifier string) error {
 	if err := nodesmgr.ArchiveDeleteByUUID(identifier); err != nil {
 		return err
 	}
+	deleteNodeOverride(identifier)
 	auditlogsmgr.NodeAction(getShellUsername(), "delete node "+identifier, "CLI", 0)
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/activity"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -245,7 +246,7 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "ConfigHandler").Observe(float64(len(body)))
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for ConfigHandler endpoint", node.UUID, env.Name, len(body))
-		response = []byte(env.Configuration)
+		response = []byte(h.nodeConfiguration(ctx, env, node.UUID))
 	} else {
 		response = types.ConfigResponse{NodeInvalid: true}
 	}
@@ -259,6 +260,28 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+}
+
+// nodeConfiguration returns the environment configuration with the node's
+// active override merged in. Any failure serves the environment configuration
+// unchanged, so a bad override can never break a node's config fetch.
+func (h *HandlersTLS) nodeConfiguration(ctx context.Context, env environments.TLSEnvironment, nodeUUID string) string {
+	if h.NodeConfig == nil {
+		return env.Configuration
+	}
+	o, err := h.NodeConfig.Active(ctx, nodeUUID, env.ID, time.Now())
+	if err == nil && o != nil {
+		if err = nodeconfig.Validate(o.Config); err == nil {
+			var merged string
+			if merged, err = nodeconfig.Merge(env.Configuration, o.Config); err == nil {
+				return merged
+			}
+		}
+	}
+	if err != nil {
+		log.Err(err).Msgf("node UUID: %s in %s environment: serving environment configuration without node override", nodeUUID, env.Name)
+	}
+	return env.Configuration
 }
 
 // LogHandler - Function to handle the log requests from osquery nodes, both status and results

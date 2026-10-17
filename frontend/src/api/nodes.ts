@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { NodePosture, PostureProfile, PostureScore } from './types';
+import type { NodeConfig, NodeConfigRequest, NodePosture, PostureProfile, PostureScore } from './types';
 import type {
   NodesPagedResponse,
   OsqueryNode,
@@ -110,4 +110,24 @@ export function getNodePostureScore(env: string, uuid: string): Promise<PostureS
   return apiFetch<PostureScore>(
     `/api/v1/nodes/${encodeURIComponent(env)}/node/${encodeURIComponent(uuid)}/posture/score`,
   );
+}
+
+function nodeConfigPath(env: string, uuid: string): string {
+  return `/api/v1/nodes/${encodeURIComponent(env)}/node/${encodeURIComponent(uuid)}/config`;
+}
+
+export function getNodeConfig(env: string, uuid: string): Promise<NodeConfig> {
+  return apiFetch<NodeConfig>(nodeConfigPath(env, uuid));
+}
+
+export function putNodeConfig(env: string, uuid: string, body: NodeConfigRequest): Promise<NodeConfig> {
+  return apiFetch<NodeConfig>(nodeConfigPath(env, uuid), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteNodeConfig(env: string, uuid: string): Promise<NodeConfig> {
+  return apiFetch<NodeConfig>(nodeConfigPath(env, uuid), { method: 'DELETE' });
 }

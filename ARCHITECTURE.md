@@ -64,6 +64,7 @@ Main runtime components:
 - `pkg/environments`: environment model, enrollment/config path metadata, package/script metadata.
 - `pkg/health`: deployment health — the `service_status` heartbeat table, component status derivation (operational/degraded/down/stale/unknown), Go runtime snapshots, and a 24h-refreshed upgrade-version cache. Gated by `--health-enabled` (default off).
 - `pkg/nodes`: node registry, lookup, archive, metadata updates.
+- `pkg/nodeconfig`: per-node osquery configuration overrides (validation, deep merge, Redis-backed cache).
 - `pkg/queries`: distributed query definitions, targets, node-query state, saved queries.
 - `pkg/carves`: file carving metadata and storage backends (`db`, `local`, `s3`).
 - `pkg/logging`: TLS log pipeline, sink implementations (`db`, `file`, `stdout`, `graylog`, `splunk`, `logstash`, `kinesis`, `s3`, `kafka`, `elastic`), and DB/S3 readers.
@@ -318,7 +319,9 @@ Concrete example for config:
 4. It reads the request body into `types.ConfigRequest`.
 5. It resolves the node by `node_key`.
 6. It queues a `lastSeenUpdate` in the batch writer.
-7. It returns `env.Configuration` as the osquery config payload.
+7. It returns `env.Configuration` as the osquery config payload, with the node's per-node override (`pkg/nodeconfig`) deep-merged on top when one exists and has not expired.
+
+Per-node configuration overrides are admin-only (environment admin, enforced server-side and audited) and layered on the environment configuration: objects merge key by key, other values replace, and environment changes keep reaching the node. Options that keep the host connected to osctrl (e.g. config/logger/distributed/enroll TLS settings, host identifier) and `null` values are refused. The override applies only while the node is in the environment it was saved for, and an invalid stored override falls back to the environment configuration. An override may carry an expiry (none by default); an expired one stops applying and stays listed until removed. Changes take effect on the host's next config fetch; osquery does not reset options that the environment doesn't set, so those keep their overridden value until osquery restarts. Flags overrides are not available yet because osctrld cannot identify the node.
 
 ### Steady-state database load
 
@@ -376,6 +379,7 @@ Feature-owned tables are migrated only when their manager is initialized. In par
 - Nodes:
   - `pkg/nodes.OsqueryNode` -> `osquery_nodes`
   - `pkg/nodes.ArchiveOsqueryNode` -> `archive_osquery_nodes`
+  - `pkg/nodeconfig.Override` -> `node_config_overrides`
 - Users and auth:
   - `pkg/users.AdminUser` -> `admin_users`
   - `pkg/users.UserPermission` -> `user_permissions`
