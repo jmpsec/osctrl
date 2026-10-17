@@ -431,7 +431,6 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 		"packs":      body.Packs,
 		"decorators": body.Decorators,
 		"atc":        body.ATC,
-		"flags":      body.Flags,
 	}
 	normalized := map[string]string{}
 	for name, val := range sections {
@@ -448,6 +447,16 @@ func (h *HandlersApi) EnvironmentConfigPatchHandler(w http.ResponseWriter, r *ht
 			return
 		}
 		normalized[name] = s
+	}
+	// Flags are a plain-text flagfile, not JSON. Empty stays empty: osctrld
+	// nodes are then served the generated defaults (environments.NodeFlags).
+	if body.Flags != nil {
+		flags := strings.TrimSpace(*body.Flags)
+		if err := environments.ValidateFlags(flags); err != nil {
+			apiErrorResponse(w, "flags are not valid: "+err.Error(), http.StatusBadRequest, err)
+			return
+		}
+		normalized["flags"] = flags
 	}
 	if v, ok := normalized["options"]; ok {
 		if err := h.Envs.UpdateOptions(envVar, v); err != nil {

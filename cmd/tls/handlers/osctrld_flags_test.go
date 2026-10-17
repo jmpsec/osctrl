@@ -75,6 +75,16 @@ func TestOsctrldFlagsFallBackToGeneratedWhenUnset(t *testing.T) {
 	require.Contains(t, w.Body.String(), "--config_plugin=tls")
 }
 
+func TestOsctrldFlagsFallBackOverAStoredEmptyObject(t *testing.T) {
+	// Clearing flags through the API used to store "{}"; nodes must get the
+	// generated defaults rather than a flagfile with "{}" in it.
+	h, env := newOsctrldFlagsHandlers(t, "{}")
+	w := osctrldPost(t, h.FlagsHandler, env, types.FlagsRequest{Secret: env.Secret})
+	require.Equal(t, http.StatusOK, w.Code)
+	require.NotContains(t, w.Body.String(), "{}")
+	require.Contains(t, w.Body.String(), "--tls_hostname=osctrl.example")
+}
+
 func TestOsctrldFlagsRejectWrongSecret(t *testing.T) {
 	h, env := newOsctrldFlagsHandlers(t, editedFlags)
 	require.Equal(t, http.StatusForbidden, osctrldPost(t, h.FlagsHandler, env, types.FlagsRequest{Secret: "wrong"}).Code)
