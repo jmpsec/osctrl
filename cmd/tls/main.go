@@ -263,6 +263,10 @@ func osctrlService() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize node configuration overrides")
 	}
+	nodeFlagsMgr, err := nodeconfig.NewFlagsManager(db.Conn, redis.Client)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize node flags overrides")
+	}
 	var posturemgr *posture.PostureManager
 	if flagParams.Service.PostureEnabled {
 		posture.SetPrefix(flagParams.Service.PostureQueryPrefix)
@@ -529,6 +533,7 @@ func osctrlService() {
 		handlers.WithEnvCache(envCache),
 		handlers.WithNodes(nodesmgr),
 		handlers.WithNodeConfig(nodeConfigMgr),
+		handlers.WithFlagsOverrides(nodeFlagsMgr),
 		handlers.WithTags(tagsmgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),

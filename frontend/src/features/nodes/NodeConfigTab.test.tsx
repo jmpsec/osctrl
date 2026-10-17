@@ -9,12 +9,14 @@ const api = vi.hoisted(() => ({
   getNodeConfig: vi.fn(),
   putNodeConfig: vi.fn(),
   deleteNodeConfig: vi.fn(),
+  getNodeFlags: vi.fn(),
 }));
 
 vi.mock('$/api/nodes', () => ({
   getNodeConfig: api.getNodeConfig,
   putNodeConfig: api.putNodeConfig,
   deleteNodeConfig: api.deleteNodeConfig,
+  getNodeFlags: api.getNodeFlags,
 }));
 
 // Monaco pulls in a heavy worker — stub it with a textarea.
@@ -213,5 +215,31 @@ describe('NodeConfigTab', () => {
     renderTab();
     await screen.findByRole('button', { name: 'Edit override' });
     expect(screen.queryByRole('button', { name: 'Remove override' })).not.toBeInTheDocument();
+  });
+
+  it('switches between the Configuration and Flags views', async () => {
+    api.getNodeFlags.mockResolvedValue({
+      environment: '--verbose=false',
+      override: '',
+      applied: '--verbose=false',
+      expires_at: null,
+      expired: false,
+      updated_by: '',
+      updated_at: null,
+      conflicts: [],
+      osctrld: null,
+    });
+    const user = userEvent.setup();
+    renderTab();
+    expect(await screen.findByLabelText('Applied configuration')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Configuration' })).toHaveAttribute('aria-pressed', 'true');
+    expect(api.getNodeFlags).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Flags' }));
+    expect(await screen.findByLabelText('Applied flags')).toHaveValue('--verbose=false');
+    expect(screen.queryByLabelText('Applied configuration')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Configuration' }));
+    expect(await screen.findByLabelText('Applied configuration')).toBeInTheDocument();
   });
 });

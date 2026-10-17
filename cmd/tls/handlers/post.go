@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -959,7 +960,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 			return
 		}
-		response = []byte(flagsStr)
+		response = []byte(h.osctrldFlags(r.Context(), env, flagsStr, t))
 	} else {
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
@@ -970,6 +971,54 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Send response
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
+}
+
+// validApplySHA256 matches the hex SHA-256 osctrld reports for applied flags.
+var validApplySHA256 = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+
+// osctrldApply returns the apply status osctrld reported, or nil when it is
+// absent or malformed. It is untrusted node input.
+func osctrldApply(a *types.OsctrldApplyStatus) *types.OsctrldApplyStatus {
+	if a == nil {
+		return nil
+	}
+	if (a.Result != "ok" && a.Result != "rejected") || !validApplySHA256.MatchString(a.SHA256) {
+		log.Debug().Msgf("dropping malformed osctrld apply status (result %q)", a.Result)
+		return nil
+	}
+	return a
+}
+
+// osctrldFlags records the fetch for the node osctrld names and returns the
+// environment flags with that node's active override merged in. Without a
+// flags overrides manager, or a valid UUID of a node in env, it returns base
+// and records nothing. Any failure serves base, so a bad override can never
+// break a node's flags fetch.
+func (h *HandlersTLS) osctrldFlags(ctx context.Context, env environments.TLSEnvironment, base string, t types.FlagsRequest) string {
+	if h.FlagsOverrides == nil || !utils.CheckUUID(t.UUID) {
+		return base
+	}
+	node, err := h.Nodes.GetByUUIDEnv(t.UUID, env.ID)
+	if err != nil {
+		return base
+	}
+	now := time.Now()
+	if err := h.FlagsOverrides.RecordFetch(node.UUID, env.ID, now, osctrldApply(t.Apply)); err != nil {
+		log.Err(err).Msgf("node UUID: %s in %s environment: error recording osctrld flags fetch", node.UUID, env.Name)
+	}
+	o, err := h.FlagsOverrides.Active(ctx, node.UUID, env.ID, now)
+	if err == nil && o != nil {
+		if err = nodeconfig.ValidateFlagsOverride(o.Flags); err == nil {
+			var merged string
+			if merged, err = nodeconfig.MergeFlags(base, o.Flags); err == nil {
+				return merged
+			}
+		}
+	}
+	if err != nil {
+		log.Err(err).Msgf("node UUID: %s in %s environment: serving environment flags without node override", node.UUID, env.Name)
+	}
+	return base
 }
 
 // CertHandler - Function to retrieve certificate for osquery nodes, from osctrld
@@ -1077,7 +1126,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		response = types.VerifyResponse{
 			Certificate:    env.Certificate,
-			Flags:          flagsStr,
+			Flags:          h.osctrldFlags(r.Context(), env, flagsStr, types.FlagsRequest(t)),
 			OsqueryVersion: h.osqueryVersion(),
 			OsquerySHA256:  h.osquerySHA256(),
 		}

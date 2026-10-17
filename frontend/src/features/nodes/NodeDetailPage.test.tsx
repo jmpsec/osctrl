@@ -11,7 +11,7 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { NodeDetailPage } from './NodeDetailPage';
-import type { NodeConfig, NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag, PostureScore } from '$/api/types';
+import type { NodeConfig, NodeFlags, NodePosture, OsqueryNode, SavedQueriesPagedResponse, AdminTag, PostureScore } from '$/api/types';
 import type { NodeActivityBucket, NodeTileSeries } from '$/api/stats';
 import type { Features } from '$/api/features';
 
@@ -19,6 +19,7 @@ const mockGetNode = vi.fn<() => Promise<OsqueryNode>>();
 const mockListNodeLogs = vi.fn<() => Promise<unknown>>();
 const mockDeleteNode = vi.fn<() => Promise<{ message: string }>>();
 const mockGetNodeConfig = vi.fn<() => Promise<NodeConfig>>();
+const mockGetNodeFlags = vi.fn<() => Promise<NodeFlags>>();
 const mockGetNodePosture = vi.fn<() => Promise<NodePosture[]>>();
 const mockGetNodePostureScore = vi.fn<() => Promise<PostureScore>>();
 const mockGetMe = vi.fn<() => Promise<unknown>>();
@@ -38,6 +39,7 @@ vi.mock('$/api/nodes', () => ({
   listNodeLogs: (...args: unknown[]) => mockListNodeLogs(...(args as [])),
   deleteNode: (...args: unknown[]) => mockDeleteNode(...(args as [])),
   getNodeConfig: (...args: unknown[]) => mockGetNodeConfig(...(args as [])),
+  getNodeFlags: (...args: unknown[]) => mockGetNodeFlags(...(args as [])),
   getNodePosture: (...args: unknown[]) => mockGetNodePosture(...(args as [])),
   getNodePostureScore: (...args: unknown[]) => mockGetNodePostureScore(...(args as [])),
 }));
@@ -166,6 +168,21 @@ function makeNodeConfig(overrides: Partial<NodeConfig> = {}): NodeConfig {
     expired: false,
     updated_by: '',
     updated_at: null,
+    ...overrides,
+  };
+}
+
+function makeNodeFlags(overrides: Partial<NodeFlags> = {}): NodeFlags {
+  return {
+    environment: '--verbose=false',
+    override: '',
+    applied: '--verbose=false',
+    expires_at: null,
+    expired: false,
+    updated_by: '',
+    updated_at: null,
+    conflicts: [],
+    osctrld: null,
     ...overrides,
   };
 }
@@ -315,6 +332,7 @@ describe('NodeDetailPage', () => {
     mockDeleteNode.mockResolvedValue({ message: 'ok' });
     mockGetNodePosture.mockResolvedValue([]);
     mockGetNodeConfig.mockResolvedValue(makeNodeConfig());
+    mockGetNodeFlags.mockResolvedValue(makeNodeFlags());
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
     mockListAlertRules.mockResolvedValue([]);
     mockListEnvironments.mockResolvedValue([{ id: 5, name: 'test-env', uuid: 'env-uuid-1' }]);
@@ -1208,5 +1226,48 @@ describe('NodeDetailPage', () => {
     await waitFor(() => expect(mockListEnvironments).toHaveBeenCalled());
     expect(screen.queryByRole('tab', { name: /Configuration/ })).not.toBeInTheDocument();
     expect(mockGetNodeConfig).not.toHaveBeenCalled();
+    expect(mockGetNodeFlags).not.toHaveBeenCalled();
+  });
+
+  it('shows the banner and tab dot for a flags-only override', async () => {
+    mockGetNodeFlags.mockResolvedValue(
+      makeNodeFlags({
+        override: '--verbose=true',
+        updated_by: 'bob',
+        updated_at: '2026-10-02T10:00:00Z',
+        expires_at: '2099-01-02T10:00:00Z',
+      }),
+    );
+    renderWithProviders(makeTestRouter());
+    expect(
+      await screen.findByText('This node has a flags override, set by bob on 2026-10-02. It expires 2099-01-02.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/has a configuration override/)).not.toBeInTheDocument();
+    expect(within(screen.getByRole('tab', { name: /Configuration/ })).getByTestId('config-override-dot')).toBeInTheDocument();
+  });
+
+  it('shows expired wording for an expired flags override', async () => {
+    mockGetNodeFlags.mockResolvedValue(
+      makeNodeFlags({
+        override: '--verbose=true',
+        updated_by: 'bob',
+        updated_at: '2026-10-02T10:00:00Z',
+        expires_at: '2026-10-05T10:00:00Z',
+        expired: true,
+      }),
+    );
+    renderWithProviders(makeTestRouter());
+    expect(
+      await screen.findByText(
+        'This node has a flags override, set by bob on 2026-10-02. It expired on 2026-10-05 and is no longer applied.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('no flags banner without a flags override', async () => {
+    renderWithProviders(makeTestRouter());
+    await waitFor(() => expect(mockGetNodeFlags).toHaveBeenCalled());
+    await screen.findByRole('heading', { name: 'web-server-01' });
+    expect(screen.queryByText(/has a flags override/)).not.toBeInTheDocument();
   });
 });

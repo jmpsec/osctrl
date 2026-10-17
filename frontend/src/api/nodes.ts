@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { NodeConfig, NodeConfigRequest, NodePosture, PostureProfile, PostureScore } from './types';
+import type { NodeConfig, NodeConfigRequest, NodeFlags, NodeFlagsRequest, NodePosture, PostureProfile, PostureScore } from './types';
 import type {
   NodesPagedResponse,
   OsqueryNode,
@@ -130,4 +130,24 @@ export function putNodeConfig(env: string, uuid: string, body: NodeConfigRequest
 
 export function deleteNodeConfig(env: string, uuid: string): Promise<NodeConfig> {
   return apiFetch<NodeConfig>(nodeConfigPath(env, uuid), { method: 'DELETE' });
+}
+
+function nodeFlagsPath(env: string, uuid: string): string {
+  return `/api/v1/nodes/${encodeURIComponent(env)}/node/${encodeURIComponent(uuid)}/flags`;
+}
+
+export function getNodeFlags(env: string, uuid: string): Promise<NodeFlags> {
+  return apiFetch<NodeFlags>(nodeFlagsPath(env, uuid));
+}
+
+export function putNodeFlags(env: string, uuid: string, body: NodeFlagsRequest): Promise<NodeFlags> {
+  return apiFetch<NodeFlags>(nodeFlagsPath(env, uuid), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteNodeFlags(env: string, uuid: string): Promise<NodeFlags> {
+  return apiFetch<NodeFlags>(nodeFlagsPath(env, uuid), { method: 'DELETE' });
 }

@@ -666,3 +666,30 @@ export interface NodeConfigRequest {
   /** RFC3339; null/omitted for no expiry. */
   expires_at?: string | null;
 }
+
+/** Per-node osquery flags override (GET/PUT/DELETE .../node/{uuid}/flags). */
+export interface NodeFlags {
+  environment: string;
+  override: string;
+  applied: string;
+  expires_at: string | null;
+  expired: boolean;
+  updated_by: string;
+  updated_at: string | null;
+  /** Flag names also set in the configuration's options (these can take precedence). */
+  conflicts: string[];
+  /** Null when no osctrld has been seen for this host. apply_error/apply_at are host-reported (untrusted). */
+  osctrld: {
+    last_fetched_at: string;
+    apply_result: string;
+    apply_error: string;
+    apply_at: string | null;
+    rejected_current: boolean;
+  } | null;
+}
+
+export interface NodeFlagsRequest {
+  override: string;
+  /** RFC3339; null/omitted for no expiry. */
+  expires_at?: string | null;
+}

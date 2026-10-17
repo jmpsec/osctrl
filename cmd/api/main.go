@@ -456,6 +456,10 @@ func osctrlAPIService() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize node configuration overrides")
 	}
+	nodeFlagsMgr, err := nodeconfig.NewFlagsManager(db.Conn, redis.Client)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize node flags overrides")
+	}
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, 0)
@@ -681,6 +685,7 @@ func osctrlAPIService() {
 		handlers.WithTags(tagsmgr),
 		handlers.WithNodes(nodesmgr),
 		handlers.WithNodeConfig(nodeConfigMgr),
+		handlers.WithFlagsOverrides(nodeFlagsMgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithConsole(consolemgr),
 		handlers.WithFileExplorer(fileexplorermgr),
@@ -839,6 +844,16 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"DELETE "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/config",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeConfigDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: per-node osquery flags override
+	muxAPI.Handle(
+		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/flags",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeFlagsGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PUT "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/flags",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeFlagsPutHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/flags",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.NodeFlagsDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"POST "+_apiPath(apiNodesPath)+"/{env}/delete",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.DeleteNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

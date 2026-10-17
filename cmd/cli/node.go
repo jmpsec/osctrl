@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -16,18 +17,27 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// deleteNodeOverride removes the config override of a node just deleted by
-// UUID. ArchiveDeleteByUUID matches the uppercased UUID, so that is the node
-// row's key. A failure is logged, not returned: the node is already gone.
+// deleteNodeOverride removes the config and flags overrides and the osctrld
+// status of a node just deleted by UUID. ArchiveDeleteByUUID matches the
+// uppercased UUID, so that is the node row's key. A failure is logged, not
+// returned: the node is already gone.
 // ponytail: the CLI has no Redis, so osctrl-tls may keep a cached copy for up
 // to the cache TTL; it only applies if the same UUID re-enrolls in that window.
 func deleteNodeOverride(uuid string) {
+	uuid = strings.ToUpper(uuid)
 	m, err := nodeconfig.NewManager(nodesmgr.DB, nil)
 	if err == nil {
-		err = m.Delete(context.Background(), strings.ToUpper(uuid))
+		err = m.Delete(context.Background(), uuid)
 	}
 	if err != nil {
 		log.Err(err).Msgf("error removing config override of deleted node %s", uuid)
+	}
+	f, err := nodeconfig.NewFlagsManager(nodesmgr.DB, nil)
+	if err == nil {
+		err = errors.Join(f.Delete(context.Background(), uuid), f.DeleteStatus(uuid))
+	}
+	if err != nil {
+		log.Err(err).Msgf("error removing flags override of deleted node %s", uuid)
 	}
 }
 
