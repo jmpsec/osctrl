@@ -211,6 +211,19 @@ func (environment *EnvManager) GenerateFlags(env TLSEnvironment, secretPath, cer
 	return ParseFlagTemplate("flags", FlagsTemplate, data), nil
 }
 
+// ValidateFlags checks flags is an osquery flagfile: every line that is not
+// blank or a # comment must be a flag; gflags accepts -flag as well as --flag.
+func ValidateFlags(flags string) error {
+	for i, line := range strings.Split(flags, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "-") {
+			continue
+		}
+		return fmt.Errorf("line %d is not a flag: %q", i+1, line)
+	}
+	return nil
+}
+
 // FillFlagPaths replaces the secret and certificate placeholders in flags.
 // An empty path keeps its placeholder, as GenerateFlags does.
 func FillFlagPaths(flags, secretPath, certPath string) string {
@@ -225,9 +238,10 @@ func FillFlagPaths(flags, secretPath, certPath string) string {
 
 // NodeFlags is the flagfile a node of env runs with: the environment's
 // stored flags, which operators edit, with the paths filled. Environments
-// with no stored flags get the generated defaults.
+// with no stored flags, or with stored flags that are not a flagfile (such as
+// the "{}" the API once stored for cleared flags), get the generated defaults.
 func (environment *EnvManager) NodeFlags(env TLSEnvironment, secretPath, certPath string, osqCfg config.YAMLConfigurationOsquery) (string, error) {
-	if strings.TrimSpace(env.Flags) == "" {
+	if strings.TrimSpace(env.Flags) == "" || ValidateFlags(env.Flags) != nil {
 		return environment.GenerateFlags(env, secretPath, certPath, osqCfg)
 	}
 	return FillFlagPaths(env.Flags, secretPath, certPath), nil
