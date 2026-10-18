@@ -58,9 +58,9 @@ func TestConfigVersionWarning(t *testing.T) {
 	}
 }
 
-func TestConfigVersionIncludesLiveUpdateFields(t *testing.T) {
-	const liveUpdateConfigVersion = 4
-	if ConfigVersion != liveUpdateConfigVersion {
-		t.Fatalf("ConfigVersion = %d, want %d for service.eventsEnabled/eventsNamespace", ConfigVersion, liveUpdateConfigVersion)
+func TestConfigVersionIncludesOsctrldRateLimits(t *testing.T) {
+	const osctrldRateLimitsConfigVersion = 5
+	if ConfigVersion != osctrldRateLimitsConfigVersion {
+		t.Fatalf("ConfigVersion = %d, want %d for rateLimits.osctrldAuth/osctrld/osctrldDownload", ConfigVersion, osctrldRateLimitsConfigVersion)
 	}
 }

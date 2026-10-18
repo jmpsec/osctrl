@@ -83,6 +83,7 @@ type HandlersTLS struct {
 	NodeConfig      *nodeconfig.Manager      // nil: per-node config overrides are inert
 	FlagsOverrides  *nodeconfig.FlagsManager // nil: per-node flags overrides are inert
 	Extensions      *extensions.Manager      // nil: osctrld extension routes are not registered
+	OsctrldLimits   *OsctrldLimits           // nil: osctrld routes are not rate-limited
 	// DBHealth, when wired via WithDBHealth, lets HealthHandler
 	// report backend degradation. nil means "no monitor" and the
 	// health endpoint reports healthy as before.
@@ -436,6 +437,11 @@ type responseWriter struct {
 
 func NewResponseWriter(w http.ResponseWriter) *responseWriter {
 	return &responseWriter{w, http.StatusOK}
+}
+
+// Unwrap lets http.ResponseController reach the underlying writer.
+func (rw *responseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
 }
 
 func (rw *responseWriter) WriteHeader(code int) {

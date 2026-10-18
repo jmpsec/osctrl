@@ -68,8 +68,30 @@ func DefaultRateLimits() YAMLConfigurationRateLimits {
 			EvictAfter: 10 * time.Minute,
 			RetryAfter: 60,
 		},
+		// One failure refills every 6 minutes, hence retryAfter 360.
+		OsctrldAuth: YAMLConfigurationRateLimit{
+			Burst:      10,
+			Period:     time.Hour,
+			EvictAfter: 2 * time.Hour,
+			RetryAfter: 360,
+		},
+		Osctrld: YAMLConfigurationRateLimit{
+			Burst:      300,
+			Period:     time.Minute,
+			EvictAfter: 10 * time.Minute,
+			RetryAfter: 60,
+		},
+		OsctrldDownload: YAMLConfigurationRateLimit{
+			Burst:      30,
+			Period:     time.Minute,
+			EvictAfter: 10 * time.Minute,
+			RetryAfter: 60,
+		},
 	}
 }
+
+// TLSRateLimits names the rate limits osctrl-tls enforces.
+var TLSRateLimits = []string{"enroll", "osctrldAuth", "osctrld", "osctrldDownload"}
 
 // DefaultRateLimitsPtr returns DefaultRateLimits as a pointer for optional
 // config sections.
@@ -85,6 +107,9 @@ func ValidateRateLimits(cfg YAMLConfigurationRateLimits, names ...string) error 
 		"preAuth":            cfg.PreAuth,
 		"serviceConfigApply": cfg.ServiceConfigApply,
 		"enroll":             cfg.Enroll,
+		"osctrldAuth":        cfg.OsctrldAuth,
+		"osctrld":            cfg.Osctrld,
+		"osctrldDownload":    cfg.OsctrldDownload,
 	}
 	for _, name := range names {
 		limit, ok := limits[name]
@@ -143,7 +168,7 @@ func ValidateTLSConfigValues(cfg TLSConfiguration) error {
 		}
 	}
 	if cfg.RateLimits != nil {
-		if err := ValidateRateLimits(*cfg.RateLimits, "enroll"); err != nil {
+		if err := ValidateRateLimits(*cfg.RateLimits, TLSRateLimits...); err != nil {
 			return err
 		}
 	}

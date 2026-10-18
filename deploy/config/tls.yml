@@ -16,7 +16,7 @@
 # startup when this differs from the version the binary supports: a lower
 # number means fields were added since this file was written, a higher
 # number means the binary is older than this file. See pkg/config/version.go.
-version: 4
+version: 5
 
 # Main HTTP service behavior and shared service-level features.
 service:
@@ -190,6 +190,32 @@ rateLimits:
   # osquery enroll attempts per client IP.
   enroll:
     burst: 20
+    period: 1m
+    evictAfter: 10m
+    retryAfter: 60
+    maxBuckets: 0
+  # The osctrld limits key on the client IP. Behind a reverse proxy or load
+  # balancer, set service.trustedProxies to its address, otherwise every
+  # client shares the proxy's budgets and one bad client can block them all.
+  # Wrong osctrld secrets per client IP and environment. Only failures are
+  # charged; once spent, that IP gets 429 on that environment's osctrld
+  # routes (even with the right secret) until the budget refills.
+  osctrldAuth:
+    burst: 10
+    period: 1h
+    evictAfter: 2h
+    retryAfter: 360
+    maxBuckets: 0
+  # All osctrld requests (flags, cert, verify, script, extensions) per client IP.
+  osctrld:
+    burst: 300
+    period: 1m
+    evictAfter: 10m
+    retryAfter: 60
+    maxBuckets: 0
+  # osctrld extension downloads per client IP, on top of the osctrld limit.
+  osctrldDownload:
+    burst: 30
     period: 1m
     evictAfter: 10m
     retryAfter: 60

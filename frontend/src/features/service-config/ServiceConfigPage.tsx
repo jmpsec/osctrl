@@ -135,6 +135,9 @@ const FIELD_HELP: Record<string, string> = {
   'api:rateLimits.preAuth': 'Read-only pre-auth routes, such as login environment/method discovery.',
   'api:rateLimits.serviceConfigApply': 'POST /api/v1/service-config/apply restart requests.',
   'tls:rateLimits.enroll': 'osquery enroll attempts per client IP.',
+  'tls:rateLimits.osctrldAuth': 'Wrong osctrld secrets per client IP and environment; once spent, that IP gets 429 on the environment\'s osctrld routes until it refills.',
+  'tls:rateLimits.osctrld': 'All osctrld requests per client IP.',
+  'tls:rateLimits.osctrldDownload': 'osctrld extension downloads per client IP, on top of the osctrld limit.',
   // --- YAML-annotated: SAML
   'saml.Enabled': 'Enables SAML routes when true.',
   'saml.EntityID': 'SP entity ID — what the IdP knows us by, conventionally the metadata URL.',

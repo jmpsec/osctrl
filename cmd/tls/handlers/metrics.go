@@ -37,6 +37,24 @@ var (
 		Help:    "The duration of batch data flushing to backend",
 		Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5},
 	}, []string{"operation"})
+	// osctrldAuthFailures counts wrong osctrld secrets per environment name
+	// (only resolved environments, so cardinality stays bounded).
+	osctrldAuthFailures = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "osctrld_auth_failures_total",
+		Help: "osctrld requests rejected for a wrong environment secret",
+	}, []string{"environment"})
+	// osctrldRateLimited counts osctrld requests rejected with 429, by
+	// route pattern and rate limit (osctrldAuth, osctrld, osctrldDownload).
+	osctrldRateLimited = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "osctrld_rate_limited_total",
+		Help: "osctrld requests rejected by a rate limit",
+	}, []string{"route", "limit"})
+	// osctrldAuthAuditDropped counts failed-secret audit entries dropped by
+	// the per-environment audit cap.
+	osctrldAuthAuditDropped = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "osctrld_auth_audit_dropped_total",
+		Help: "osctrld failed-secret audit entries dropped by the per-environment cap",
+	}, []string{"environment"})
 	// DBDegraded is 1 when the DB health monitor reports the database
 	// as degraded (caches are in stale-serve mode), 0 when healthy.
 	dbDegraded = prometheus.NewGauge(prometheus.GaugeOpts{
@@ -52,6 +70,9 @@ func RegisterMetrics(reg prometheus.Registerer) {
 	reg.MustRegister(distributedQueryProcessingDuration)
 	reg.MustRegister(batchFlushDuration)
 	reg.MustRegister(dbDegraded)
+	reg.MustRegister(osctrldAuthFailures)
+	reg.MustRegister(osctrldRateLimited)
+	reg.MustRegister(osctrldAuthAuditDropped)
 }
 
 // SetDBDegraded updates the db_degraded gauge. Called by the DB

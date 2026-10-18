@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/spf13/viper"
 	"github.com/urfave/cli/v3"
 )
 
@@ -151,6 +152,20 @@ func TestSampleTLSConfigLoads(t *testing.T) {
 	if params.Osquery == nil {
 		t.Fatal("sample tls.yml did not load osquery")
 	}
+	// The sample documents every rate limit with its built-in default.
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "deploy", "config", "tls.yml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range config.TLSRateLimits {
+		if !v.IsSet("rateLimits." + name + ".burst") {
+			t.Errorf("sample tls.yml does not document rateLimits.%s", name)
+		}
+	}
+	if *params.RateLimits != config.DefaultRateLimits() {
+		t.Fatalf("sample tls.yml rateLimits = %+v, want the defaults", *params.RateLimits)
+	}
 }
 
 func TestConfigVersionMismatchDoesNotFailLoad(t *testing.T) {
@@ -173,5 +188,39 @@ redis:
 	}
 	if cfg.Version != 999 {
 		t.Fatalf("cfg.Version = %d, want 999", cfg.Version)
+	}
+}
+
+// A tls.yml written before the osctrld limits existed has a rateLimits block
+// without them; it must still load, with the built-in osctrld defaults.
+func TestLoadedYAMLKeepsOsctrldRateLimitDefaults(t *testing.T) {
+	const body = `
+service:
+  auth: none
+rateLimits:
+  enroll:
+    burst: 9
+    period: 2m
+    evictAfter: 12m
+    retryAfter: 45
+  osctrld:
+    burst: 50
+`
+	cfg, err := loadYAMLConfiguration(writeTempTLSConfig(t, body))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "tls.yml")
+	d := config.DefaultRateLimits()
+	if params.RateLimits.OsctrldAuth != d.OsctrldAuth || params.RateLimits.OsctrldDownload != d.OsctrldDownload {
+		t.Fatalf("osctrld limits = %+v / %+v, want defaults", params.RateLimits.OsctrldAuth, params.RateLimits.OsctrldDownload)
+	}
+	want := d.Osctrld
+	want.Burst = 50
+	if params.RateLimits.Osctrld != want {
+		t.Fatalf("osctrld = %+v, want %+v", params.RateLimits.Osctrld, want)
+	}
+	if params.RateLimits.Enroll.Burst != 9 {
+		t.Fatalf("enroll burst = %d, want 9", params.RateLimits.Enroll.Burst)
 	}
 }

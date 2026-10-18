@@ -65,3 +65,19 @@ func TestAuditActionTypes(t *testing.T) {
 	_, supported := LogTypes[LogTypeEnroll]
 	require.True(t, supported)
 }
+
+func TestFailedOsctrld(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	m, err := CreateAuditLogManager(db, "tls", true)
+	require.NoError(t, err)
+	m.FailedOsctrld("203.0.113.5", "prod", "invalid secret", 7)
+	var rows []AuditLog
+	require.NoError(t, db.Find(&rows).Error)
+	require.Len(t, rows, 1)
+	require.EqualValues(t, LogTypeNode, rows[0].LogType)
+	require.EqualValues(t, SeverityWarning, rows[0].Severity)
+	require.EqualValues(t, 7, rows[0].EnvironmentID)
+	require.Equal(t, "203.0.113.5", rows[0].SourceIP)
+	require.Equal(t, "failed osctrld secret for env prod: invalid secret", rows[0].Line)
+}
