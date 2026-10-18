@@ -100,7 +100,9 @@ var (
 
 // Function to load the configuration from a single YAML file
 func loadYAMLConfiguration(file string) (config.TLSConfiguration, error) {
-	var cfg config.TLSConfiguration
+	// Rate limits start from the defaults so entries missing from the file
+	// (e.g. limits added after it was written) keep their default values.
+	cfg := config.TLSConfiguration{RateLimits: config.DefaultRateLimitsPtr()}
 	v := viper.New()
 	// Load file and read config
 	v.SetConfigFile(file)
@@ -368,7 +370,7 @@ func osctrlService() {
 	if flagParams.RateLimits == nil {
 		flagParams.RateLimits = config.DefaultRateLimitsPtr()
 	}
-	if err := config.ValidateRateLimits(*flagParams.RateLimits, "enroll"); err != nil {
+	if err := config.ValidateRateLimits(*flagParams.RateLimits, config.TLSRateLimits...); err != nil {
 		log.Fatal().Msgf("Invalid rate limit configuration - %v", err)
 	}
 	settingsCacheTTL := time.Duration(settingsmgr.RefreshSettings(config.ServiceTLS)) * time.Second
@@ -560,6 +562,7 @@ func osctrlService() {
 		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),
 		handlers.WithAuditLog(auditLog),
+		handlers.WithOsctrldLimits(handlers.NewOsctrldLimits(*flagParams.RateLimits)),
 		handlers.WithDBHealth(dbHealth), // nil when DB health monitor disabled
 	)
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
@@ -1015,17 +1018,21 @@ func registerRoutes(mux *http.ServeMux, h *handlers.HandlersTLS, p *config.Servi
 	if p.Osctrld.Enabled {
 		log.Info().Msg("Enabling osctrld endpoints")
 		// TLS: osctrld retrieve flags
-		mux.HandleFunc("POST /{env}/"+environments.DefaultFlagsPath, h.FlagsHandler)
+		// Every osctrld route is rate-limited per client address, and an
+		// address with too many wrong secrets is blocked per environment.
+		osctrld := func(f http.HandlerFunc) http.Handler { return h.OsctrldMiddleware(false, f) }
+		mux.Handle("POST /{env}/"+environments.DefaultFlagsPath, osctrld(h.FlagsHandler))
 		// TLS: osctrld retrieve certificate
-		mux.HandleFunc("POST /{env}/"+environments.DefaultCertPath, h.CertHandler)
+		mux.Handle("POST /{env}/"+environments.DefaultCertPath, osctrld(h.CertHandler))
 		// TLS: osctrld verification
-		mux.HandleFunc("POST /{env}/"+environments.DefaultVerifyPath, h.VerifyHandler)
+		mux.Handle("POST /{env}/"+environments.DefaultVerifyPath, osctrld(h.VerifyHandler))
 		// TLS: osctrld retrieve script to install/remove osquery
-		mux.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, h.ScriptHandler)
+		mux.Handle("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, osctrld(h.ScriptHandler))
 		if h.Extensions != nil {
-			// TLS: osctrld list and download osquery extensions
-			mux.HandleFunc("POST /{env}/"+environments.DefaultExtensionsPath, h.ExtensionsHandler)
-			mux.HandleFunc("POST /{env}/"+environments.DefaultExtensionPath, h.ExtensionDownloadHandler)
+			// TLS: osctrld list and download osquery extensions; downloads
+			// also have their own per-address limit
+			mux.Handle("POST /{env}/"+environments.DefaultExtensionsPath, osctrld(h.ExtensionsHandler))
+			mux.Handle("POST /{env}/"+environments.DefaultExtensionPath, h.OsctrldMiddleware(true, http.HandlerFunc(h.ExtensionDownloadHandler)))
 		}
 	}
 

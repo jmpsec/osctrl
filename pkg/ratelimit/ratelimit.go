@@ -110,10 +110,17 @@ func (l *Limiter) Allow(key string) bool {
 	now := time.Now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	// Amortized eviction: walk the map only when the throttle says it's
-	// time. Each Allow is O(1) on the steady-state path. (Cluster-3
-	// review item — keeps the lock-held duration bounded under load.)
-	if now.Sub(l.lastEviction) >= l.evictInterval {
+	return l.bucket(key, now, true).AllowN(now, 1)
+}
+
+// bucket returns key's limiter: its own bucket, the shared overflow bucket
+// when the map is full and key has none, or — when create is false and the
+// map has room — nil. create also refreshes lastSeen, creates the bucket,
+// and runs the amortized eviction. Callers hold l.mu.
+func (l *Limiter) bucket(key string, now time.Time, create bool) *rate.Limiter {
+	if create && now.Sub(l.lastEviction) >= l.evictInterval {
+		// Amortized eviction: walk the map only when the throttle says
+		// it's time, keeping the lock-held duration bounded under load.
 		for k, e := range l.buckets {
 			if now.Sub(e.lastSeen) > l.evictAfter {
 				delete(l.buckets, k)
@@ -122,19 +129,59 @@ func (l *Limiter) Allow(key string) bool {
 		l.lastEviction = now
 	}
 	if e, ok := l.buckets[key]; ok {
-		e.lastSeen = now
-		return e.limiter.Allow()
+		if create {
+			e.lastSeen = now
+		}
+		return e.limiter
 	}
 	// New key. If the map is at the cap, route through the shared
 	// overflow bucket — spray attackers can saturate it, but legitimate
 	// keys that already have a bucket still get their own quota.
-	//
 	if len(l.buckets) >= l.maxBuckets {
-		return l.overflow.Allow()
+		return l.overflow
+	}
+	if !create {
+		return nil
 	}
 	e := &entry{limiter: rate.NewLimiter(l.rate, l.burst), lastSeen: now}
 	l.buckets[key] = e
-	return e.limiter.Allow()
+	return e.limiter
+}
+
+// Exhausted reports whether key has no token left, without consuming one or
+// creating a bucket. A key without its own bucket is exhausted only when the
+// map is full and the shared overflow bucket is empty.
+func (l *Limiter) Exhausted(key string) bool {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	b := l.bucket(key, now, false)
+	return b != nil && b.TokensAt(now) < 1
+}
+
+// Attempt charges key only for failed attempts, atomically: under the lock
+// it refuses (allowed false, check not run) when key has no token left,
+// otherwise runs check and consumes a token when it fails. Concurrent
+// failures therefore never exceed the budget. check runs under the
+// limiter's lock, so it must be cheap (e.g. a secret comparison).
+func (l *Limiter) Attempt(key string, check func() bool) (allowed, valid bool) {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if b := l.bucket(key, now, false); b != nil && b.TokensAt(now) < 1 {
+		return false, false
+	}
+	if check() {
+		return true, true
+	}
+	l.bucket(key, now, true).AllowN(now, 1)
+	return true, false
+}
+
+// Reject writes the limiter's 429 response with its Retry-After header.
+func (l *Limiter) Reject(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", strconv.Itoa(l.retryAfter))
+	http.Error(w, "too many requests", http.StatusTooManyRequests)
 }
 
 // HTTPMiddleware returns a middleware that rejects requests with 429 when
@@ -151,8 +198,7 @@ func (l *Limiter) HTTPMiddleware(keyFn func(*http.Request) string, onReject func
 				if onReject != nil {
 					onReject(r, key)
 				}
-				w.Header().Set("Retry-After", strconv.Itoa(l.retryAfter))
-				http.Error(w, "too many requests", http.StatusTooManyRequests)
+				l.Reject(w)
 				return
 			}
 			next.ServeHTTP(w, r)

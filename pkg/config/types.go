@@ -367,6 +367,14 @@ type YAMLConfigurationRateLimits struct {
 	PreAuth            YAMLConfigurationRateLimit `yaml:"preAuth" mapstructure:"preAuth"`
 	ServiceConfigApply YAMLConfigurationRateLimit `yaml:"serviceConfigApply" mapstructure:"serviceConfigApply"`
 	Enroll             YAMLConfigurationRateLimit `yaml:"enroll" mapstructure:"enroll"`
+	// OsctrldAuth is charged only by failed osctrld secrets, per client
+	// address and environment; once empty, that address gets 429 on that
+	// environment's osctrld routes until it refills.
+	OsctrldAuth YAMLConfigurationRateLimit `yaml:"osctrldAuth" mapstructure:"osctrldAuth"`
+	// Osctrld is charged by every osctrld request, per client address.
+	Osctrld YAMLConfigurationRateLimit `yaml:"osctrld" mapstructure:"osctrld"`
+	// OsctrldDownload is charged by every extension download, per client address.
+	OsctrldDownload YAMLConfigurationRateLimit `yaml:"osctrldDownload" mapstructure:"osctrldDownload"`
 }
 
 // YAMLConfigurationWriter to hold the DB batch writer configuration values

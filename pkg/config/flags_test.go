@@ -269,3 +269,27 @@ func TestVulnNVDFlagDefaultsOff(t *testing.T) {
 	}
 	t.Fatal("missing vuln-nvd-enabled flag")
 }
+
+func TestTLSRateLimitFlagsIncludeOsctrld(t *testing.T) {
+	params := &ServiceParameters{}
+	flags := initRateLimitFlags(params, ServiceTLS)
+	want := map[string]*int{
+		"rate-limit-enroll-burst":           &params.RateLimits.Enroll.Burst,
+		"rate-limit-osctrld-auth-burst":     &params.RateLimits.OsctrldAuth.Burst,
+		"rate-limit-osctrld-burst":          &params.RateLimits.Osctrld.Burst,
+		"rate-limit-osctrld-download-burst": &params.RateLimits.OsctrldDownload.Burst,
+	}
+	for _, flag := range flags {
+		if f, ok := flag.(*cli.IntFlag); ok {
+			if dest, ok := want[f.Name]; ok {
+				if f.Destination != dest {
+					t.Errorf("%s has wrong destination", f.Name)
+				}
+				delete(want, f.Name)
+			}
+		}
+	}
+	for name := range want {
+		t.Errorf("missing flag %s", name)
+	}
+}

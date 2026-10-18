@@ -255,6 +255,19 @@ func (m *AuditLogManager) FailedEnroll(ip, envName, reason string, envID uint) {
 	}
 }
 
+// FailedOsctrld records a rejected osctrld request for the env in the path:
+// a wrong environment secret, or an address blocked after too many of them.
+// Severity warning, like FailedEnroll.
+func (m *AuditLogManager) FailedOsctrld(ip, envName, reason string, envID uint) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("failed osctrld secret for env %s: %s", envName, reason)
+	if err := m.CreateNew("osctrl-tls", line, ip, LogTypeNode, SeverityWarning, envID); err != nil {
+		log.Err(err).Msg("error creating failed-osctrld audit log")
+	}
+}
+
 // NewLogout - create new logout audit log entry
 func (m *AuditLogManager) NewLogout(username, ip string) {
 	if !m.Enabled {

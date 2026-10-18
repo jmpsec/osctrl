@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -779,7 +780,12 @@ func initRateLimitFlags(params *ServiceParameters, service string) []cli.Flag {
 		params.RateLimits = DefaultRateLimitsPtr()
 	}
 	if service == ServiceTLS {
-		return rateLimitFlags("enroll", "RATE_LIMIT_ENROLL", &params.RateLimits.Enroll)
+		return slices.Concat(
+			rateLimitFlags("enroll", "RATE_LIMIT_ENROLL", &params.RateLimits.Enroll),
+			rateLimitFlags("osctrld-auth", "RATE_LIMIT_OSCTRLD_AUTH", &params.RateLimits.OsctrldAuth),
+			rateLimitFlags("osctrld", "RATE_LIMIT_OSCTRLD", &params.RateLimits.Osctrld),
+			rateLimitFlags("osctrld-download", "RATE_LIMIT_OSCTRLD_DOWNLOAD", &params.RateLimits.OsctrldDownload),
+		)
 	}
 	return append(
 		append(

@@ -614,6 +614,22 @@ func TestResolve_RateLimitsSection_OverridesYAML(t *testing.T) {
 	assert.Equal(t, 23, cfg.RateLimits.Login.RetryAfter)
 }
 
+// A rateLimits value saved before the osctrld limits existed (enroll only)
+// still validates for osctrl-tls; the osctrld limits keep their defaults.
+// An invalid osctrld limit is rejected.
+func TestUpdateSection_TLSRateLimitsOsctrld(t *testing.T) {
+	db := setupTestDB(t)
+	m := &ServiceConfigManager{DB: db}
+	cfg := testTLSParams()
+	require.NoError(t, m.Seed(config.ServiceTLS, cfg, 0))
+
+	_, err := m.UpdateSection(config.ServiceTLS, "rateLimits", `{"enroll":{"burst":20,"period":60000000000,"evictAfter":600000000000,"retryAfter":60}}`, 0)
+	require.NoError(t, err)
+
+	_, err = m.UpdateSection(config.ServiceTLS, "rateLimits", `{"enroll":{"burst":20,"period":60000000000,"evictAfter":600000000000,"retryAfter":60},"osctrldAuth":{"burst":0,"period":3600000000000,"evictAfter":7200000000000}}`, 0)
+	require.ErrorContains(t, err, "osctrldAuth burst")
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Phase 4 — optional YAML (nil section pointers)
 // ──────────────────────────────────────────────────────────────────────────────

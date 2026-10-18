@@ -494,11 +494,13 @@ func validateSectionValue(service, name, value string) error {
 		}
 	}
 	if name == "rateLimits" {
-		var limits config.YAMLConfigurationRateLimits
+		// Applying merges into the running limits, so a value without an
+		// entry (saved before it existed) keeps that entry's default.
+		limits := config.DefaultRateLimits()
 		if err := json.Unmarshal([]byte(value), &limits); err != nil {
 			return fmt.Errorf("unmarshal rateLimits: %w", err)
 		}
-		names := []string{"enroll"}
+		names := config.TLSRateLimits
 		if service == config.ServiceAPI {
 			names = []string{"login", "preAuth", "serviceConfigApply"}
 		}

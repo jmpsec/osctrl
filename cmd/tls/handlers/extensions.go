@@ -50,8 +50,7 @@ func (h *HandlersTLS) osctrldRequest(w http.ResponseWriter, r *http.Request, max
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return env, false
 	}
-	if !h.checkValidSecret(secret(), env) {
-		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
+	if !h.osctrldSecret(w, r, secret(), env) {
 		return env, false
 	}
 	return env, true

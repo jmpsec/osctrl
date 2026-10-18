@@ -952,19 +952,17 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Check if provided secret is valid and if so, prepare flags
-	if h.checkValidSecret(t.Secret, env) {
-		flagsStr, err := h.Envs.NodeFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
-		if err != nil {
-			log.Err(err).Msg("error generating flags")
-			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
-			return
-		}
-		response = []byte(h.osctrldFlags(r.Context(), env, flagsStr, t))
-	} else {
-		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
+	// Check the secret; a wrong one is charged to the failure budget
+	if !h.osctrldSecret(w, r, t.Secret, env) {
 		return
 	}
+	flagsStr, err := h.Envs.NodeFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
+	if err != nil {
+		log.Err(err).Msg("error generating flags")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	response = []byte(h.osctrldFlags(r.Context(), env, flagsStr, t))
 	// Debug HTTP
 	if env.DebugHTTP {
 		log.Debug().Msgf("Flags: %s", string(response))
@@ -1061,13 +1059,11 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Check if provided secret is valid and if so, prepare flags
-	if h.checkValidSecret(t.Secret, env) {
-		response = []byte(env.Certificate)
-	} else {
-		utils.HTTPResponse(w, "", http.StatusForbidden, []byte("uh oh..."))
+	// Check the secret; a wrong one is charged to the failure budget
+	if !h.osctrldSecret(w, r, t.Secret, env) {
 		return
 	}
+	response = []byte(env.Certificate)
 	// Debug HTTP
 	if env.DebugHTTP {
 		log.Debug().Msgf("Certificate: %s", string(response))
@@ -1116,23 +1112,21 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Check if provided secret is valid and if so, prepare flags
-	if h.checkValidSecret(t.Secret, env) {
-		flagsStr, err := h.Envs.NodeFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
-		if err != nil {
-			log.Err(err).Msg("error generating flags")
-			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
-			return
-		}
-		response = types.VerifyResponse{
-			Certificate:    env.Certificate,
-			Flags:          h.osctrldFlags(r.Context(), env, flagsStr, types.FlagsRequest(t)),
-			OsqueryVersion: h.osqueryVersion(),
-			OsquerySHA256:  h.osquerySHA256(),
-		}
-	} else {
-		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
+	// Check the secret; a wrong one is charged to the failure budget
+	if !h.osctrldSecret(w, r, t.Secret, env) {
 		return
+	}
+	flagsStr, err := h.Envs.NodeFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
+	if err != nil {
+		log.Err(err).Msg("error generating flags")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	response = types.VerifyResponse{
+		Certificate:    env.Certificate,
+		Flags:          h.osctrldFlags(r.Context(), env, flagsStr, types.FlagsRequest(t)),
+		OsqueryVersion: h.osqueryVersion(),
+		OsquerySHA256:  h.osquerySHA256(),
 	}
 	// Debug HTTP
 	if env.DebugHTTP {
@@ -1209,19 +1203,17 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Check if provided secret is valid and if so, prepare flags
-	if h.checkValidSecret(t.Secret, env) {
-		script, err := environments.QuickAddScript("osctrl-"+env.Name, actionVar, env)
-		if err != nil {
-			log.Err(err).Msg("error preparing script")
-			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
-			return
-		}
-		response = []byte(script)
-	} else {
-		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
+	// Check the secret; a wrong one is charged to the failure budget
+	if !h.osctrldSecret(w, r, t.Secret, env) {
 		return
 	}
+	script, err := environments.QuickAddScript("osctrl-"+env.Name, actionVar, env)
+	if err != nil {
+		log.Err(err).Msg("error preparing script")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
+	}
+	response = []byte(script)
 	// Debug HTTP
 	if env.DebugHTTP {
 		log.Debug().Msgf("Script: %s", string(response))

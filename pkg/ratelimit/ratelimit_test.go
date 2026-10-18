@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -200,5 +201,116 @@ func TestMiddlewareXFFRotationDoesNotBypass(t *testing.T) {
 	}
 	if called != 2 {
 		t.Fatalf("inner handler called %d times, want 2 (only the burst)", called)
+	}
+}
+
+// TestExhaustedDoesNotConsume covers the "consume only on failure" use:
+// Exhausted reports an empty bucket without taking a token or creating one.
+func TestExhaustedDoesNotConsume(t *testing.T) {
+	l := New(2, time.Hour, 2*time.Hour)
+	for i := 0; i < 5; i++ {
+		if l.Exhausted("k") {
+			t.Fatal("unseen key must not be exhausted")
+		}
+	}
+	l.mu.Lock()
+	size := len(l.buckets)
+	l.mu.Unlock()
+	if size != 0 {
+		t.Fatalf("Exhausted created %d buckets, want 0", size)
+	}
+	l.Allow("k")
+	if l.Exhausted("k") {
+		t.Fatal("one token left: key must not be exhausted")
+	}
+	l.Allow("k")
+	if !l.Exhausted("k") {
+		t.Fatal("budget spent: key must be exhausted")
+	}
+	if l.Exhausted("other") {
+		t.Fatal("keys must not share budgets")
+	}
+}
+
+func TestRejectWritesRetryAfter(t *testing.T) {
+	l := NewFromConfig(config.YAMLConfigurationRateLimit{Burst: 1, Period: time.Second, EvictAfter: time.Minute, RetryAfter: 42})
+	w := httptest.NewRecorder()
+	l.Reject(w)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("code = %d, want 429", w.Code)
+	}
+	if got := w.Header().Get("Retry-After"); got != "42" {
+		t.Fatalf("Retry-After = %q, want 42", got)
+	}
+}
+
+// TestAttemptChargesOnlyFailures: Attempt runs the check only while the key
+// has budget, and charges only when the check fails.
+func TestAttemptChargesOnlyFailures(t *testing.T) {
+	l := New(2, time.Hour, 2*time.Hour)
+	ok := func() bool { return true }
+	bad := func() bool { return false }
+	for i := 0; i < 5; i++ {
+		if allowed, valid := l.Attempt("k", ok); !allowed || !valid {
+			t.Fatalf("passing attempt #%d: allowed=%v valid=%v", i+1, allowed, valid)
+		}
+	}
+	for i := 0; i < 2; i++ {
+		if allowed, valid := l.Attempt("k", bad); !allowed || valid {
+			t.Fatalf("failing attempt #%d: allowed=%v valid=%v", i+1, allowed, valid)
+		}
+	}
+	ran := false
+	if allowed, _ := l.Attempt("k", func() bool { ran = true; return true }); allowed || ran {
+		t.Fatalf("exhausted key: allowed=%v, check ran=%v; want neither", allowed, ran)
+	}
+	if allowed, valid := l.Attempt("other", ok); !allowed || !valid {
+		t.Fatal("keys must not share budgets")
+	}
+}
+
+// TestAttemptConcurrentFailuresBounded: concurrent failing attempts on one
+// key never exceed the burst.
+func TestAttemptConcurrentFailuresBounded(t *testing.T) {
+	l := New(3, time.Hour, 2*time.Hour)
+	var mu sync.Mutex
+	checks := 0
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			l.Attempt("k", func() bool { mu.Lock(); checks++; mu.Unlock(); return false })
+		}()
+	}
+	wg.Wait()
+	if checks != 3 {
+		t.Fatalf("failed checks = %d, want 3 (the burst)", checks)
+	}
+}
+
+// TestOverflowKeysBlockedCollectively: past maxBuckets, keys without their
+// own bucket share the overflow budget for Exhausted and Attempt too.
+func TestOverflowKeysBlockedCollectively(t *testing.T) {
+	l := NewWithCap(1, time.Hour, 2*time.Hour, 1)
+	bad := func() bool { return false }
+	l.Attempt("a", bad) // own bucket, map now full
+	if l.Exhausted("b") {
+		t.Fatal("overflow still has budget")
+	}
+	if allowed, _ := l.Attempt("b", bad); !allowed {
+		t.Fatal("first overflow failure must be allowed")
+	}
+	if !l.Exhausted("c") {
+		t.Fatal("overflow spent: unseen keys must be exhausted while the map is full")
+	}
+	if allowed, _ := l.Attempt("c", func() bool { return true }); allowed {
+		t.Fatal("overflow spent: Attempt must refuse unseen keys")
+	}
+	l.mu.Lock()
+	size := len(l.buckets)
+	l.mu.Unlock()
+	if size != 1 {
+		t.Fatalf("bucket map size = %d, want 1", size)
 	}
 }
