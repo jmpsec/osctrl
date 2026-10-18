@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/ratelimit"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
@@ -367,4 +369,36 @@ func TestOsctrldBlockedAuditResolvesUpperCaseEnv(t *testing.T) {
 	require.Contains(t, row.Line, "blocked")
 	require.Equal(t, f.env.ID, row.EnvironmentID)
 	require.Contains(t, row.Line, f.env.Name)
+}
+
+// Blocked rejections for environments that do not resolve all share one
+// "<unknown>" audit cap, audit environment and metric label, however many
+// made-up UUIDs are used. Known environments keep their own.
+func TestOsctrldUnknownEnvsShareAuditCap(t *testing.T) {
+	cfg := config.DefaultRateLimits()
+	cfg.OsctrldAuth.Burst = 1
+	cfg.OsctrldAuth.MaxBuckets = 1
+	f := newOsctrldFixture(t, cfg)
+	f.h.OsctrldLimits.authAudit = ratelimit.New(1, time.Hour, 2*time.Hour)
+	// Fill the map, then spend the shared overflow budget.
+	require.Equal(t, http.StatusForbidden, f.cert("198.51.100.1", f.env, "wrong"))
+	require.Equal(t, http.StatusForbidden, f.cert("198.51.100.2", f.env, "wrong"))
+	dropped := osctrldAuthAuditDropped.WithLabelValues(osctrldUnknownEnv)
+	before := metricValue(t, dropped)
+	for i := 0; i < 70; i++ {
+		unknown := environments.TLSEnvironment{UUID: fmt.Sprintf("%08d-1111-4111-8111-111111111111", i)}
+		require.Equal(t, http.StatusTooManyRequests, f.cert("203.0.113."+strconv.Itoa(i), unknown, "wrong"))
+	}
+	var rows []auditlog.AuditLog
+	require.NoError(t, f.db.Where("environment_id = ?", 0).Find(&rows).Error)
+	require.Len(t, rows, osctrldAuditPerHour)
+	for _, row := range rows {
+		require.Contains(t, row.Line, "env "+osctrldUnknownEnv+":")
+	}
+	require.Equal(t, before+70-osctrldAuditPerHour, metricValue(t, dropped))
+	// The known environment's audits were not touched by the unknown cap.
+	var known int64
+	require.NoError(t, f.db.Model(&auditlog.AuditLog{}).Where("environment_id = ?", f.env.ID).Count(&known).Error)
+	require.EqualValues(t, 2, known)
+	require.Equal(t, f.env.Name, f.h.osctrldAuditEnv(httptest.NewRequest(http.MethodPost, "/", nil), f.env.UUID).Name)
 }
