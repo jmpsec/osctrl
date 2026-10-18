@@ -16,6 +16,10 @@ import (
 // a spray from many addresses cannot flood audit_logs.
 const osctrldAuditPerHour = 60
 
+// osctrldUnknownEnv stands in for every environment in a path that does
+// not resolve, so made-up UUIDs share one audit cap and one metric label.
+const osctrldUnknownEnv = "<unknown>"
+
 // OsctrldLimits holds the per-process rate limiters of the osctrld routes.
 // They key on utils.GetIP: the TCP peer, or the forwarded client when the
 // peer is a configured trusted proxy (otherwise every client behind a proxy
@@ -127,18 +131,16 @@ func (h *HandlersTLS) osctrldAudit(ip string, env environments.TLSEnvironment, r
 	h.AuditLog.FailedOsctrld(ip, env.Name, reason, env.ID)
 }
 
-// osctrldAuditEnv resolves the environment in the path for an audit entry,
-// falling back to the (UUID-validated) path value with no ID.
+// osctrldAuditEnv resolves the environment in the path for an audit entry.
+// Any path that does not resolve maps to the osctrldUnknownEnv sentinel
+// (ID 0), so it shares one audit cap, audit environment and metric label.
 func (h *HandlersTLS) osctrldAuditEnv(r *http.Request, envVar string) environments.TLSEnvironment {
 	if h.EnvCache != nil {
 		if env, err := h.EnvCache.GetByUUID(r.Context(), strings.ToLower(envVar)); err == nil {
 			return env
 		}
 	}
-	if !utils.CheckUUID(envVar) {
-		envVar = "<invalid>"
-	}
-	return environments.TLSEnvironment{UUID: envVar, Name: envVar}
+	return environments.TLSEnvironment{UUID: osctrldUnknownEnv, Name: osctrldUnknownEnv}
 }
 
 // osctrldSecret checks the secret of an osctrld request. The budget check,
