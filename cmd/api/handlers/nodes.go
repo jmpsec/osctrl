@@ -324,6 +324,11 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 			log.Err(err).Msgf("error removing flags override of deleted node %s", node.UUID)
 		}
 	}
+	if h.Extensions != nil {
+		if err := h.Extensions.DeleteNode(node.UUID); err != nil {
+			log.Err(err).Msgf("error removing extensions of deleted node %s", node.UUID)
+		}
+	}
 	log.Debug().Msgf("Deleted node %s", n.UUID)
 	h.AuditLog.NodeAction(ctx[ctxUser], "deleted node "+n.UUID, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	// Serialize and serve JSON

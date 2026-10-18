@@ -28,6 +28,7 @@ const {
   mockSetInactiveHours,
   mockResetInactiveHours,
   mockGetMe,
+  mockGetEnvExtensions,
 } = vi.hoisted(() => ({
   mockGetEnvironment: vi.fn<() => Promise<TLSEnvironment>>(),
   mockGetConfig: vi.fn<() => Promise<EnvConfigResponse>>(),
@@ -42,6 +43,7 @@ const {
   mockSetInactiveHours: vi.fn(),
   mockResetInactiveHours: vi.fn(),
   mockGetMe: vi.fn(),
+  mockGetEnvExtensions: vi.fn(),
 }));
 
 vi.mock('$/api/environments', () => ({
@@ -54,6 +56,10 @@ vi.mock('$/api/environments', () => ({
   patchEnvironmentConfig: (...args: unknown[]) => mockPatchConfig(...args),
   patchEnvironmentIntervals: (...args: unknown[]) => mockPatchIntervals(...args),
   patchEnvironmentExpiration: (...args: unknown[]) => mockPatchExpiration(...args),
+}));
+
+vi.mock('$/api/extensions', () => ({
+  getEnvExtensions: (...args: unknown[]) => mockGetEnvExtensions(...args),
 }));
 
 vi.mock('$/api/users', () => ({ getMe: mockGetMe }));
@@ -527,6 +533,23 @@ describe('EnvConfigPage', () => {
     renderWithProviders();
 
     expect(await screen.findByRole('tab', { name: 'Posture' })).toBeInTheDocument();
+  });
+
+  it('has an Extensions tab that loads the environment assignments only when opened', async () => {
+    mockGetEnvExtensions.mockResolvedValue({ assigned: [], available: [] });
+    const user = userEvent.setup();
+    renderWithProviders();
+
+    await user.click(await screen.findByRole('tab', { name: 'Extensions' }));
+
+    expect(await screen.findByText('No extensions assigned to this environment.')).toBeInTheDocument();
+    expect(mockGetEnvExtensions).toHaveBeenCalledWith('dev');
+  });
+
+  it('does not load extensions before the tab is opened', async () => {
+    renderWithProviders();
+    await screen.findByRole('tab', { name: 'Extensions' });
+    expect(mockGetEnvExtensions).not.toHaveBeenCalled();
   });
 
   it('hides the posture tab when posture is disabled', async () => {

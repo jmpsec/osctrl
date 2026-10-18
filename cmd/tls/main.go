@@ -24,6 +24,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/dbutil"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/events"
+	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/health"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
@@ -265,6 +266,12 @@ func osctrlService() {
 	nodeFlagsMgr, err := nodeconfig.NewFlagsManager(db.Conn, redis.Client)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize node flags overrides")
+	}
+	var extensionsMgr *extensions.Manager
+	if flagParams.Osctrld.Enabled {
+		if extensionsMgr, err = extensions.NewManager(db.Conn); err != nil {
+			log.Fatal().Err(err).Msg("Failed to initialize osquery extensions")
+		}
 	}
 	var posturemgr *posture.PostureManager
 	if flagParams.Service.PostureEnabled {
@@ -537,6 +544,7 @@ func osctrlService() {
 		handlers.WithNodes(nodesmgr),
 		handlers.WithNodeConfig(nodeConfigMgr),
 		handlers.WithFlagsOverrides(nodeFlagsMgr),
+		handlers.WithExtensions(extensionsMgr),
 		handlers.WithTags(tagsmgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),
@@ -556,14 +564,6 @@ func osctrlService() {
 	)
 	// ///////////////////////// ALL CONTENT IS UNAUTHENTICATED FOR TLS
 	log.Info().Msg("Initializing router")
-	// Create router for TLS endpoint
-	muxTLS := http.NewServeMux()
-	// TLS: root
-	muxTLS.HandleFunc("GET /", handlersTLS.RootHandler)
-	// TLS: testing
-	muxTLS.HandleFunc("GET "+healthPath, handlersTLS.HealthHandler)
-	// TLS: error
-	muxTLS.HandleFunc("GET "+errorPath, handlersTLS.ErrorHandler)
 	// TLS: Specific routes for osquery nodes
 	// FIXME this forces all paths to be the same
 	// Rate-limit + Prometheus around the enroll handler. The limiter sees
@@ -585,46 +585,8 @@ func osctrlService() {
 		}
 		auditLog.FailedEnroll(key, envName, "rate limit exceeded", 0)
 	})
-	muxTLS.Handle("POST /{env}/"+environments.DefaultEnrollPath, enrollRateLimit(handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.EnrollHandler))))
-	if flagParams.Osquery.Config {
-		muxTLS.Handle("POST /{env}/"+environments.DefaultConfigPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.ConfigHandler)))
-	}
-	if flagParams.Osquery.Logger {
-		muxTLS.Handle("POST /{env}/"+environments.DefaultLogPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.LogHandler)))
-	}
-	if flagParams.Osquery.Query {
-		muxTLS.Handle("POST /{env}/"+environments.DefaultQueryReadPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.QueryReadHandler)))
-		muxTLS.Handle("POST /{env}/"+environments.DefaultQueryWritePath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.QueryWriteHandler)))
-	}
-	if flagParams.Osquery.Carve {
-		muxTLS.Handle("POST /{env}/"+environments.DefaultCarverInitPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.CarveInitHandler)))
-		muxTLS.Handle("POST /{env}/"+environments.DefaultCarverBlockPath, handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.CarveBlockHandler)))
-	}
-	// TLS: Quick enroll/remove script
-	muxTLS.HandleFunc("GET /{env}/{secretpath}/{script}", handlersTLS.QuickEnrollHandler)
-	// TLS: Download enrolling package
-	muxTLS.HandleFunc("GET /{env}/{secretpath}/package/{package}", handlersTLS.EnrollPackageHandler)
-	// TLS: Download enrolling package by architecture
-	muxTLS.HandleFunc("GET /{env}/{secretpath}/package/{package}/{arch}", handlersTLS.EnrollPackageHandler)
-
-	// Enable osctrld endpoints
-	if flagParams.Osctrld.Enabled {
-		log.Info().Msg("Enabling osctrld endpoints")
-		// TLS: osctrld retrieve flags
-		muxTLS.HandleFunc("POST /{env}/"+environments.DefaultFlagsPath, handlersTLS.FlagsHandler)
-		// TLS: osctrld retrieve certificate
-		muxTLS.HandleFunc("POST /{env}/"+environments.DefaultCertPath, handlersTLS.CertHandler)
-		// TLS: osctrld verification
-		muxTLS.HandleFunc("POST /{env}/"+environments.DefaultVerifyPath, handlersTLS.VerifyHandler)
-		// TLS: osctrld retrieve script to install/remove osquery
-		muxTLS.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, handlersTLS.ScriptHandler)
-	}
-
-	// Enable configuration endpoints if passed via YAML configuration
-	if flagParams.ConfigEndpoints != nil && len(*flagParams.ConfigEndpoints) > 0 {
-		log.Info().Msgf("Enabling %d configuration endpoints", len(*flagParams.ConfigEndpoints))
-		muxTLS.HandleFunc("POST /{env}/{secret}/"+environments.DefaultConfigEndpointPath, handlersTLS.OsqueryConfigEndpointHandler)
-	}
+	muxTLS := http.NewServeMux()
+	registerRoutes(muxTLS, handlersTLS, flagParams, enrollRateLimit(handlersTLS.PrometheusMiddleware(http.HandlerFunc(handlersTLS.EnrollHandler))))
 
 	// ////////////////////////////// Everything is ready at this point!
 	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)
@@ -1014,5 +976,62 @@ func main() {
 	if err := app.Run(context.Background(), os.Args); err != nil {
 		fmt.Printf("app.Run error: %s", err.Error())
 		os.Exit(1)
+	}
+}
+
+// registerRoutes registers every osctrl-tls route on mux. enroll is the
+// rate-limited enroll handler. Patterns must not overlap without one being
+// more specific, or ServeMux panics at startup (see routes_test.go).
+func registerRoutes(mux *http.ServeMux, h *handlers.HandlersTLS, p *config.ServiceParameters, enroll http.Handler) {
+	// TLS: root
+	mux.HandleFunc("GET /", h.RootHandler)
+	// TLS: testing
+	mux.HandleFunc("GET "+healthPath, h.HealthHandler)
+	// TLS: error
+	mux.HandleFunc("GET "+errorPath, h.ErrorHandler)
+	mux.Handle("POST /{env}/"+environments.DefaultEnrollPath, enroll)
+	if p.Osquery.Config {
+		mux.Handle("POST /{env}/"+environments.DefaultConfigPath, h.PrometheusMiddleware(http.HandlerFunc(h.ConfigHandler)))
+	}
+	if p.Osquery.Logger {
+		mux.Handle("POST /{env}/"+environments.DefaultLogPath, h.PrometheusMiddleware(http.HandlerFunc(h.LogHandler)))
+	}
+	if p.Osquery.Query {
+		mux.Handle("POST /{env}/"+environments.DefaultQueryReadPath, h.PrometheusMiddleware(http.HandlerFunc(h.QueryReadHandler)))
+		mux.Handle("POST /{env}/"+environments.DefaultQueryWritePath, h.PrometheusMiddleware(http.HandlerFunc(h.QueryWriteHandler)))
+	}
+	if p.Osquery.Carve {
+		mux.Handle("POST /{env}/"+environments.DefaultCarverInitPath, h.PrometheusMiddleware(http.HandlerFunc(h.CarveInitHandler)))
+		mux.Handle("POST /{env}/"+environments.DefaultCarverBlockPath, h.PrometheusMiddleware(http.HandlerFunc(h.CarveBlockHandler)))
+	}
+	// TLS: Quick enroll/remove script
+	mux.HandleFunc("GET /{env}/{secretpath}/{script}", h.QuickEnrollHandler)
+	// TLS: Download enrolling package
+	mux.HandleFunc("GET /{env}/{secretpath}/package/{package}", h.EnrollPackageHandler)
+	// TLS: Download enrolling package by architecture
+	mux.HandleFunc("GET /{env}/{secretpath}/package/{package}/{arch}", h.EnrollPackageHandler)
+
+	// Enable osctrld endpoints
+	if p.Osctrld.Enabled {
+		log.Info().Msg("Enabling osctrld endpoints")
+		// TLS: osctrld retrieve flags
+		mux.HandleFunc("POST /{env}/"+environments.DefaultFlagsPath, h.FlagsHandler)
+		// TLS: osctrld retrieve certificate
+		mux.HandleFunc("POST /{env}/"+environments.DefaultCertPath, h.CertHandler)
+		// TLS: osctrld verification
+		mux.HandleFunc("POST /{env}/"+environments.DefaultVerifyPath, h.VerifyHandler)
+		// TLS: osctrld retrieve script to install/remove osquery
+		mux.HandleFunc("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, h.ScriptHandler)
+		if h.Extensions != nil {
+			// TLS: osctrld list and download osquery extensions
+			mux.HandleFunc("POST /{env}/"+environments.DefaultExtensionsPath, h.ExtensionsHandler)
+			mux.HandleFunc("POST /{env}/"+environments.DefaultExtensionPath, h.ExtensionDownloadHandler)
+		}
+	}
+
+	// Enable configuration endpoints if passed via YAML configuration
+	if p.ConfigEndpoints != nil && len(*p.ConfigEndpoints) > 0 {
+		log.Info().Msgf("Enabling %d configuration endpoints", len(*p.ConfigEndpoints))
+		mux.HandleFunc("POST /{env}/{secret}/"+environments.DefaultConfigEndpointPath, h.OsqueryConfigEndpointHandler)
 	}
 }

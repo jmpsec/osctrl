@@ -58,6 +58,149 @@ type OsctrldApplyStatus struct {
 	At     time.Time `json:"at"`
 }
 
+// OsctrldExtensionsRequest is what osctrld posts to list its osquery
+// extensions. UUID, Platform, Arch and Status are untrusted node input.
+type OsctrldExtensionsRequest struct {
+	Secret   string                   `json:"secret"`
+	UUID     string                   `json:"uuid,omitempty"`
+	Platform string                   `json:"platform"`
+	Arch     string                   `json:"arch"`
+	Status   []OsctrldExtensionStatus `json:"status,omitempty"`
+}
+
+// OsctrldExtensionStatus is what osctrld reports about one extension.
+type OsctrldExtensionStatus struct {
+	Name   string    `json:"name"`
+	SHA256 string    `json:"sha256"`
+	Result string    `json:"result"`
+	Error  string    `json:"error,omitempty"`
+	At     time.Time `json:"at"`
+}
+
+// OsctrldExtensionEntry is one extension osctrld should run.
+type OsctrldExtensionEntry struct {
+	Name   string `json:"name"`
+	SHA256 string `json:"sha256"`
+	Size   int64  `json:"size"`
+	URL    string `json:"url"`
+}
+
+// OsctrldDownloadRequest is the body osctrld posts to download an extension.
+// SHA256 is untrusted node input.
+type OsctrldDownloadRequest struct {
+	Secret string `json:"secret"`
+	SHA256 string `json:"sha256"`
+}
+
+// ExtensionView is an osquery extension in the library, with its files and
+// how many environments and nodes it is assigned to.
+type ExtensionView struct {
+	ID               uint                `json:"id"`
+	Name             string              `json:"name"`
+	Description      string              `json:"description"`
+	Version          string              `json:"version"`
+	CommandExecution bool                `json:"command_execution"`
+	Files            []ExtensionFileView `json:"files"`
+	Environments     int                 `json:"environments"`
+	Nodes            int                 `json:"nodes"`
+	CreatedBy        string              `json:"created_by"`
+	UpdatedAt        time.Time           `json:"updated_at"`
+}
+
+// ExtensionFileView is an extension binary for one platform and arch.
+type ExtensionFileView struct {
+	Platform  string    `json:"platform"`
+	Arch      string    `json:"arch"`
+	Size      int64     `json:"size"`
+	SHA256    string    `json:"sha256"`
+	Filename  string    `json:"filename"`
+	UpdatedAt time.Time `json:"updated_at"`
+	UpdatedBy string    `json:"updated_by"`
+}
+
+// ExtensionCreateRequest adds an extension to the library.
+type ExtensionCreateRequest struct {
+	Name             string `json:"name"`
+	Description      string `json:"description"`
+	Version          string `json:"version"`
+	CommandExecution bool   `json:"command_execution"`
+}
+
+// ExtensionUpdateRequest changes the fields that are set.
+type ExtensionUpdateRequest struct {
+	Description      *string `json:"description,omitempty"`
+	Version          *string `json:"version,omitempty"`
+	CommandExecution *bool   `json:"command_execution,omitempty"`
+}
+
+// ExtensionSummary is a library extension as environment and node admins see
+// it. Platforms lists the platforms it has a file for.
+type ExtensionSummary struct {
+	ID               uint     `json:"id"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description"`
+	Version          string   `json:"version"`
+	CommandExecution bool     `json:"command_execution"`
+	Platforms        []string `json:"platforms"`
+}
+
+// EnvironmentExtensionsResponse is what an environment runs and the ordinary
+// extensions an environment admin can add to it.
+type EnvironmentExtensionsResponse struct {
+	Assigned  []ExtensionSummary `json:"assigned"`
+	Available []ExtensionSummary `json:"available"`
+}
+
+// NodeExtensionsResponse is a node's extensions. Status is reported by the
+// host and is untrusted. Library, the command-execution extensions that can be
+// assigned to the node, is null unless the caller is a super admin.
+type NodeExtensionsResponse struct {
+	Effective   []NodeExtensionEffective  `json:"effective"`
+	Assignments []NodeExtensionAssignment `json:"assignments"`
+	Status      []NodeExtensionStatusView `json:"status"`
+	Library     []ExtensionSummary        `json:"library"`
+}
+
+// NodeExtensionEffective is an extension the node should run. Source is
+// "environment" or "host"; Available is whether there is a file for the
+// node's platform.
+type NodeExtensionEffective struct {
+	Name             string   `json:"name"`
+	Source           string   `json:"source"`
+	CommandExecution bool     `json:"command_execution"`
+	Platforms        []string `json:"platforms"`
+	Available        bool     `json:"available"`
+}
+
+// NodeExtensionAssignment is a command-execution extension assigned to a node.
+type NodeExtensionAssignment struct {
+	ExtensionID uint       `json:"extension_id"`
+	Name        string     `json:"name"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	Expired     bool       `json:"expired"`
+	CreatedBy   string     `json:"created_by"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// NodeExtensionStatusView is the last status osctrld reported for one
+// extension. Every field but ReportedAt comes from the host.
+type NodeExtensionStatusView struct {
+	Name       string     `json:"name"`
+	SHA256     string     `json:"sha256"`
+	Result     string     `json:"result"`
+	Error      string     `json:"error"`
+	At         *time.Time `json:"at"`
+	ReportedAt time.Time  `json:"reported_at"`
+	// Lingering is set by osctrl when osctrld reports a command-execution extension as kept (its removal failed) and the node has no unexpired assignment for it.
+	Lingering bool `json:"lingering"`
+}
+
+// NodeExtensionAssignRequest assigns a command-execution extension to a node
+// until ExpiresAt. The key is required: only an explicit null means no expiry.
+type NodeExtensionAssignRequest struct {
+	ExpiresAt *time.Time `json:"expires_at" binding:"required"`
+}
+
 // CertRequest to retrieve certificate
 type CertRequest FlagsRequest
 

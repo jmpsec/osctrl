@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/tags"
@@ -17,8 +18,9 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// deleteNodeOverride removes the config and flags overrides and the osctrld
-// status of a node just deleted by UUID. ArchiveDeleteByUUID matches the
+// deleteNodeOverride removes the config and flags overrides, the osctrld
+// status and the extension assignments and statuses of a node just deleted by
+// UUID. ArchiveDeleteByUUID matches the
 // uppercased UUID, so that is the node row's key. A failure is logged, not
 // returned: the node is already gone.
 // ponytail: the CLI has no Redis, so osctrl-tls may keep a cached copy for up
@@ -38,6 +40,13 @@ func deleteNodeOverride(uuid string) {
 	}
 	if err != nil {
 		log.Err(err).Msgf("error removing flags override of deleted node %s", uuid)
+	}
+	e, err := extensions.NewManager(nodesmgr.DB)
+	if err == nil {
+		err = e.DeleteNode(uuid)
+	}
+	if err != nil {
+		log.Err(err).Msgf("error removing extensions of deleted node %s", uuid)
 	}
 }
 

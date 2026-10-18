@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 	"gorm.io/driver/sqlite"
@@ -15,7 +18,8 @@ import (
 )
 
 // setupNodeDelete wires the CLI's DB-mode globals to a fresh database holding
-// node NODE-A with a config override, a flags override and an osctrld status.
+// node NODE-A with a config override, a flags override, an osctrld status and
+// a command-execution extension assignment and status.
 func setupNodeDelete(t *testing.T) (*nodeconfig.Manager, *gorm.DB) {
 	t.Helper()
 	oldNodes, oldAudit, oldDB, oldSilent := nodesmgr, auditlogsmgr, dbFlag, silentFlag
@@ -36,17 +40,26 @@ func setupNodeDelete(t *testing.T) (*nodeconfig.Manager, *gorm.DB) {
 	_, err = fm.Set(context.Background(), nodeconfig.FlagsOverride{NodeUUID: "NODE-A", EnvironmentID: 1, Flags: "--verbose=true"})
 	require.NoError(t, err)
 	require.NoError(t, fm.RecordFetch("NODE-A", 1, time.Now(), nil))
+	em, err := extensions.NewManager(db)
+	require.NoError(t, err)
+	ext, err := em.Create(extensions.Extension{Name: "cmd", CommandExecution: true})
+	require.NoError(t, err)
+	_, err = em.AssignNode("NODE-A", 1, ext.ID, nil, "root")
+	require.NoError(t, err)
+	require.NoError(t, em.RecordStatus("NODE-A", 1, []types.OsctrldExtensionStatus{
+		{Name: "cmd", SHA256: strings.Repeat("a", 64), Result: "ok", At: time.Now()},
+	}, time.Now()))
 	return mgr, db
 }
 
-// requireNodeRowsGone checks the node's config override, flags override and
-// osctrld status are hard-deleted.
+// requireNodeRowsGone checks the node's config override, flags override,
+// osctrld status and extension assignment and status are hard-deleted.
 func requireNodeRowsGone(t *testing.T, mgr *nodeconfig.Manager, db *gorm.DB) {
 	t.Helper()
 	o, err := mgr.Get("NODE-A")
 	require.NoError(t, err)
 	require.Nil(t, o)
-	for _, model := range []any{&nodeconfig.FlagsOverride{}, &nodeconfig.OsctrldStatus{}} {
+	for _, model := range []any{&nodeconfig.FlagsOverride{}, &nodeconfig.OsctrldStatus{}, &extensions.NodeExtension{}, &extensions.NodeExtensionStatus{}} {
 		var n int64
 		require.NoError(t, db.Unscoped().Model(model).Count(&n).Error)
 		require.Zero(t, n, "%T", model)

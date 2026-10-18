@@ -77,3 +77,25 @@ describe('SideNav vulnerabilities entry', () => {
     expect(screen.queryByRole('link', { name: 'Vulnerabilities' })).not.toBeInTheDocument();
   });
 });
+
+describe('SideNav extensions entry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('is shown to super admins', async () => {
+    mockGetFeatures.mockResolvedValue(baseFeatures);
+    mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
+    renderNav();
+    const link = await screen.findByRole('link', { name: 'Extensions' });
+    expect(link).toHaveAttribute('href', '/_app/extensions');
+  });
+
+  it('is hidden from non-admins', async () => {
+    mockGetFeatures.mockResolvedValue(baseFeatures);
+    mockGetMe.mockResolvedValue({ admin: false, permissions: { 'env-uuid': { user: true, query: false, carve: false, admin: false } } });
+    renderNav();
+    await settle();
+    expect(screen.queryByRole('link', { name: 'Extensions' })).not.toBeInTheDocument();
+  });
+});

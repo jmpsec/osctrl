@@ -6,6 +6,7 @@ import { buttonClasses } from '$/components/atoms/Button';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
+import { NodeExtensionsView } from './NodeExtensionsView';
 import { NodeFlagsView } from './NodeFlagsView';
 import { plainBtn, toLocalInput, VIEWS, warnBtn, type View } from './overrideShared';
 
@@ -258,30 +259,38 @@ function ConfigView({ env, uuid, hostname }: { env: string; uuid: string; hostna
   );
 }
 
-type Kind = 'configuration' | 'flags';
+type Kind = 'configuration' | 'flags' | 'extensions';
 
-/** Per-node overrides: osquery configuration (JSON) or startup flags (flagfile). */
+const KINDS: { id: Kind; label: string }[] = [
+  { id: 'configuration', label: 'Configuration' },
+  { id: 'flags', label: 'Flags' },
+  { id: 'extensions', label: 'Extensions' },
+];
+
+/** Per-node overrides: osquery configuration (JSON), startup flags (flagfile) or extensions. */
 export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {
   const [kind, setKind] = useState<Kind>('configuration');
   return (
     <div className="space-y-3">
       <div role="group" aria-label="Override type" className="flex gap-1">
-        {(['configuration', 'flags'] as const).map((k) => (
+        {KINDS.map(({ id, label }) => (
           <button
-            key={k}
+            key={id}
             type="button"
-            aria-pressed={kind === k}
-            onClick={() => setKind(k)}
-            className={buttonClasses({ variant: kind === k ? 'primary' : 'ghost', size: 'sm' })}
+            aria-pressed={kind === id}
+            onClick={() => setKind(id)}
+            className={buttonClasses({ variant: kind === id ? 'primary' : 'ghost', size: 'sm' })}
           >
-            {k === 'configuration' ? 'Configuration' : 'Flags'}
+            {label}
           </button>
         ))}
       </div>
       {kind === 'configuration' ? (
         <ConfigView env={env} uuid={uuid} hostname={hostname} />
-      ) : (
+      ) : kind === 'flags' ? (
         <NodeFlagsView env={env} uuid={uuid} hostname={hostname} />
+      ) : (
+        <NodeExtensionsView env={env} uuid={uuid} hostname={hostname} />
       )}
     </div>
   );

@@ -46,6 +46,7 @@ import { SearchInput } from '$/components/data/SearchInput';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { HealthBadge, TagChips } from './nodeSignals';
 import { NodeConfigTab } from './NodeConfigTab';
+import { getNodeExtensions } from '$/api/extensions';
 import { NodeFileExplorerTab } from './NodeFileExplorerTab';
 import { NodeVulnerabilitiesTab } from '$/features/vulnerabilities/NodeVulnerabilitiesTab';
 import { recomputePostureScore, controlKey } from './postureScore';
@@ -743,6 +744,18 @@ export function NodeDetailPage() {
     enabled: canAdminNode,
     staleTime: 10_000,
   });
+  // Same key as NodeExtensionsView. Only command-execution assignments on this
+  // host drive the banner; the endpoint is admin-only like the other overrides.
+  const { data: nodeExtensions } = useQuery({
+    queryKey: ['node-extensions', env, uuid],
+    queryFn: () => getNodeExtensions(env, uuid),
+    enabled: canAdminNode,
+    staleTime: 10_000,
+  });
+  const hostExtensions = nodeExtensions?.assignments ?? [];
+  // Command-execution extensions revoked (removed or expired) that osctrld
+  // reported it could not remove from this host.
+  const lingeringExtensions = (nodeExtensions?.status ?? []).filter((st) => st.lingering);
   const hasConfigOverride = nodeConfig !== undefined && nodeConfig.override !== '';
   const hasFlagsOverride = nodeFlags !== undefined && nodeFlags.override !== '';
 
@@ -1170,6 +1183,39 @@ export function NodeDetailPage() {
         </div>
       )}
 
+      {lingeringExtensions.map((st) => (
+        // The error comes from the host: plain text only.
+        <div
+          key={`lingering:${st.name}`}
+          role="alert"
+          className="mb-4 rounded-md border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 px-3 py-2 text-sm text-[color:var(--text-1)] break-all"
+        >
+          {`Command execution via ${st.name} was removed, but osctrld could not remove it from this host` +
+            (st.error ? `: ${st.error}` : '.')}
+        </div>
+      ))}
+
+      {hostExtensions.filter((a) => !lingeringExtensions.some((st) => st.name === a.name)).map((a) => {
+        // The lingering warning above takes precedence. Only an `ok` status without a note (e.g. extensions disabled by
+        // flags) proves the extension is running.
+        const running =
+          nodeExtensions?.status?.some((st) => st.name === a.name && st.result === 'ok' && !st.error) === true;
+        return (
+          <div
+            key={a.extension_id}
+            role="status"
+            className="mb-4 rounded-md border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-3 py-2 text-sm text-[color:var(--text-1)]"
+          >
+            {a.expired && a.expires_at
+              ? `Command execution via ${a.name} expired on ${isoDate(a.expires_at)} and is no longer applied.`
+              : running
+                ? `Command execution is allowed on this host via ${a.name}, set by ${a.created_by} on ${isoDate(a.created_at)}.` +
+                  (a.expires_at ? ` It expires ${isoDate(a.expires_at)}.` : '')
+                : `Command execution was assigned to this host via ${a.name} but is not running.`}
+          </div>
+        );
+      })}
+
       {/* ── Tabs ── */}
       <div className="border-b border-[color:var(--border)] mb-4">
         <nav
@@ -1199,7 +1245,7 @@ export function NodeDetailPage() {
               )}
             >
               {label}
-              {id === 'configuration' && (hasConfigOverride || hasFlagsOverride) && (
+              {id === 'configuration' && (hasConfigOverride || hasFlagsOverride || hostExtensions.length > 0 || lingeringExtensions.length > 0) && (
                 <span
                   data-testid="config-override-dot"
                   aria-label="has override"

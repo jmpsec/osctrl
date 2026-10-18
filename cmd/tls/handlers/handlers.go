@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
@@ -81,6 +82,7 @@ type HandlersTLS struct {
 	AuditLog        *auditlog.AuditLogManager
 	NodeConfig      *nodeconfig.Manager      // nil: per-node config overrides are inert
 	FlagsOverrides  *nodeconfig.FlagsManager // nil: per-node flags overrides are inert
+	Extensions      *extensions.Manager      // nil: osctrld extension routes are not registered
 	// DBHealth, when wired via WithDBHealth, lets HealthHandler
 	// report backend degradation. nil means "no monitor" and the
 	// health endpoint reports healthy as before.
@@ -152,6 +154,13 @@ func WithNodeConfig(m *nodeconfig.Manager) Option {
 func WithFlagsOverrides(m *nodeconfig.FlagsManager) Option {
 	return func(h *HandlersTLS) {
 		h.FlagsOverrides = m
+	}
+}
+
+// WithExtensions enables serving osquery extensions to osctrld.
+func WithExtensions(m *extensions.Manager) Option {
+	return func(h *HandlersTLS) {
+		h.Extensions = m
 	}
 }
 
