@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 const maxBodyStatus = 4 << 10 // 4 KiB: osctrld health and rollback report
@@ -29,15 +31,17 @@ func (h *HandlersTLS) StatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	node, err := h.Nodes.GetByUUIDEnv(t.UUID, env.ID)
 	if err != nil {
-		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
-		return
-	}
-	events, err := h.FlagsOverrides.RecordReport(node.UUID, env.ID, t, time.Now())
-	if err != nil {
-		log.Err(err).Msgf("node UUID: %s in %s environment: error recording osctrld report", node.UUID, env.Name)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+			return
+		}
+		log.Err(err).Msgf("%s environment: error looking up node for osctrld report", env.Name)
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
+	// Events recorded before a failure are still counted and audited: a
+	// retry sees their ids as stored and would never report them.
+	events, err := h.FlagsOverrides.RecordReport(node.UUID, env.ID, t, time.Now())
 	ip := utils.GetIP(r)
 	for _, kind := range events {
 		stage := t.Flags.Stage
@@ -46,6 +50,11 @@ func (h *HandlersTLS) StatusHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		osctrldRollbacks.WithLabelValues(env.Name, kind, stage).Inc()
 		h.AuditLog.RolledBackOsctrld(ip, env.Name, node.UUID, kind, stage, env.ID)
+	}
+	if err != nil {
+		log.Err(err).Msgf("node UUID: %s in %s environment: error recording osctrld report", node.UUID, env.Name)
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, struct{}{})
 }

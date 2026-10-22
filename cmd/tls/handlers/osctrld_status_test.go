@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -111,6 +112,54 @@ func TestStatusHandlerRejectsOtherEnvironmentNode(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, f.post(statusBody(f.env.Secret, "CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC", "none", "")).Code)
 	require.Empty(t, f.rows(t))
 	require.Empty(t, f.rollbackAudits(t))
+}
+
+// failOn makes every statement on table that contains substr fail, for the
+// rest of the test.
+func (f *statusFixture) failOn(t *testing.T, name, table, substr string) {
+	t.Helper()
+	fail := func(tx *gorm.DB) {
+		if tx.Statement.Table == table && strings.Contains(fmt.Sprint(tx.Statement.Clauses, tx.Statement.Dest), substr) {
+			_ = tx.AddError(errors.New("injected db error"))
+		}
+	}
+	require.NoError(t, f.db.Callback().Query().Before("gorm:query").Register(name+"q", fail))
+	require.NoError(t, f.db.Callback().Update().Before("gorm:update").Register(name+"u", fail))
+}
+
+func TestStatusHandlerNodeLookupDBErrorIs500(t *testing.T) {
+	f := newStatusFixture(t)
+	f.failOn(t, "nodes", "osquery_nodes", "")
+	w := f.post(statusBody(f.env.Secret, nfNodeA, "exhausted", statusEvent))
+	require.Equal(t, http.StatusInternalServerError, w.Code)
+	require.Empty(t, w.Body.String())
+	require.Empty(t, f.rows(t))
+}
+
+func TestStatusHandlerUnknownAndOtherEnvNodeAnswerIdentically(t *testing.T) {
+	f := newStatusFixture(t)
+	a := f.post(statusBody(f.env.Secret, nfNodeOther, "none", ""))
+	b := f.post(statusBody(f.env.Secret, "CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC", "none", ""))
+	require.Equal(t, http.StatusBadRequest, a.Code)
+	require.Equal(t, a.Code, b.Code)
+	require.Equal(t, a.Body.String(), b.Body.String())
+	require.Empty(t, a.Body.String())
+}
+
+func TestStatusHandlerPartialRecordFailureStillCountsAndAudits(t *testing.T) {
+	f := newStatusFixture(t)
+	f.failOn(t, "ext", "node_osctrld_status", "extensions_event_id")
+	body := `{"secret":"` + f.env.Secret + `","uuid":"` + nfNodeA + `","osquery_running":true,` +
+		`"flags":{"stage":"exhausted","event_id":"` + statusEvent + `"},"extensions":{"stage":"exhausted","event_id":"` + statusEvent + `"}}`
+	c := osctrldRollbacks.WithLabelValues(f.env.Name, "flags", "exhausted")
+	before := metricValue(t, c)
+	require.Equal(t, http.StatusInternalServerError, f.post(body).Code)
+	require.Equal(t, before+1, metricValue(t, c))
+	require.Len(t, f.rollbackAudits(t), 1)
+	// Retry: the flags event is stored already, so it is not counted twice.
+	require.Equal(t, http.StatusInternalServerError, f.post(body).Code)
+	require.Equal(t, before+1, metricValue(t, c))
+	require.Len(t, f.rollbackAudits(t), 1)
 }
 
 func TestStatusHandlerRejectsBadUUIDAndBody(t *testing.T) {
