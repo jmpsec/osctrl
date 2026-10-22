@@ -1291,6 +1291,32 @@ describe('NodeDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows the osquery down banner on the default tab and not when running', async () => {
+    mockGetNodeFlags.mockResolvedValue(
+      makeNodeFlags({
+        osctrld: {
+          apply_result: 'applied',
+          apply_error: '',
+          apply_at: null,
+          rejected_current: false,
+          osquery_running: false,
+          down_since: '2026-10-20T08:00:00Z',
+          reported_at: '2026-10-20T08:05:00Z',
+        },
+      }),
+    );
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByTestId('osquery-down-banner')).toHaveTextContent('osquery is down since');
+    expect(screen.getAllByTestId('osquery-down-banner')).toHaveLength(1);
+  });
+
+  it('no osquery down banner without a down report', async () => {
+    renderWithProviders(makeTestRouter());
+    await waitFor(() => expect(mockGetNodeFlags).toHaveBeenCalled());
+    await screen.findByRole('heading', { name: 'web-server-01' });
+    expect(screen.queryByTestId('osquery-down-banner')).not.toBeInTheDocument();
+  });
+
   it('no flags banner without a flags override', async () => {
     renderWithProviders(makeTestRouter());
     await waitFor(() => expect(mockGetNodeFlags).toHaveBeenCalled());

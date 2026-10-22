@@ -327,6 +327,73 @@ func TestNodeFlagsOsctrldStatus(t *testing.T) {
 	})
 }
 
+func TestNodeFlagsViewIncludesReport(t *testing.T) {
+	h, _, envA, _, fm := setupNodeFlagsHandlers(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	down := now.Add(-10 * time.Minute)
+	ev := "1760000000000000000:" + strings.Repeat("a", 64)
+	_, err := fm.RecordReport("NODE-A", envA, types.OsctrldStatusRequest{
+		DownSince:  &down,
+		Flags:      types.OsctrldRollback{Stage: "exhausted", EventID: ev},
+		Extensions: types.OsctrldRollback{Stage: "none"},
+	}, now)
+	require.NoError(t, err)
+	rr := serveNodeFlags(t, h, http.MethodGet, "alice", "a", "NODE-A", "")
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	v := decodeNodeFlags(t, rr).Osctrld
+	require.NotNil(t, v)
+	require.NotNil(t, v.OsqueryRunning)
+	require.False(t, *v.OsqueryRunning)
+	require.NotNil(t, v.DownSince)
+	require.True(t, v.DownSince.Equal(down))
+	require.NotNil(t, v.ReportedAt)
+	require.False(t, v.ReportStale)
+	require.Equal(t, "exhausted", v.FlagsStage)
+	require.Empty(t, v.ExtensionsStage)
+	require.NotContains(t, rr.Body.String(), `"extensions_stage"`)
+}
+
+func TestNodeFlagsViewMarksStaleReport(t *testing.T) {
+	h, _, envA, _, fm := setupNodeFlagsHandlers(t)
+	_, err := fm.RecordReport("NODE-A", envA, types.OsctrldStatusRequest{OsqueryRunning: true}, time.Now().Add(-20*time.Minute))
+	require.NoError(t, err)
+	v := decodeNodeFlags(t, serveNodeFlags(t, h, http.MethodGet, "alice", "a", "NODE-A", "")).Osctrld
+	require.NotNil(t, v)
+	require.True(t, v.ReportStale)
+	require.NotNil(t, v.OsqueryRunning)
+	require.True(t, *v.OsqueryRunning)
+}
+
+func TestNodeFlagsViewClampsDownSince(t *testing.T) {
+	h, _, envA, _, fm := setupNodeFlagsHandlers(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	future := now.Add(time.Hour)
+	_, err := fm.RecordReport("NODE-A", envA, types.OsctrldStatusRequest{DownSince: &future}, now)
+	require.NoError(t, err)
+	v := decodeNodeFlags(t, serveNodeFlags(t, h, http.MethodGet, "alice", "a", "NODE-A", "")).Osctrld
+	require.NotNil(t, v.DownSince)
+	require.True(t, v.DownSince.Equal(*v.ReportedAt))
+}
+
+func TestNodeFlagsViewNoFetchOmitsLastFetched(t *testing.T) {
+	h, _, envA, _, fm := setupNodeFlagsHandlers(t)
+	_, err := fm.RecordReport("NODE-A", envA, types.OsctrldStatusRequest{OsqueryRunning: true}, time.Now())
+	require.NoError(t, err)
+	rr := serveNodeFlags(t, h, http.MethodGet, "alice", "a", "NODE-A", "")
+	require.NotContains(t, rr.Body.String(), "last_fetched_at")
+	require.NotContains(t, rr.Body.String(), "0001-01-01")
+}
+
+func TestNodeFlagsViewNoReportKeepsOldShape(t *testing.T) {
+	h, _, envA, _, fm := setupNodeFlagsHandlers(t)
+	require.NoError(t, fm.RecordFetch("NODE-A", envA, time.Now(), nil))
+	body := serveNodeFlags(t, h, http.MethodGet, "alice", "a", "NODE-A", "").Body.String()
+	require.Contains(t, body, "last_fetched_at")
+	for _, f := range []string{"osquery_running", "down_since", "reported_at", "report_stale", "flags_stage", "extensions_stage"} {
+		require.NotContains(t, body, f)
+	}
+}
+
 func TestDeleteNodeRemovesFlagsOverrideAndStatus(t *testing.T) {
 	deleteNode := func(t *testing.T, h *HandlersApi) {
 		body, err := json.Marshal(types.ApiNodeGenericRequest{UUID: "NODE-A"})

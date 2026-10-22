@@ -81,3 +81,26 @@ func TestFailedOsctrld(t *testing.T) {
 	require.Equal(t, "203.0.113.5", rows[0].SourceIP)
 	require.Equal(t, "failed osctrld secret for env prod: invalid secret", rows[0].Line)
 }
+
+func TestRolledBackOsctrldAudit(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	m, err := CreateAuditLogManager(db, "tls", true)
+	require.NoError(t, err)
+	m.RolledBackOsctrld("203.0.113.5", "prod", "AAAA", "flags", "exhausted", 7)
+	var rows []AuditLog
+	require.NoError(t, db.Find(&rows).Error)
+	require.Len(t, rows, 1)
+	require.EqualValues(t, LogTypeNode, rows[0].LogType)
+	require.EqualValues(t, SeverityWarning, rows[0].Severity)
+	require.EqualValues(t, 7, rows[0].EnvironmentID)
+	require.Equal(t, "203.0.113.5", rows[0].SourceIP)
+	require.Equal(t, "osctrld rollback on node AAAA in env prod: flags exhausted", rows[0].Line)
+
+	off, err := CreateAuditLogManager(db, "tls", false)
+	require.NoError(t, err)
+	off.RolledBackOsctrld("203.0.113.5", "prod", "AAAA", "flags", "exhausted", 7)
+	var n int64
+	require.NoError(t, db.Model(&AuditLog{}).Count(&n).Error)
+	require.EqualValues(t, 1, n, "disabled manager writes nothing")
+}

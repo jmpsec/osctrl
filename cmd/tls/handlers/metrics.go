@@ -1,6 +1,15 @@
 package handlers
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog/log"
+)
 
 const (
 	RequestPath   = "path"
@@ -55,6 +64,14 @@ var (
 		Name: "osctrld_auth_audit_dropped_total",
 		Help: "osctrld failed-secret audit entries dropped by the per-environment cap",
 	}, []string{"environment"})
+	// osctrldRollbacks counts rollback events reported by osctrld, once per
+	// event. Labels are the environment name and the validated stage.
+	osctrldRollbacks = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "osctrld_rollbacks_total",
+		Help: "osctrld rollbacks of flags or extensions reported by nodes",
+	}, []string{"environment", "kind", "stage"})
+	osctrldDownDesc = prometheus.NewDesc("osctrld_osquery_down",
+		"Nodes whose fresh osctrld report says osqueryd is not running", []string{"environment"}, nil)
 	// DBDegraded is 1 when the DB health monitor reports the database
 	// as degraded (caches are in stale-serve mode), 0 when healthy.
 	dbDegraded = prometheus.NewGauge(prometheus.GaugeOpts{
@@ -73,6 +90,111 @@ func RegisterMetrics(reg prometheus.Registerer) {
 	reg.MustRegister(osctrldAuthFailures)
 	reg.MustRegister(osctrldRateLimited)
 	reg.MustRegister(osctrldAuthAuditDropped)
+	reg.MustRegister(osctrldRollbacks)
+}
+
+const (
+	// osctrldDownTTL is how long a reading is served before the database is
+	// asked again, so frequent scrapes cannot load it.
+	osctrldDownTTL = 15 * time.Second
+	// osctrldDownTimeout bounds one reading: a stalled database costs one
+	// scrape this long, not every scrape (and the rest of the registry).
+	osctrldDownTimeout = 5 * time.Second
+	// osctrldDownBackoff is how long after a failed reading the database is
+	// not asked again.
+	osctrldDownBackoff = time.Minute
+)
+
+type osctrldDownReading struct {
+	counts map[uint]int
+	envs   []environments.TLSEnvironment
+}
+
+// osctrldDownCollector exports osctrld_osquery_down at scrape time, for every
+// known environment (0 when none is down). Like the vulns collector it reuses
+// a reading for a TTL, bounds the read with a timeout and backs off after a
+// failure; a failed or timed-out read exports nothing rather than zeros.
+type osctrldDownCollector struct {
+	load    func() (osctrldDownReading, error)
+	now     func() time.Time
+	timeout time.Duration
+
+	mu      sync.Mutex
+	readAt  time.Time
+	reading *osctrldDownReading
+	failAt  time.Time // last failed read; zero when the last read worked
+}
+
+// NewOsctrldDownCollector returns the collector for osctrld_osquery_down.
+func NewOsctrldDownCollector(flags *nodeconfig.FlagsManager, envs *environments.EnvManager) prometheus.Collector {
+	return newOsctrldDownCollector(func() (osctrldDownReading, error) {
+		counts, err := flags.CountDown(time.Now())
+		if err != nil {
+			return osctrldDownReading{}, err
+		}
+		list, err := envs.All()
+		return osctrldDownReading{counts: counts, envs: list}, err
+	}, time.Now)
+}
+
+func newOsctrldDownCollector(load func() (osctrldDownReading, error), now func() time.Time) *osctrldDownCollector {
+	return &osctrldDownCollector{load: load, now: now, timeout: osctrldDownTimeout}
+}
+
+func (c *osctrldDownCollector) Describe(ch chan<- *prometheus.Desc) { ch <- osctrldDownDesc }
+
+func (c *osctrldDownCollector) Collect(ch chan<- prometheus.Metric) {
+	r := c.read()
+	if r == nil {
+		return
+	}
+	for _, e := range r.envs {
+		ch <- prometheus.MustNewConstMetric(osctrldDownDesc, prometheus.GaugeValue, float64(r.counts[e.ID]), e.Name)
+	}
+}
+
+func (c *osctrldDownCollector) read() *osctrldDownReading {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := c.now()
+	if c.reading != nil && now.Sub(c.readAt) < osctrldDownTTL {
+		return c.reading
+	}
+	if !c.failAt.IsZero() && now.Sub(c.failAt) < osctrldDownBackoff {
+		return nil
+	}
+	// The managers take no context, so the bound is enforced here; a stalled
+	// read is abandoned (at most one at a time, because of the backoff).
+	type result struct {
+		r   osctrldDownReading
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		defer func() {
+			if p := recover(); p != nil {
+				done <- result{err: fmt.Errorf("panic reading osctrld down nodes: %v", p)}
+			}
+		}()
+		r, err := c.load()
+		done <- result{r, err}
+	}()
+	timer := time.NewTimer(c.timeout)
+	defer timer.Stop()
+	select {
+	case res := <-done:
+		if res.err != nil {
+			log.Err(res.err).Msg("error reading osctrld down nodes")
+			c.failAt = now
+			return nil
+		}
+		c.reading, c.readAt, c.failAt = &res.r, now, time.Time{}
+		return c.reading
+	case <-timer.C:
+		log.Warn().Msg("timeout reading osctrld down nodes")
+		c.failAt = now
+		return nil
+	}
 }
 
 // SetDBDegraded updates the db_degraded gauge. Called by the DB

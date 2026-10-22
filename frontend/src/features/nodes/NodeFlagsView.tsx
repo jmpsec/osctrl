@@ -14,7 +14,7 @@ const EDITOR_LABELS: Record<Exclude<View, 'diff'>, string> = {
   override: 'Node override flags',
 };
 
-const fmt = (iso: string | null) => {
+const fmt = (iso: string | null | undefined) => {
   if (!iso) return '—';
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleString();
@@ -138,7 +138,9 @@ export function NodeFlagsView({ env, uuid, hostname }: { env: string; uuid: stri
       ) : (
         <p className="text-xs text-[color:var(--text-3)]">
           {osctrld
-            ? `Managed by osctrld — last fetched flags ${fmt(osctrld.last_fetched_at)}`
+            ? osctrld.last_fetched_at
+              ? `Managed by osctrld — last fetched flags ${fmt(osctrld.last_fetched_at)}`
+              : 'Managed by osctrld — no flags fetch seen yet'
             : 'No osctrld seen for this host: a flags override will not reach it.'}
         </p>
       )}

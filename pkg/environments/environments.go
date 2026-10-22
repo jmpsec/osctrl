@@ -54,6 +54,8 @@ const (
 	// goes in the body, since /{env}/osctrld-extension/{sha256} would conflict
 	// with /{env}/{secret}/osquery-config in ServeMux
 	DefaultExtensionPath string = "osctrld-extension"
+	// DefaultStatusPath for osctrld to report osqueryd health and rollbacks
+	DefaultStatusPath string = "osctrld-status"
 	// DefaultConfigEndpointPath
 	DefaultConfigEndpointPath string = "osquery-config"
 )

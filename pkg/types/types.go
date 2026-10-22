@@ -58,6 +58,24 @@ type OsctrldApplyStatus struct {
 	At     time.Time `json:"at"`
 }
 
+// OsctrldRollback is one rollback outcome reported by osctrld: the stage it
+// reached and the id of the rollback event (unix nanos:SHA-256 of failed content).
+type OsctrldRollback struct {
+	Stage   string `json:"stage"`
+	EventID string `json:"event_id"`
+}
+
+// OsctrldStatusRequest is what osctrld posts to report osqueryd health and
+// rollback events. All fields are untrusted node input.
+type OsctrldStatusRequest struct {
+	Secret         string          `json:"secret"`
+	UUID           string          `json:"uuid"`
+	OsqueryRunning bool            `json:"osquery_running"`
+	DownSince      *time.Time      `json:"down_since,omitempty"`
+	Flags          OsctrldRollback `json:"flags"`
+	Extensions     OsctrldRollback `json:"extensions"`
+}
+
 // OsctrldExtensionsRequest is what osctrld posts to list its osquery
 // extensions. UUID, Platform, Arch and Status are untrusted node input.
 type OsctrldExtensionsRequest struct {
@@ -295,13 +313,22 @@ type NodeFlagsResponse struct {
 }
 
 // OsctrldStatusView is the node's last osctrld flags fetch and apply result.
-// The apply fields are reported by the host and are untrusted.
+// The apply and report fields are reported by the host and are untrusted.
+// LastFetchedAt is omitted when the row exists only because of a health report.
 type OsctrldStatusView struct {
-	LastFetchedAt   time.Time  `json:"last_fetched_at"`
+	LastFetchedAt   *time.Time `json:"last_fetched_at,omitempty"`
 	ApplyResult     string     `json:"apply_result"`
 	ApplyError      string     `json:"apply_error"`
 	ApplyAt         *time.Time `json:"apply_at"`
 	RejectedCurrent bool       `json:"rejected_current"`
+	// Health report: osquery_running, down_since and the stages come from the
+	// host; reported_at is the server's receive time.
+	OsqueryRunning  *bool      `json:"osquery_running,omitempty"`
+	DownSince       *time.Time `json:"down_since,omitempty"`
+	ReportedAt      *time.Time `json:"reported_at,omitempty"`
+	ReportStale     bool       `json:"report_stale,omitempty"`
+	FlagsStage      string     `json:"flags_stage,omitempty"`
+	ExtensionsStage string     `json:"extensions_stage,omitempty"`
 }
 
 // NodeFlagsRequest sets a node's osquery flags override.

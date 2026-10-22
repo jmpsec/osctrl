@@ -77,12 +77,31 @@ func (h *HandlersApi) nodeFlagsState(env environments.TLSEnvironment, node nodes
 // host's real secret and certificate paths.
 func osctrldStatusView(st *nodeconfig.OsctrldStatus, o *nodeconfig.FlagsOverride) *types.OsctrldStatusView {
 	v := &types.OsctrldStatusView{
-		LastFetchedAt: st.LastFetchedAt,
-		ApplyResult:   st.ApplyResult,
-		ApplyError:    st.ApplyError,
-		ApplyAt:       st.ApplyAt,
+		ApplyResult: st.ApplyResult,
+		ApplyError:  st.ApplyError,
+		ApplyAt:     st.ApplyAt,
 	}
-	if o != nil && !o.Expired(time.Now()) && st.ApplyResult == "rejected" && st.ApplyAt != nil {
+	// A row created by a health report has never fetched flags.
+	if !st.LastFetchedAt.IsZero() {
+		v.LastFetchedAt = &st.LastFetchedAt
+	}
+	if st.ReportedAt != nil {
+		v.OsqueryRunning = st.OsqueryRunning
+		v.ReportedAt = st.ReportedAt
+		v.ReportStale = time.Since(*st.ReportedAt) > nodeconfig.ReportFreshness
+		// down_since is node-clock input: never show it after the report.
+		v.DownSince = st.DownSince
+		if st.DownSince != nil && st.DownSince.After(*st.ReportedAt) {
+			v.DownSince = st.ReportedAt
+		}
+		if st.FlagsStage != "none" {
+			v.FlagsStage = st.FlagsStage
+		}
+		if st.ExtensionsStage != "none" {
+			v.ExtensionsStage = st.ExtensionsStage
+		}
+	}
+	if o != nil && !o.Expired(time.Now()) && st.ApplyResult == "rejected" && st.ApplyAt != nil && v.LastFetchedAt != nil {
 		at := *st.ApplyAt
 		if st.LastFetchedAt.Before(at) {
 			at = st.LastFetchedAt
@@ -104,7 +123,7 @@ func (h *HandlersApi) serveNodeFlags(w http.ResponseWriter, env environments.TLS
 
 // NodeFlagsGetHandler - GET Handler for a node's flags override
 // @Summary Get node flags override
-// @Description Returns the node's osquery flags override, the environment flags, the flags the node's osctrld is served, flags that are also set as configuration options, and the last osctrld fetch. The osctrld apply_result, apply_error and apply_at fields are reported by the host and are untrusted.
+// @Description Returns the node's osquery flags override, the environment flags, the flags the node's osctrld is served, flags that are also set as configuration options, and the last osctrld fetch. The osctrld apply_result, apply_error, apply_at, osquery_running, down_since, flags_stage and extensions_stage fields are reported by the host and are untrusted; reported_at is the server's receive time and report_stale is set when it is older than 15 minutes.
 // @Tags nodes
 // @Produce json
 // @Param env path string true "Environment name or UUID"
@@ -135,7 +154,7 @@ func (h *HandlersApi) NodeFlagsGetHandler(w http.ResponseWriter, r *http.Request
 
 // NodeFlagsPutHandler - PUT Handler to set a node's flags override
 // @Summary Set node flags override
-// @Description Sets the node's osquery flags override, one flag per line, merged over the environment flags osctrld fetches. Flags that control the connection to osctrl and repeated flags are refused. The osctrld apply_result, apply_error and apply_at fields are reported by the host and are untrusted.
+// @Description Sets the node's osquery flags override, one flag per line, merged over the environment flags osctrld fetches. Flags that control the connection to osctrl and repeated flags are refused. The osctrld apply_result, apply_error, apply_at, osquery_running, down_since, flags_stage and extensions_stage fields are reported by the host and are untrusted; reported_at is the server's receive time and report_stale is set when it is older than 15 minutes.
 // @Tags nodes
 // @Accept json
 // @Produce json
@@ -203,7 +222,7 @@ func (h *HandlersApi) NodeFlagsPutHandler(w http.ResponseWriter, r *http.Request
 
 // NodeFlagsDeleteHandler - DELETE Handler to remove a node's flags override
 // @Summary Remove node flags override
-// @Description Removes the node's osquery flags override so its osctrld is served the environment flags. The osctrld apply_result, apply_error and apply_at fields are reported by the host and are untrusted.
+// @Description Removes the node's osquery flags override so its osctrld is served the environment flags. The osctrld apply_result, apply_error, apply_at, osquery_running, down_since, flags_stage and extensions_stage fields are reported by the host and are untrusted; reported_at is the server's receive time and report_stale is set when it is older than 15 minutes.
 // @Tags nodes
 // @Produce json
 // @Param env path string true "Environment name or UUID"

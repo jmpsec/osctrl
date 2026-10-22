@@ -680,11 +680,21 @@ export interface NodeFlags {
   conflicts: string[];
   /** Null when no osctrld has been seen for this host. apply_error/apply_at are host-reported (untrusted). */
   osctrld: {
-    last_fetched_at: string;
+    /** Omitted when osctrld has reported but never fetched flags. */
+    last_fetched_at?: string;
     apply_result: string;
     apply_error: string;
     apply_at: string | null;
     rejected_current: boolean;
+    /** Host-reported health (untrusted text for the stage fields). */
+    osquery_running?: boolean;
+    down_since?: string;
+    reported_at?: string;
+    report_stale?: boolean;
+    /** environment | last_known_good | exhausted; absent when none. */
+    flags_stage?: string;
+    /** restored | exhausted; absent when none. */
+    extensions_stage?: string;
   } | null;
 }
 

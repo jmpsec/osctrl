@@ -481,6 +481,7 @@ func osctrlService() {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
+		prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldDownCollector(nodeFlagsMgr, envs))
 		cache.RegisterMetrics(prometheus.DefaultRegisterer)
 		if alertsWorker != nil {
 			alerts.RegisterWorkerMetrics(prometheus.DefaultRegisterer, alertsWorker)
@@ -1028,6 +1029,10 @@ func registerRoutes(mux *http.ServeMux, h *handlers.HandlersTLS, p *config.Servi
 		mux.Handle("POST /{env}/"+environments.DefaultVerifyPath, osctrld(h.VerifyHandler))
 		// TLS: osctrld retrieve script to install/remove osquery
 		mux.Handle("POST /{env}/{action}/{platform}/"+environments.DefaultScriptPath, osctrld(h.ScriptHandler))
+		if h.FlagsOverrides != nil {
+			// TLS: osctrld health and rollback report
+			mux.Handle("POST /{env}/"+environments.DefaultStatusPath, osctrld(h.StatusHandler))
+		}
 		if h.Extensions != nil {
 			// TLS: osctrld list and download osquery extensions; downloads
 			// also have their own per-address limit

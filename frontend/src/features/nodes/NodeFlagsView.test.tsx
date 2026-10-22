@@ -261,4 +261,25 @@ describe('NodeFlagsView', () => {
     await screen.findByLabelText('Applied flags');
     expect(screen.queryByText(/Also set in the configuration's options/)).not.toBeInTheDocument();
   });
+
+  it('handles a missing last_fetched_at', async () => {
+    api.getNodeFlags.mockResolvedValue(
+      makeFlags({
+        osctrld: { apply_result: 'applied', apply_error: '', apply_at: null, rejected_current: false },
+      }),
+    );
+    renderView();
+    expect(await screen.findByText('Managed by osctrld — no flags fetch seen yet')).toBeInTheDocument();
+  });
+
+  it('does not render the osquery down banner itself (shown at page level)', async () => {
+    api.getNodeFlags.mockResolvedValue(
+      makeFlags({
+        osctrld: { last_fetched_at: FETCHED, apply_result: 'applied', apply_error: '', apply_at: null, rejected_current: false, osquery_running: false },
+      }),
+    );
+    renderView();
+    await screen.findByLabelText('Applied flags');
+    expect(screen.queryByTestId('osquery-down-banner')).not.toBeInTheDocument();
+  });
 });
