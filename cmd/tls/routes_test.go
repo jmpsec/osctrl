@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/extensions"
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -65,6 +66,7 @@ func TestRegisterRoutesRateLimitsOsctrld(t *testing.T) {
 	h := handlers.CreateHandlersTLS(
 		handlers.WithEnvs(envs),
 		handlers.WithExtensions(&extensions.Manager{}),
+		handlers.WithFlagsOverrides(&nodeconfig.FlagsManager{}),
 		handlers.WithOsqueryValues(&config.YAMLConfigurationOsquery{}),
 		handlers.WithOsctrldLimits(handlers.NewOsctrldLimits(limits)),
 	)
@@ -90,6 +92,7 @@ func TestRegisterRoutesRateLimitsOsctrld(t *testing.T) {
 		"enroll/linux/" + environments.DefaultScriptPath,
 		environments.DefaultExtensionsPath,
 		environments.DefaultExtensionPath,
+		environments.DefaultStatusPath,
 	} {
 		require.Equal(t, http.StatusTooManyRequests, post(path, env.Secret), path)
 	}

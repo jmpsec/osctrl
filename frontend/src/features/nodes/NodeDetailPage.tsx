@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useLocale } from '$/i18n/useLocale';
 import { NodeAlertModal } from './NodeAlertModal';
+import { OsctrldDownBanner } from './OsctrldDownBanner';
 import { nodeAlertCoverage, coverageSummary } from './alertCoverage';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1182,6 +1183,8 @@ export function NodeDetailPage() {
               : ` It expires ${isoDate(nodeFlags.expires_at)}.`)}
         </div>
       )}
+
+      <OsctrldDownBanner osctrld={nodeFlags?.osctrld} />
 
       {lingeringExtensions.map((st) => (
         // The error comes from the host: plain text only.

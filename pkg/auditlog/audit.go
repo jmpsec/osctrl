@@ -268,6 +268,18 @@ func (m *AuditLogManager) FailedOsctrld(ip, envName, reason string, envID uint) 
 	}
 }
 
+// RolledBackOsctrld records an osctrld rollback (flags or extensions) that a
+// node reported, once per rollback event. Severity warning.
+func (m *AuditLogManager) RolledBackOsctrld(ip, envName, nodeUUID, kind, stage string, envID uint) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("osctrld rollback on node %s in env %s: %s %s", nodeUUID, envName, kind, stage)
+	if err := m.CreateNew("osctrl-tls", line, ip, LogTypeNode, SeverityWarning, envID); err != nil {
+		log.Err(err).Msg("error creating osctrld-rollback audit log")
+	}
+}
+
 // NewLogout - create new logout audit log entry
 func (m *AuditLogManager) NewLogout(username, ip string) {
 	if !m.Enabled {

@@ -6382,8 +6382,10 @@ paths:
   "/api/v1/nodes/{env}/node/{uuid}/flags":
     delete:
       description: Removes the node's osquery flags override so its osctrld is served
-        the environment flags. The osctrld apply_result, apply_error and
-        apply_at fields are reported by the host and are untrusted.
+        the environment flags. The osctrld apply_result, apply_error, apply_at,
+        osquery_running, down_since, flags_stage and extensions_stage fields are
+        reported by the host and are untrusted; reported_at is the server's
+        receive time and report_stale is set when it is older than 15 minutes.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -6461,8 +6463,10 @@ paths:
       description: Returns the node's osquery flags override, the environment flags,
         the flags the node's osctrld is served, flags that are also set as
         configuration options, and the last osctrld fetch. The osctrld
-        apply_result, apply_error and apply_at fields are reported by the host
-        and are untrusted.
+        apply_result, apply_error, apply_at, osquery_running, down_since,
+        flags_stage and extensions_stage fields are reported by the host and are
+        untrusted; reported_at is the server's receive time and report_stale is
+        set when it is older than 15 minutes.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -6540,8 +6544,10 @@ paths:
       description: Sets the node's osquery flags override, one flag per line, merged
         over the environment flags osctrld fetches. Flags that control the
         connection to osctrl and repeated flags are refused. The osctrld
-        apply_result, apply_error and apply_at fields are reported by the host
-        and are untrusted.
+        apply_result, apply_error, apply_at, osquery_running, down_since,
+        flags_stage and extensions_stage fields are reported by the host and are
+        untrusted; reported_at is the server's receive time and report_stale is
+        set when it is older than 15 minutes.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -13033,10 +13039,27 @@ components:
           type: string
         apply_result:
           type: string
+        down_since:
+          type: string
+        extensions_stage:
+          type: string
+        flags_stage:
+          type: string
         last_fetched_at:
           type: string
+        osquery_running:
+          description: >-
+            Health report: osquery_running, down_since and the stages come from
+            the
+
+            host; reported_at is the server's receive time.
+          type: boolean
         rejected_current:
           type: boolean
+        report_stale:
+          type: boolean
+        reported_at:
+          type: string
       type: object
     types.OsqueryRuntime:
       properties:
