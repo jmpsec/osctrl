@@ -52,7 +52,7 @@ describe('NodeOsqueryView', () => {
   it.each([
     ['no_target', 'No target version is set for this environment.'],
     ['ahead_of_target', 'This host already runs the target version or newer.'],
-    ['no_digest_for_target', "Add the SHA-256 for the target version (for this host's platform) to the library."],
+    ['no_digest_for_target', "Add the SHA-256 for osquery 5.13.0 (for this host's platform and architecture) to the library."],
     ['no_digest_for_installed', 'Add the SHA-256 for the installed version 5.12.1 to the library so the host can be rolled back safely.'],
     ['unsupported_platform', 'Upgrades are not supported on this platform yet.'],
     ['previous_unavailable', "The previous version's package could not be downloaded, so the upgrade was not started."],
@@ -67,6 +67,23 @@ describe('NodeOsqueryView', () => {
     api.getNodeOsquery.mockResolvedValue(make({ upgrade: upgrade({ reason }) }));
     renderView();
     expect(await screen.findByText(text)).toBeInTheDocument();
+  });
+
+  it('names the target version from the node, not the report, for a missing target digest', async () => {
+    api.getNodeOsquery.mockResolvedValue(
+      make({ target: { version: '5.14.0', source: 'pin' }, upgrade: upgrade({ result: 'skipped', version: '5.13.0', reason: 'no_digest_for_target' }) }),
+    );
+    renderView();
+    expect(
+      await screen.findByText("Add the SHA-256 for osquery 5.14.0 (for this host's platform and architecture) to the library."),
+    ).toBeInTheDocument();
+  });
+
+  it('explains how to retry a rejected version under the pin control', async () => {
+    renderView();
+    expect(
+      await screen.findByText('Pinning the same version with the same expiry retries a version this host rejected.'),
+    ).toBeInTheDocument();
   });
 
   it('says upgrades are unsupported on a Windows host without a report', async () => {

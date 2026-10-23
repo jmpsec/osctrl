@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -139,17 +140,138 @@ func TestLibraryPutAuditsReplacedDigest(t *testing.T) {
 	require.NotContains(t, lines[0], "darwin", "untouched entries are not listed")
 }
 
-// Repeating an entry in the body does not grow the line past the five
-// supported combinations.
-func TestLibraryPutAuditBounded(t *testing.T) {
+// The body holds at most the five supported combinations, each once, so the
+// audit line lists exactly the entries written.
+func TestLibraryPutRejectsDuplicateOrTooManyEntries(t *testing.T) {
 	f := setupOsqueryHandlers(t)
-	entry := `{"platform":"linux","arch":"amd64","format":"deb","sha256":"` + oqDigest1 + `"}`
-	body := `{"entries":[` + strings.TrimSuffix(strings.Repeat(entry+",", 50), ",") + `]}`
-	rr := oqCall(f.h, libPut, http.MethodPut, "root", map[string]string{"version": "5.12.1"}, body)
+	entry := func(platform, arch, format string) string {
+		return `{"platform":"` + platform + `","arch":"` + arch + `","format":"` + format + `","sha256":"` + oqDigest1 + `"}`
+	}
+	all := []string{entry("linux", "amd64", "deb"), entry("linux", "arm64", "deb"), entry("linux", "amd64", "rpm"),
+		entry("linux", "arm64", "rpm"), entry("darwin", "universal", "pkg")}
+	for name, list := range map[string][]string{
+		"duplicate": {all[0], all[0]},
+		"six":       append(append([]string{}, all...), all[0]),
+		"fifty":     strings.Split(strings.TrimSuffix(strings.Repeat(all[0]+"|", 50), "|"), "|"),
+	} {
+		rr := oqCall(f.h, libPut, http.MethodPut, "root", map[string]string{"version": "5.12.1"}, `{"entries":[`+strings.Join(list, ",")+`]}`)
+		require.Equal(t, http.StatusBadRequest, rr.Code, name)
+	}
+	require.Empty(t, auditLines(t, f.db, auditlog.LogTypeSetting, auditlog.NoEnvironment))
+	got, err := f.mgr.GetEntries("5.12.1")
+	require.NoError(t, err)
+	require.Empty(t, got)
+
+	rr := oqCall(f.h, libPut, http.MethodPut, "root", map[string]string{"version": "5.12.1"}, `{"entries":[`+strings.Join(all, ",")+`]}`)
 	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
 	lines := auditLines(t, f.db, auditlog.LogTypeSetting, auditlog.NoEnvironment)
 	require.Len(t, lines, 1)
-	require.Equal(t, 1, strings.Count(lines[0], oqDigest1))
+	require.Equal(t, 5, strings.Count(lines[0], oqDigest1))
+}
+
+// A misspelled field must not be ignored (a pin without its expiry never
+// expires), and nothing may follow the JSON object.
+func TestOsqueryPutsRejectUnknownFieldsAndTrailingData(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	f.put(t, "5.13.0")
+	puts := []struct {
+		name       string
+		hf         func(*HandlersApi) http.HandlerFunc
+		user       string
+		vals       map[string]string
+		ok, typo   string
+		logType    uint
+		auditEnvID uint
+	}{
+		{"library", libPut, "root", map[string]string{"version": "5.14.0"}, okEntries,
+			`{"entries":[{"platform":"linux","arch":"amd64","format":"deb","sha265":"` + oqDigest1 + `"}]}`, auditlog.LogTypeSetting, auditlog.NoEnvironment},
+		{"env target", envPut, "alice", map[string]string{"env": f.envA.Name}, `{"version":"5.13.0"}`,
+			`{"version":"5.13.0","target":"5.14.0"}`, auditlog.LogTypeEnvironment, f.envA.ID},
+		{"pin", pinPut, "alice", nodeVals(f.envA, "NODE-A"), `{"version":"5.13.0"}`,
+			`{"version":"5.13.0","expires":"2030-01-01T00:00:00Z"}`, auditlog.LogTypeNode, f.envA.ID},
+	}
+	for _, c := range puts {
+		for name, body := range map[string]string{
+			"unknown field":  c.typo,
+			"trailing data":  c.ok + `{}`,
+			"trailing token": c.ok + ` x`,
+		} {
+			rr := oqCall(f.h, c.hf, http.MethodPut, c.user, c.vals, body)
+			require.Equal(t, http.StatusBadRequest, rr.Code, "%s %s", c.name, name)
+			require.Contains(t, rr.Body.String(), "invalid request body", "%s %s", c.name, name)
+		}
+		require.Empty(t, auditLines(t, f.db, c.logType, c.auditEnvID), c.name)
+		// trailing whitespace is fine
+		require.Equal(t, http.StatusOK, oqCall(f.h, c.hf, http.MethodPut, c.user, c.vals, c.ok+"\n").Code, c.name)
+	}
+	p, err := f.mgr.GetPin("NODE-A")
+	require.NoError(t, err)
+	require.Nil(t, p.ExpiresAt)
+}
+
+func TestLibraryInvalidVersionPathIs400(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	for _, v := range []string{"evil", "5", "5.x", "../5.12.1", ""} {
+		rr := oqCall(f.h, libDelete, http.MethodDelete, "root", map[string]string{"version": v}, "")
+		require.Equal(t, http.StatusBadRequest, rr.Code, v)
+		rr = oqCall(f.h, libPut, http.MethodPut, "root", map[string]string{"version": v}, okEntries)
+		require.Equal(t, http.StatusBadRequest, rr.Code, v)
+	}
+	require.Empty(t, auditLines(t, f.db, auditlog.LogTypeSetting, auditlog.NoEnvironment))
+}
+
+// Clearing what is not set answers 200 (idempotent) without claiming a change.
+func TestOsqueryDeletesOfNothingAreNotAudited(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	f.put(t, "5.13.0")
+	rr := oqCall(f.h, envDel, http.MethodDelete, "alice", map[string]string{"env": f.envA.Name}, "")
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	require.Empty(t, auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID))
+	rr = oqCall(f.h, pinDel, http.MethodDelete, "alice", nodeVals(f.envA, "NODE-A"), "")
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	require.Empty(t, auditLines(t, f.db, auditlog.LogTypeNode, f.envA.ID))
+}
+
+// Only a missing version is a 404; a database error is a 500.
+func TestOsqueryDatabaseErrorsAre500(t *testing.T) {
+	// Each table with the calls that read it (no pin and no target is set).
+	for table, names := range map[string][]string{
+		"osquery_package_digests": {"env get", "node get", "node put", "library list", "library put", "library delete"},
+		"osquery_env_targets":     {"env get", "node get", "library list", "library put", "library delete"},
+		"osquery_node_pins":       {"node get", "node put", "library list", "library put", "library delete"},
+	} {
+		t.Run(table, func(t *testing.T) {
+			f := setupOsqueryHandlers(t)
+			f.put(t, "5.13.0")
+			calls := map[string]func() *httptest.ResponseRecorder{
+				"env get": func() *httptest.ResponseRecorder {
+					return oqCall(f.h, envGet, http.MethodGet, "alice", map[string]string{"env": f.envA.Name}, "")
+				},
+				"node get": func() *httptest.ResponseRecorder {
+					return oqCall(f.h, pinGet, http.MethodGet, "alice", nodeVals(f.envA, "NODE-A"), "")
+				},
+				"node put": func() *httptest.ResponseRecorder {
+					return oqCall(f.h, pinPut, http.MethodPut, "alice", nodeVals(f.envA, "NODE-A"), `{"version":"5.13.0"}`)
+				},
+				"library list": func() *httptest.ResponseRecorder { return oqCall(f.h, libList, http.MethodGet, "root", nil, "") },
+				"library put": func() *httptest.ResponseRecorder {
+					return oqCall(f.h, libPut, http.MethodPut, "root", map[string]string{"version": "5.13.0"}, okEntries)
+				},
+				"library delete": func() *httptest.ResponseRecorder {
+					return oqCall(f.h, libDelete, http.MethodDelete, "root", map[string]string{"version": "5.13.0"}, "")
+				},
+			}
+			require.NoError(t, f.db.Callback().Query().Before("gorm:query").Register("oqfail", func(tx *gorm.DB) {
+				if tx.Statement.Table == table {
+					_ = tx.AddError(errors.New("injected db error"))
+				}
+			}))
+			for _, name := range names {
+				rr := calls[name]()
+				require.Equal(t, http.StatusInternalServerError, rr.Code, "%s: %s", name, rr.Body.String())
+			}
+		})
+	}
 }
 
 func TestLibraryPutValidatesEntries(t *testing.T) {
@@ -182,7 +304,8 @@ func TestLibraryDeleteInUseIs409(t *testing.T) {
 	rr = oqCall(f.h, libList, http.MethodGet, "root", nil, "")
 	require.Contains(t, rr.Body.String(), `"in_use":true`)
 
-	require.NoError(t, f.mgr.ClearEnvTarget(f.envA.ID))
+	_, err = f.mgr.ClearEnvTarget(f.envA.ID)
+	require.NoError(t, err)
 	rr = oqCall(f.h, libDelete, http.MethodDelete, "root", map[string]string{"version": "5.12.1"}, "")
 	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
 	rr = oqCall(f.h, libDelete, http.MethodDelete, "root", map[string]string{"version": "5.12.1"}, "")
@@ -261,9 +384,17 @@ func TestPinUsesNodeConfigTargetGuard(t *testing.T) {
 		hf     func(*HandlersApi) http.HandlerFunc
 		method string
 	}{{pinGet, http.MethodGet}, {pinPut, http.MethodPut}, {pinDel, http.MethodDelete}} {
+		before := len(auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID))
 		require.Equal(t, http.StatusForbidden, oqCall(f.h, c.hf, c.method, "bob", nodeVals(f.envA, "NODE-A"), body).Code)
+		lines := auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID)
+		require.Len(t, lines, before+1, c.method)
+		require.Contains(t, lines[len(lines)-1], "denied access for user bob", c.method)
+		beforeB := len(auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envB.ID))
 		// alice administers a, not b
 		require.Equal(t, http.StatusForbidden, oqCall(f.h, c.hf, c.method, "alice", nodeVals(f.envB, "NODE-B"), body).Code)
+		linesB := auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envB.ID)
+		require.Len(t, linesB, beforeB+1, c.method)
+		require.Contains(t, linesB[len(linesB)-1], "denied access for user alice", c.method)
 		// a node of another environment looked up through env a
 		require.Equal(t, http.StatusNotFound, oqCall(f.h, c.hf, c.method, "alice", nodeVals(f.envA, "NODE-B"), body).Code)
 	}
@@ -444,4 +575,28 @@ func TestNodeOsqueryGetPlatformUnsupported(t *testing.T) {
 		require.Equal(t, want, out.PlatformUnsupported, platform)
 		require.Contains(t, rr.Body.String(), `"platform_unsupported":`)
 	}
+}
+
+// The trailing-data check keeps a too-large body a 413.
+func TestOsqueryPutTrailingDataLimits(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	f.put(t, "5.13.0")
+	vals := nodeVals(f.envA, "NODE-A")
+	body := `{"version":"5.13.0"}`
+	require.Equal(t, http.StatusRequestEntityTooLarge, oqCall(f.h, pinPut, http.MethodPut, "alice", vals, body+strings.Repeat(" ", 100<<10)).Code)
+	require.Equal(t, http.StatusBadRequest, oqCall(f.h, pinPut, http.MethodPut, "alice", vals, body+`{}`).Code)
+	require.Equal(t, http.StatusOK, oqCall(f.h, pinPut, http.MethodPut, "alice", vals, body+"\n").Code)
+}
+
+// Environment targets do not expire: an expires_at must not be silently dropped.
+func TestEnvTargetRejectsExpiry(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	f.put(t, "5.13.0")
+	rr := oqCall(f.h, envPut, http.MethodPut, "alice", map[string]string{"env": f.envA.Name}, `{"version":"5.13.0","expires_at":"2030-01-01T00:00:00Z"}`)
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, rr.Body.String(), "environment targets do not expire")
+	tgt, err := f.mgr.GetEnvTarget(f.envA.ID)
+	require.NoError(t, err)
+	require.Nil(t, tgt)
+	require.Empty(t, auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID))
 }

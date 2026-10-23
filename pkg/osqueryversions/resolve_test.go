@@ -162,7 +162,8 @@ func TestSetEnvTargetSameVersionChangesRequestId(t *testing.T) {
 	got, err := m.GetEnvTarget(1)
 	require.NoError(t, err)
 	assert.Equal(t, b.RequestID, got.RequestID)
-	require.NoError(t, m.ClearEnvTarget(1))
+	_, err = m.ClearEnvTarget(1)
+	require.NoError(t, err)
 	got, err = m.GetEnvTarget(1)
 	require.NoError(t, err)
 	assert.Nil(t, got)
@@ -178,7 +179,8 @@ func TestSetPinRejectsPastExpiry(t *testing.T) {
 	p, err := m.GetPin("u1")
 	require.NoError(t, err)
 	assert.False(t, p.Expired(now))
-	require.NoError(t, m.DeletePin("u1"))
+	_, err = m.DeletePin("u1")
+	require.NoError(t, err)
 	p, err = m.GetPin("u1")
 	require.NoError(t, err)
 	assert.Nil(t, p)
@@ -195,18 +197,129 @@ func TestDeleteVersionInUse(t *testing.T) {
 	_, err := m.SetPin("u1", 1, "5.12.2", &exp, "admin")
 	require.NoError(t, err)
 	assert.ErrorIs(t, m.DeleteVersion("5.12.2"), ErrInUse)
-	require.NoError(t, m.DeletePin("u1"))
+	_, err = m.DeletePin("u1")
+	require.NoError(t, err)
 	require.NoError(t, m.DeleteVersion("5.12.2"))
 }
 
 func TestDeleteVersionExpiredPinNotInUse(t *testing.T) {
 	m := newTestManager(t)
 	seed(t, m, "5.12.2", deb(digestA))
-	exp := time.Now().Add(50 * time.Millisecond)
+	past := time.Now().Add(-time.Minute)
+	require.NoError(t, m.db.Create(&NodePin{NodeUUID: "u1", EnvironmentID: 1, Version: "5.12.2", RequestID: "r", ExpiresAt: &past}).Error)
+	require.NoError(t, m.DeleteVersion("5.12.2"))
+}
+
+// SQLite stores times as text with their zone offset: an unexpired pin stored
+// in a far-west offset sorts before now as text, yet keeps the version in use.
+func TestDeleteVersionPinExpiryInOtherZoneStillInUse(t *testing.T) {
+	m := newTestManager(t)
+	seed(t, m, "5.12.2", deb(digestA))
+	exp := time.Now().Add(time.Hour).In(time.FixedZone("west", -12*3600))
+	require.NoError(t, m.db.Create(&NodePin{NodeUUID: "u1", EnvironmentID: 1, Version: "5.12.2", RequestID: "r", ExpiresAt: &exp}).Error)
+	assert.ErrorIs(t, m.DeleteVersion("5.12.2"), ErrInUse)
+	assert.ErrorIs(t, m.PutEntries("5.12.2", []DigestEntry{deb(digestB)}, "t"), ErrInUse)
+}
+
+func TestPinExpiringExactlyNowIsExpired(t *testing.T) {
+	at := now
+	assert.True(t, NodePin{ExpiresAt: &at}.Expired(now))
+	assert.False(t, NodePin{}.Expired(now))
+}
+
+func TestResolvePinOfOtherEnvironmentFallsBackToTarget(t *testing.T) {
+	m := libWithTarget(t)
+	seed(t, m, "5.12.2", deb(digestA))
+	_, err := m.SetPin("u1", 2, "5.12.2", nil, "admin")
+	require.NoError(t, err)
+	r, err := m.Resolve(linuxIn("5.12.1"), now)
+	require.NoError(t, err)
+	assert.Equal(t, "environment", r.Source)
+	assert.Equal(t, "5.13.0", r.Target.Version)
+}
+
+func TestPutEntriesCannotChangeDigestPinned(t *testing.T) {
+	m := newTestManager(t)
+	seed(t, m, "5.12.2", deb(digestA))
+	exp := time.Now().Add(time.Hour)
 	_, err := m.SetPin("u1", 1, "5.12.2", &exp, "admin")
 	require.NoError(t, err)
-	time.Sleep(80 * time.Millisecond)
-	require.NoError(t, m.DeleteVersion("5.12.2"))
+	assert.ErrorIs(t, m.PutEntries("5.12.2", []DigestEntry{deb(digestB)}, "t"), ErrInUse)
+}
+
+func TestPutEntriesRejectsTooManyOrDuplicateEntries(t *testing.T) {
+	m := newTestManager(t)
+	dup := []DigestEntry{deb(digestA), deb(digestB)}
+	assert.ErrorIs(t, m.PutEntries("5.12.1", dup, "t"), ErrInvalid)
+	six := []DigestEntry{
+		{Platform: "linux", Arch: "amd64", Format: "deb", SHA256: digestA},
+		{Platform: "linux", Arch: "arm64", Format: "deb", SHA256: digestA},
+		{Platform: "linux", Arch: "amd64", Format: "rpm", SHA256: digestA},
+		{Platform: "linux", Arch: "arm64", Format: "rpm", SHA256: digestA},
+		{Platform: "darwin", Arch: "universal", Format: "pkg", SHA256: digestA},
+		{Platform: "darwin", Arch: "universal", Format: "pkg", SHA256: digestB},
+	}
+	assert.ErrorIs(t, m.PutEntries("5.12.1", six, "t"), ErrInvalid)
+	require.NoError(t, m.PutEntries("5.12.1", six[:5], "t"))
+}
+
+func TestSetPinRequestID(t *testing.T) {
+	m := libWithTarget(t)
+	exp := time.Now().Add(time.Hour)
+	first, err := m.SetPin("u1", 1, "5.13.0", &exp, "admin")
+	require.NoError(t, err)
+	assert.Regexp(t, regexp.MustCompile(`^[0-9a-f]{32}$`), first.RequestID, "first pin gets one")
+
+	// Changing only the expiry keeps it: a rejected target is not retried.
+	later := exp.Add(time.Hour)
+	p, err := m.SetPin("u1", 1, "5.13.0", &later, "bob")
+	require.NoError(t, err)
+	assert.Equal(t, first.RequestID, p.RequestID, "expiry change")
+	assert.Equal(t, "bob", p.UpdatedBy)
+	assert.True(t, later.Equal(*p.ExpiresAt))
+	p, err = m.SetPin("u1", 1, "5.13.0", nil, "bob")
+	require.NoError(t, err)
+	assert.Equal(t, first.RequestID, p.RequestID, "expiry removed")
+	p, err = m.SetPin("u1", 1, "5.13.0", &later, "bob")
+	require.NoError(t, err)
+	assert.Equal(t, first.RequestID, p.RequestID, "expiry added")
+	got, err := m.GetPin("u1")
+	require.NoError(t, err)
+	assert.Equal(t, first.RequestID, got.RequestID)
+	assert.True(t, later.Equal(*got.ExpiresAt))
+
+	// An identical re-save retries.
+	again, err := m.SetPin("u1", 1, "5.13.0", &later, "bob")
+	require.NoError(t, err)
+	assert.NotEqual(t, first.RequestID, again.RequestID, "identical re-save")
+	noExp, err := m.SetPin("u1", 1, "5.13.0", nil, "bob")
+	require.NoError(t, err)
+	same, err := m.SetPin("u1", 1, "5.13.0", nil, "bob")
+	require.NoError(t, err)
+	assert.NotEqual(t, noExp.RequestID, same.RequestID, "identical re-save without expiry")
+
+	// Another version gets a new one.
+	other, err := m.SetPin("u1", 1, "5.12.1", nil, "bob")
+	require.NoError(t, err)
+	assert.NotEqual(t, same.RequestID, other.RequestID, "different version")
+}
+
+func TestClearEnvTargetAndDeletePinReportRemoval(t *testing.T) {
+	m := libWithTarget(t)
+	removed, err := m.ClearEnvTarget(1)
+	require.NoError(t, err)
+	assert.True(t, removed)
+	removed, err = m.ClearEnvTarget(1)
+	require.NoError(t, err)
+	assert.False(t, removed)
+	_, err = m.SetPin("u1", 1, "5.13.0", nil, "admin")
+	require.NoError(t, err)
+	removed, err = m.DeletePin("u1")
+	require.NoError(t, err)
+	assert.True(t, removed)
+	removed, err = m.DeletePin("u1")
+	require.NoError(t, err)
+	assert.False(t, removed)
 }
 
 func TestPutEntriesCannotChangeDigestInUse(t *testing.T) {
@@ -235,4 +348,37 @@ func TestDeleteNodeRecordsRemovesPin(t *testing.T) {
 	p, err := m.GetPin("u1")
 	require.NoError(t, err)
 	assert.Nil(t, p)
+}
+
+// A pin row left by another environment is a first pin for the new one.
+func TestSetPinOtherEnvironmentGetsNewRequestID(t *testing.T) {
+	m := libWithTarget(t)
+	e1 := time.Now().Add(time.Hour)
+	a, err := m.SetPin("u1", 2, "5.13.0", &e1, "admin")
+	require.NoError(t, err)
+	e2 := e1.Add(time.Hour)
+	b, err := m.SetPin("u1", 1, "5.13.0", &e2, "admin")
+	require.NoError(t, err)
+	assert.NotEqual(t, a.RequestID, b.RequestID)
+	assert.Equal(t, uint(1), b.EnvironmentID)
+}
+
+func TestSameExpiryTolerance(t *testing.T) {
+	base := time.Date(2030, 1, 1, 10, 0, 0, 0, time.UTC)
+	at := func(d time.Duration) *time.Time { x := base.Add(d); return &x }
+	for name, c := range map[string]struct {
+		a, b *time.Time
+		want bool
+	}{
+		"both nil":                    {nil, nil, true},
+		"nil vs set":                  {nil, at(0), false},
+		"equal":                       {at(0), at(0), true},
+		".4s apart across a boundary": {at(800 * time.Millisecond), at(1200 * time.Millisecond), true},
+		".9995 rounded up by the DB":  {at(999500 * time.Microsecond), at(time.Second), true},
+		".9999 rounded up by the DB":  {at(999900 * time.Microsecond), at(time.Second), true},
+		"1.5s apart":                  {at(0), at(1500 * time.Millisecond), false},
+		"1.5s apart, reversed":        {at(1500 * time.Millisecond), at(0), false},
+	} {
+		assert.Equal(t, c.want, sameExpiry(c.a, c.b), name)
+	}
 }

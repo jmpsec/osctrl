@@ -3630,7 +3630,8 @@ paths:
   "/api/v1/environments/osquery/{env}":
     delete:
       description: Stops rolling the environment out; hosts keep the version they
-        have. Environment admins.
+        have. Clearing an unset target answers 200 and is not audited.
+        Environment admins.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -3724,10 +3725,12 @@ paths:
       tags:
         - environments
     put:
-      description: Rolls the environment out to a version of the library. Hosts at or
+      description: "Rolls the environment out to a version of the library. Hosts at or
         above it are left alone; osctrld upgrades the others when osqueryd is
         running. Setting the same version again retries hosts that rejected it.
-        Environment admins.
+        Unknown body fields are refused, and so is expires_at: environment
+        targets do not expire (use a node pin for a temporary override).
+        Environment admins."
       parameters:
         - description: Environment name or UUID
           in: path
@@ -6799,9 +6802,10 @@ paths:
         - nodes
   "/api/v1/nodes/{env}/node/{uuid}/osquery":
     delete:
-      description: Removes the node's pin so it follows the environment target. The
-        installed version and the upgrade result, version, reason and request_id
-        are reported by the host and are untrusted. Environment admins.
+      description: Removes the node's pin so it follows the environment target.
+        Removing an absent pin answers 200 and is not audited. The installed
+        version and the upgrade result, version, reason and request_id are
+        reported by the host and are untrusted. Environment admins.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -6924,9 +6928,13 @@ paths:
     put:
       description: Pins the node to a version of the library, overriding the
         environment target, optionally until expires_at (RFC 3339, in the
-        future). Setting the same version again retries a rejected upgrade. The
-        installed version and the upgrade result, version, reason and request_id
-        are reported by the host and are untrusted. Environment admins.
+        future). Changing only the expiry of the pinned version (in the same
+        environment) keeps its request_id, so a version the host rejected is not
+        retried; setting the same version with the same expiry again (or another
+        version) gets a new request_id and retries. Unknown body fields are
+        refused. The installed version and the upgrade result, version, reason
+        and request_id are reported by the host and are untrusted. Environment
+        admins.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -7402,6 +7410,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/types.ApiGenericResponse"
+        "400":
+          description: Invalid version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
         "401":
           description: Unauthorized
           content:
@@ -7439,7 +7453,8 @@ paths:
         - osquery
     put:
       description: Adds or replaces the package SHA-256 digests of a version (linux
-        deb/rpm amd64/arm64, darwin pkg universal). Windows is not supported.
+        deb/rpm amd64/arm64, darwin pkg universal), each combination at most
+        once. Unknown body fields are refused. Windows is not supported.
         Changing a digest of a version used by a target or pin is refused with
         409. Super admins only.
       parameters:

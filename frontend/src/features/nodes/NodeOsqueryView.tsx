@@ -12,12 +12,13 @@ const fmt = (iso: string | null | undefined) => {
   return isNaN(d.getTime()) ? iso : d.toLocaleString();
 };
 
-const REASONS: Record<string, (installed: string) => string> = {
+const REASONS: Record<string, (d: NodeOsquery) => string> = {
   no_target: () => 'No target version is set for this environment.',
   ahead_of_target: () => 'This host already runs the target version or newer.',
-  no_digest_for_target: () => "Add the SHA-256 for the target version (for this host's platform) to the library.",
-  no_digest_for_installed: (v) =>
-    `Add the SHA-256 for the installed version ${v} to the library so the host can be rolled back safely.`,
+  no_digest_for_target: (d) =>
+    `Add the SHA-256 for ${d.target ? `osquery ${d.target.version}` : 'the target version'} (for this host's platform and architecture) to the library.`,
+  no_digest_for_installed: (d) =>
+    `Add the SHA-256 for the installed version ${d.installed_version} to the library so the host can be rolled back safely.`,
   unsupported_platform: () => 'Upgrades are not supported on this platform yet.',
   previous_unavailable: () => "The previous version's package could not be downloaded, so the upgrade was not started.",
   target_unavailable: () => "The target version's package could not be downloaded.",
@@ -31,8 +32,7 @@ const REASONS: Record<string, (installed: string) => string> = {
 };
 
 /** Host-reported: unknown codes render as the plain code. */
-const reasonText = (reason: string, installed: string) =>
-  Object.hasOwn(REASONS, reason) ? REASONS[reason](installed) : reason;
+const reasonText = (reason: string, d: NodeOsquery) => (Object.hasOwn(REASONS, reason) ? REASONS[reason](d) : reason);
 
 /** Per-node osquery version: effective target, last upgrade report, and a pin (confirm-to-unlock). */
 export function NodeOsqueryView({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {
@@ -132,11 +132,11 @@ export function NodeOsqueryView({ env, uuid, hostname }: { env: string; uuid: st
             <span className="text-[color:var(--text-1)]">{up.version}</span>
             <span className="ml-auto text-xs text-[color:var(--text-3)]">{`reported ${fmt(up.reported_at)}`}</span>
           </div>
-          {up.reason && <p className="text-xs text-[color:var(--text-2)]">{reasonText(up.reason, data.installed_version)}</p>}
+          {up.reason && <p className="text-xs text-[color:var(--text-2)]">{reasonText(up.reason, data)}</p>}
         </div>
       )}
       {!up && data.platform_unsupported && (
-        <p className="text-sm text-[color:var(--text-2)]">{REASONS.unsupported_platform('')}</p>
+        <p className="text-sm text-[color:var(--text-2)]">{REASONS.unsupported_platform(data)}</p>
       )}
 
       <p className="text-xs text-[color:var(--text-3)]">
@@ -204,6 +204,9 @@ export function NodeOsqueryView({ env, uuid, hostname }: { env: string; uuid: st
           </button>
         )}
       </div>
+      <p className="text-xs text-[color:var(--text-3)]">
+        Pinning the same version with the same expiry retries a version this host rejected.
+      </p>
 
       {unlockOpen && (
         <ModalShell

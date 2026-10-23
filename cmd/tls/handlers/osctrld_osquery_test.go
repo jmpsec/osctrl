@@ -119,7 +119,7 @@ func TestOsqueryHandlerRejectsBadUUIDAndBody(t *testing.T) {
 		require.Empty(t, w.Body.String(), name)
 	}
 	big := osqBody(s, nfNodeA, "linux", "amd64", "deb", "") + strings.Repeat(" ", maxBodyOsquery)
-	require.NotEqual(t, http.StatusOK, f.post(big).Code)
+	require.Equal(t, http.StatusRequestEntityTooLarge, f.post(big).Code)
 }
 
 func TestOsqueryHandlerOtherEnvironmentNodeIs400(t *testing.T) {
@@ -150,10 +150,14 @@ func TestOsqueryHandlerNeverAnswers404(t *testing.T) {
 		"bad platf":   osqBody(s, nfNodeA, "!", "amd64", "deb", ""),
 		"unsupported": osqBody(s, nfNodeA, "windows", "amd64", "msi", ""),
 	} {
-		require.NotEqual(t, http.StatusNotFound, f.post(body).Code, name)
+		code := f.post(body).Code
+		require.NotEqual(t, http.StatusNotFound, code, name)
+		require.NotEqual(t, http.StatusMethodNotAllowed, code, name)
 	}
 	require.NoError(t, f.db.Callback().Query().Before("gorm:query").Register("osqfail", func(tx *gorm.DB) { _ = tx.AddError(errors.New("injected")) }))
-	require.NotEqual(t, http.StatusNotFound, f.post(osqBody(s, nfNodeA, "linux", "amd64", "deb", "")).Code)
+	code := f.post(osqBody(s, nfNodeA, "linux", "amd64", "deb", "")).Code
+	require.NotEqual(t, http.StatusNotFound, code)
+	require.NotEqual(t, http.StatusMethodNotAllowed, code)
 }
 
 func TestOsqueryHandlerUnsupportedPlatformIs200WithReason(t *testing.T) {
@@ -162,6 +166,15 @@ func TestOsqueryHandlerUnsupportedPlatformIs200WithReason(t *testing.T) {
 	w := f.post(osqBody(f.env.Secret, nfNodeA, "windows", "amd64", "msi", "5.12.1"))
 	require.Equal(t, http.StatusOK, w.Code)
 	require.JSONEq(t, `{"reason":"unsupported_platform","reported_version":"5.12.1"}`, w.Body.String())
+}
+
+// The node check comes first: an unknown node gets 400 even for an unsupported platform.
+func TestOsqueryHandlerUnsupportedPlatformUnknownNodeIs400(t *testing.T) {
+	f := newOsqueryFixture(t)
+	f.seed(t)
+	w := f.post(osqBody(f.env.Secret, "CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC", "windows", "amd64", "msi", "5.12.1"))
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Empty(t, w.Body.String())
 }
 
 func TestOsqueryHandlerRejectsOversizedInstalledVersion(t *testing.T) {
