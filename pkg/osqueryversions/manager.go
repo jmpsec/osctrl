@@ -46,10 +46,17 @@ func (m *Manager) PutEntries(version string, entries []DigestEntry, by string) e
 	if len(entries) == 0 {
 		return fmt.Errorf("%w: no entries", ErrInvalid)
 	}
+	// Five combinations are supported, so refusing repeats also caps entries at five.
+	seen := make(map[[3]string]bool, len(entries))
 	for _, e := range entries {
 		if err := ValidEntry(e.Platform, e.Arch, e.Format, e.SHA256); err != nil {
 			return fmt.Errorf("%w: %w", ErrInvalid, err)
 		}
+		k := [3]string{e.Platform, e.Arch, e.Format}
+		if seen[k] {
+			return fmt.Errorf("%w: duplicate entry %s/%s/%s", ErrInvalid, e.Platform, e.Arch, e.Format)
+		}
+		seen[k] = true
 	}
 	return m.db.Transaction(func(tx *gorm.DB) error {
 		inUse, err := versionInUse(tx, version, time.Now())
@@ -163,8 +170,18 @@ func versionInUse(tx *gorm.DB, version string, now time.Time) (bool, error) {
 	if err := tx.Model(&EnvTarget{}).Where("version = ?", version).Count(&n).Error; err != nil || n > 0 {
 		return n > 0, err
 	}
-	err := tx.Model(&NodePin{}).Where("version = ? AND (expires_at IS NULL OR expires_at > ?)", version, now).Count(&n).Error
-	return n > 0, err
+	// Expiry is checked in Go: SQLite compares stored times as text, which
+	// breaks across zone offsets.
+	var pins []NodePin
+	if err := tx.Where("version = ?", version).Find(&pins).Error; err != nil {
+		return false, err
+	}
+	for _, p := range pins {
+		if !p.Expired(now) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func newRequestID() (string, error) {
@@ -227,12 +244,16 @@ func (m *Manager) GetEnvTarget(envID uint) (*EnvTarget, error) {
 	return &t, nil
 }
 
-// ClearEnvTarget removes the environment's target.
-func (m *Manager) ClearEnvTarget(envID uint) error {
-	return m.db.Unscoped().Where("environment_id = ?", envID).Delete(&EnvTarget{}).Error
+// ClearEnvTarget removes the environment's target and reports whether one was set.
+func (m *Manager) ClearEnvTarget(envID uint) (bool, error) {
+	res := m.db.Unscoped().Where("environment_id = ?", envID).Delete(&EnvTarget{})
+	return res.RowsAffected > 0, res.Error
 }
 
-// SetPin pins a node to a library version with a new request id. expiresAt, when set, must be in the future.
+// SetPin pins a node to a library version. expiresAt, when set, must be in the
+// future. Changing only the expiry of a pin of the same environment keeps its request id, so osctrld
+// does not retry a version the host rejected; any other call, including an
+// identical re-save (how an operator retries), gets a new request id.
 func (m *Manager) SetPin(nodeUUID string, envID uint, version string, expiresAt *time.Time, by string) (*NodePin, error) {
 	if nodeUUID == "" {
 		return nil, fmt.Errorf("%w: empty node uuid", ErrInvalid)
@@ -257,13 +278,26 @@ func (m *Manager) SetPin(nodeUUID string, envID uint, version string, expiresAt 
 		if e != nil {
 			return e
 		}
-		p.EnvironmentID, p.Version, p.RequestID, p.UpdatedBy, p.ExpiresAt = envID, version, id, by, expiresAt
+		// A pin row of another environment is a first pin here: new id.
+		if p.EnvironmentID != envID || p.Version != version || sameExpiry(p.ExpiresAt, expiresAt) {
+			p.RequestID = id
+		}
+		p.EnvironmentID, p.Version, p.UpdatedBy, p.ExpiresAt = envID, version, by, expiresAt
 		return tx.Unscoped().Save(&p).Error
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &p, nil
+}
+
+// sameExpiry treats expiries less than a second apart as the same: databases
+// keep (and round) sub-second precision differently.
+func sameExpiry(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Sub(*b).Abs() < time.Second
 }
 
 // GetPin returns the node's pin (expired or not), or nil when none is set.
@@ -275,10 +309,14 @@ func (m *Manager) GetPin(nodeUUID string) (*NodePin, error) {
 	return &p, nil
 }
 
-// DeletePin removes the node's pin.
-func (m *Manager) DeletePin(nodeUUID string) error {
-	return m.db.Unscoped().Where("node_uuid = ?", nodeUUID).Delete(&NodePin{}).Error
+// DeletePin removes the node's pin and reports whether one was set.
+func (m *Manager) DeletePin(nodeUUID string) (bool, error) {
+	res := m.db.Unscoped().Where("node_uuid = ?", nodeUUID).Delete(&NodePin{})
+	return res.RowsAffected > 0, res.Error
 }
 
 // DeleteNodeRecords removes everything stored for a node; used by node deletion.
-func (m *Manager) DeleteNodeRecords(nodeUUID string) error { return m.DeletePin(nodeUUID) }
+func (m *Manager) DeleteNodeRecords(nodeUUID string) error {
+	_, err := m.DeletePin(nodeUUID)
+	return err
+}

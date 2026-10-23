@@ -265,15 +265,17 @@ func TestRecordReportDropsInvalidUpgrade(t *testing.T) {
 	require.NoError(t, err)
 	mod := func(f func(u *types.OsctrldUpgrade)) types.OsctrldUpgrade { u := rejectedUp; f(&u); return u }
 	cases := map[string]types.OsctrldUpgrade{
-		"bad result":        mod(func(u *types.OsctrldUpgrade) { u.Result = "bogus" }),
-		"bad reason":        mod(func(u *types.OsctrldUpgrade) { u.Reason = "nope" }),
-		"bad version":       mod(func(u *types.OsctrldUpgrade) { u.Version = "5.x" }),
-		"bad event id":      mod(func(u *types.OsctrldUpgrade) { u.EventID = "nothex" }),
-		"no event id":       mod(func(u *types.OsctrldUpgrade) { u.EventID = "" }),
-		"bad request id":    mod(func(u *types.OsctrldUpgrade) { u.RequestID = "XYZ" }),
-		"ok with reason":    {Result: "ok", Version: "5.13.0", Reason: "rolled_back"},
-		"skipped no reason": {Result: "skipped"},
-		"ok with event id":  {Result: "ok", Version: "5.13.0", EventID: evID(3, "c")},
+		"bad result":          mod(func(u *types.OsctrldUpgrade) { u.Result = "bogus" }),
+		"bad reason":          mod(func(u *types.OsctrldUpgrade) { u.Reason = "nope" }),
+		"bad version":         mod(func(u *types.OsctrldUpgrade) { u.Version = "5.x" }),
+		"bad event id":        mod(func(u *types.OsctrldUpgrade) { u.EventID = "nothex" }),
+		"no event id":         mod(func(u *types.OsctrldUpgrade) { u.EventID = "" }),
+		"bad request id":      mod(func(u *types.OsctrldUpgrade) { u.RequestID = "XYZ" }),
+		"ok with reason":      {Result: "ok", Version: "5.13.0", Reason: "rolled_back"},
+		"skipped no reason":   {Result: "skipped"},
+		"ok with event id":    {Result: "ok", Version: "5.13.0", EventID: evID(3, "c")},
+		"event id on skipped": {Result: "skipped", Version: "5.13.0", Reason: "osqueryd_not_running", EventID: evID(3, "c")},
+		"rejected no reason":  mod(func(u *types.OsctrldUpgrade) { u.Reason = "" }),
 	}
 	for name, u := range cases {
 		t.Run(name, func(t *testing.T) {
