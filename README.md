@@ -48,7 +48,7 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 - **osquery extensions**: Super admins upload extension binaries (up to 64 MB per platform) to a database-backed library. Environment admins assign ordinary extensions to an environment; super admins assign command-execution extensions to single hosts, with optional expiry. osctrld's service mode installs them on its next sync, verifies hashes, rolls back failures, and the node page shows per-extension status.
 - **File explorer**: Accelerated per-node directory listing and stat requests backed by osquery distributed queries.
 - **Accelerated distributed queries**: Optional osquery accelerated query reads, defaulting to a 5 second interval when enabled. Console acceleration is scoped to the target node and fresh active console sessions.
-- **osquery schema awareness**: Ships osquery table metadata through 5.23.1 and exposes authenticated table metadata to the UI/API for query authoring and console `.tables`.
+- **osquery schema awareness**: Ships osquery table metadata through 5.24.0 and exposes authenticated table metadata to the UI/API for query authoring and console `.tables`.
 - **Security-sensitive API defaults**: JWT authentication by default for `osctrl-api`, optional multi-factor authentication (TOTP, passkeys/security keys, recovery codes) for password logins, trusted proxy controls, audit logging, and authenticated access to query/carve sample libraries.
 - **Model Context Protocol**: A standalone `osctrl-mcp` stdio server and an optional hosted `/api/v1/mcp` endpoint expose permission-checked fleet inspection tools to MCP clients. Mutating tools are separately gated and disabled by default.
 - **Alerting**: Optional rule-based alerting on result/status/query logs and node state (inactive/recovered), scoped globally, per environment, or to a single node. Notifications fan out to webhook and email channels with Redis-backed cooldown/dedupe, dispatched history, and hot reload without a restart. Rules can be created straight from a node's page, and a node shows a marker when any rule covers it.
@@ -194,7 +194,7 @@ For the complete stack workflow, endpoints, logs, and reset commands, see [deplo
 - Frontend runtime: **Node.js 22+**
 - Frontend stack: **React 19**, **TypeScript 7**, **Vite 8**, **Tailwind CSS 4**, **TanStack Router/Query/Table**, **zod 4**, **Monaco Editor**
 - Frontend testing: **Vitest 4**, **@testing-library/react 16**, **jsdom 30**, **Playwright 1**
-- osquery schema data included through **osquery 5.23.1**
+- osquery schema data included through **osquery 5.24.0**
 - Default database/cache stack: **PostgreSQL** and **Redis**
 
 ### Provisioning script

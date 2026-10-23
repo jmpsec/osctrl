@@ -32,7 +32,7 @@ scoring the same evidence twice.
 | Address space randomization | `system_controls`; Linux | ISO A.8.9; SOC 2 CC7.1 | `kernel.randomize_va_space` must be 2; 0 or 1 fails this baseline. |
 | Audit service availability | `systemd_units` (`auditd.service`); Linux. `services` (`EventLog`); Windows | SOC 2 CC7.2; ISO A.8.15 | Running/active service. Stopped/failed/inactive fails; absent or transitional state warns. Non-systemd Linux requires alternate collection. Audit rules, event completeness, forwarding and retention are not assessed. |
 
-The queries use columns in the bundled `deploy/osquery/data/5.23.1.json` schema.
+The queries use columns in the bundled `deploy/osquery/data/5.24.0.json` schema.
 Tests prepare the new SQL against that schema and check platform applicability.
 Actual table availability still depends on osquery version, OS, permissions and
 runtime configuration. Relevant upstream details:

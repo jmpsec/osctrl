@@ -66,7 +66,7 @@ func testUpdateMetadata(t *testing.T, db *gorm.DB) {
 	require.NoError(t, repo.UpdateMetadata(rows[0].ID, NodeMetadata{
 		Hostname:       "new-host",
 		ConfigHash:     "abc123",
-		OsqueryVersion: "5.23.1",
+		OsqueryVersion: "5.24.0",
 		BytesReceived:  25,
 	}))
 	require.Equal(t, 0, selects, "the per-log-batch hot path must not read the node first")
@@ -81,7 +81,7 @@ func testUpdateMetadata(t *testing.T, db *gorm.DB) {
 	target := got["NODE-A/1"]
 	require.Equal(t, "new-host", target.Hostname)
 	require.Equal(t, "abc123", target.ConfigHash)
-	require.Equal(t, "5.23.1", target.OsqueryVersion)
+	require.Equal(t, "5.24.0", target.OsqueryVersion)
 	require.Equal(t, "keep-me", target.Username, "an empty field must leave the stored value alone")
 	require.Equal(t, 125, target.BytesReceived)
 

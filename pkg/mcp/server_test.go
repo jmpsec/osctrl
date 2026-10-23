@@ -104,9 +104,9 @@ func newFake() *fakeBackend {
 			Secret: "SUPERSECRET", Certificate: "-----BEGIN CERTIFICATE-----",
 		}},
 		nodes: []nodes.OsqueryNode{
-			{UUID: "UUID1", Hostname: "web-01", Platform: "linux", OsqueryVersion: "5.23.1",
+			{UUID: "UUID1", Hostname: "web-01", Platform: "linux", OsqueryVersion: "5.24.0",
 				Environment: "dev", LastSeen: time.Now(), CreatedAt: time.Now().Add(-48 * time.Hour)},
-			{UUID: "UUID2", Hostname: "mac-02", Platform: "darwin", OsqueryVersion: "5.23.1", Environment: "dev"},
+			{UUID: "UUID2", Hostname: "mac-02", Platform: "darwin", OsqueryVersion: "5.24.0", Environment: "dev"},
 			{UUID: "UUID3", Hostname: "web-03", Platform: "linux", OsqueryVersion: "5.20.0", Environment: "dev"},
 		},
 		tables: []types.OsqueryTable{

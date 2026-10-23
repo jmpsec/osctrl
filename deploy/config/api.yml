@@ -244,9 +244,9 @@ rateLimits:
 # osquery feature switches used by API handlers and the frontend feature API.
 osquery:
   # osquery schema version shown to query-building UI.
-  version: 5.23.1
+  version: 5.24.0
   # JSON schema file with osquery table metadata.
-  tablesFile: ./data/5.23.1.json
+  tablesFile: ./data/5.24.0.json
   # Whether osquery log endpoints/features are enabled.
   logger: true
   # Whether remote config management is enabled.

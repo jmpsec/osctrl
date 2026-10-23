@@ -46,11 +46,11 @@ func TestOsqueryNeedsInstallDecision(t *testing.T) {
 		installed string
 		want      string
 	}{
-		{"behind must upgrade", "5.23.1", "5.19.0", "install"},
-		{"behind by a patch must upgrade", "5.23.1", "5.23.0", "install"},
-		{"exact match is a no-op", "5.23.1", "5.23.1", "skip"},
-		{"ahead is left alone, never downgraded", "5.19.0", "5.23.1", "skip"},
-		{"nothing installed", "5.23.1", "", "install"},
+		{"behind must upgrade", "5.24.0", "5.19.0", "install"},
+		{"behind by a patch must upgrade", "5.24.0", "5.23.0", "install"},
+		{"exact match is a no-op", "5.24.0", "5.24.0", "skip"},
+		{"ahead is left alone, never downgraded", "5.19.0", "5.24.0", "skip"},
+		{"nothing installed", "5.24.0", "", "install"},
 		{"double-digit minor sorts numerically, not lexically", "5.9.0", "5.10.0", "skip"},
 	}
 
