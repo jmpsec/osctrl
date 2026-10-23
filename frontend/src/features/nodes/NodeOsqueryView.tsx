@@ -5,34 +5,13 @@ import type { NodeOsquery } from '$/api/types';
 import { buttonClasses } from '$/components/atoms/Button';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { plainBtn, warnBtn } from './overrideShared';
+import { REASONS, reasonText } from './osqueryReasons';
 
 const fmt = (iso: string | null | undefined) => {
   if (!iso) return '—';
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleString();
 };
-
-const REASONS: Record<string, (d: NodeOsquery) => string> = {
-  no_target: () => 'No target version is set for this environment.',
-  ahead_of_target: () => 'This host already runs the target version or newer.',
-  no_digest_for_target: (d) =>
-    `Add the SHA-256 for ${d.target ? `osquery ${d.target.version}` : 'the target version'} (for this host's platform and architecture) to the library.`,
-  no_digest_for_installed: (d) =>
-    `Add the SHA-256 for the installed version ${d.installed_version} to the library so the host can be rolled back safely.`,
-  unsupported_platform: () => 'Upgrades are not supported on this platform yet.',
-  previous_unavailable: () => "The previous version's package could not be downloaded, so the upgrade was not started.",
-  target_unavailable: () => "The target version's package could not be downloaded.",
-  digest_mismatch: () => 'A downloaded package did not match its SHA-256.',
-  version_not_reported: () =>
-    "The new version never reported to osctrl (check that the environment's osquery configuration carries the version decorator); the host was rolled back.",
-  osqueryd_not_running: () => 'osquery was not running, so the upgrade was skipped.',
-  install_failed: () => 'The package install failed.',
-  config_changed: () => "The install changed osquery's configuration files; the host was rolled back.",
-  rolled_back: () => 'The host was rolled back to its previous version.',
-};
-
-/** Host-reported: unknown codes render as the plain code. */
-const reasonText = (reason: string, d: NodeOsquery) => (Object.hasOwn(REASONS, reason) ? REASONS[reason](d) : reason);
 
 /** Per-node osquery version: effective target, last upgrade report, and a pin (confirm-to-unlock). */
 export function NodeOsqueryView({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {

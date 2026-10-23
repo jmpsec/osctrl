@@ -292,6 +292,18 @@ func (m *AuditLogManager) RolledBackOsquery(ip, envName, nodeUUID, version, reas
 	}
 }
 
+// RolloutPaused records that an osquery rollout was paused by a rollback on a
+// host. Severity warning.
+func (m *AuditLogManager) RolloutPaused(ip, envName, host, version, reason string, envID uint) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("osquery rollout paused in env %s: %s rolled back on %s (%s)", envName, version, host, reason)
+	if err := m.CreateNew("osctrl-tls", line, ip, LogTypeEnvironment, SeverityWarning, envID); err != nil {
+		log.Err(err).Msg("error creating osquery-rollout-paused audit log")
+	}
+}
+
 // NewLogout - create new logout audit log entry
 func (m *AuditLogManager) NewLogout(username, ip string) {
 	if !m.Enabled {

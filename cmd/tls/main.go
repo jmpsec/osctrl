@@ -491,6 +491,7 @@ func osctrlService() {
 		prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldDownCollector(nodeFlagsMgr, envs))
 		if osqueryVersionsMgr != nil {
 			prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldBehindCollector(osqueryVersionsMgr, envs))
+			prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldRolloutPausedCollector(osqueryVersionsMgr, envs))
 		}
 		cache.RegisterMetrics(prometheus.DefaultRegisterer)
 		if alertsWorker != nil {

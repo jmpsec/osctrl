@@ -153,4 +153,13 @@ describe('NodeOsqueryView', () => {
     await user.click(screen.getByRole('button', { name: 'Remove pin' }));
     await waitFor(() => expect(api.unpinNodeOsquery).toHaveBeenCalledWith('prod', 'uuid-1'));
   });
+
+  it.each([
+    ['rollout_pending', /not in the current rollout stage yet/],
+    ['rollout_paused', /rollout of this version is paused, so this host is not upgrading/],
+  ])('renders the %s reason in words', async (reason, text) => {
+    api.getNodeOsquery.mockResolvedValue(make({ upgrade: upgrade({ result: 'skipped', reason }) }));
+    renderView();
+    expect(await screen.findByTestId('upgrade')).toHaveTextContent(text);
+  });
 });

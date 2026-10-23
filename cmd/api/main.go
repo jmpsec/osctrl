@@ -992,6 +992,8 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		{"GET " + _apiPath(apiEnvironmentsPath) + "/osquery/{env}", handlersApi.EnvOsqueryGetHandler},
 		{"PUT " + _apiPath(apiEnvironmentsPath) + "/osquery/{env}", handlersApi.EnvOsqueryPutHandler},
 		{"DELETE " + _apiPath(apiEnvironmentsPath) + "/osquery/{env}", handlersApi.EnvOsqueryDeleteHandler},
+		{"POST " + _apiPath(apiEnvironmentsPath) + "/osquery/{env}/rollout/resume", handlersApi.EnvOsqueryRolloutResumeHandler},
+		{"POST " + _apiPath(apiEnvironmentsPath) + "/osquery/{env}/rollout/abort", handlersApi.EnvOsqueryRolloutAbortHandler},
 		{"GET " + _apiPath(apiNodesPath) + "/{env}/node/{uuid}/osquery", handlersApi.NodeOsqueryGetHandler},
 		{"PUT " + _apiPath(apiNodesPath) + "/{env}/node/{uuid}/osquery", handlersApi.NodeOsqueryPutHandler},
 		{"DELETE " + _apiPath(apiNodesPath) + "/{env}/node/{uuid}/osquery", handlersApi.NodeOsqueryDeleteHandler},

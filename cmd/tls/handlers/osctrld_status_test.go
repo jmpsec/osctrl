@@ -26,6 +26,7 @@ type statusFixture struct {
 	h          *HandlersTLS
 	db         *gorm.DB
 	m          *nodeconfig.FlagsManager
+	ov         *osqueryversions.Manager
 	env, other environments.TLSEnvironment
 }
 
@@ -57,7 +58,9 @@ func newStatusFixture(t *testing.T) *statusFixture {
 	require.NoError(t, err)
 	audit, err := auditlog.CreateAuditLogManager(db, config.ServiceTLS, true)
 	require.NoError(t, err)
-	f.h = CreateHandlersTLS(WithEnvs(envs), WithNodes(nodesRepo), WithFlagsOverrides(f.m), WithAuditLog(audit),
+	f.ov, err = osqueryversions.NewManager(db)
+	require.NoError(t, err)
+	f.h = CreateHandlersTLS(WithEnvs(envs), WithNodes(nodesRepo), WithFlagsOverrides(f.m), WithAuditLog(audit), WithOsqueryVersions(f.ov),
 		WithOsctrldLimits(NewOsctrldLimits(config.DefaultRateLimits())))
 	return f
 }
@@ -438,4 +441,251 @@ func TestBehindCollectorTimeoutDoesNotBlock(t *testing.T) {
 	start := time.Now()
 	require.Empty(t, behindGauge(t, c))
 	require.Less(t, time.Since(start), 2*time.Second)
+}
+
+func (f *statusFixture) startRollout(t *testing.T) *osqueryversions.Rollout {
+	t.Helper()
+	require.NoError(t, f.ov.PutEntries("5.13.0", []osqueryversions.DigestEntry{{Platform: "linux", Arch: "amd64", Format: "deb", SHA256: strings.Repeat("b", 64)}}, "t"))
+	_, r, err := f.ov.SetEnvTargetRollout(f.env.ID, "5.13.0", "t", []string{nfNodeA}, time.Now())
+	require.NoError(t, err)
+	return r
+}
+
+func (f *statusFixture) rollbackReport(secret, uuid, requestID, reason string) string {
+	return upgradeBody(secret, uuid, `{"result":"rejected","version":"5.13.0","reason":"`+reason+`","request_id":"`+requestID+`","event_id":"`+statusEvent+`"}`)
+}
+
+func (f *statusFixture) pausedAudits(t *testing.T) []auditlog.AuditLog {
+	t.Helper()
+	var rows []auditlog.AuditLog
+	require.NoError(t, f.db.Where("line LIKE ?", "osquery rollout paused%").Find(&rows).Error)
+	return rows
+}
+
+func (f *statusFixture) rollout(t *testing.T) *osqueryversions.Rollout {
+	t.Helper()
+	r, err := f.ov.GetRollout(f.env.ID)
+	require.NoError(t, err)
+	return r
+}
+
+func TestStatusHandlerRollbackPausesCurrentRollout(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", nfNodeA).Update("hostname", "web-1").Error)
+	require.Equal(t, http.StatusOK, f.post(f.rollbackReport(f.env.Secret, nfNodeA, r.RequestID, "version_not_reported")).Code)
+	got := f.rollout(t)
+	require.Equal(t, osqueryversions.RolloutPaused, got.State)
+	require.Equal(t, "web-1", got.PausedHost)
+	require.Equal(t, "version_not_reported", got.PausedReason)
+	audits := f.pausedAudits(t)
+	require.Len(t, audits, 1)
+	require.EqualValues(t, auditlog.LogTypeEnvironment, audits[0].LogType)
+	require.EqualValues(t, f.env.ID, audits[0].EnvironmentID)
+}
+
+func TestStatusHandlerRollbackOfOtherRequestIDDoesNotPause(t *testing.T) {
+	f := newStatusFixture(t)
+	f.startRollout(t)
+	require.Equal(t, http.StatusOK, f.post(f.rollbackReport(f.env.Secret, nfNodeA, strings.Repeat("c", 32), "version_not_reported")).Code)
+	require.Equal(t, osqueryversions.RolloutRunning, f.rollout(t).State)
+	require.Empty(t, f.pausedAudits(t))
+	// A report without a request id (a pin) never pauses either.
+	require.Equal(t, http.StatusOK, f.post(upgradeBody(f.env.Secret, nfNodeA, `{"result":"rejected","version":"5.13.0","reason":"install_failed","event_id":"`+statusEvent+`"}`)).Code)
+	require.Equal(t, osqueryversions.RolloutRunning, f.rollout(t).State)
+}
+
+func TestStatusHandlerSkippedNeverPauses(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	require.Equal(t, http.StatusOK, f.post(upgradeBody(f.env.Secret, nfNodeA, `{"result":"skipped","version":"5.13.0","reason":"rollout_pending","request_id":"`+r.RequestID+`"}`)).Code)
+	require.Equal(t, http.StatusOK, f.post(upgradeBody(f.env.Secret, nfNodeA, `{"result":"skipped","reason":"rollout_paused","request_id":"`+r.RequestID+`"}`)).Code)
+	require.Equal(t, osqueryversions.RolloutRunning, f.rollout(t).State)
+	require.Empty(t, f.pausedAudits(t))
+}
+
+func TestStatusHandlerRepeatedRollbackPausesOnceAndAuditsOnce(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	body := f.rollbackReport(f.env.Secret, nfNodeA, r.RequestID, "digest_mismatch")
+	for i := 0; i < 3; i++ {
+		require.Equal(t, http.StatusOK, f.post(body).Code)
+	}
+	require.Equal(t, osqueryversions.RolloutPaused, f.rollout(t).State)
+	require.Len(t, f.pausedAudits(t), 1)
+}
+
+func TestStatusHandlerPauseRepairedByLaterReport(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	body := f.rollbackReport(f.env.Secret, nfNodeA, r.RequestID, "digest_mismatch")
+	f.failOn(t, "rollouts", "osquery_rollouts", "")
+	require.Equal(t, http.StatusInternalServerError, f.post(body).Code)
+	require.NoError(t, f.db.Callback().Query().Remove("rolloutsq"))
+	require.NoError(t, f.db.Callback().Update().Remove("rolloutsu"))
+	require.Equal(t, osqueryversions.RolloutRunning, f.rollout(t).State)
+	require.Equal(t, http.StatusOK, f.post(body).Code)
+	require.Equal(t, osqueryversions.RolloutPaused, f.rollout(t).State)
+	require.Len(t, f.pausedAudits(t), 1)
+	require.Len(t, f.upgradeAudits(t), 1, "the rollback itself is not counted twice")
+}
+
+func TestStatusHandlerPausedHostCleanedAndBounded(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", nfNodeA).Update("hostname", "ev\nil"+strings.Repeat("x", 400)).Error)
+	require.Equal(t, http.StatusOK, f.post(f.rollbackReport(f.env.Secret, nfNodeA, r.RequestID, "digest_mismatch")).Code)
+	got := f.rollout(t)
+	require.Len(t, []rune(got.PausedHost), 255)
+	require.True(t, strings.HasPrefix(got.PausedHost, "evilxxx"))
+	audits := f.pausedAudits(t)
+	require.Len(t, audits, 1)
+	require.NotContains(t, audits[0].Line, "\n")
+	require.Contains(t, audits[0].Line, got.PausedHost)
+}
+
+func TestStatusHandlerRollbackAfterAbortDoesNotPause(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	_, err := f.ov.AbortRollout(f.env.ID, "t", time.Now())
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, f.post(f.rollbackReport(f.env.Secret, nfNodeA, r.RequestID, "digest_mismatch")).Code)
+	require.Equal(t, osqueryversions.RolloutAborted, f.rollout(t).State)
+	require.Empty(t, f.pausedAudits(t))
+}
+
+func TestStatusHandlerOtherEnvironmentNodeCannotPause(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	require.Equal(t, http.StatusBadRequest, f.post(f.rollbackReport(f.env.Secret, nfNodeOther, r.RequestID, "digest_mismatch")).Code)
+	// The other environment's own node, reporting the first environment's request id.
+	req := httptest.NewRequest(http.MethodPost, "/osctrld-status", bytes.NewBufferString(f.rollbackReport(f.other.Secret, nfNodeOther, r.RequestID, "digest_mismatch")))
+	req.SetPathValue("env", f.other.UUID)
+	w := httptest.NewRecorder()
+	f.h.StatusHandler(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, osqueryversions.RolloutRunning, f.rollout(t).State)
+	require.Empty(t, f.pausedAudits(t))
+}
+
+func TestStatusHandlerWithoutOsqueryVersionsManager(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	f.h.OsqueryVersions = nil
+	require.Equal(t, http.StatusOK, f.post(f.rollbackReport(f.env.Secret, nfNodeA, r.RequestID, "digest_mismatch")).Code)
+	require.Equal(t, osqueryversions.RolloutRunning, f.rollout(t).State)
+	require.Len(t, f.upgradeAudits(t), 1)
+}
+
+// pausedGauge returns the exported osctrld_osquery_rollout_paused series by environment.
+func pausedGauge(t *testing.T, c prometheus.Collector) map[string]float64 {
+	t.Helper()
+	reg := prometheus.NewRegistry()
+	require.NoError(t, reg.Register(c))
+	mfs, err := reg.Gather()
+	require.NoError(t, err)
+	out := map[string]float64{}
+	for _, mf := range mfs {
+		require.Equal(t, "osctrld_osquery_rollout_paused", mf.GetName())
+		for _, m := range mf.GetMetric() {
+			require.Len(t, m.GetLabel(), 1)
+			require.Equal(t, "environment", m.GetLabel()[0].GetName())
+			out[m.GetLabel()[0].GetValue()] = m.GetGauge().GetValue()
+		}
+	}
+	return out
+}
+
+func TestRolloutPausedGaugePerEnvironment(t *testing.T) {
+	f := newStatusFixture(t)
+	vm, err := osqueryversions.NewManager(f.db)
+	require.NoError(t, err)
+	require.NoError(t, f.db.Create(&osqueryversions.Rollout{EnvironmentID: f.env.ID, RequestID: "p", Version: "5.13.0",
+		State: osqueryversions.RolloutPaused, Thresholds: "[]"}).Error)
+	require.Equal(t, map[string]float64{"status-env": 1, "status-other": 0},
+		pausedGauge(t, NewOsctrldRolloutPausedCollector(vm, f.h.Envs)))
+}
+
+func TestRolloutPausedCollectorCachesAndBacksOff(t *testing.T) {
+	clock := &downCollectorClock{t: time.Now()}
+	calls, fail := 0, true
+	c := newOsctrldRolloutPausedCollector(func() (osctrldDownReading, error) {
+		calls++
+		if fail {
+			return osctrldDownReading{}, errors.New("db down")
+		}
+		return osctrldDownReading{counts: map[uint]int{1: 1}, envs: []environments.TLSEnvironment{{Name: "a", ID: 1}, {Name: "b", ID: 2}}}, nil
+	}, clock.now)
+	for i := 0; i < 3; i++ {
+		require.Empty(t, pausedGauge(t, c))
+	}
+	require.Equal(t, 1, calls, "no DB call during the backoff")
+	fail = false
+	clock.advance(osctrldDownBackoff)
+	for i := 0; i < 3; i++ {
+		require.Equal(t, map[string]float64{"a": 1, "b": 0}, pausedGauge(t, c))
+	}
+	require.Equal(t, 2, calls, "reading is cached for the TTL")
+	clock.advance(osctrldDownTTL)
+	pausedGauge(t, c)
+	require.Equal(t, 3, calls)
+}
+
+func TestRolloutPausedCollectorTimeoutDoesNotBlock(t *testing.T) {
+	stall := make(chan struct{})
+	t.Cleanup(func() { close(stall) })
+	c := newOsctrldRolloutPausedCollector(func() (osctrldDownReading, error) {
+		<-stall
+		return osctrldDownReading{}, nil
+	}, time.Now)
+	c.timeout = 20 * time.Millisecond
+	start := time.Now()
+	require.Empty(t, pausedGauge(t, c))
+	require.Less(t, time.Since(start), 2*time.Second)
+}
+
+func (f *statusFixture) rollbackReportEvent(requestID, event string) string {
+	return upgradeBody(f.env.Secret, nfNodeA, `{"result":"rejected","version":"5.13.0","reason":"digest_mismatch","request_id":"`+requestID+`","event_id":"`+event+`"}`)
+}
+
+var statusEvent2 = "1760000000000000001:" + strings.Repeat("b", 64)
+
+func TestStatusHandlerResumeIsNotUndoneByReReportedRollback(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	old := f.rollbackReportEvent(r.RequestID, statusEvent)
+	require.Equal(t, http.StatusOK, f.post(old).Code)
+	require.Equal(t, osqueryversions.RolloutPaused, f.rollout(t).State)
+	time.Sleep(5 * time.Millisecond)
+	_, err := f.ov.ResumeRollout(f.env.ID, "op", time.Now())
+	require.NoError(t, err)
+	// osctrld keeps reporting the same rejected result.
+	for i := 0; i < 3; i++ {
+		require.Equal(t, http.StatusOK, f.post(old).Code)
+	}
+	require.Equal(t, osqueryversions.RolloutRunning, f.rollout(t).State)
+	require.Len(t, f.pausedAudits(t), 1, "no second pause audit")
+
+	// A new rollback after the resume pauses again.
+	time.Sleep(5 * time.Millisecond)
+	require.Equal(t, http.StatusOK, f.post(f.rollbackReportEvent(r.RequestID, statusEvent2)).Code)
+	require.Equal(t, osqueryversions.RolloutPaused, f.rollout(t).State)
+	require.Len(t, f.pausedAudits(t), 2)
+}
+
+func TestStatusHandlerPauseFailureAfterResumeIsRepairedByRetry(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	require.Equal(t, http.StatusOK, f.post(f.rollbackReportEvent(r.RequestID, statusEvent)).Code)
+	time.Sleep(5 * time.Millisecond)
+	_, err := f.ov.ResumeRollout(f.env.ID, "op", time.Now())
+	require.NoError(t, err)
+	time.Sleep(5 * time.Millisecond)
+	body := f.rollbackReportEvent(r.RequestID, statusEvent2)
+	f.failOn(t, "rollouts", "osquery_rollouts", "")
+	require.Equal(t, http.StatusInternalServerError, f.post(body).Code)
+	require.NoError(t, f.db.Callback().Query().Remove("rolloutsq"))
+	require.NoError(t, f.db.Callback().Update().Remove("rolloutsu"))
+	require.Equal(t, http.StatusOK, f.post(body).Code)
+	require.Equal(t, osqueryversions.RolloutPaused, f.rollout(t).State)
 }

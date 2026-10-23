@@ -9,6 +9,8 @@ const (
 	ReasonNoDigestForTarget    = "no_digest_for_target"
 	ReasonNoDigestForInstalled = "no_digest_for_installed"
 	ReasonUnsupportedPlatform  = "unsupported_platform"
+	ReasonRolloutPending       = "rollout_pending"
+	ReasonRolloutPaused        = "rollout_paused"
 )
 
 // ResolveInput is what a node reports plus its identity.
@@ -63,6 +65,13 @@ func (m *Manager) Resolve(in ResolveInput, now time.Time) (Resolution, error) {
 			return Resolution{Reason: ReasonAheadOfTarget, Source: res.Source, RequestID: res.RequestID}, nil
 		}
 	}
+	if res.Source == "environment" {
+		if reason, err := m.rolloutGate(in, version, res.RequestID, now); err != nil {
+			return res, err
+		} else if reason != "" {
+			return Resolution{Reason: reason, Source: res.Source, RequestID: res.RequestID}, nil
+		}
+	}
 	target, err := m.digest(version, in.Platform, arch, in.Format)
 	if err != nil {
 		return res, err
@@ -81,6 +90,25 @@ func (m *Manager) Resolve(in ResolveInput, now time.Time) (Resolution, error) {
 	}
 	res.Target, res.Previous = target, prev
 	return res, nil
+}
+
+// rolloutGate returns the reason a not-yet-upgraded host must wait for the
+// target's rollout, or "" when it may proceed. Only the latest rollout row of
+// the environment, and only if it belongs to this target, can gate.
+func (m *Manager) rolloutGate(in ResolveInput, version, requestID string, now time.Time) (string, error) {
+	r, err := m.GetRollout(in.EnvironmentID)
+	if err != nil || r == nil || r.RequestID != requestID {
+		return "", err
+	}
+	switch r.EffectiveState(now) {
+	case RolloutPaused:
+		return ReasonRolloutPaused, nil
+	case RolloutRunning:
+		if !r.Eligible(Bucket(in.EnvironmentID, version, in.NodeUUID), now) {
+			return ReasonRolloutPending, nil
+		}
+	}
+	return "", nil
 }
 
 // digest returns the library digest for one key, or nil when absent.

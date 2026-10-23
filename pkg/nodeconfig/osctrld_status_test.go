@@ -309,3 +309,11 @@ func TestRecordFetchKeepsUpgradeFields(t *testing.T) {
 	assert.Equal(t, rejectedUp.EventID, st.UpgradeEventID)
 	require.NotNil(t, st.UpgradeReportedAt)
 }
+
+func TestValidUpgradeAcceptsRolloutReasons(t *testing.T) {
+	for _, reason := range []string{"rollout_pending", "rollout_paused"} {
+		assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "skipped", Reason: reason, RequestID: strings.Repeat("a", 32)}), reason)
+		assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "skipped", Version: "5.13.0", Reason: reason}), reason)
+		assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "rejected", Version: "5.13.0", Reason: reason, EventID: evID(3, "c")}), reason)
+	}
+}

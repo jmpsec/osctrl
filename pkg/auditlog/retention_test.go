@@ -127,3 +127,26 @@ func TestRolledBackOsqueryAudit(t *testing.T) {
 	require.NoError(t, db.Model(&AuditLog{}).Count(&n).Error)
 	require.EqualValues(t, 1, n, "disabled manager writes nothing")
 }
+
+func TestRolloutPausedAudit(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	m, err := CreateAuditLogManager(db, "tls", true)
+	require.NoError(t, err)
+	m.RolloutPaused("203.0.113.5", "prod", "web-1", "5.13.0", "digest_mismatch", 7)
+	var rows []AuditLog
+	require.NoError(t, db.Find(&rows).Error)
+	require.Len(t, rows, 1)
+	require.EqualValues(t, LogTypeEnvironment, rows[0].LogType)
+	require.EqualValues(t, SeverityWarning, rows[0].Severity)
+	require.EqualValues(t, 7, rows[0].EnvironmentID)
+	require.Equal(t, "osctrl-tls", rows[0].Username)
+	require.Equal(t, "osquery rollout paused in env prod: 5.13.0 rolled back on web-1 (digest_mismatch)", rows[0].Line)
+
+	off, err := CreateAuditLogManager(db, "tls", false)
+	require.NoError(t, err)
+	off.RolloutPaused("203.0.113.5", "prod", "web-1", "5.13.0", "digest_mismatch", 7)
+	var n int64
+	require.NoError(t, db.Model(&AuditLog{}).Count(&n).Error)
+	require.EqualValues(t, 1, n)
+}

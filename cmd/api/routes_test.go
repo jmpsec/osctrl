@@ -186,3 +186,14 @@ func TestRegisterRoutesMCPRoundTrip(t *testing.T) {
 	_ = resp.Body.Close()
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 }
+
+// The rollout Resume and Abort routes are POST-only and auth-gated.
+func TestRegisterRoutesOsqueryRollout(t *testing.T) {
+	mux := newRouteTestMux(t, nil, nil)
+	for _, action := range []string{"resume", "abort"} {
+		path := _apiPath(apiEnvironmentsPath) + "/osquery/dev/rollout/" + action
+		_, pattern := mux.Handler(httptest.NewRequest(http.MethodPost, path, nil))
+		require.Equal(t, "POST "+_apiPath(apiEnvironmentsPath)+"/osquery/{env}/rollout/"+action, pattern)
+		require.Equal(t, http.StatusUnauthorized, serveRoute(mux, http.MethodPost, path).Code, action)
+	}
+}

@@ -384,6 +384,16 @@ func (n *NodeManager) GetOsqueryVersionCountsByEnv(envID uint) ([]OsqueryVersion
 	return GetOsqueryVersionCountsByEnv(n.DB, envID)
 }
 
+// UUIDsByEnv returns the stored (upper-case) uuids of the environment's
+// non-deleted, non-Windows nodes: the hosts a rollout can upgrade.
+func (n *NodeManager) UUIDsByEnv(envID uint) ([]string, error) {
+	var uuids []string
+	err := n.DB.Model(&OsqueryNode{}).
+		Where("environment_id = ? AND LOWER(COALESCE(platform, '')) <> 'windows'", envID).
+		Pluck("uuid", &uuids).Error
+	return uuids, err
+}
+
 // GetOsqueryVersionCounts wrapper.
 func (n *NodeManager) GetOsqueryVersionCounts() ([]OsqueryVersionCount, error) {
 	return GetOsqueryVersionCounts(n.DB)
