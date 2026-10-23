@@ -111,7 +111,10 @@ registered at all.
 Point a client at `https://<osctrl-host>/api/v1/mcp` with the caller's own
 bearer token. Behind the bundled nginx config this works as-is: `/api/` is
 already proxied with `proxy_buffering off`, which the streaming transport
-needs.
+needs. The endpoint accepts `POST` (client messages), `GET` (server-to-client
+stream) and `DELETE` (end session). Other methods get `405` from the router,
+except `HEAD`, which Go routes to the `GET` pattern: it is authenticated like
+any request (`401` without a token) and then gets `405` from the MCP handler.
 
 ### Enabling it grants no new access
 
