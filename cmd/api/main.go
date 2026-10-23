@@ -38,6 +38,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/osquery"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
@@ -467,6 +468,10 @@ func osctrlAPIService() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize osquery extensions")
 	}
+	osqueryVersionsMgr, err := osqueryversions.NewManager(db.Conn)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize osquery versions")
+	}
 	log.Info().Msg("Initialize queries")
 	queriesmgr = queries.CreateQueries(db.Conn)
 	queriesmgr.Cache = queries.NewQueryDispatchCache(redis.Client, 0)
@@ -698,6 +703,7 @@ func osctrlAPIService() {
 		handlers.WithNodeConfig(nodeConfigMgr),
 		handlers.WithFlagsOverrides(nodeFlagsMgr),
 		handlers.WithExtensions(extensionsMgr),
+		handlers.WithOsqueryVersions(osqueryVersionsMgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithConsole(consolemgr),
 		handlers.WithFileExplorer(fileexplorermgr),
@@ -885,6 +891,23 @@ func osctrlAPIService() {
 	muxAPI.Handle(
 		"DELETE "+_apiPath(apiExtensionsPath)+"/{id}/files/{platform}/{arch}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.ExtensionFileDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: osquery version library (super admin), environment target and node pin (environment admin)
+	for _, rt := range []struct {
+		pattern string
+		h       http.HandlerFunc
+	}{
+		{"GET " + _apiPath("/osquery/versions"), handlersApi.OsqueryVersionsListHandler},
+		{"PUT " + _apiPath("/osquery/versions") + "/{version}", handlersApi.OsqueryVersionPutHandler},
+		{"DELETE " + _apiPath("/osquery/versions") + "/{version}", handlersApi.OsqueryVersionDeleteHandler},
+		{"GET " + _apiPath(apiEnvironmentsPath) + "/osquery/{env}", handlersApi.EnvOsqueryGetHandler},
+		{"PUT " + _apiPath(apiEnvironmentsPath) + "/osquery/{env}", handlersApi.EnvOsqueryPutHandler},
+		{"DELETE " + _apiPath(apiEnvironmentsPath) + "/osquery/{env}", handlersApi.EnvOsqueryDeleteHandler},
+		{"GET " + _apiPath(apiNodesPath) + "/{env}/node/{uuid}/osquery", handlersApi.NodeOsqueryGetHandler},
+		{"PUT " + _apiPath(apiNodesPath) + "/{env}/node/{uuid}/osquery", handlersApi.NodeOsqueryPutHandler},
+		{"DELETE " + _apiPath(apiNodesPath) + "/{env}/node/{uuid}/osquery", handlersApi.NodeOsqueryDeleteHandler},
+	} {
+		muxAPI.Handle(rt.pattern, handlerAuthCheck(rt.h, flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	}
 	// API: node extensions (view: environment admin; assign/remove: super admin)
 	muxAPI.Handle(
 		"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/extensions",

@@ -15,6 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
@@ -324,4 +325,117 @@ func TestDownCollectorBacksOffAfterFailure(t *testing.T) {
 	clock.advance(osctrldDownBackoff)
 	require.Equal(t, map[string]float64{"a": 0}, downGauge(t, c))
 	require.Equal(t, 2, calls)
+}
+
+func upgradeBody(secret, uuid, upgrade string) string {
+	return `{"secret":"` + secret + `","uuid":"` + uuid + `","osquery_running":true,` +
+		`"flags":{"stage":"none","event_id":""},"extensions":{"stage":"none","event_id":""},"upgrade":` + upgrade + `}`
+}
+
+func (f *statusFixture) upgradeAudits(t *testing.T) []auditlog.AuditLog {
+	t.Helper()
+	var rows []auditlog.AuditLog
+	require.NoError(t, f.db.Where("line LIKE ?", "osctrld osquery upgrade rolled back%").Find(&rows).Error)
+	return rows
+}
+
+func TestStatusHandlerUpgradeRollbackCountedAndAuditedOnce(t *testing.T) {
+	f := newStatusFixture(t)
+	c := osctrldUpgradeRollbacks.WithLabelValues(f.env.Name)
+	before := metricValue(t, c)
+	body := upgradeBody(f.env.Secret, nfNodeA, `{"result":"rejected","version":"5.13.0","reason":"version_not_reported","event_id":"`+statusEvent+`"}`)
+	for i := 0; i < 3; i++ {
+		require.Equal(t, http.StatusOK, f.post(body).Code)
+	}
+	require.Equal(t, before+1, metricValue(t, c))
+	audits := f.upgradeAudits(t)
+	require.Len(t, audits, 1)
+	require.EqualValues(t, auditlog.LogTypeNode, audits[0].LogType)
+	require.Equal(t, "osctrld osquery upgrade rolled back on node "+nfNodeA+" in env status-env: 5.13.0 (version_not_reported)", audits[0].Line)
+	require.Equal(t, "198.51.100.7", audits[0].SourceIP)
+	require.Empty(t, f.rollbackAudits(t))
+}
+
+func TestStatusHandlerUpgradeOKDoesNotCount(t *testing.T) {
+	f := newStatusFixture(t)
+	c := osctrldUpgradeRollbacks.WithLabelValues(f.env.Name)
+	before := metricValue(t, c)
+	require.Equal(t, http.StatusOK, f.post(upgradeBody(f.env.Secret, nfNodeA, `{"result":"ok","version":"5.13.0"}`)).Code)
+	require.Equal(t, before, metricValue(t, c))
+	require.Empty(t, f.upgradeAudits(t))
+	rows := f.rows(t)
+	require.Len(t, rows, 1)
+	require.Equal(t, "ok", rows[0].UpgradeResult)
+}
+
+// behindGauge returns the exported osctrld_osquery_behind series by environment.
+func behindGauge(t *testing.T, c prometheus.Collector) map[string]float64 {
+	t.Helper()
+	reg := prometheus.NewRegistry()
+	require.NoError(t, reg.Register(c))
+	mfs, err := reg.Gather()
+	require.NoError(t, err)
+	out := map[string]float64{}
+	for _, mf := range mfs {
+		require.Equal(t, "osctrld_osquery_behind", mf.GetName())
+		for _, m := range mf.GetMetric() {
+			require.Len(t, m.GetLabel(), 1)
+			require.Equal(t, "environment", m.GetLabel()[0].GetName())
+			out[m.GetLabel()[0].GetValue()] = m.GetGauge().GetValue()
+		}
+	}
+	return out
+}
+
+func TestBehindGaugePerEnvironment(t *testing.T) {
+	f := newStatusFixture(t)
+	vm, err := osqueryversions.NewManager(f.db)
+	require.NoError(t, err)
+	require.NoError(t, vm.PutEntries("5.13.0", []osqueryversions.DigestEntry{
+		{Platform: "linux", Arch: "amd64", Format: "deb", SHA256: strings.Repeat("a", 64)}}, "t"))
+	_, err = vm.SetEnvTarget(f.env.ID, "5.13.0", "t")
+	require.NoError(t, err)
+	now := time.Now()
+	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", nfNodeA).Update("osquery_version", "5.12.1").Error)
+	require.NoError(t, f.db.Create(&nodeconfig.OsctrldStatus{NodeUUID: nfNodeA, EnvironmentID: f.env.ID, ReportedAt: &now}).Error)
+	require.Equal(t, map[string]float64{"status-env": 1, "status-other": 0},
+		behindGauge(t, NewOsctrldBehindCollector(vm, f.h.Envs)))
+}
+
+func TestBehindCollectorCachesAndBacksOff(t *testing.T) {
+	clock := &downCollectorClock{t: time.Now()}
+	calls, fail := 0, true
+	c := newOsctrldBehindCollector(func() (osctrldDownReading, error) {
+		calls++
+		if fail {
+			return osctrldDownReading{}, errors.New("db down")
+		}
+		return osctrldDownReading{counts: map[uint]int{1: 2}, envs: []environments.TLSEnvironment{{Name: "a", ID: 1}}}, nil
+	}, clock.now)
+	for i := 0; i < 3; i++ {
+		require.Empty(t, behindGauge(t, c))
+	}
+	require.Equal(t, 1, calls, "no DB call during the backoff")
+	fail = false
+	clock.advance(osctrldDownBackoff)
+	for i := 0; i < 3; i++ {
+		require.Equal(t, map[string]float64{"a": 2}, behindGauge(t, c))
+	}
+	require.Equal(t, 2, calls, "reading is cached for the TTL")
+	clock.advance(osctrldDownTTL)
+	behindGauge(t, c)
+	require.Equal(t, 3, calls)
+}
+
+func TestBehindCollectorTimeoutDoesNotBlock(t *testing.T) {
+	stall := make(chan struct{})
+	t.Cleanup(func() { close(stall) })
+	c := newOsctrldBehindCollector(func() (osctrldDownReading, error) {
+		<-stall
+		return osctrldDownReading{}, nil
+	}, time.Now)
+	c.timeout = 20 * time.Millisecond
+	start := time.Now()
+	require.Empty(t, behindGauge(t, c))
+	require.Less(t, time.Since(start), 2*time.Second)
 }

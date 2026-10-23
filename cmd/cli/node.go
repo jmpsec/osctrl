@@ -12,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
@@ -47,6 +48,13 @@ func deleteNodeOverride(uuid string) {
 	}
 	if err != nil {
 		log.Err(err).Msgf("error removing extensions of deleted node %s", uuid)
+	}
+	o, err := osqueryversions.NewManager(nodesmgr.DB)
+	if err == nil {
+		err = o.DeleteNodeRecords(uuid)
+	}
+	if err != nil {
+		log.Err(err).Msgf("error removing osquery pin of deleted node %s", uuid)
 	}
 }
 

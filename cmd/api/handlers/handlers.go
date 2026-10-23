@@ -23,6 +23,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/mfa"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
@@ -97,6 +98,7 @@ type HandlersApi struct {
 	NodeConfig           *nodeconfig.Manager
 	FlagsOverrides       *nodeconfig.FlagsManager
 	Extensions           *extensions.Manager
+	OsqueryVersions      *osqueryversions.Manager
 	// MFA owns the second-factor tables. Nil disables every MFA route.
 	MFA *mfa.Manager
 	// WebAuthn is nil when no RP ID or origin could be resolved, which
@@ -322,6 +324,13 @@ func WithNodeConfig(m *nodeconfig.Manager) HandlersOption {
 func WithFlagsOverrides(m *nodeconfig.FlagsManager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.FlagsOverrides = m
+	}
+}
+
+// WithOsqueryVersions wires the osquery version library, targets and pins.
+func WithOsqueryVersions(m *osqueryversions.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.OsqueryVersions = m
 	}
 }
 

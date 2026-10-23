@@ -187,3 +187,123 @@ func TestRecordReportCountsFirstEventOnPreMigrationRow(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, nev)
 }
+
+func upReport(u types.OsctrldUpgrade) types.OsctrldStatusRequest {
+	r := downReport("")
+	r.Flags = types.OsctrldRollback{Stage: "none"}
+	r.Upgrade = &u
+	return r
+}
+
+var rejectedUp = types.OsctrldUpgrade{Result: "rejected", Version: "5.13.0", Reason: "version_not_reported",
+	RequestID: strings.Repeat("a", 32), EventID: evID(3, "a")}
+
+func TestRecordReportStoresUpgrade(t *testing.T) {
+	m, _, _, _ := newTestFlagsManager(t)
+	nev, err := m.RecordReport("n1", 1, upReport(rejectedUp), reportAt)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"upgrade"}, nev)
+	st, err := m.Status("n1")
+	require.NoError(t, err)
+	assert.Equal(t, "rejected", st.UpgradeResult)
+	assert.Equal(t, "5.13.0", st.UpgradeVersion)
+	assert.Equal(t, "version_not_reported", st.UpgradeReason)
+	assert.Equal(t, rejectedUp.RequestID, st.UpgradeRequestID)
+	assert.Equal(t, rejectedUp.EventID, st.UpgradeEventID)
+	require.NotNil(t, st.UpgradeReportedAt)
+	assert.True(t, reportAt.Equal(*st.UpgradeReportedAt))
+
+	// ok overwrites and is never a rollback event; a report without upgrade keeps it
+	nev, err = m.RecordReport("n1", 1, upReport(types.OsctrldUpgrade{Result: "ok", Version: "5.13.0"}), reportAt.Add(time.Minute))
+	require.NoError(t, err)
+	assert.Empty(t, nev)
+	st, _ = m.Status("n1")
+	assert.Equal(t, "ok", st.UpgradeResult)
+	assert.Empty(t, st.UpgradeReason)
+	_, err = m.RecordReport("n1", 1, downReport(""), reportAt.Add(2*time.Minute))
+	require.NoError(t, err)
+	st, _ = m.Status("n1")
+	assert.Equal(t, "ok", st.UpgradeResult)
+}
+
+func TestRecordReportUpgradeRollbackCountedOnce(t *testing.T) {
+	m1, cm, _, _ := newTestFlagsManager(t)
+	m2, err := newFlagsManagerWithStore(cm.db, newFakeStore())
+	require.NoError(t, err)
+	r := upReport(rejectedUp)
+	n1, err := m1.RecordReport("n1", 1, r, reportAt)
+	require.NoError(t, err)
+	n1b, err := m1.RecordReport("n1", 1, r, reportAt)
+	require.NoError(t, err)
+	n2, err := m2.RecordReport("n1", 1, r, reportAt)
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(n1)+len(n1b)+len(n2))
+	// a new event id counts again
+	u := rejectedUp
+	u.EventID = evID(4, "b")
+	n, err := m1.RecordReport("n1", 1, upReport(u), reportAt)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"upgrade"}, n)
+}
+
+func TestRecordReportUpgradeNullColumnsFirstEventIsNew(t *testing.T) {
+	m, _, _, _ := newTestFlagsManager(t)
+	require.NoError(t, m.RecordFetch("n1", 1, reportAt, nil))
+	require.NoError(t, m.db.Exec("UPDATE node_osctrld_status SET upgrade_event_id = NULL, upgrade_result = NULL WHERE node_uuid = ?", "n1").Error)
+	r := upReport(rejectedUp)
+	nev, err := m.RecordReport("n1", 1, r, reportAt)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"upgrade"}, nev)
+	nev, err = m.RecordReport("n1", 1, r, reportAt.Add(time.Minute))
+	require.NoError(t, err)
+	assert.Empty(t, nev)
+}
+
+func TestRecordReportDropsInvalidUpgrade(t *testing.T) {
+	m, _, _, _ := newTestFlagsManager(t)
+	_, err := m.RecordReport("n1", 1, upReport(rejectedUp), reportAt)
+	require.NoError(t, err)
+	mod := func(f func(u *types.OsctrldUpgrade)) types.OsctrldUpgrade { u := rejectedUp; f(&u); return u }
+	cases := map[string]types.OsctrldUpgrade{
+		"bad result":        mod(func(u *types.OsctrldUpgrade) { u.Result = "bogus" }),
+		"bad reason":        mod(func(u *types.OsctrldUpgrade) { u.Reason = "nope" }),
+		"bad version":       mod(func(u *types.OsctrldUpgrade) { u.Version = "5.x" }),
+		"bad event id":      mod(func(u *types.OsctrldUpgrade) { u.EventID = "nothex" }),
+		"no event id":       mod(func(u *types.OsctrldUpgrade) { u.EventID = "" }),
+		"bad request id":    mod(func(u *types.OsctrldUpgrade) { u.RequestID = "XYZ" }),
+		"ok with reason":    {Result: "ok", Version: "5.13.0", Reason: "rolled_back"},
+		"skipped no reason": {Result: "skipped"},
+		"ok with event id":  {Result: "ok", Version: "5.13.0", EventID: evID(3, "c")},
+	}
+	for name, u := range cases {
+		t.Run(name, func(t *testing.T) {
+			assert.False(t, ValidUpgrade(u))
+			r := upReport(u)
+			r.OsqueryRunning = true
+			nev, err := m.RecordReport("n1", 1, r, reportAt.Add(time.Minute))
+			require.NoError(t, err)
+			assert.Empty(t, nev)
+			st, err := m.Status("n1")
+			require.NoError(t, err)
+			assert.Equal(t, rejectedUp.EventID, st.UpgradeEventID)
+			assert.Equal(t, "rejected", st.UpgradeResult)
+			assert.Equal(t, "5.13.0", st.UpgradeVersion)
+			require.NotNil(t, st.OsqueryRunning)
+			assert.True(t, *st.OsqueryRunning, "rest of the report still stored")
+		})
+	}
+	assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "skipped", Reason: "no_target"}))
+	assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "skipped", Version: "5.13.0", Reason: "osqueryd_not_running"}))
+}
+
+func TestRecordFetchKeepsUpgradeFields(t *testing.T) {
+	m, _, _, _ := newTestFlagsManager(t)
+	_, err := m.RecordReport("n1", 1, upReport(rejectedUp), reportAt)
+	require.NoError(t, err)
+	require.NoError(t, m.RecordFetch("n1", 1, reportAt.Add(time.Minute), &types.OsctrldApplyStatus{Result: "applied", At: reportAt}))
+	st, err := m.Status("n1")
+	require.NoError(t, err)
+	assert.Equal(t, "rejected", st.UpgradeResult)
+	assert.Equal(t, rejectedUp.EventID, st.UpgradeEventID)
+	require.NotNil(t, st.UpgradeReportedAt)
+}

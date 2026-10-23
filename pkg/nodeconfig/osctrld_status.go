@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -31,6 +32,34 @@ func ValidStage(kind, stage string) bool { return validStages[kind][stage] }
 // ValidEventID reports whether id has the rollback event id format.
 func ValidEventID(id string) bool { return eventIDRe.MatchString(id) }
 
+var requestIDRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
+
+var validUpgradeReasons = map[string]bool{
+	"no_target": true, "ahead_of_target": true, "no_digest_for_target": true, "no_digest_for_installed": true,
+	"unsupported_platform": true, "previous_unavailable": true, "target_unavailable": true, "digest_mismatch": true,
+	"version_not_reported": true, "osqueryd_not_running": true, "install_failed": true, "config_changed": true,
+	"rolled_back": true,
+}
+
+// ValidUpgradeReason reports whether r is a known upgrade reason.
+func ValidUpgradeReason(r string) bool { return validUpgradeReasons[r] }
+
+// ValidUpgrade reports whether u is a well-formed osquery upgrade result.
+func ValidUpgrade(u types.OsctrldUpgrade) bool {
+	if u.RequestID != "" && !requestIDRe.MatchString(u.RequestID) {
+		return false
+	}
+	switch u.Result {
+	case "ok":
+		return u.Reason == "" && u.EventID == "" && osqueryversions.ValidVersion(u.Version)
+	case "rejected":
+		return ValidUpgradeReason(u.Reason) && osqueryversions.ValidVersion(u.Version) && ValidEventID(u.EventID)
+	case "skipped":
+		return ValidUpgradeReason(u.Reason) && u.EventID == "" && (u.Version == "" || osqueryversions.ValidVersion(u.Version))
+	}
+	return false
+}
+
 // OsctrldStatus is the last flags fetch by a node's osctrld and the result of
 // its last flags apply, as reported by osctrld.
 type OsctrldStatus struct {
@@ -51,6 +80,14 @@ type OsctrldStatus struct {
 	ExtensionsStage   string     `gorm:"default:''"`
 	FlagsEventID      string     `gorm:"default:''"`
 	ExtensionsEventID string     `gorm:"default:''"`
+
+	// Osquery upgrade result, written by RecordReport only.
+	UpgradeResult     string `gorm:"default:''"`
+	UpgradeVersion    string `gorm:"default:''"`
+	UpgradeReason     string `gorm:"default:''"`
+	UpgradeRequestID  string `gorm:"default:''"`
+	UpgradeEventID    string `gorm:"default:''"`
+	UpgradeReportedAt *time.Time
 }
 
 // TableName keeps the table name stable.
@@ -99,7 +136,8 @@ func (m *FlagsManager) DeleteStatus(nodeUUID string) error {
 }
 
 // RecordReport stores an osctrld health report. A kind (flags/extensions) with
-// an invalid stage or event id is dropped, keeping its stored values. It
+// an invalid stage or event id is dropped, keeping its stored values; so is an
+// invalid upgrade result. A rejected upgrade reports the kind "upgrade". It
 // returns the kinds whose non-none event id was not seen before; the
 // compare-and-set on the event id column counts an event once across replicas.
 func (m *FlagsManager) RecordReport(nodeUUID string, envID uint, r types.OsctrldStatusRequest, at time.Time) ([]string, error) {
@@ -116,6 +154,7 @@ func (m *FlagsManager) RecordReport(nodeUUID string, envID uint, r types.Osctrld
 		in   types.OsctrldRollback
 	}{{"flags", r.Flags}, {"extensions", r.Extensions}}
 	var fresh []string // kinds that carry an event to dedupe
+	eventIDs := map[string]string{"flags": r.Flags.EventID, "extensions": r.Extensions.EventID}
 	for _, k := range kinds {
 		if !ValidStage(k.name, k.in.Stage) {
 			continue
@@ -134,6 +173,15 @@ func (m *FlagsManager) RecordReport(nodeUUID string, envID uint, r types.Osctrld
 		}
 		cols = append(cols, k.name+"_stage")
 	}
+	if u := r.Upgrade; u != nil && ValidUpgrade(*u) {
+		row.UpgradeResult, row.UpgradeVersion, row.UpgradeReason, row.UpgradeRequestID = u.Result, u.Version, u.Reason, u.RequestID
+		row.UpgradeReportedAt = &at
+		cols = append(cols, "upgrade_result", "upgrade_version", "upgrade_reason", "upgrade_request_id", "upgrade_reported_at")
+		if u.Result == "rejected" {
+			fresh = append(fresh, "upgrade")
+			eventIDs["upgrade"] = u.EventID
+		}
+	}
 	if err := m.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "node_uuid"}},
 		DoUpdates: clause.AssignmentColumns(cols),
@@ -143,10 +191,7 @@ func (m *FlagsManager) RecordReport(nodeUUID string, envID uint, r types.Osctrld
 
 	var newEvents []string
 	for _, kind := range fresh {
-		id := r.Flags.EventID
-		if kind == "extensions" {
-			id = r.Extensions.EventID
-		}
+		id := eventIDs[kind]
 		res := m.db.Model(&OsctrldStatus{}).
 			Where("node_uuid = ? AND ("+kind+"_event_id IS NULL OR "+kind+"_event_id <> ?)", nodeUUID, id).
 			Update(kind+"_event_id", id)

@@ -9,6 +9,7 @@ import {
   DatabaseBackup,
   Download,
   FileSearch,
+  PackageCheck,
   Puzzle,
   FileStack,
   HeartPulse,
@@ -260,6 +261,8 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
     pathname.startsWith('/_app/log-sinks') || pathname.startsWith('/log-sinks');
   const isExtensionsActive =
     pathname.startsWith('/_app/extensions') || pathname.startsWith('/extensions');
+  const isOsqueryVersionsActive =
+    pathname.startsWith('/_app/osquery-versions') || pathname.startsWith('/osquery-versions');
   const isAlertsActive =
     pathname.startsWith('/_app/alerts') || pathname.startsWith('/alerts');
   const isHealth = pathname.startsWith('/_app/health') || pathname.startsWith('/health');
@@ -599,6 +602,15 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               icon={<Puzzle size={14} strokeWidth={1.8} />}
             >
               {t('nav.extensions')}
+            </NavItem>
+            <NavItem
+              collapsed={collapsed}
+              active={isOsqueryVersionsActive}
+              to="/_app/osquery-versions"
+              tone="violet"
+              icon={<PackageCheck size={14} strokeWidth={1.8} />}
+            >
+              Osquery versions
             </NavItem>
             {features?.alerts && <NavItem
               collapsed={collapsed}

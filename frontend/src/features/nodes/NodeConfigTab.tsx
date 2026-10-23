@@ -7,6 +7,7 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { DiffView } from '$/components/forms/DiffView';
 import { NodeExtensionsView } from './NodeExtensionsView';
+import { NodeOsqueryView } from './NodeOsqueryView';
 import { NodeFlagsView } from './NodeFlagsView';
 import { plainBtn, toLocalInput, VIEWS, warnBtn, type View } from './overrideShared';
 
@@ -259,12 +260,13 @@ function ConfigView({ env, uuid, hostname }: { env: string; uuid: string; hostna
   );
 }
 
-type Kind = 'configuration' | 'flags' | 'extensions';
+type Kind = 'configuration' | 'flags' | 'extensions' | 'osquery';
 
 const KINDS: { id: Kind; label: string }[] = [
   { id: 'configuration', label: 'Configuration' },
   { id: 'flags', label: 'Flags' },
   { id: 'extensions', label: 'Extensions' },
+  { id: 'osquery', label: 'Osquery version' },
 ];
 
 /** Per-node overrides: osquery configuration (JSON), startup flags (flagfile) or extensions. */
@@ -289,8 +291,10 @@ export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: stri
         <ConfigView env={env} uuid={uuid} hostname={hostname} />
       ) : kind === 'flags' ? (
         <NodeFlagsView env={env} uuid={uuid} hostname={hostname} />
-      ) : (
+      ) : kind === 'extensions' ? (
         <NodeExtensionsView env={env} uuid={uuid} hostname={hostname} />
+      ) : (
+        <NodeOsqueryView env={env} uuid={uuid} hostname={hostname} />
       )}
     </div>
   );

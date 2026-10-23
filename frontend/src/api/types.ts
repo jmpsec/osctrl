@@ -796,3 +796,78 @@ export interface NodeExtensions {
   /** Command-execution extensions that can be assigned; null unless the caller is a super admin. */
   library: ExtensionSummary[] | null;
 }
+
+// ---------------------------------------------------------------------------
+// Osquery versions (library: super admin; target: environment admin; pin: node)
+// ---------------------------------------------------------------------------
+
+/** Wire shape of OsqueryVersionEntry: the SHA-256 of one official package. */
+export interface OsqueryVersionEntry {
+  platform: string;
+  arch: string;
+  format: string;
+  sha256: string;
+  created_by: string;
+  created_at: string;
+}
+
+/** Wire shape of OsqueryVersionView. */
+export interface OsqueryVersion {
+  version: string;
+  entries: OsqueryVersionEntry[];
+  in_use: boolean;
+}
+
+export interface OsqueryEntryRequest {
+  platform: string;
+  arch: string;
+  format: string;
+  sha256: string;
+}
+
+export interface OsqueryTarget {
+  version: string;
+  request_id: string;
+  updated_by: string;
+  updated_at: string;
+}
+
+export interface OsqueryVersionHostCount {
+  version: string;
+  count: number;
+}
+
+/** Wire shape of EnvOsqueryResponse. */
+export interface EnvOsquery {
+  target: OsqueryTarget | null;
+  counts: OsqueryVersionHostCount[];
+  available: string[];
+}
+
+export interface OsqueryPin {
+  version: string;
+  request_id: string;
+  expires_at: string | null;
+  updated_by: string;
+  updated_at: string;
+}
+
+/** Host-reported strings (version, reason) are untrusted: render as plain text. */
+export interface OsqueryUpgrade {
+  result: 'ok' | 'rejected' | 'skipped' | string;
+  version: string;
+  reason: string;
+  request_id: string;
+  reported_at: string;
+}
+
+/** Wire shape of NodeOsqueryResponse. */
+export interface NodeOsquery {
+  pin: OsqueryPin | null;
+  target: { version: string; source: 'pin' | 'environment' | string } | null;
+  installed_version: string;
+  upgrade: OsqueryUpgrade | null;
+  available: string[];
+  /** True when the node's stored platform is windows (osctrld does not upgrade it). */
+  platform_unsupported: boolean;
+}

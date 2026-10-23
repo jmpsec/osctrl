@@ -30,6 +30,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
@@ -275,6 +276,12 @@ func osctrlService() {
 			log.Fatal().Err(err).Msg("Failed to initialize osquery extensions")
 		}
 	}
+	var osqueryVersionsMgr *osqueryversions.Manager
+	if flagParams.Osctrld.Enabled {
+		if osqueryVersionsMgr, err = osqueryversions.NewManager(db.Conn); err != nil {
+			log.Fatal().Err(err).Msg("Failed to initialize osquery versions")
+		}
+	}
 	var posturemgr *posture.PostureManager
 	if flagParams.Service.PostureEnabled {
 		posture.SetPrefix(flagParams.Service.PostureQueryPrefix)
@@ -482,6 +489,9 @@ func osctrlService() {
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
 		prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldDownCollector(nodeFlagsMgr, envs))
+		if osqueryVersionsMgr != nil {
+			prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldBehindCollector(osqueryVersionsMgr, envs))
+		}
 		cache.RegisterMetrics(prometheus.DefaultRegisterer)
 		if alertsWorker != nil {
 			alerts.RegisterWorkerMetrics(prometheus.DefaultRegisterer, alertsWorker)
@@ -548,6 +558,7 @@ func osctrlService() {
 		handlers.WithNodeConfig(nodeConfigMgr),
 		handlers.WithFlagsOverrides(nodeFlagsMgr),
 		handlers.WithExtensions(extensionsMgr),
+		handlers.WithOsqueryVersions(osqueryVersionsMgr),
 		handlers.WithTags(tagsmgr),
 		handlers.WithQueries(queriesmgr),
 		handlers.WithCarves(filecarves),
@@ -1032,6 +1043,10 @@ func registerRoutes(mux *http.ServeMux, h *handlers.HandlersTLS, p *config.Servi
 		if h.FlagsOverrides != nil {
 			// TLS: osctrld health and rollback report
 			mux.Handle("POST /{env}/"+environments.DefaultStatusPath, osctrld(h.StatusHandler))
+		}
+		if h.OsqueryVersions != nil {
+			// TLS: osctrld asks which osquery version to run
+			mux.Handle("POST /{env}/"+environments.DefaultOsqueryPath, osctrld(h.OsqueryHandler))
 		}
 		if h.Extensions != nil {
 			// TLS: osctrld list and download osquery extensions; downloads

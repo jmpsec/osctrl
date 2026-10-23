@@ -109,6 +109,18 @@ func GetOsqueryVersionCounts(db *gorm.DB) ([]OsqueryVersionCount, error) {
 	return rows, nil
 }
 
+// GetOsqueryVersionCountsByEnv is GetOsqueryVersionCounts for one environment.
+func GetOsqueryVersionCountsByEnv(db *gorm.DB, envID uint) ([]OsqueryVersionCount, error) {
+	var rows []OsqueryVersionCount
+	err := db.Model(&OsqueryNode{}).
+		Select("osquery_version AS version, COUNT(*) AS count").
+		Where("environment_id = ? AND osquery_version <> ''", envID).
+		Group("osquery_version").
+		Order("count DESC, osquery_version").
+		Scan(&rows).Error
+	return rows, err
+}
+
 // GetPlatformCountsByEnv returns the per-platform node counts for one env.
 // One GROUP BY `platform` query, then we bucket the rows in Go because
 // osquery agents report `kali`, `ubuntu`, `centos`, etc. — all of which

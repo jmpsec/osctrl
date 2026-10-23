@@ -44,6 +44,12 @@ func (h *HandlersTLS) StatusHandler(w http.ResponseWriter, r *http.Request) {
 	events, err := h.FlagsOverrides.RecordReport(node.UUID, env.ID, t, time.Now())
 	ip := utils.GetIP(r)
 	for _, kind := range events {
+		if kind == "upgrade" {
+			// Recorded only for a validated upgrade, so these are not raw strings.
+			osctrldUpgradeRollbacks.WithLabelValues(env.Name).Inc()
+			h.AuditLog.RolledBackOsquery(ip, env.Name, node.UUID, t.Upgrade.Version, t.Upgrade.Reason, env.ID)
+			continue
+		}
 		stage := t.Flags.Stage
 		if kind == "extensions" {
 			stage = t.Extensions.Stage
