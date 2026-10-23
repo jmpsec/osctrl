@@ -752,6 +752,96 @@ func osctrlAPIService() {
 	log.Info().Msg("Initializing router")
 	// Create router for API endpoint
 	muxAPI := http.NewServeMux()
+	registerRoutes(muxAPI, handlersApi, flagParams, eventBus, alertsMgr, logSinksEnabled, authProvidersEnabled, auditLog)
+	// Launch listeners for API server. The server runs in a goroutine so
+	// the main goroutine can wait on the restart channel and trigger a
+	// graceful shutdown when the operator applies config changes.
+	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)
+	tlsTermination := flagParams.TLS != nil && flagParams.TLS.Termination
+	srv := &http.Server{
+		Addr:    serviceListener,
+		Handler: muxAPI,
+	}
+	if tlsTermination {
+		srv.TLSConfig = &tls.Config{
+			MinVersion:       tls.VersionTLS12,
+			CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+		}
+		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
+	}
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Info().Msgf("%s v%s - HTTP%s listening %s", serviceName, buildVersion,
+			map[bool]string{true: "S", false: ""}[tlsTermination], serviceListener)
+		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
+		if tlsTermination {
+			serverErr <- srv.ListenAndServeTLS(flagParams.TLS.CertificateFile, flagParams.TLS.KeyFile)
+		} else {
+			serverErr <- srv.ListenAndServe()
+		}
+	}()
+	// Stop live streams before draining on process shutdown or restart.
+	shutdownSignals := make(chan os.Signal, 1)
+	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
+	// Wait for either a server error or a restart signal.
+	select {
+	case err := <-serverErr:
+		stopAuditRetention()
+		stopVulns()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			if eventBus != nil {
+				eventBus.Close()
+			}
+			log.Fatal().Msgf("ListenAndServe: %v", err)
+		}
+	case <-shutdownSignals:
+		stopAuditRetention()
+		stopVulns()
+		if eventBus != nil {
+			eventBus.Close()
+		}
+		drainCtx, cancelDrain := context.WithTimeout(context.Background(), restartDrainTimeout)
+		if err := srv.Shutdown(drainCtx); err != nil {
+			log.Err(err).Msg("error draining HTTP server")
+		}
+		cancelDrain()
+	case <-restartCh:
+		stopAuditRetention()
+		stopVulns()
+		if eventBus != nil {
+			eventBus.Close()
+		}
+		log.Info().Msg("Service config apply triggered — draining requests before restart")
+		// Drain first. Exiting straight off the signal raced the apply
+		// handler's own 202: the handler had written the response but the
+		// server had not flushed it, so the operator's client could see an
+		// aborted request while the process was already gone.
+		drainCtx, cancelDrain := context.WithTimeout(context.Background(), restartDrainTimeout)
+		if err := srv.Shutdown(drainCtx); err != nil {
+			log.Err(err).Msg("error draining HTTP server before restart")
+		}
+		cancelDrain()
+		log.Info().Msg("Drained — exiting for restart")
+		// Exit with code 1 so process managers (systemd, docker, k8s) and
+		// dev tools like air restart the process. A clean exit (0) is not
+		// restarted by air (the dev hot-reload tool), which treats exit 0
+		// as "done, no restart needed." Using exit 1 ensures restart in
+		// both dev (air) and production (systemd/k8s) environments.
+		os.Exit(1)
+	}
+}
+
+// registerRoutes registers every osctrl-api route on muxAPI. It is split out of
+// osctrlAPIService so tests can build the complete production route set: Go's
+// ServeMux panics at registration when two patterns conflict, which would
+// otherwise only surface when the service starts.
+func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, flagParams *config.ServiceParameters, eventBus *events.Bus, alertsMgr *alerts.Manager, logSinksEnabled, authProvidersEnabled bool, auditLog mcpAuditLog) {
 	if eventBus != nil {
 		muxAPI.Handle("GET /api/v1/events", handlerAuthCheck(http.HandlerFunc(handlersApi.EventsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
@@ -1513,93 +1603,20 @@ func osctrlAPIService() {
 	// calls are then dispatched back into muxAPI by loopbackTransport, which
 	// re-runs the full chain — including the per-endpoint permission checks
 	// — as the calling user.
+	//
+	// The patterns must stay method-qualified: a methodless /api/v1/mcp
+	// conflicts with "GET /" and ServeMux panics at startup (#1099). These
+	// are exactly the methods the SDK's streamable handler serves (POST
+	// messages, GET server-to-client stream, DELETE session). Other methods
+	// get the mux's 405, except HEAD: Go routes it to the GET pattern, so it
+	// goes through handlerAuthCheck (401 without a token) and then gets the
+	// SDK's 405.
 	if flagParams.MCP != nil && flagParams.MCP.Enabled {
 		log.Info().Bool("writes", flagParams.MCP.AllowWrites).Msgf("MCP enabled — serving %s", _apiPath(apiMCPPath))
-		muxAPI.Handle(
-			_apiPath(apiMCPPath),
-			handlerAuthCheck(mcpHandler(muxAPI, buildVersion, flagParams.MCP.AllowWrites, auditLog), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-	}
-	// Launch listeners for API server. The server runs in a goroutine so
-	// the main goroutine can wait on the restart channel and trigger a
-	// graceful shutdown when the operator applies config changes.
-	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)
-	tlsTermination := flagParams.TLS != nil && flagParams.TLS.Termination
-	srv := &http.Server{
-		Addr:    serviceListener,
-		Handler: muxAPI,
-	}
-	if tlsTermination {
-		srv.TLSConfig = &tls.Config{
-			MinVersion:       tls.VersionTLS12,
-			CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-			CipherSuites: []uint16{
-				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-			},
+		mcp := handlerAuthCheck(mcpHandler(muxAPI, buildVersion, flagParams.MCP.AllowWrites, auditLog), flagParams.Service.Auth, flagParams.JWT.JWTSecret)
+		for _, method := range []string{http.MethodPost, http.MethodGet, http.MethodDelete} {
+			muxAPI.Handle(method+" "+_apiPath(apiMCPPath), mcp)
 		}
-		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
-	}
-	serverErr := make(chan error, 1)
-	go func() {
-		log.Info().Msgf("%s v%s - HTTP%s listening %s", serviceName, buildVersion,
-			map[bool]string{true: "S", false: ""}[tlsTermination], serviceListener)
-		log.Info().Msgf("%s - commit=%s - build date=%s", serviceName, buildCommit, buildDate)
-		if tlsTermination {
-			serverErr <- srv.ListenAndServeTLS(flagParams.TLS.CertificateFile, flagParams.TLS.KeyFile)
-		} else {
-			serverErr <- srv.ListenAndServe()
-		}
-	}()
-	// Stop live streams before draining on process shutdown or restart.
-	shutdownSignals := make(chan os.Signal, 1)
-	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
-	// Wait for either a server error or a restart signal.
-	select {
-	case err := <-serverErr:
-		stopAuditRetention()
-		stopVulns()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			if eventBus != nil {
-				eventBus.Close()
-			}
-			log.Fatal().Msgf("ListenAndServe: %v", err)
-		}
-	case <-shutdownSignals:
-		stopAuditRetention()
-		stopVulns()
-		if eventBus != nil {
-			eventBus.Close()
-		}
-		drainCtx, cancelDrain := context.WithTimeout(context.Background(), restartDrainTimeout)
-		if err := srv.Shutdown(drainCtx); err != nil {
-			log.Err(err).Msg("error draining HTTP server")
-		}
-		cancelDrain()
-	case <-restartCh:
-		stopAuditRetention()
-		stopVulns()
-		if eventBus != nil {
-			eventBus.Close()
-		}
-		log.Info().Msg("Service config apply triggered — draining requests before restart")
-		// Drain first. Exiting straight off the signal raced the apply
-		// handler's own 202: the handler had written the response but the
-		// server had not flushed it, so the operator's client could see an
-		// aborted request while the process was already gone.
-		drainCtx, cancelDrain := context.WithTimeout(context.Background(), restartDrainTimeout)
-		if err := srv.Shutdown(drainCtx); err != nil {
-			log.Err(err).Msg("error draining HTTP server before restart")
-		}
-		cancelDrain()
-		log.Info().Msg("Drained — exiting for restart")
-		// Exit with code 1 so process managers (systemd, docker, k8s) and
-		// dev tools like air restart the process. A clean exit (0) is not
-		// restarted by air (the dev hot-reload tool), which treats exit 0
-		// as "done, no restart needed." Using exit 1 ensures restart in
-		// both dev (air) and production (systemd/k8s) environments.
-		os.Exit(1)
 	}
 }
 
