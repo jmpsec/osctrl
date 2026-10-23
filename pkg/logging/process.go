@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 )
@@ -59,6 +60,7 @@ func (l *LoggerTLS) ProcessLogs(node nodes.OsqueryNode, data json.RawMessage, lo
 				logs[i] = types.LogGenericData{
 					HostIdentifier: status.HostIdentifier,
 					Decorations:    status.Decorations,
+					Version:        status.Version,
 				}
 			}
 		} else {
@@ -87,8 +89,13 @@ func (l *LoggerTLS) ProcessLogs(node nodes.OsqueryNode, data json.RawMessage, lo
 	}
 	// Iterate through received messages to extract the metadata the node
 	// decorates its logs with.
-	var hostname, localname, username, osqueryuser, confighash, daemonhash, osqueryversion string
+	var hostname, localname, username, osqueryuser, confighash, daemonhash, osqueryversion, statusversion string
 	for _, l := range logs {
+		// Status lines carry the osquery version at the top level. It is
+		// untrusted node input, so only a well-formed version is kept.
+		if logType == types.StatusLog && osqueryversions.ValidVersion(l.Version) {
+			statusversion = l.Version
+		}
 		hostname = metadataVerification(hostname, l.Decorations.Hostname)
 		localname = metadataVerification(localname, l.Decorations.LocalHostname)
 		username = metadataVerification(username, l.Decorations.Username)
@@ -96,6 +103,12 @@ func (l *LoggerTLS) ProcessLogs(node nodes.OsqueryNode, data json.RawMessage, lo
 		confighash = metadataVerification(confighash, l.Decorations.ConfigHash)
 		daemonhash = metadataVerification(daemonhash, l.Decorations.DaemonHash)
 		osqueryversion = metadataVerification(osqueryversion, l.Decorations.OsqueryVersion)
+	}
+	// A decoration wins; without one (a default environment has an empty
+	// schedule and may send undecorated status logs only) the status log
+	// version is the only way the node row learns its osquery version.
+	if osqueryversion == "" {
+		osqueryversion = statusversion
 	}
 	if debug {
 		log.Debug().Msgf("metadata and dispatch for %s", node.UUID)

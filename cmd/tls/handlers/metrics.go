@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
@@ -70,8 +71,16 @@ var (
 		Name: "osctrld_rollbacks_total",
 		Help: "osctrld rollbacks of flags or extensions reported by nodes",
 	}, []string{"environment", "kind", "stage"})
+	// osctrldUpgradeRollbacks counts osquery upgrades that osctrld rolled
+	// back, once per event. The only label is the environment name.
+	osctrldUpgradeRollbacks = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "osctrld_osquery_upgrade_rollbacks_total",
+		Help: "osquery upgrades rolled back by osctrld and reported by nodes",
+	}, []string{"environment"})
 	osctrldDownDesc = prometheus.NewDesc("osctrld_osquery_down",
 		"Nodes whose fresh osctrld report says osqueryd is not running", []string{"environment"}, nil)
+	osctrldBehindDesc = prometheus.NewDesc("osctrld_osquery_behind",
+		"Nodes whose fresh osctrld report shows an osquery version lower than their target", []string{"environment"}, nil)
 	// DBDegraded is 1 when the DB health monitor reports the database
 	// as degraded (caches are in stale-serve mode), 0 when healthy.
 	dbDegraded = prometheus.NewGauge(prometheus.GaugeOpts{
@@ -91,6 +100,7 @@ func RegisterMetrics(reg prometheus.Registerer) {
 	reg.MustRegister(osctrldRateLimited)
 	reg.MustRegister(osctrldAuthAuditDropped)
 	reg.MustRegister(osctrldRollbacks)
+	reg.MustRegister(osctrldUpgradeRollbacks)
 }
 
 const (
@@ -118,6 +128,7 @@ type osctrldDownCollector struct {
 	load    func() (osctrldDownReading, error)
 	now     func() time.Time
 	timeout time.Duration
+	what    string // names the reading in log messages
 
 	mu      sync.Mutex
 	readAt  time.Time
@@ -138,7 +149,7 @@ func NewOsctrldDownCollector(flags *nodeconfig.FlagsManager, envs *environments.
 }
 
 func newOsctrldDownCollector(load func() (osctrldDownReading, error), now func() time.Time) *osctrldDownCollector {
-	return &osctrldDownCollector{load: load, now: now, timeout: osctrldDownTimeout}
+	return &osctrldDownCollector{load: load, now: now, timeout: osctrldDownTimeout, what: "osctrld down nodes"}
 }
 
 func (c *osctrldDownCollector) Describe(ch chan<- *prometheus.Desc) { ch <- osctrldDownDesc }
@@ -150,6 +161,41 @@ func (c *osctrldDownCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	for _, e := range r.envs {
 		ch <- prometheus.MustNewConstMetric(osctrldDownDesc, prometheus.GaugeValue, float64(r.counts[e.ID]), e.Name)
+	}
+}
+
+// osctrldBehindCollector exports osctrld_osquery_behind with the same
+// cache, timeout, backoff and failure behavior as the down collector, whose
+// reading it reuses.
+type osctrldBehindCollector struct{ *osctrldDownCollector }
+
+// NewOsctrldBehindCollector returns the collector for osctrld_osquery_behind.
+func NewOsctrldBehindCollector(m *osqueryversions.Manager, envs *environments.EnvManager) prometheus.Collector {
+	return newOsctrldBehindCollector(func() (osctrldDownReading, error) {
+		counts, err := m.CountBehind(time.Now(), nodeconfig.ReportFreshness)
+		if err != nil {
+			return osctrldDownReading{}, err
+		}
+		list, err := envs.All()
+		return osctrldDownReading{counts: counts, envs: list}, err
+	}, time.Now)
+}
+
+func newOsctrldBehindCollector(load func() (osctrldDownReading, error), now func() time.Time) *osctrldBehindCollector {
+	c := newOsctrldDownCollector(load, now)
+	c.what = "osctrld behind nodes"
+	return &osctrldBehindCollector{c}
+}
+
+func (c *osctrldBehindCollector) Describe(ch chan<- *prometheus.Desc) { ch <- osctrldBehindDesc }
+
+func (c *osctrldBehindCollector) Collect(ch chan<- prometheus.Metric) {
+	r := c.read()
+	if r == nil {
+		return
+	}
+	for _, e := range r.envs {
+		ch <- prometheus.MustNewConstMetric(osctrldBehindDesc, prometheus.GaugeValue, float64(r.counts[e.ID]), e.Name)
 	}
 }
 
@@ -173,7 +219,7 @@ func (c *osctrldDownCollector) read() *osctrldDownReading {
 	go func() {
 		defer func() {
 			if p := recover(); p != nil {
-				done <- result{err: fmt.Errorf("panic reading osctrld down nodes: %v", p)}
+				done <- result{err: fmt.Errorf("panic reading %s: %v", c.what, p)}
 			}
 		}()
 		r, err := c.load()
@@ -184,14 +230,14 @@ func (c *osctrldDownCollector) read() *osctrldDownReading {
 	select {
 	case res := <-done:
 		if res.err != nil {
-			log.Err(res.err).Msg("error reading osctrld down nodes")
+			log.Err(res.err).Msgf("error reading %s", c.what)
 			c.failAt = now
 			return nil
 		}
 		c.reading, c.readAt, c.failAt = &res.r, now, time.Time{}
 		return c.reading
 	case <-timer.C:
-		log.Warn().Msg("timeout reading osctrld down nodes")
+		log.Warn().Msgf("timeout reading %s", c.what)
 		c.failAt = now
 		return nil
 	}

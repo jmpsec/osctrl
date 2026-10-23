@@ -19,6 +19,7 @@ import { getPostureProfiles } from '$/api/nodes';
 import { getFeatures } from '$/api/features';
 import type { PostureProfile } from '$/api/types';
 import { EnvExtensionsTab } from './EnvExtensionsTab';
+import { EnvOsqueryTab } from './EnvOsqueryTab';
 import { applyPostureProfileToSchedule } from './postureSchedule';
 import { VulnProfilePicker } from '$/features/vulnerabilities/VulnProfilePicker';
 import { cn } from '$/lib/cn';
@@ -139,7 +140,7 @@ export function EnvConfigPage() {
   const [postureAggressiveness, setPostureAggressiveness] = useState(1);
   const [showVulnPicker, setShowVulnPicker] = useState(false);
   const closeVulnPicker = useCallback(() => setShowVulnPicker(false), []);
-  type TabKey = 'settings' | SectionKey | 'posture' | 'extensions' | 'assembled';
+  type TabKey = 'settings' | SectionKey | 'posture' | 'extensions' | 'osquery' | 'assembled';
   const [activeTab, setActiveTab] = useState<TabKey>('settings');
   const featuresQuery = useQuery({
     queryKey: ['features'],
@@ -391,6 +392,12 @@ export function EnvConfigPage() {
           onClick={() => setActiveTab('extensions')}
         />
         <TabButton
+          id="osquery"
+          label="Osquery"
+          active={activeTab === 'osquery'}
+          onClick={() => setActiveTab('osquery')}
+        />
+        <TabButton
           id="assembled"
           label={t('envConfig.fullConfiguration')}
           active={activeTab === 'assembled'}
@@ -432,6 +439,7 @@ export function EnvConfigPage() {
         )}
 
         {activeTab === 'extensions' && <EnvExtensionsTab env={env} />}
+        {activeTab === 'osquery' && <EnvOsqueryTab env={env} />}
 
         {activeTab === 'posture' && postureEnabled && (
           <PostureScheduleEditor

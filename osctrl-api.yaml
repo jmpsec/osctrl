@@ -3627,6 +3627,169 @@ paths:
       summary: Map environments
       tags:
         - environments
+  "/api/v1/environments/osquery/{env}":
+    delete:
+      description: Stops rolling the environment out; hosts keep the version they
+        have. Environment admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.EnvOsqueryResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Clear environment osquery target
+      tags:
+        - environments
+    get:
+      description: Returns the osquery version the environment is rolled out to and
+        the number of its hosts per installed version, plus the names (no
+        digests) of the library versions it can be set to. The installed
+        versions are reported by the hosts and are untrusted. Environment
+        admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.EnvOsqueryResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get environment osquery target
+      tags:
+        - environments
+    put:
+      description: Rolls the environment out to a version of the library. Hosts at or
+        above it are left alone; osctrld upgrades the others when osqueryd is
+        running. Setting the same version again retries hosts that rejected it.
+        Environment admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.OsqueryTargetRequest"
+        description: Target version
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.EnvOsqueryResponse"
+        "400":
+          description: Bad request or version not in the library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "413":
+          description: Request body too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Set environment osquery target
+      tags:
+        - environments
   "/api/v1/environments/packages/{env}/{id}":
     patch:
       description: Updates the URL of an existing enrolling package.
@@ -6634,6 +6797,204 @@ paths:
       summary: Set node flags override
       tags:
         - nodes
+  "/api/v1/nodes/{env}/node/{uuid}/osquery":
+    delete:
+      description: Removes the node's pin so it follows the environment target. The
+        installed version and the upgrade result, version, reason and request_id
+        are reported by the host and are untrusted. Environment admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.NodeOsqueryResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Remove node osquery pin
+      tags:
+        - nodes
+    get:
+      description: Returns the node's pin, the version it is rolled out to (the
+        unexpired pin, else the environment target), the osquery version it
+        reports as installed, whether its platform is unsupported by osctrld
+        upgrades (windows), the names (no digests) of the library versions it
+        can be pinned to and the last upgrade report of its osctrld. The
+        installed version and the upgrade result, version, reason and request_id
+        are reported by the host and are untrusted; reported_at is the server's
+        receive time. Environment admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.NodeOsqueryResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get node osquery upgrade state
+      tags:
+        - nodes
+    put:
+      description: Pins the node to a version of the library, overriding the
+        environment target, optionally until expires_at (RFC 3339, in the
+        future). Setting the same version again retries a rejected upgrade. The
+        installed version and the upgrade result, version, reason and request_id
+        are reported by the host and are untrusted. Environment admins.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: uuid
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.OsqueryTargetRequest"
+        description: Pin
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.NodeOsqueryResponse"
+        "400":
+          description: Bad request, version not in the library or expiry in the past
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "413":
+          description: Request body too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Pin node osquery version
+      tags:
+        - nodes
   "/api/v1/nodes/{env}/node/{uuid}/posture":
     get:
       description: Returns security and compliance posture data for a node.
@@ -6983,6 +7344,164 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: List osquery tables
+      tags:
+        - osquery
+  /api/v1/osquery/versions:
+    get:
+      description: Returns the osquery versions osctrld can roll out, with the SHA-256
+        of each official package and whether a target or pin uses the version.
+        Super admins only.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/types.OsqueryVersionView"
+                type: array
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List osquery versions
+      tags:
+        - osquery
+  "/api/v1/osquery/versions/{version}":
+    delete:
+      description: Removes a version and its digests from the library. Refused with
+        409 while an environment target or an unexpired node pin uses it. Super
+        admins only.
+      parameters:
+        - description: Osquery version, for example 5.13.0
+          in: path
+          name: version
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiGenericResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Version in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Remove osquery version
+      tags:
+        - osquery
+    put:
+      description: Adds or replaces the package SHA-256 digests of a version (linux
+        deb/rpm amd64/arm64, darwin pkg universal). Windows is not supported.
+        Changing a digest of a version used by a target or pin is refused with
+        409. Super admins only.
+      parameters:
+        - description: Osquery version, for example 5.13.0
+          in: path
+          name: version
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/types.OsqueryVersionPutRequest"
+        description: Digests
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.OsqueryVersionView"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Version in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "413":
+          description: Request body too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Set osquery version digests
       tags:
         - osquery
   "/api/v1/platforms/{env}":
@@ -12547,6 +13066,20 @@ components:
         query_interval:
           type: integer
       type: object
+    types.EnvOsqueryResponse:
+      properties:
+        available:
+          description: Available lists the library version names (no digests), ascending.
+          items:
+            type: string
+          type: array
+        counts:
+          items:
+            $ref: "#/components/schemas/types.OsqueryVersionHostCount"
+          type: array
+        target:
+          $ref: "#/components/schemas/types.OsqueryTargetView"
+      type: object
     types.EnvUpdateRequest:
       properties:
         accept_enrolls:
@@ -12912,6 +13445,29 @@ components:
         status:
           type: string
       type: object
+    types.NodeOsqueryResponse:
+      properties:
+        available:
+          description: Available lists the library version names (no digests), ascending.
+          items:
+            type: string
+          type: array
+        installed_version:
+          type: string
+        pin:
+          $ref: "#/components/schemas/types.OsqueryPinView"
+        platform_unsupported:
+          description: >-
+            PlatformUnsupported is true when the node's stored platform is
+            windows,
+
+            which osctrld does not upgrade.
+          type: boolean
+        target:
+          $ref: "#/components/schemas/types.OsqueryEffectiveTarget"
+        upgrade:
+          $ref: "#/components/schemas/types.OsqueryUpgradeView"
+      type: object
     types.NodePostureSummary:
       properties:
         risk_level:
@@ -13061,6 +13617,38 @@ components:
         reported_at:
           type: string
       type: object
+    types.OsqueryEffectiveTarget:
+      properties:
+        source:
+          description: pin or environment
+          type: string
+        version:
+          type: string
+      type: object
+    types.OsqueryEntryRequest:
+      properties:
+        arch:
+          type: string
+        format:
+          type: string
+        platform:
+          type: string
+        sha256:
+          type: string
+      type: object
+    types.OsqueryPinView:
+      properties:
+        expires_at:
+          type: string
+        request_id:
+          type: string
+        updated_at:
+          type: string
+        updated_by:
+          type: string
+        version:
+          type: string
+      type: object
     types.OsqueryRuntime:
       properties:
         build_distro:
@@ -13120,6 +13708,77 @@ components:
         required:
           type: boolean
         type:
+          type: string
+      type: object
+    types.OsqueryTargetRequest:
+      properties:
+        expires_at:
+          type: string
+        version:
+          type: string
+      type: object
+    types.OsqueryTargetView:
+      properties:
+        request_id:
+          type: string
+        updated_at:
+          type: string
+        updated_by:
+          type: string
+        version:
+          type: string
+      type: object
+    types.OsqueryUpgradeView:
+      properties:
+        reason:
+          type: string
+        reported_at:
+          type: string
+        request_id:
+          type: string
+        result:
+          type: string
+        version:
+          type: string
+      type: object
+    types.OsqueryVersionEntry:
+      properties:
+        arch:
+          type: string
+        created_at:
+          type: string
+        created_by:
+          type: string
+        format:
+          type: string
+        platform:
+          type: string
+        sha256:
+          type: string
+      type: object
+    types.OsqueryVersionHostCount:
+      properties:
+        count:
+          type: integer
+        version:
+          type: string
+      type: object
+    types.OsqueryVersionPutRequest:
+      properties:
+        entries:
+          items:
+            $ref: "#/components/schemas/types.OsqueryEntryRequest"
+          type: array
+      type: object
+    types.OsqueryVersionView:
+      properties:
+        entries:
+          items:
+            $ref: "#/components/schemas/types.OsqueryVersionEntry"
+          type: array
+        in_use:
+          type: boolean
+        version:
           type: string
       type: object
     types.PasswordChangeRequest:

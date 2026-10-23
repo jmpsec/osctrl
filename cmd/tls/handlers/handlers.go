@@ -19,6 +19,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -83,6 +84,7 @@ type HandlersTLS struct {
 	NodeConfig      *nodeconfig.Manager      // nil: per-node config overrides are inert
 	FlagsOverrides  *nodeconfig.FlagsManager // nil: per-node flags overrides are inert
 	Extensions      *extensions.Manager      // nil: osctrld extension routes are not registered
+	OsqueryVersions *osqueryversions.Manager // nil: the osctrld osquery version route is not registered
 	OsctrldLimits   *OsctrldLimits           // nil: osctrld routes are not rate-limited
 	// DBHealth, when wired via WithDBHealth, lets HealthHandler
 	// report backend degradation. nil means "no monitor" and the
@@ -162,6 +164,13 @@ func WithFlagsOverrides(m *nodeconfig.FlagsManager) Option {
 func WithExtensions(m *extensions.Manager) Option {
 	return func(h *HandlersTLS) {
 		h.Extensions = m
+	}
+}
+
+// WithOsqueryVersions enables telling osctrld which osquery version to run.
+func WithOsqueryVersions(m *osqueryversions.Manager) Option {
+	return func(h *HandlersTLS) {
+		h.OsqueryVersions = m
 	}
 }
 

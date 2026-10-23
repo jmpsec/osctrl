@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
@@ -49,17 +50,22 @@ func setupNodeDelete(t *testing.T) (*nodeconfig.Manager, *gorm.DB) {
 	require.NoError(t, em.RecordStatus("NODE-A", 1, []types.OsctrldExtensionStatus{
 		{Name: "cmd", SHA256: strings.Repeat("a", 64), Result: "ok", At: time.Now()},
 	}, time.Now()))
+	om, err := osqueryversions.NewManager(db)
+	require.NoError(t, err)
+	require.NoError(t, om.PutEntries("5.13.0", []osqueryversions.DigestEntry{{Platform: "linux", Arch: "amd64", Format: "deb", SHA256: strings.Repeat("a", 64)}}, "root"))
+	_, err = om.SetPin("NODE-A", 1, "5.13.0", nil, "root")
+	require.NoError(t, err)
 	return mgr, db
 }
 
 // requireNodeRowsGone checks the node's config override, flags override,
-// osctrld status and extension assignment and status are hard-deleted.
+// osctrld status, osquery pin and extension assignment and status are hard-deleted.
 func requireNodeRowsGone(t *testing.T, mgr *nodeconfig.Manager, db *gorm.DB) {
 	t.Helper()
 	o, err := mgr.Get("NODE-A")
 	require.NoError(t, err)
 	require.Nil(t, o)
-	for _, model := range []any{&nodeconfig.FlagsOverride{}, &nodeconfig.OsctrldStatus{}, &extensions.NodeExtension{}, &extensions.NodeExtensionStatus{}} {
+	for _, model := range []any{&nodeconfig.FlagsOverride{}, &nodeconfig.OsctrldStatus{}, &extensions.NodeExtension{}, &extensions.NodeExtensionStatus{}, &osqueryversions.NodePin{}} {
 		var n int64
 		require.NoError(t, db.Unscoped().Model(model).Count(&n).Error)
 		require.Zero(t, n, "%T", model)

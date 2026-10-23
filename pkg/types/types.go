@@ -74,6 +74,45 @@ type OsctrldStatusRequest struct {
 	DownSince      *time.Time      `json:"down_since,omitempty"`
 	Flags          OsctrldRollback `json:"flags"`
 	Extensions     OsctrldRollback `json:"extensions"`
+	Upgrade        *OsctrldUpgrade `json:"upgrade,omitempty"`
+}
+
+// OsctrldUpgrade is the result of osctrld's last osquery upgrade attempt.
+// All fields are untrusted node input.
+type OsctrldUpgrade struct {
+	Result    string `json:"result"`
+	Version   string `json:"version,omitempty"`
+	Reason    string `json:"reason,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
+	EventID   string `json:"event_id,omitempty"`
+}
+
+// OsctrldOsqueryRequest is what osctrld posts to ask for the osquery version
+// to run. Every field is untrusted node input.
+type OsctrldOsqueryRequest struct {
+	Secret           string `json:"secret"`
+	UUID             string `json:"uuid"`
+	Platform         string `json:"platform"`
+	Arch             string `json:"arch"`
+	Format           string `json:"format"`
+	InstalledVersion string `json:"installed_version"`
+}
+
+// OsctrldOsqueryRef is a version with the SHA-256 of its package.
+type OsctrldOsqueryRef struct {
+	Version string `json:"version"`
+	SHA256  string `json:"sha256"`
+}
+
+// OsctrldOsqueryResponse is the osquery version osctrld should run. An empty
+// Reason means upgrade; Target and Previous are set only then.
+type OsctrldOsqueryResponse struct {
+	Reason          string             `json:"reason"`
+	Source          string             `json:"source,omitempty"`
+	RequestID       string             `json:"request_id,omitempty"`
+	Target          *OsctrldOsqueryRef `json:"target,omitempty"`
+	Previous        *OsctrldOsqueryRef `json:"previous,omitempty"`
+	ReportedVersion string             `json:"reported_version"`
 }
 
 // OsctrldExtensionsRequest is what osctrld posts to list its osquery
@@ -1064,4 +1103,100 @@ type AlertChannelTypeSpec struct {
 	HasSecret    bool             `json:"has_secret"`
 	SecretFields []string         `json:"secret_fields,omitempty"`
 	Fields       []AlertFieldSpec `json:"fields,omitempty"`
+}
+
+// OsqueryVersionEntry is the SHA-256 of one official osquery package.
+type OsqueryVersionEntry struct {
+	Platform  string    `json:"platform"`
+	Arch      string    `json:"arch"`
+	Format    string    `json:"format"`
+	SHA256    string    `json:"sha256"`
+	CreatedBy string    `json:"created_by"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// OsqueryVersionView is a library version with its digests.
+type OsqueryVersionView struct {
+	Version string                `json:"version"`
+	Entries []OsqueryVersionEntry `json:"entries"`
+	InUse   bool                  `json:"in_use"`
+}
+
+// OsqueryEntryRequest is one digest in a library PUT.
+type OsqueryEntryRequest struct {
+	Platform string `json:"platform"`
+	Arch     string `json:"arch"`
+	Format   string `json:"format"`
+	SHA256   string `json:"sha256"`
+}
+
+// OsqueryVersionPutRequest adds or replaces the digests of a library version.
+type OsqueryVersionPutRequest struct {
+	Entries []OsqueryEntryRequest `json:"entries"`
+}
+
+// OsqueryTargetView is the osquery version an environment is rolled out to.
+type OsqueryTargetView struct {
+	Version   string    `json:"version"`
+	RequestID string    `json:"request_id"`
+	UpdatedBy string    `json:"updated_by"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// OsqueryVersionHostCount is the number of hosts of an environment on a version.
+type OsqueryVersionHostCount struct {
+	Version string `json:"version"`
+	Count   int64  `json:"count"`
+}
+
+// EnvOsqueryResponse is the osquery target of an environment with its host counts.
+type EnvOsqueryResponse struct {
+	Target *OsqueryTargetView        `json:"target"`
+	Counts []OsqueryVersionHostCount `json:"counts"`
+	// Available lists the library version names (no digests), ascending.
+	Available []string `json:"available"`
+}
+
+// OsqueryTargetRequest sets an environment target or a node pin.
+type OsqueryTargetRequest struct {
+	Version   string     `json:"version"`
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+}
+
+// OsqueryPinView is a node's pin.
+type OsqueryPinView struct {
+	Version   string     `json:"version"`
+	RequestID string     `json:"request_id"`
+	ExpiresAt *time.Time `json:"expires_at"`
+	UpdatedBy string     `json:"updated_by"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+// OsqueryEffectiveTarget is the version a node is rolled out to and where it comes from.
+type OsqueryEffectiveTarget struct {
+	Version string `json:"version"`
+	Source  string `json:"source"` // pin or environment
+}
+
+// OsqueryUpgradeView is the last upgrade report of a node's osctrld. The
+// strings are reported by the host and are untrusted; only validated values are stored.
+type OsqueryUpgradeView struct {
+	Result     string    `json:"result"`
+	Version    string    `json:"version"`
+	Reason     string    `json:"reason"`
+	RequestID  string    `json:"request_id"`
+	ReportedAt time.Time `json:"reported_at"`
+}
+
+// NodeOsqueryResponse is the osquery upgrade state of a node.
+type NodeOsqueryResponse struct {
+	Pin              *OsqueryPinView         `json:"pin"`
+	Target           *OsqueryEffectiveTarget `json:"target"`
+	InstalledVersion string                  `json:"installed_version"`
+	Upgrade          *OsqueryUpgradeView     `json:"upgrade"`
+	// Available lists the library version names (no digests), ascending.
+	Available []string `json:"available"`
+	// PlatformUnsupported is true when the node's stored platform is windows,
+	// which osctrld does not upgrade.
+	PlatformUnsupported bool `json:"platform_unsupported"`
 }

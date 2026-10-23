@@ -1,0 +1,284 @@
+// Package osqueryversions stores the osquery versions osctrl can roll out and
+// the SHA-256 of each official package.
+package osqueryversions
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"sort"
+	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+// ErrInvalid is returned for invalid versions or entries.
+var ErrInvalid = errors.New("invalid osquery version input")
+
+// ErrNotFound is returned when a version has no library entries.
+var ErrNotFound = errors.New("osquery version not found")
+
+// ErrInUse is returned when a change would break a target or pin referencing a version.
+var ErrInUse = errors.New("osquery version is in use by a target or pin")
+
+// Manager is the source of truth for the osquery version library, shared by
+// osctrl-api and osctrl-tls through SQL.
+type Manager struct {
+	db *gorm.DB
+}
+
+// NewManager migrates the library tables and returns a manager.
+func NewManager(db *gorm.DB) (*Manager, error) {
+	if err := db.AutoMigrate(&DigestEntry{}, &EnvTarget{}, &NodePin{}); err != nil {
+		return nil, fmt.Errorf("migrating osquery versions: %w", err)
+	}
+	return &Manager{db: db}, nil
+}
+
+// PutEntries validates all entries and then upserts them, per
+// (version, platform, arch, format), in one transaction.
+func (m *Manager) PutEntries(version string, entries []DigestEntry, by string) error {
+	if !ValidVersion(version) {
+		return fmt.Errorf("%w: version %q", ErrInvalid, version)
+	}
+	if len(entries) == 0 {
+		return fmt.Errorf("%w: no entries", ErrInvalid)
+	}
+	for _, e := range entries {
+		if err := ValidEntry(e.Platform, e.Arch, e.Format, e.SHA256); err != nil {
+			return fmt.Errorf("%w: %w", ErrInvalid, err)
+		}
+	}
+	return m.db.Transaction(func(tx *gorm.DB) error {
+		inUse, err := versionInUse(tx, version, time.Now())
+		if err != nil {
+			return err
+		}
+		if inUse {
+			for _, e := range entries {
+				var cur DigestEntry
+				err := tx.Where("version = ? AND platform = ? AND arch = ? AND format = ?", version, e.Platform, e.Arch, e.Format).Limit(1).Find(&cur).Error
+				if err != nil {
+					return err
+				}
+				if cur.ID != 0 && cur.SHA256 != e.SHA256 {
+					return fmt.Errorf("%w: %s", ErrInUse, version)
+				}
+			}
+		}
+		for _, e := range entries {
+			row := DigestEntry{Version: version, Platform: e.Platform, Arch: e.Arch, Format: e.Format, SHA256: e.SHA256, CreatedBy: by}
+			err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "version"}, {Name: "platform"}, {Name: "arch"}, {Name: "format"}},
+				DoUpdates: clause.AssignmentColumns([]string{"sha256", "created_by"}),
+			}).Create(&row).Error
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// GetEntries returns the digests of a version.
+func (m *Manager) GetEntries(version string) ([]DigestEntry, error) {
+	var out []DigestEntry
+	err := m.db.Where("version = ?", version).Order("platform, arch, format").Find(&out).Error
+	return out, err
+}
+
+// ListVersions returns every version, newest first, with its digests.
+func (m *Manager) ListVersions() ([]VersionView, error) {
+	var rows []DigestEntry
+	if err := m.db.Order("platform, arch, format").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	idx := map[string]int{}
+	views := []VersionView{}
+	for _, r := range rows {
+		i, ok := idx[r.Version]
+		if !ok {
+			i = len(views)
+			idx[r.Version] = i
+			views = append(views, VersionView{Version: r.Version})
+		}
+		views[i].Entries = append(views[i].Entries, r)
+	}
+	now := time.Now()
+	for i := range views {
+		inUse, err := versionInUse(m.db, views[i].Version, now)
+		if err != nil {
+			return nil, err
+		}
+		views[i].InUse = inUse
+	}
+	sort.SliceStable(views, func(i, j int) bool {
+		c, err := Compare(views[i].Version, views[j].Version)
+		return err == nil && c > 0
+	})
+	return views, nil
+}
+
+// VersionNames returns the versions that have library entries, oldest first,
+// without digests or in-use queries.
+func (m *Manager) VersionNames() ([]string, error) {
+	names := []string{}
+	if err := m.db.Model(&DigestEntry{}).Distinct().Pluck("version", &names).Error; err != nil {
+		return nil, err
+	}
+	sort.SliceStable(names, func(i, j int) bool {
+		c, err := Compare(names[i], names[j])
+		return err == nil && c < 0
+	})
+	return names, nil
+}
+
+// DeleteVersion removes every digest of a version. It returns ErrInUse when a
+// target or an unexpired pin references it and ErrNotFound when it has no rows.
+func (m *Manager) DeleteVersion(version string) error {
+	return m.db.Transaction(func(tx *gorm.DB) error {
+		inUse, err := versionInUse(tx, version, time.Now())
+		if err != nil {
+			return err
+		}
+		if inUse {
+			return fmt.Errorf("%w: %s", ErrInUse, version)
+		}
+		res := tx.Where("version = ?", version).Delete(&DigestEntry{})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	})
+}
+
+// versionInUse reports whether any environment target or unexpired pin uses version.
+func versionInUse(tx *gorm.DB, version string, now time.Time) (bool, error) {
+	var n int64
+	if err := tx.Model(&EnvTarget{}).Where("version = ?", version).Count(&n).Error; err != nil || n > 0 {
+		return n > 0, err
+	}
+	err := tx.Model(&NodePin{}).Where("version = ? AND (expires_at IS NULL OR expires_at > ?)", version, now).Count(&n).Error
+	return n > 0, err
+}
+
+func newRequestID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// checkLibraryVersion validates version and requires it to exist in the library.
+func (m *Manager) checkLibraryVersion(version string) error {
+	if !ValidVersion(version) {
+		return fmt.Errorf("%w: version %q", ErrInvalid, version)
+	}
+	var n int64
+	if err := m.db.Model(&DigestEntry{}).Where("version = ?", version).Count(&n).Error; err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("%w: %s", ErrNotFound, version)
+	}
+	return nil
+}
+
+// SetEnvTarget sets the environment's target to a library version with a new request id.
+func (m *Manager) SetEnvTarget(envID uint, version, by string) (*EnvTarget, error) {
+	if err := m.checkLibraryVersion(version); err != nil {
+		return nil, err
+	}
+	id, err := newRequestID()
+	if err != nil {
+		return nil, err
+	}
+	var t EnvTarget
+	err = m.db.Transaction(func(tx *gorm.DB) error {
+		e := tx.Unscoped().Where("environment_id = ?", envID).Limit(1).Find(&t).Error
+		if e == nil && t.ID == 0 {
+			t = EnvTarget{EnvironmentID: envID, Version: version, RequestID: id, UpdatedBy: by}
+			return tx.Create(&t).Error
+		}
+		if e != nil {
+			return e
+		}
+		t.Version, t.RequestID, t.UpdatedBy = version, id, by
+		return tx.Unscoped().Save(&t).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// GetEnvTarget returns the environment's target, or nil when none is set.
+func (m *Manager) GetEnvTarget(envID uint) (*EnvTarget, error) {
+	var t EnvTarget
+	if err := m.db.Where("environment_id = ?", envID).Limit(1).Find(&t).Error; err != nil || t.ID == 0 {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// ClearEnvTarget removes the environment's target.
+func (m *Manager) ClearEnvTarget(envID uint) error {
+	return m.db.Unscoped().Where("environment_id = ?", envID).Delete(&EnvTarget{}).Error
+}
+
+// SetPin pins a node to a library version with a new request id. expiresAt, when set, must be in the future.
+func (m *Manager) SetPin(nodeUUID string, envID uint, version string, expiresAt *time.Time, by string) (*NodePin, error) {
+	if nodeUUID == "" {
+		return nil, fmt.Errorf("%w: empty node uuid", ErrInvalid)
+	}
+	if expiresAt != nil && !expiresAt.After(time.Now()) {
+		return nil, fmt.Errorf("%w: expiry must be in the future", ErrInvalid)
+	}
+	if err := m.checkLibraryVersion(version); err != nil {
+		return nil, err
+	}
+	id, err := newRequestID()
+	if err != nil {
+		return nil, err
+	}
+	var p NodePin
+	err = m.db.Transaction(func(tx *gorm.DB) error {
+		e := tx.Unscoped().Where("node_uuid = ?", nodeUUID).Limit(1).Find(&p).Error
+		if e == nil && p.ID == 0 {
+			p = NodePin{NodeUUID: nodeUUID, EnvironmentID: envID, Version: version, RequestID: id, UpdatedBy: by, ExpiresAt: expiresAt}
+			return tx.Create(&p).Error
+		}
+		if e != nil {
+			return e
+		}
+		p.EnvironmentID, p.Version, p.RequestID, p.UpdatedBy, p.ExpiresAt = envID, version, id, by, expiresAt
+		return tx.Unscoped().Save(&p).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+// GetPin returns the node's pin (expired or not), or nil when none is set.
+func (m *Manager) GetPin(nodeUUID string) (*NodePin, error) {
+	var p NodePin
+	if err := m.db.Where("node_uuid = ?", nodeUUID).Limit(1).Find(&p).Error; err != nil || p.ID == 0 {
+		return nil, err
+	}
+	return &p, nil
+}
+
+// DeletePin removes the node's pin.
+func (m *Manager) DeletePin(nodeUUID string) error {
+	return m.db.Unscoped().Where("node_uuid = ?", nodeUUID).Delete(&NodePin{}).Error
+}
+
+// DeleteNodeRecords removes everything stored for a node; used by node deletion.
+func (m *Manager) DeleteNodeRecords(nodeUUID string) error { return m.DeletePin(nodeUUID) }

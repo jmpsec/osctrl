@@ -329,6 +329,11 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 			log.Err(err).Msgf("error removing extensions of deleted node %s", node.UUID)
 		}
 	}
+	if h.OsqueryVersions != nil {
+		if err := h.OsqueryVersions.DeleteNodeRecords(node.UUID); err != nil {
+			log.Err(err).Msgf("error removing osquery pin of deleted node %s", node.UUID)
+		}
+	}
 	log.Debug().Msgf("Deleted node %s", n.UUID)
 	h.AuditLog.NodeAction(ctx[ctxUser], "deleted node "+n.UUID, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	// Serialize and serve JSON

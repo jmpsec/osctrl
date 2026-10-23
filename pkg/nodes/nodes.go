@@ -379,6 +379,11 @@ func (n *NodeManager) GetPlatformCountsByEnv(environment string) (PlatformCounts
 	return GetPlatformCountsByEnv(n.DB, environment)
 }
 
+// GetOsqueryVersionCountsByEnv wrapper.
+func (n *NodeManager) GetOsqueryVersionCountsByEnv(envID uint) ([]OsqueryVersionCount, error) {
+	return GetOsqueryVersionCountsByEnv(n.DB, envID)
+}
+
 // GetOsqueryVersionCounts wrapper.
 func (n *NodeManager) GetOsqueryVersionCounts() ([]OsqueryVersionCount, error) {
 	return GetOsqueryVersionCounts(n.DB)

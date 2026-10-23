@@ -99,3 +99,25 @@ describe('SideNav extensions entry', () => {
     expect(screen.queryByRole('link', { name: 'Extensions' })).not.toBeInTheDocument();
   });
 });
+
+describe('SideNav osquery versions entry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('is shown to super admins', async () => {
+    mockGetFeatures.mockResolvedValue(baseFeatures);
+    mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
+    renderNav();
+    const link = await screen.findByRole('link', { name: 'Osquery versions' });
+    expect(link).toHaveAttribute('href', '/_app/osquery-versions');
+  });
+
+  it('is hidden from environment admins', async () => {
+    mockGetFeatures.mockResolvedValue(baseFeatures);
+    mockGetMe.mockResolvedValue({ admin: false, permissions: { 'env-uuid': { user: true, query: false, carve: false, admin: true } } });
+    renderNav();
+    await settle();
+    expect(screen.queryByRole('link', { name: 'Osquery versions' })).not.toBeInTheDocument();
+  });
+});

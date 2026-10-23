@@ -56,6 +56,8 @@ const (
 	DefaultExtensionPath string = "osctrld-extension"
 	// DefaultStatusPath for osctrld to report osqueryd health and rollbacks
 	DefaultStatusPath string = "osctrld-status"
+	// DefaultOsqueryPath for osctrld to ask which osquery version to run
+	DefaultOsqueryPath string = "osctrld-osquery"
 	// DefaultConfigEndpointPath
 	DefaultConfigEndpointPath string = "osquery-config"
 )

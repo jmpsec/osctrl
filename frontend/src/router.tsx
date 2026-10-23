@@ -27,6 +27,7 @@ import { settingsServiceRoute } from './routes/_app/settings.$service'
 import { serviceConfigRoute } from './routes/_app/config.$service'
 import { logSinksRoute } from './routes/_app/log-sinks'
 import { extensionsRoute } from './routes/_app/extensions'
+import { osqueryVersionsRoute } from './routes/_app/osquery-versions'
 import { authProvidersRoute } from './routes/_app/auth-providers'
 import { alertsRoute } from './routes/_app/alerts'
 import { healthRoute } from './routes/_app/health'
@@ -46,6 +47,7 @@ const routeTree = rootRoute.addChildren([
     serviceConfigRoute,
     logSinksRoute,
     extensionsRoute,
+    osqueryVersionsRoute,
     authProvidersRoute,
     alertsRoute,
     healthRoute,
