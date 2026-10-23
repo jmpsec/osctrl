@@ -252,6 +252,27 @@ func (m *ServiceConfigManager) GetSection(service, name string, envID uint) (Ser
 	return sc, nil
 }
 
+// OsctrldEnabled reports whether osctrl-tls runs with osctrld enabled, read
+// from the tls/osctrld row that osctrl-tls keeps in sync on every start
+// (Seed/refreshUnpinned). Any failure (nil manager, missing row, malformed
+// value) reads as false.
+func (m *ServiceConfigManager) OsctrldEnabled() bool {
+	if m == nil || m.DB == nil {
+		return false
+	}
+	sc, err := m.GetSection(config.ServiceTLS, "osctrld", NoEnvironmentID)
+	if err != nil {
+		log.Debug().Err(err).Msg("osctrld service config unavailable, treating as disabled")
+		return false
+	}
+	var o config.YAMLConfigurationOsctrld
+	if err := json.Unmarshal([]byte(sc.Value), &o); err != nil {
+		log.Debug().Err(err).Msg("osctrld service config malformed, treating as disabled")
+		return false
+	}
+	return o.Enabled
+}
+
 // GetAllByService retrieves all sections for a service.
 func (m *ServiceConfigManager) GetAllByService(service string, envID uint) ([]ServiceConfig, error) {
 	var values []ServiceConfig

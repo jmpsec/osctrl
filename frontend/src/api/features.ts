@@ -17,6 +17,9 @@ export interface Features {
    * /api/v1/vulnerabilities routes are absent and the SPA hides every
    * vulnerability surface. */
   vulnerabilities?: boolean;
+  /** osctrl-tls runs with --enable-osctrld. Absent on older APIs, which
+   * the SPA treats as disabled. Gates Extensions and Osquery versions. */
+  osctrld?: boolean;
   accelerated: boolean;
   console?: boolean;
   file_explorer: boolean;

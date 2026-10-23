@@ -207,7 +207,7 @@ describe('EnvConfigPage', () => {
     });
     mockGetPostureProfiles.mockResolvedValue([]);
     mockGetVulnProfiles.mockResolvedValue([]);
-    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, osctrld: true });
   });
 
   it('inherits the global value, saves an override, and resets to inheritance', async () => {
@@ -550,6 +550,26 @@ describe('EnvConfigPage', () => {
     renderWithProviders();
     await screen.findByRole('tab', { name: 'Extensions' });
     expect(mockGetEnvExtensions).not.toHaveBeenCalled();
+  });
+
+  it.each([['false', { osctrld: false }], ['absent', {}]])('hides the Extensions and Osquery tabs when osctrld is %s', async (_l, extra) => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, ...extra });
+    renderWithProviders();
+    await screen.findByRole('tab', { name: 'Settings' });
+    await waitFor(() => expect(mockGetFeatures).toHaveBeenCalled());
+    expect(screen.queryByRole('tab', { name: 'Extensions' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Osquery' })).not.toBeInTheDocument();
+    // The environment's own osquery options/flags configuration is not osctrld-dependent.
+    expect(screen.getByRole('tab', { name: 'Options' })).toBeInTheDocument();
+    expect(mockGetEnvExtensions).not.toHaveBeenCalled();
+  });
+
+  it('hides the Extensions and Osquery tabs while features load', async () => {
+    mockGetFeatures.mockReturnValue(new Promise(() => {}));
+    renderWithProviders();
+    await screen.findByRole('tab', { name: 'Settings' });
+    expect(screen.queryByRole('tab', { name: 'Extensions' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Osquery' })).not.toBeInTheDocument();
   });
 
   it('hides the posture tab when posture is disabled', async () => {

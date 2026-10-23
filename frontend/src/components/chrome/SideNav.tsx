@@ -31,6 +31,7 @@ import { EnvSwitcher } from './EnvSwitcher';
 import { listEnvironments } from '$/api/environments';
 import { getMe } from '$/api/users';
 import { getFeatures } from '$/api/features';
+import { useOsctrldEnabled } from '$/lib/useOsctrldEnabled';
 import type { EnvAccess } from '$/api/types';
 import { readActiveEnvironment, writeActiveEnvironment } from '$/lib/environment-scope';
 import {
@@ -204,6 +205,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
   // Service Config is opt-in server-side (service.serviceConfigEnabled).
   // When it is off the endpoints do not exist, so hide the entry rather
   // than link to a page that can only fail.
+  const { enabled: osctrldEnabled } = useOsctrldEnabled();
   const { data: features } = useQuery({
     queryKey: ['features'],
     queryFn: () => getFeatures(),
@@ -594,7 +596,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.logSinks')}
             </NavItem>}
-            <NavItem
+            {osctrldEnabled && <NavItem
               collapsed={collapsed}
               active={isExtensionsActive}
               to="/_app/extensions"
@@ -602,8 +604,8 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               icon={<Puzzle size={14} strokeWidth={1.8} />}
             >
               {t('nav.extensions')}
-            </NavItem>
-            <NavItem
+            </NavItem>}
+            {osctrldEnabled && <NavItem
               collapsed={collapsed}
               active={isOsqueryVersionsActive}
               to="/_app/osquery-versions"
@@ -611,7 +613,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
               icon={<PackageCheck size={14} strokeWidth={1.8} />}
             >
               Osquery versions
-            </NavItem>
+            </NavItem>}
             {features?.alerts && <NavItem
               collapsed={collapsed}
               active={isAlertsActive}

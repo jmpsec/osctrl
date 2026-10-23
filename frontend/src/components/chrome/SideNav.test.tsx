@@ -84,7 +84,7 @@ describe('SideNav extensions entry', () => {
   });
 
   it('is shown to super admins', async () => {
-    mockGetFeatures.mockResolvedValue(baseFeatures);
+    mockGetFeatures.mockResolvedValue({ ...baseFeatures, osctrld: true });
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
     renderNav();
     const link = await screen.findByRole('link', { name: 'Extensions' });
@@ -106,7 +106,7 @@ describe('SideNav osquery versions entry', () => {
   });
 
   it('is shown to super admins', async () => {
-    mockGetFeatures.mockResolvedValue(baseFeatures);
+    mockGetFeatures.mockResolvedValue({ ...baseFeatures, osctrld: true });
     mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
     renderNav();
     const link = await screen.findByRole('link', { name: 'Osquery versions' });
@@ -119,5 +119,38 @@ describe('SideNav osquery versions entry', () => {
     renderNav();
     await settle();
     expect(screen.queryByRole('link', { name: 'Osquery versions' })).not.toBeInTheDocument();
+  });
+});
+
+describe('SideNav osctrld-gated admin entries', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  const names = ['Extensions', 'Osquery versions'];
+  const nonAdmin = { admin: false, permissions: { 'env-uuid': { user: true, query: false, carve: false, admin: true } } };
+
+  it('shows both to super admins when osctrld is enabled', async () => {
+    mockGetFeatures.mockResolvedValue({ ...baseFeatures, osctrld: true });
+    mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
+    renderNav();
+    await settle();
+    for (const n of names) expect(await screen.findByRole('link', { name: n })).toBeInTheDocument();
+  });
+
+  it.each([['false', { osctrld: false }], ['absent', {}]])('hides both when osctrld is %s', async (_l, extra) => {
+    mockGetFeatures.mockResolvedValue({ ...baseFeatures, service_config: true, ...extra });
+    mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
+    renderNav();
+    await settle();
+    for (const n of names) expect(screen.queryByRole('link', { name: n })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Service Config' })).toBeInTheDocument();
+  });
+
+  it('never shows them to non-super-admins', async () => {
+    mockGetFeatures.mockResolvedValue({ ...baseFeatures, osctrld: true });
+    mockGetMe.mockResolvedValue(nonAdmin);
+    renderNav();
+    await settle();
+    for (const n of names) expect(screen.queryByRole('link', { name: n })).not.toBeInTheDocument();
   });
 });

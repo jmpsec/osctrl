@@ -9,6 +9,7 @@ import { DiffView } from '$/components/forms/DiffView';
 import { NodeExtensionsView } from './NodeExtensionsView';
 import { NodeOsqueryView } from './NodeOsqueryView';
 import { NodeFlagsView } from './NodeFlagsView';
+import { useOsctrldEnabled } from '$/lib/useOsctrldEnabled';
 import { plainBtn, toLocalInput, VIEWS, warnBtn, type View } from './overrideShared';
 
 const EDITOR_LABELS: Record<Exclude<View, 'diff'>, string> = {
@@ -271,10 +272,14 @@ const KINDS: { id: Kind; label: string }[] = [
 
 /** Per-node overrides: osquery configuration (JSON), startup flags (flagfile) or extensions. */
 export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {
-  const [kind, setKind] = useState<Kind>('configuration');
+  const [picked, setKind] = useState<Kind>('configuration');
+  const { enabled: osctrldEnabled } = useOsctrldEnabled();
+  // Flags, extensions and osquery version are all applied by osctrld; without
+  // it only the plain configuration override remains, so no switcher.
+  const kind: Kind = osctrldEnabled ? picked : 'configuration';
   return (
     <div className="space-y-3">
-      <div role="group" aria-label="Override type" className="flex gap-1">
+      {osctrldEnabled && <div role="group" aria-label="Override type" className="flex gap-1">
         {KINDS.map(({ id, label }) => (
           <button
             key={id}
@@ -286,7 +291,7 @@ export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: stri
             {label}
           </button>
         ))}
-      </div>
+      </div>}
       {kind === 'configuration' ? (
         <ConfigView env={env} uuid={uuid} hostname={hostname} />
       ) : kind === 'flags' ? (

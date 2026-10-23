@@ -9,6 +9,9 @@ import (
 	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
+	"github.com/jmpsec/osctrl/pkg/serviceconfig"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func TestFeaturesHandlerReportsPostureDisabledByDefault(t *testing.T) {
@@ -269,4 +272,36 @@ func containsFeatureTopic(topics []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func TestFeaturesHandlerReportsOsctrld(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mgr := serviceconfig.NewServiceConfigManager(db)
+	for _, enabled := range []bool{false, true} {
+		p := &config.ServiceParameters{Osctrld: &config.YAMLConfigurationOsctrld{Enabled: enabled}}
+		if err := mgr.Seed(config.ServiceTLS, p, serviceconfig.NoEnvironmentID); err != nil {
+			t.Fatal(err)
+		}
+		h := &HandlersApi{ServiceConfig: mgr}
+		w := httptest.NewRecorder()
+		h.FeaturesHandler(w, httptest.NewRequest(http.MethodGet, "/api/v1/features", nil))
+		var raw map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
+			t.Fatal(err)
+		}
+		if got, ok := raw["osctrld"]; !ok || got != enabled {
+			t.Fatalf("osctrld: got %v (present=%v) want %v", got, ok, enabled)
+		}
+	}
+	// No manager: key still present, false.
+	w := httptest.NewRecorder()
+	(&HandlersApi{}).FeaturesHandler(w, httptest.NewRequest(http.MethodGet, "/api/v1/features", nil))
+	var raw map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &raw)
+	if got, ok := raw["osctrld"]; !ok || got != false {
+		t.Fatalf("nil manager: got %v present=%v", got, ok)
+	}
 }
