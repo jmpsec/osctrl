@@ -77,7 +77,7 @@ func benchStatusBatch(n int) []byte {
 			"message":        "scheduler executing query: file_events",
 			"severity":       "0",
 			"filename":       "scheduler.cpp",
-			"version":        "5.23.1",
+			"version":        "5.24.0",
 			"hostIdentifier": "UUID-BENCH-0001",
 		})
 	}

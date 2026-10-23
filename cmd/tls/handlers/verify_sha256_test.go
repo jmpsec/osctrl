@@ -65,7 +65,7 @@ func TestVerifyResponseWireFormat(t *testing.T) {
 	raw, err := json.Marshal(types.VerifyResponse{
 		Flags:          "--flag",
 		Certificate:    "cert",
-		OsqueryVersion: "5.23.1",
+		OsqueryVersion: "5.24.0",
 		OsquerySHA256:  "abc123",
 	})
 	require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestVerifyResponseWireFormat(t *testing.T) {
 	// An unset digest still ships the key; osctrld treats "" as "no digest
 	// from the server" and falls back. Dropping the key entirely would be
 	// equivalent, but pinning the shape keeps the contract explicit.
-	raw, err = json.Marshal(types.VerifyResponse{OsqueryVersion: "5.23.1"})
+	raw, err = json.Marshal(types.VerifyResponse{OsqueryVersion: "5.24.0"})
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(raw, &wire))
 	require.Equal(t, "", wire["osquery_sha256"])

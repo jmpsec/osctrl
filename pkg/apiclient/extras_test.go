@@ -34,7 +34,7 @@ func newTestAPI(t *testing.T) *OsctrlAPI {
 		}
 		_ = json.NewEncoder(w).Encode(ConsoleSessionResponse{
 			Session:  console.Session{ID: 7, NodeUUID: "UUID1", CWD: "/", Platform: "linux"},
-			NodeInfo: ConsoleNodeInfo{OsqueryVersion: "5.23.1"},
+			NodeInfo: ConsoleNodeInfo{OsqueryVersion: "5.24.0"},
 		})
 	})
 	mux.HandleFunc("DELETE /api/v1/console/{env}/sessions/{session_id}", func(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +100,7 @@ func newTestAPI(t *testing.T) *OsctrlAPI {
 
 	// Posture routes
 	mux.HandleFunc("GET /api/v1/nodes/{env}/node/{uuid}/posture", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode([]posture.NodePosture{{Category: "osquery_info", Summary: `[{"version":"5.23.1"}]`}})
+		_ = json.NewEncoder(w).Encode([]posture.NodePosture{{Category: "osquery_info", Summary: `[{"version":"5.24.0"}]`}})
 	})
 	mux.HandleFunc("GET /api/v1/nodes/{env}/node/{uuid}/posture/score", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(posture.PostureScore{
@@ -167,7 +167,7 @@ func TestConsoleClientRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateConsoleSession: %v", err)
 	}
-	if res.Session.ID != 7 || res.Session.CWD != "/" || res.NodeInfo.OsqueryVersion != "5.23.1" {
+	if res.Session.ID != 7 || res.Session.CWD != "/" || res.NodeInfo.OsqueryVersion != "5.24.0" {
 		t.Fatalf("unexpected session response: %+v", res)
 	}
 

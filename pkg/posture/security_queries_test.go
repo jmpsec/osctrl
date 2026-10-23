@@ -16,7 +16,7 @@ func TestSecurityQueriesMatchBundledSchema(t *testing.T) {
 			Name string `json:"name"`
 		} `json:"columns"`
 	}
-	raw, err := os.ReadFile("../../deploy/osquery/data/5.23.1.json")
+	raw, err := os.ReadFile("../../deploy/osquery/data/5.24.0.json")
 	if err != nil {
 		t.Fatal(err)
 	}

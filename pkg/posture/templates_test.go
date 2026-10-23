@@ -88,7 +88,7 @@ func TestProfileTablesSupportTargetPlatform(t *testing.T) {
 		Platforms []string `json:"platforms"`
 	}
 
-	data, err := os.ReadFile("../../deploy/osquery/data/5.23.1.json")
+	data, err := os.ReadFile("../../deploy/osquery/data/5.24.0.json")
 	if err != nil {
 		t.Fatalf("read bundled osquery schema: %v", err)
 	}

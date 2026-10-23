@@ -22,7 +22,7 @@ type schemaTable struct {
 
 func bundledSchema(t *testing.T) []schemaTable {
 	t.Helper()
-	raw, err := os.ReadFile("../../deploy/osquery/data/5.23.1.json")
+	raw, err := os.ReadFile("../../deploy/osquery/data/5.24.0.json")
 	require.NoError(t, err)
 	var schema []schemaTable
 	require.NoError(t, json.Unmarshal(raw, &schema))
