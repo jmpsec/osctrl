@@ -824,3 +824,133 @@ func TestRolloutViewOfAbortedRolloutSkipsHostScan(t *testing.T) {
 	require.Equal(t, types.EnvOsqueryRolloutCounts{}, out.Rollout.Counts)
 	require.Contains(t, rr.Body.String(), `"rolled_back_hosts":[]`)
 }
+
+// nodeRolloutFixture starts a rollout and places NODE-A in the given 0-based stage.
+func nodeRolloutFixture(t *testing.T, f oqFixture, stage int) {
+	t.Helper()
+	startRollout(t, f)
+	b := osqueryversions.Bucket(f.envA.ID, "5.13.0", "NODE-A")
+	th := [4]uint32{b + 10, b + 20, b + 30, 10001}
+	for i := 0; i < stage; i++ {
+		th[i] = b // bucket < b never holds, so the node is not in stage i
+	}
+	raw, err := json.Marshal(th)
+	require.NoError(t, err)
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("thresholds", string(raw)).Error)
+}
+
+func getNodeOsquery(t *testing.T, f oqFixture) types.NodeOsqueryResponse {
+	t.Helper()
+	rr := oqCall(f.h, pinGet, http.MethodGet, "alice", nodeVals(f.envA, "NODE-A"), "")
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	var out types.NodeOsqueryResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &out))
+	return out
+}
+
+func TestNodeOsqueryRolloutLaterStageHasEligibleAt(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	nodeRolloutFixture(t, f, 2) // node joins stage 3
+	opened := time.Now().Add(-30 * time.Minute).UTC().Truncate(time.Second)
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("stage_opened_at", opened).Error)
+	out := getNodeOsquery(t, f)
+	require.NotNil(t, out.Rollout)
+	require.Equal(t, "running", out.Rollout.State)
+	require.Equal(t, 3, out.Rollout.Stage)
+	require.Equal(t, []int{1, 10, 50, 100}, out.Rollout.Stages)
+	require.NotNil(t, out.Rollout.EligibleAt)
+	require.True(t, opened.Add(2*osqueryversions.RolloutStageWait).Equal(*out.Rollout.EligibleAt))
+	// stage 2 is open: stage 3 opens two hours after that
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("stage_opened_at", opened.Add(-2*time.Hour)).Error)
+	out = getNodeOsquery(t, f)
+	require.True(t, opened.Add(-2*time.Hour).Add(2*osqueryversions.RolloutStageWait).Equal(*out.Rollout.EligibleAt))
+}
+
+func TestNodeOsqueryRolloutOpenStageHasNoEligibleAt(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	nodeRolloutFixture(t, f, 0)
+	out := getNodeOsquery(t, f)
+	require.NotNil(t, out.Rollout)
+	require.Equal(t, 1, out.Rollout.Stage)
+	require.Nil(t, out.Rollout.EligibleAt)
+	require.Contains(t, oqCall(f.h, pinGet, http.MethodGet, "alice", nodeVals(f.envA, "NODE-A"), "").Body.String(), `"eligible_at":null`)
+}
+
+func TestNodeOsqueryRolloutPausedHasNoEligibleAt(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	nodeRolloutFixture(t, f, 2)
+	var r osqueryversions.Rollout
+	require.NoError(t, f.db.Where("environment_id = ?", f.envA.ID).First(&r).Error)
+	ok, err := f.mgr.PauseRollout(f.envA.ID, r.RequestID, "web-1", "version_not_reported", time.Now(), time.Now())
+	require.NoError(t, err)
+	require.True(t, ok)
+	out := getNodeOsquery(t, f)
+	require.NotNil(t, out.Rollout)
+	require.Equal(t, "paused", out.Rollout.State)
+	require.Equal(t, 3, out.Rollout.Stage)
+	require.Nil(t, out.Rollout.EligibleAt)
+}
+
+func TestNodeOsqueryRolloutAbsent(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	require.Nil(t, getNodeOsquery(t, f).Rollout, "no rollout")
+
+	nodeRolloutFixture(t, f, 2)
+	require.NotNil(t, getNodeOsquery(t, f).Rollout)
+
+	// a pin wins over the environment target
+	_, err := f.mgr.SetPin("NODE-A", f.envA.ID, "5.13.0", nil, "alice")
+	require.NoError(t, err)
+	require.Nil(t, getNodeOsquery(t, f).Rollout, "pin")
+	_, err = f.mgr.DeletePin("NODE-A")
+	require.NoError(t, err)
+
+	// a rollout of another request does not describe the target
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("request_id", "other").Error)
+	require.Nil(t, getNodeOsquery(t, f).Rollout, "request mismatch")
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("request_id", f.targetRequestID(t)).Error)
+	require.NotNil(t, getNodeOsquery(t, f).Rollout)
+
+	// completed
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("stage_opened_at", time.Now().Add(-7*time.Hour)).Error)
+	require.Nil(t, getNodeOsquery(t, f).Rollout, "completed")
+
+	// windows hosts are never upgraded
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("stage_opened_at", time.Now()).Error)
+	require.NotNil(t, getNodeOsquery(t, f).Rollout)
+	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", "NODE-A").Update("platform", "windows").Error)
+	require.Nil(t, getNodeOsquery(t, f).Rollout, "windows")
+}
+
+func (f oqFixture) targetRequestID(t *testing.T) string {
+	t.Helper()
+	tg, err := f.mgr.GetEnvTarget(f.envA.ID)
+	require.NoError(t, err)
+	return tg.RequestID
+}
+
+// nodeRollout and Resolve must agree on who waits and who may upgrade.
+func TestNodeOsqueryRolloutAgreesWithResolve(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	f.put(t, "5.12.1") // digest of the installed version, so Resolve can let the host through
+	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", "NODE-A").Update("osquery_version", "5.12.1").Error)
+	resolve := func() string {
+		res, err := f.mgr.Resolve(osqueryversions.ResolveInput{EnvironmentID: f.envA.ID, NodeUUID: "NODE-A",
+			Platform: "linux", Arch: "amd64", Format: "deb", InstalledVersion: "5.12.1"}, time.Now())
+		require.NoError(t, err)
+		return res.Reason
+	}
+
+	nodeRolloutFixture(t, f, 2)
+	require.Equal(t, osqueryversions.ReasonRolloutPending, resolve())
+	out := getNodeOsquery(t, f)
+	require.NotNil(t, out.Rollout)
+	require.NotNil(t, out.Rollout.EligibleAt)
+	require.Greater(t, out.Rollout.Stage, 1) // current stage is 1
+
+	nodeRolloutFixture(t, f, 0)
+	require.Equal(t, "", resolve())
+	out = getNodeOsquery(t, f)
+	require.NotNil(t, out.Rollout)
+	require.Nil(t, out.Rollout.EligibleAt)
+}

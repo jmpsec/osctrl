@@ -387,3 +387,12 @@ func TestPauseRolloutIgnoresRollbackOlderThanLastResume(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, paused)
 }
+
+func TestNodeStage(t *testing.T) {
+	r := Rollout{Thresholds: "[100,1000,5000,10001]"}
+	for bucket, want := range map[uint32]int{0: 0, 99: 0, 100: 1, 999: 1, 1000: 2, 4999: 2, 5000: 3, 10000: 3} {
+		assert.Equal(t, want, r.NodeStage(bucket), "bucket %d", bucket)
+	}
+	assert.Equal(t, -1, Rollout{Thresholds: "nope"}.NodeStage(5))
+	assert.Equal(t, -1, Rollout{Thresholds: "[1,2,3,4]"}.NodeStage(9))
+}

@@ -99,6 +99,7 @@ type HandlersApi struct {
 	FlagsOverrides       *nodeconfig.FlagsManager
 	Extensions           *extensions.Manager
 	OsqueryVersions      *osqueryversions.Manager
+	rolloutCache         rolloutProgressCache
 	// MFA owns the second-factor tables. Nil disables every MFA route.
 	MFA *mfa.Manager
 	// WebAuthn is nil when no RP ID or origin could be resolved, which

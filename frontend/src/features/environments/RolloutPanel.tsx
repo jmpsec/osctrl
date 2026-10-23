@@ -4,17 +4,8 @@ import { abortEnvRollout, resumeEnvRollout } from '$/api/osqueryVersions';
 import type { EnvOsquery, EnvOsqueryRollout } from '$/api/types';
 import { buttonClasses } from '$/components/atoms/Button';
 import { ModalShell } from '$/components/feedback/ModalShell';
-import { reasonText } from '$/features/nodes/osqueryReasons';
+import { reasonText, span } from '$/features/nodes/osqueryReasons';
 import { plainBtn, warnBtn } from '$/features/nodes/overrideShared';
-
-/** "1 h 20 min", "25 min", "less than a minute". */
-function span(ms: number): string {
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return 'less than a minute';
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return h === 0 ? `${m} min` : m === 0 ? `${h} h` : `${h} h ${m} min`;
-}
 
 const ago = (iso: string) => {
   const t = new Date(iso).getTime();

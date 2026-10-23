@@ -872,6 +872,18 @@ export interface NodeOsquery {
   available: string[];
   /** True when the node's stored platform is windows (osctrld does not upgrade it). */
   platform_unsupported: boolean;
+  /** Set only while the environment target is a running or paused rollout. */
+  rollout: NodeOsqueryRollout | null;
+}
+
+/** Wire shape of NodeOsqueryRollout: where the host stands in the rollout. */
+export interface NodeOsqueryRollout {
+  state: 'running' | 'paused' | string;
+  /** 1-based stage this host joins; stages[stage - 1] is its percent. */
+  stage: number;
+  stages: number[];
+  /** When that stage opens; null when paused or already open. */
+  eligible_at: string | null;
 }
 
 /** Wire shape of EnvOsqueryRolloutCounts. */
