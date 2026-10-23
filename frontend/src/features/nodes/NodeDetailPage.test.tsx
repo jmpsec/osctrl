@@ -376,7 +376,7 @@ describe('NodeDetailPage', () => {
       total: [],
     });
     mockGetInactiveHours.mockResolvedValue({ override_hours: null, inactive_hours: 72, source: 'default' });
-    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false });
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, osctrld: true });
     mockGetNodePostureScore.mockResolvedValue({
       node_uuid: 'abc12345-0000-0000-0000-000000000001',
       timestamp: '2026-07-16T09:05:00Z',
@@ -1252,6 +1252,43 @@ describe('NodeDetailPage', () => {
     await waitFor(() => expect(mockListEnvironments).toHaveBeenCalled());
     expect(screen.queryByRole('tab', { name: /Configuration/ })).not.toBeInTheDocument();
     expect(mockGetNodeConfig).not.toHaveBeenCalled();
+    expect(mockGetNodeFlags).not.toHaveBeenCalled();
+    expect(mockGetNodeExtensions).not.toHaveBeenCalled();
+  });
+
+  it.each([['false', { osctrld: false }], ['absent', {}]])('makes no osctrld requests and shows no osctrld banners when osctrld is %s', async (_l, extra) => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, ...extra });
+    mockGetNodeFlags.mockResolvedValue(
+      makeNodeFlags({
+        override: '--verbose=true',
+        updated_by: 'bob',
+        updated_at: '2026-10-02T10:00:00Z',
+        osctrld: {
+          apply_result: 'applied', apply_error: '', apply_at: null, rejected_current: false,
+          osquery_running: false, down_since: '2026-10-20T08:00:00Z', reported_at: '2026-10-20T08:05:00Z',
+        },
+      }),
+    );
+    mockGetNodeExtensions.mockResolvedValue(
+      makeNodeExtensions({ assignments: [hostAssignment()], status: [extStatus('ok')] }),
+    );
+    renderWithProviders(makeTestRouter());
+    await screen.findByRole('heading', { name: 'web-server-01' });
+    await waitFor(() => expect(mockGetFeatures).toHaveBeenCalled());
+    await waitFor(() => expect(mockGetNodeConfig).toHaveBeenCalled());
+    expect(mockGetNodeFlags).not.toHaveBeenCalled();
+    expect(mockGetNodeExtensions).not.toHaveBeenCalled();
+    expect(screen.queryByText(/has a flags override/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('osquery-down-banner')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Command execution/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('config-override-dot')).not.toBeInTheDocument();
+  });
+
+  it('makes no osctrld requests while features load', async () => {
+    mockGetFeatures.mockReturnValue(new Promise(() => {}));
+    renderWithProviders(makeTestRouter());
+    await screen.findByRole('heading', { name: 'web-server-01' });
+    await waitFor(() => expect(mockGetNodeConfig).toHaveBeenCalled());
     expect(mockGetNodeFlags).not.toHaveBeenCalled();
     expect(mockGetNodeExtensions).not.toHaveBeenCalled();
   });

@@ -1,3 +1,4 @@
+import type { Features } from '$/api/features';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -19,6 +20,8 @@ vi.mock('$/api/nodes', () => ({
   deleteNodeConfig: api.deleteNodeConfig,
   getNodeFlags: api.getNodeFlags,
 }));
+
+vi.mock('$/api/features', () => ({ getFeatures: () => mockFeatures() }));
 
 vi.mock('$/api/extensions', () => ({
   getNodeExtensions: api.getNodeExtensions,
@@ -46,6 +49,8 @@ vi.mock('$/components/forms/CodeEditor', () => ({
   ),
 }));
 
+const baseFeatures: Features = { posture: false, service_config: false, accelerated: false, file_explorer: false };
+const mockFeatures = vi.fn<() => Promise<Features>>();
 const ENV_CFG = '{"options":{"a":"1"}}';
 const APPLIED_CFG = '{"options":{"a":"2"}}';
 
@@ -83,6 +88,7 @@ describe('NodeConfigTab', () => {
     api.getNodeConfig.mockResolvedValue(makeConfig());
     api.putNodeConfig.mockResolvedValue(makeConfig({ override: '{"x":1}' }));
     api.deleteNodeConfig.mockResolvedValue(makeConfig());
+    mockFeatures.mockResolvedValue({ ...baseFeatures, osctrld: true });
   });
 
   it('shows the applied configuration read-only by default', async () => {
@@ -258,5 +264,25 @@ describe('NodeConfigTab', () => {
     expect(screen.getByRole('button', { name: 'Extensions' })).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByText('No extensions apply to this host.')).toBeInTheDocument();
     expect(api.getNodeExtensions).toHaveBeenCalledWith('prod', 'uuid-1');
+  });
+  it.each([['false', { osctrld: false }], ['absent', {}]])('hides Flags, Extensions and Osquery version when osctrld is %s', async (_l, extra) => {
+    mockFeatures.mockResolvedValue({ ...baseFeatures, ...extra });
+    renderTab();
+    expect(await screen.findByLabelText('Applied configuration')).toBeInTheDocument();
+    await waitFor(() => expect(mockFeatures).toHaveBeenCalled());
+    for (const n of ['Flags', 'Extensions', 'Osquery version', 'Configuration']) {
+      expect(screen.queryByRole('button', { name: n })).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: 'Edit override' })).toBeInTheDocument();
+    expect(api.getNodeFlags).not.toHaveBeenCalled();
+    expect(api.getNodeExtensions).not.toHaveBeenCalled();
+  });
+
+  it('shows no kind switcher while features load', async () => {
+    mockFeatures.mockReturnValue(new Promise(() => {}));
+    renderTab();
+    expect(await screen.findByLabelText('Applied configuration')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Override type' })).not.toBeInTheDocument();
+    expect(api.getNodeFlags).not.toHaveBeenCalled();
   });
 });

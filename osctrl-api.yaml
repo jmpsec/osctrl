@@ -11773,6 +11773,13 @@ components:
             flag as ServiceConfig — the log_sinks routes are registered
             alongside the service-config routes.
           type: boolean
+        osctrld:
+          description: >-
+            Osctrld is true when osctrl-tls runs with --enable-osctrld. Read
+            from
+
+            the service config row osctrl-tls maintains in the shared database.
+          type: boolean
         posture:
           type: boolean
         service_config:

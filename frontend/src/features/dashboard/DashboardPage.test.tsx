@@ -264,6 +264,13 @@ describe('DashboardPage', () => {
     expect(screen.getByText(/prod · osquery activity within the last 24 hours/)).toBeInTheDocument();
   });
 
+  // Derived from node data, independent of osctrld: it must render without any osctrld feature flag.
+  it('still shows the osquery agent versions panel (not osctrld-gated)', async () => {
+    mockGetStats.mockResolvedValue(makeStatsResponse());
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByRole('heading', { name: 'osquery agent versions' })).toBeInTheDocument();
+  });
+
   it('renders KPI card labels from the stats response', async () => {
     mockGetStats.mockResolvedValue(makeStatsResponse());
     renderWithProviders(makeTestRouter());

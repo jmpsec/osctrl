@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useLocale } from '$/i18n/useLocale';
 import { NodeAlertModal } from './NodeAlertModal';
+import { useOsctrldEnabled } from '$/lib/useOsctrldEnabled';
 import { OsctrldDownBanner } from './OsctrldDownBanner';
 import { nodeAlertCoverage, coverageSummary } from './alertCoverage';
 import { useParams, Link, useNavigate } from '@tanstack/react-router';
@@ -703,6 +704,7 @@ export function NodeDetailPage() {
     queryFn: () => getFeatures(),
     staleTime: 5 * 60_000,
   });
+  const { enabled: osctrldEnabled } = useOsctrldEnabled();
   const postureEnabled = features?.posture === true;
   const consoleEnabled = features?.console === true;
   const fileExplorerEnabled = features?.file_explorer === true;
@@ -739,20 +741,23 @@ export function NodeDetailPage() {
     enabled: canAdminNode,
     staleTime: 10_000,
   });
-  const { data: nodeFlags } = useQuery({
+  const { data: flagsData } = useQuery({
     queryKey: ['node-flags', env, uuid],
     queryFn: () => getNodeFlags(env, uuid),
-    enabled: canAdminNode,
+    enabled: canAdminNode && osctrldEnabled,
     staleTime: 10_000,
   });
   // Same key as NodeExtensionsView. Only command-execution assignments on this
   // host drive the banner; the endpoint is admin-only like the other overrides.
-  const { data: nodeExtensions } = useQuery({
+  const { data: extensionsData } = useQuery({
     queryKey: ['node-extensions', env, uuid],
     queryFn: () => getNodeExtensions(env, uuid),
-    enabled: canAdminNode,
+    enabled: canAdminNode && osctrldEnabled,
     staleTime: 10_000,
   });
+  // Ignore anything cached from before osctrld was switched off.
+  const nodeFlags = osctrldEnabled ? flagsData : undefined;
+  const nodeExtensions = osctrldEnabled ? extensionsData : undefined;
   const hostExtensions = nodeExtensions?.assignments ?? [];
   // Command-execution extensions revoked (removed or expired) that osctrld
   // reported it could not remove from this host.

@@ -34,6 +34,9 @@ type FeaturesResponse struct {
 	// --vuln-enabled — when false the /api/v1/vulnerabilities routes are
 	// not registered and the vulnerability tables are not created.
 	Vulnerabilities bool `json:"vulnerabilities"`
+	// Osctrld is true when osctrl-tls runs with --enable-osctrld. Read from
+	// the service config row osctrl-tls maintains in the shared database.
+	Osctrld bool `json:"osctrld"`
 }
 
 // FeaturesHandler — GET /api/v1/features.
@@ -61,6 +64,7 @@ func (h *HandlersApi) FeaturesHandler(w http.ResponseWriter, r *http.Request) {
 		FileExplorer:    h.OsqueryValues.Query && h.OsqueryValues.FileExplorer,
 		Health:          h.Health != nil,
 		Vulnerabilities: h.Vulns != nil,
+		Osctrld:         h.ServiceConfig.OsctrldEnabled(),
 	})
 }
 

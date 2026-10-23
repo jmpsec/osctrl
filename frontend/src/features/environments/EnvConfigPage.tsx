@@ -17,6 +17,7 @@ import {
 import { AuthError, ApiError } from '$/api/client';
 import { getPostureProfiles } from '$/api/nodes';
 import { getFeatures } from '$/api/features';
+import { useOsctrldEnabled } from '$/lib/useOsctrldEnabled';
 import type { PostureProfile } from '$/api/types';
 import { EnvExtensionsTab } from './EnvExtensionsTab';
 import { EnvOsqueryTab } from './EnvOsqueryTab';
@@ -147,6 +148,11 @@ export function EnvConfigPage() {
     queryFn: () => getFeatures(),
     staleTime: 5 * 60_000,
   });
+  const { enabled: osctrldEnabled } = useOsctrldEnabled();
+  // A selected osctrld tab falls back to the default once osctrld is off.
+  useEffect(() => {
+    if (!osctrldEnabled && (activeTab === 'extensions' || activeTab === 'osquery')) setActiveTab('settings');
+  }, [osctrldEnabled, activeTab]);
   const postureEnabled = featuresQuery.data?.posture === true;
   const vulnsEnabled = featuresQuery.data?.vulnerabilities === true;
   const postureProfilesQuery = useQuery({
@@ -385,18 +391,22 @@ export function EnvConfigPage() {
             onClick={() => setActiveTab('posture')}
           />
         )}
-        <TabButton
-          id="extensions"
-          label="Extensions"
-          active={activeTab === 'extensions'}
-          onClick={() => setActiveTab('extensions')}
-        />
-        <TabButton
-          id="osquery"
-          label="Osquery"
-          active={activeTab === 'osquery'}
-          onClick={() => setActiveTab('osquery')}
-        />
+        {osctrldEnabled && (
+          <>
+            <TabButton
+              id="extensions"
+              label="Extensions"
+              active={activeTab === 'extensions'}
+              onClick={() => setActiveTab('extensions')}
+            />
+            <TabButton
+              id="osquery"
+              label="Osquery"
+              active={activeTab === 'osquery'}
+              onClick={() => setActiveTab('osquery')}
+            />
+          </>
+        )}
         <TabButton
           id="assembled"
           label={t('envConfig.fullConfiguration')}
@@ -438,8 +448,8 @@ export function EnvConfigPage() {
           <AssembledConfigCard env={env} />
         )}
 
-        {activeTab === 'extensions' && <EnvExtensionsTab env={env} />}
-        {activeTab === 'osquery' && <EnvOsqueryTab env={env} />}
+        {osctrldEnabled && activeTab === 'extensions' && <EnvExtensionsTab env={env} />}
+        {osctrldEnabled && activeTab === 'osquery' && <EnvOsqueryTab env={env} />}
 
         {activeTab === 'posture' && postureEnabled && (
           <PostureScheduleEditor

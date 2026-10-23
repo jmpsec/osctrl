@@ -718,3 +718,44 @@ func TestSeed_NeverStoresTheNVDAPIKey(t *testing.T) {
 		assert.NotContains(t, v, "nvd-secret-123", "section %s", name)
 	}
 }
+
+func TestOsctrldEnabled(t *testing.T) {
+	setRow := func(t *testing.T, m *ServiceConfigManager, service, value string) {
+		t.Helper()
+		require.NoError(t, m.DB.Create(&ServiceConfig{Name: "osctrld", Service: service, EnvironmentID: NoEnvironmentID, Type: "json", Value: value}).Error)
+	}
+	tests := []struct {
+		name    string
+		service string
+		value   string
+		want    bool
+	}{
+		{"enabled", config.ServiceTLS, `{"Enabled":true}`, true},
+		{"disabled", config.ServiceTLS, `{"Enabled":false}`, false},
+		{"malformed", config.ServiceTLS, `{nope`, false},
+		{"api row ignored", config.ServiceAPI, `{"Enabled":true}`, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &ServiceConfigManager{DB: setupTestDB(t)}
+			setRow(t, m, tt.service, tt.value)
+			assert.Equal(t, tt.want, m.OsctrldEnabled())
+		})
+	}
+	t.Run("missing row", func(t *testing.T) {
+		assert.False(t, (&ServiceConfigManager{DB: setupTestDB(t)}).OsctrldEnabled())
+	})
+	t.Run("nil manager", func(t *testing.T) {
+		var m *ServiceConfigManager
+		assert.False(t, m.OsctrldEnabled())
+	})
+	t.Run("follows re-seed when unpinned", func(t *testing.T) {
+		m := &ServiceConfigManager{DB: setupTestDB(t)}
+		p := testTLSParams()
+		require.NoError(t, m.Seed(config.ServiceTLS, p, NoEnvironmentID))
+		assert.False(t, m.OsctrldEnabled())
+		p.Osctrld.Enabled = true
+		require.NoError(t, m.Seed(config.ServiceTLS, p, NoEnvironmentID))
+		assert.True(t, m.OsctrldEnabled())
+	})
+}
