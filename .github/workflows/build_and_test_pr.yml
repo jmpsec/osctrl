@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GOLANG_VERSION: 1.27.2
+  GOLANG_VERSION: 1.27.3
 
 jobs:
   validate:
