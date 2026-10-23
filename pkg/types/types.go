@@ -1155,6 +1155,40 @@ type EnvOsqueryResponse struct {
 	Counts []OsqueryVersionHostCount `json:"counts"`
 	// Available lists the library version names (no digests), ascending.
 	Available []string `json:"available"`
+	// Rollout is the environment's latest rollout, null when it never had one.
+	Rollout *EnvOsqueryRollout `json:"rollout"`
+}
+
+// EnvOsqueryRolloutCounts are the host counts of a rollout.
+type EnvOsqueryRolloutCounts struct {
+	Eligible   int `json:"eligible"`
+	Upgraded   int `json:"upgraded"`
+	Waiting    int `json:"waiting"`
+	RolledBack int `json:"rolled_back"`
+}
+
+// EnvOsqueryRolledBackHost is a host that rejected the rollout's version. Host
+// and Reason are reported by the host and are untrusted.
+type EnvOsqueryRolledBackHost struct {
+	Host   string    `json:"host"`
+	Reason string    `json:"reason"`
+	At     time.Time `json:"at"`
+}
+
+// EnvOsqueryRollout is the staged rollout of an environment target. Stage is
+// 1-based and Stages lists the share (percent) of hosts per stage.
+type EnvOsqueryRollout struct {
+	State         string                    `json:"state"`
+	RequestID     string                    `json:"request_id"`
+	Version       string                    `json:"version"`
+	Stage         int                       `json:"stage"`
+	Stages        []int                     `json:"stages"`
+	StageOpenedAt time.Time                 `json:"stage_opened_at"`
+	NextStageAt   *time.Time                `json:"next_stage_at"`
+	Counts        EnvOsqueryRolloutCounts   `json:"counts"`
+	Paused        *EnvOsqueryRolledBackHost `json:"paused"`
+	// RolledBackHosts is newest first, at most 50.
+	RolledBackHosts []EnvOsqueryRolledBackHost `json:"rolled_back_hosts"`
 }
 
 // OsqueryTargetRequest sets an environment target or a node pin.

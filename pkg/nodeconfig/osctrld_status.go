@@ -38,7 +38,7 @@ var validUpgradeReasons = map[string]bool{
 	"no_target": true, "ahead_of_target": true, "no_digest_for_target": true, "no_digest_for_installed": true,
 	"unsupported_platform": true, "previous_unavailable": true, "target_unavailable": true, "digest_mismatch": true,
 	"version_not_reported": true, "osqueryd_not_running": true, "install_failed": true, "config_changed": true,
-	"rolled_back": true,
+	"rolled_back": true, "rollout_pending": true, "rollout_paused": true,
 }
 
 // ValidUpgradeReason reports whether r is a known upgrade reason.
@@ -88,6 +88,8 @@ type OsctrldStatus struct {
 	UpgradeRequestID  string `gorm:"default:''"`
 	UpgradeEventID    string `gorm:"default:''"`
 	UpgradeReportedAt *time.Time
+	// UpgradeEventAt is the server time UpgradeEventID was first recorded.
+	UpgradeEventAt *time.Time
 }
 
 // TableName keeps the table name stable.
@@ -194,7 +196,7 @@ func (m *FlagsManager) RecordReport(nodeUUID string, envID uint, r types.Osctrld
 		id := eventIDs[kind]
 		res := m.db.Model(&OsctrldStatus{}).
 			Where("node_uuid = ? AND ("+kind+"_event_id IS NULL OR "+kind+"_event_id <> ?)", nodeUUID, id).
-			Update(kind+"_event_id", id)
+			Updates(eventUpdate(kind, id, at))
 		if res.Error != nil {
 			return newEvents, res.Error
 		}
@@ -223,4 +225,14 @@ func (m *FlagsManager) CountDown(now time.Time) (map[uint]int, error) {
 		out[r.EnvironmentID] = r.N
 	}
 	return out, nil
+}
+
+// eventUpdate sets the event id of a kind; an upgrade event also gets the
+// server time it was first seen, which the rollout pause rule compares.
+func eventUpdate(kind, id string, at time.Time) map[string]any {
+	u := map[string]any{kind + "_event_id": id}
+	if kind == "upgrade" {
+		u["upgrade_event_at"] = at
+	}
+	return u
 }

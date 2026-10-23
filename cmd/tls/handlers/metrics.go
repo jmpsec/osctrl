@@ -81,6 +81,8 @@ var (
 		"Nodes whose fresh osctrld report says osqueryd is not running", []string{"environment"}, nil)
 	osctrldBehindDesc = prometheus.NewDesc("osctrld_osquery_behind",
 		"Nodes whose fresh osctrld report shows an osquery version lower than their target", []string{"environment"}, nil)
+	osctrldRolloutPausedDesc = prometheus.NewDesc("osctrld_osquery_rollout_paused",
+		"1 when the environment's latest osquery rollout is paused, else 0", []string{"environment"}, nil)
 	// DBDegraded is 1 when the DB health monitor reports the database
 	// as degraded (caches are in stale-serve mode), 0 when healthy.
 	dbDegraded = prometheus.NewGauge(prometheus.GaugeOpts{
@@ -196,6 +198,42 @@ func (c *osctrldBehindCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	for _, e := range r.envs {
 		ch <- prometheus.MustNewConstMetric(osctrldBehindDesc, prometheus.GaugeValue, float64(r.counts[e.ID]), e.Name)
+	}
+}
+
+// osctrldRolloutPausedCollector exports osctrld_osquery_rollout_paused with the
+// same cache, timeout, backoff and failure behavior as the down collector.
+type osctrldRolloutPausedCollector struct{ *osctrldDownCollector }
+
+// NewOsctrldRolloutPausedCollector returns the collector for osctrld_osquery_rollout_paused.
+func NewOsctrldRolloutPausedCollector(m *osqueryversions.Manager, envs *environments.EnvManager) prometheus.Collector {
+	return newOsctrldRolloutPausedCollector(func() (osctrldDownReading, error) {
+		counts, err := m.CountPaused()
+		if err != nil {
+			return osctrldDownReading{}, err
+		}
+		list, err := envs.All()
+		return osctrldDownReading{counts: counts, envs: list}, err
+	}, time.Now)
+}
+
+func newOsctrldRolloutPausedCollector(load func() (osctrldDownReading, error), now func() time.Time) *osctrldRolloutPausedCollector {
+	c := newOsctrldDownCollector(load, now)
+	c.what = "paused osquery rollouts"
+	return &osctrldRolloutPausedCollector{c}
+}
+
+func (c *osctrldRolloutPausedCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- osctrldRolloutPausedDesc
+}
+
+func (c *osctrldRolloutPausedCollector) Collect(ch chan<- prometheus.Metric) {
+	r := c.read()
+	if r == nil {
+		return
+	}
+	for _, e := range r.envs {
+		ch <- prometheus.MustNewConstMetric(osctrldRolloutPausedDesc, prometheus.GaugeValue, float64(r.counts[e.ID]), e.Name)
 	}
 }
 

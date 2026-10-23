@@ -600,3 +600,227 @@ func TestEnvTargetRejectsExpiry(t *testing.T) {
 	require.Nil(t, tgt)
 	require.Empty(t, auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID))
 }
+
+func rolloutResume(h *HandlersApi) http.HandlerFunc { return h.EnvOsqueryRolloutResumeHandler }
+func rolloutAbort(h *HandlersApi) http.HandlerFunc  { return h.EnvOsqueryRolloutAbortHandler }
+
+func decodeEnvOsquery(t *testing.T, rr *httptest.ResponseRecorder) types.EnvOsqueryResponse {
+	t.Helper()
+	var out types.EnvOsqueryResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &out), rr.Body.String())
+	return out
+}
+
+func TestEnvTargetPutStartsRollout(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	f.put(t, "5.13.0")
+	vals := map[string]string{"env": f.envA.Name}
+	rr := oqCall(f.h, envPut, http.MethodPut, "alice", vals, `{"version":"5.13.0"}`)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	out := decodeEnvOsquery(t, rr)
+	require.NotNil(t, out.Rollout)
+	require.Equal(t, "running", out.Rollout.State)
+	require.Equal(t, 1, out.Rollout.Stage)
+	require.Equal(t, []int{1, 10, 50, 100}, out.Rollout.Stages)
+	require.Equal(t, "5.13.0", out.Rollout.Version)
+	require.Equal(t, out.Target.RequestID, out.Rollout.RequestID)
+	require.NotNil(t, out.Rollout.NextStageAt)
+	require.Nil(t, out.Rollout.Paused)
+	require.Equal(t, 1, out.Rollout.Counts.Eligible)
+	require.Equal(t, 1, out.Rollout.Counts.Waiting)
+	require.Contains(t, rr.Body.String(), `"rolled_back_hosts":[]`)
+	lines := auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID)
+	require.Len(t, lines, 1)
+	require.Contains(t, lines[0], "rollout starts at stage 1")
+}
+
+func TestEnvTargetPutReplacesRolloutAndAbortsOld(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	f.put(t, "5.13.0")
+	f.put(t, "5.14.0")
+	vals := map[string]string{"env": f.envA.Name}
+	first := decodeEnvOsquery(t, oqCall(f.h, envPut, http.MethodPut, "alice", vals, `{"version":"5.13.0"}`))
+	second := decodeEnvOsquery(t, oqCall(f.h, envPut, http.MethodPut, "alice", vals, `{"version":"5.14.0"}`))
+	require.NotEqual(t, first.Rollout.RequestID, second.Rollout.RequestID)
+	require.Equal(t, "running", second.Rollout.State)
+	var old osqueryversions.Rollout
+	require.NoError(t, f.db.Where("request_id = ?", first.Rollout.RequestID).First(&old).Error)
+	require.Equal(t, osqueryversions.RolloutAborted, old.State)
+}
+
+func TestEnvOsqueryGetNullRolloutWhenNone(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	rr := oqCall(f.h, envGet, http.MethodGet, "alice", map[string]string{"env": f.envA.Name}, "")
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.Contains(t, rr.Body.String(), `"rollout":null`)
+}
+
+func startRollout(t *testing.T, f oqFixture) types.EnvOsqueryResponse {
+	t.Helper()
+	f.put(t, "5.13.0")
+	rr := oqCall(f.h, envPut, http.MethodPut, "alice", map[string]string{"env": f.envA.Name}, `{"version":"5.13.0"}`)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	return decodeEnvOsquery(t, rr)
+}
+
+func TestRolloutResumeOnlyWhenPaused(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	vals := map[string]string{"env": f.envA.Name}
+	require.Equal(t, http.StatusConflict, oqCall(f.h, rolloutResume, http.MethodPost, "alice", vals, "").Code, "no rollout")
+	st := startRollout(t, f)
+	require.Equal(t, http.StatusConflict, oqCall(f.h, rolloutResume, http.MethodPost, "alice", vals, "").Code, "running")
+	ok, err := f.mgr.PauseRollout(f.envA.ID, st.Rollout.RequestID, "web-1", "version_not_reported", time.Now(), time.Now())
+	require.NoError(t, err)
+	require.True(t, ok)
+	rr := oqCall(f.h, rolloutResume, http.MethodPost, "alice", vals, "")
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	out := decodeEnvOsquery(t, rr)
+	require.Equal(t, "running", out.Rollout.State)
+	require.Nil(t, out.Rollout.Paused)
+	lines := auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID)
+	require.Len(t, lines, 2)
+	require.Contains(t, lines[1], "resumed")
+	// aborted and completed answer 409 too
+	require.Equal(t, http.StatusOK, oqCall(f.h, rolloutAbort, http.MethodPost, "alice", vals, "").Code)
+	require.Equal(t, http.StatusConflict, oqCall(f.h, rolloutResume, http.MethodPost, "alice", vals, "").Code, "aborted")
+	startRollout(t, f)
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ? AND state = ?", f.envA.ID, "running").
+		Update("stage_opened_at", time.Now().Add(-7*time.Hour)).Error)
+	require.Equal(t, http.StatusConflict, oqCall(f.h, rolloutResume, http.MethodPost, "alice", vals, "").Code, "completed")
+}
+
+func TestRolloutAbortFromRunningAndPaused(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	vals := map[string]string{"env": f.envA.Name}
+	require.Equal(t, http.StatusConflict, oqCall(f.h, rolloutAbort, http.MethodPost, "alice", vals, "").Code, "none")
+	startRollout(t, f)
+	_, err := f.mgr.SetPin("NODE-A", f.envA.ID, "5.13.0", nil, "alice")
+	require.NoError(t, err)
+	rr := oqCall(f.h, rolloutAbort, http.MethodPost, "alice", vals, "")
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	out := decodeEnvOsquery(t, rr)
+	require.Nil(t, out.Target)
+	require.Equal(t, "aborted", out.Rollout.State)
+	pin, err := f.mgr.GetPin("NODE-A")
+	require.NoError(t, err)
+	require.NotNil(t, pin, "pins are kept")
+	require.Equal(t, http.StatusConflict, oqCall(f.h, rolloutAbort, http.MethodPost, "alice", vals, "").Code, "already aborted")
+
+	st := startRollout(t, f)
+	ok, err := f.mgr.PauseRollout(f.envA.ID, st.Rollout.RequestID, "web-1", "version_not_reported", time.Now(), time.Now())
+	require.NoError(t, err)
+	require.True(t, ok)
+	out = decodeEnvOsquery(t, oqCall(f.h, rolloutAbort, http.MethodPost, "alice", vals, ""))
+	require.Equal(t, "aborted", out.Rollout.State)
+	lines := auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID)
+	require.Contains(t, lines[len(lines)-1], "aborted")
+}
+
+func TestRolloutEndpointsRequireEnvAdminOfThatEnvironment(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	st := startRollout(t, f)
+	ok, err := f.mgr.PauseRollout(f.envA.ID, st.Rollout.RequestID, "web-1", "version_not_reported", time.Now(), time.Now())
+	require.NoError(t, err)
+	require.True(t, ok)
+	before := len(auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID))
+	vals := map[string]string{"env": f.envA.Name}
+	for _, user := range []string{"bob"} {
+		for _, hf := range []func(*HandlersApi) http.HandlerFunc{rolloutResume, rolloutAbort} {
+			require.Equal(t, http.StatusForbidden, oqCall(f.h, hf, http.MethodPost, user, vals, "").Code)
+		}
+	}
+	// alice administers env a only
+	for _, hf := range []func(*HandlersApi) http.HandlerFunc{rolloutResume, rolloutAbort} {
+		require.Equal(t, http.StatusForbidden, oqCall(f.h, hf, http.MethodPost, "alice", map[string]string{"env": f.envB.Name}, "").Code)
+	}
+	require.Len(t, auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID), before+2, "denials audited")
+	require.Len(t, auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envB.ID), 2)
+	r, err := f.mgr.GetRollout(f.envA.ID)
+	require.NoError(t, err)
+	require.Equal(t, osqueryversions.RolloutPaused, r.State)
+	tgt, err := f.mgr.GetEnvTarget(f.envA.ID)
+	require.NoError(t, err)
+	require.NotNil(t, tgt)
+}
+
+func TestRolloutPausedViewShowsFirstRollback(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	st := startRollout(t, f)
+	ok, err := f.mgr.PauseRollout(f.envA.ID, st.Rollout.RequestID, "web-1", "version_not_reported", time.Now(), time.Now())
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NoError(t, f.db.Exec("UPDATE osquery_nodes SET hostname = 'web-1' WHERE uuid = 'NODE-A'").Error)
+	now := time.Now()
+	require.NoError(t, f.db.Create(&nodeconfig.OsctrldStatus{NodeUUID: "NODE-A", EnvironmentID: f.envA.ID,
+		UpgradeResult: "rejected", UpgradeReason: "version_not_reported", UpgradeRequestID: st.Rollout.RequestID, UpgradeReportedAt: &now}).Error)
+	rr := oqCall(f.h, envGet, http.MethodGet, "alice", map[string]string{"env": f.envA.Name}, "")
+	out := decodeEnvOsquery(t, rr)
+	require.Equal(t, "paused", out.Rollout.State)
+	require.NotNil(t, out.Rollout.Paused)
+	require.Equal(t, "web-1", out.Rollout.Paused.Host)
+	require.Equal(t, "version_not_reported", out.Rollout.Paused.Reason)
+	require.Nil(t, out.Rollout.NextStageAt)
+	require.Len(t, out.Rollout.RolledBackHosts, 1)
+	require.Equal(t, 1, out.Rollout.Counts.RolledBack)
+	require.Equal(t, "web-1", out.Rollout.RolledBackHosts[0].Host)
+}
+
+func TestEnvTargetDeleteAbortsRollout(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	startRollout(t, f)
+	rr := oqCall(f.h, envDel, http.MethodDelete, "alice", map[string]string{"env": f.envA.Name}, "")
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	out := decodeEnvOsquery(t, rr)
+	require.Nil(t, out.Target)
+	require.Equal(t, "aborted", out.Rollout.State)
+}
+
+func TestRolloutAbortOnCompletedIs409AndKeepsTarget(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	startRollout(t, f)
+	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).
+		Update("stage_opened_at", time.Now().Add(-7*time.Hour)).Error)
+	before := len(auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID))
+	rr := oqCall(f.h, rolloutAbort, http.MethodPost, "alice", map[string]string{"env": f.envA.Name}, "")
+	require.Equal(t, http.StatusConflict, rr.Code)
+	tgt, err := f.mgr.GetEnvTarget(f.envA.ID)
+	require.NoError(t, err)
+	require.NotNil(t, tgt)
+	require.Len(t, auditLines(t, f.db, auditlog.LogTypeEnvironment, f.envA.ID), before)
+}
+
+func TestRolloutNoRolloutIs409NoRollout(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	for _, hf := range []func(*HandlersApi) http.HandlerFunc{rolloutResume, rolloutAbort} {
+		rr := oqCall(f.h, hf, http.MethodPost, "alice", map[string]string{"env": f.envA.Name}, "")
+		require.Equal(t, http.StatusConflict, rr.Code)
+		require.Contains(t, rr.Body.String(), "no rollout")
+	}
+}
+
+func TestEnvTargetPutWithZeroNodes(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	require.NoError(t, f.db.Where("environment_id = ?", f.envA.ID).Delete(&nodes.OsqueryNode{}).Error)
+	f.put(t, "5.13.0")
+	rr := oqCall(f.h, envPut, http.MethodPut, "alice", map[string]string{"env": f.envA.Name}, `{"version":"5.13.0"}`)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	out := decodeEnvOsquery(t, rr)
+	require.Equal(t, "running", out.Rollout.State)
+	require.Equal(t, 1, out.Rollout.Stage)
+	require.Equal(t, types.EnvOsqueryRolloutCounts{}, out.Rollout.Counts)
+}
+
+func TestRolloutViewOfAbortedRolloutSkipsHostScan(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	vals := map[string]string{"env": f.envA.Name}
+	startRollout(t, f)
+	require.Equal(t, http.StatusOK, oqCall(f.h, rolloutAbort, http.MethodPost, "alice", vals, "").Code)
+	// Progress reads this table: dropping it proves the aborted view does not.
+	require.NoError(t, f.db.Migrator().DropTable("node_osctrld_status"))
+	rr := oqCall(f.h, envGet, http.MethodGet, "alice", vals, "")
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	out := decodeEnvOsquery(t, rr)
+	require.Equal(t, "aborted", out.Rollout.State)
+	require.Equal(t, types.EnvOsqueryRolloutCounts{}, out.Rollout.Counts)
+	require.Contains(t, rr.Body.String(), `"rolled_back_hosts":[]`)
+}

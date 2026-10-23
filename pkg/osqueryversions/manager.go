@@ -31,7 +31,7 @@ type Manager struct {
 
 // NewManager migrates the library tables and returns a manager.
 func NewManager(db *gorm.DB) (*Manager, error) {
-	if err := db.AutoMigrate(&DigestEntry{}, &EnvTarget{}, &NodePin{}); err != nil {
+	if err := db.AutoMigrate(&DigestEntry{}, &EnvTarget{}, &NodePin{}, &Rollout{}); err != nil {
 		return nil, fmt.Errorf("migrating osquery versions: %w", err)
 	}
 	return &Manager{db: db}, nil
@@ -207,7 +207,9 @@ func (m *Manager) checkLibraryVersion(version string) error {
 	return nil
 }
 
-// SetEnvTarget sets the environment's target to a library version with a new request id.
+// SetEnvTarget sets the environment's target to a library version with a new
+// request id. It does NOT start or replace a rollout: API code must use
+// SetEnvTargetRollout.
 func (m *Manager) SetEnvTarget(envID uint, version, by string) (*EnvTarget, error) {
 	if err := m.checkLibraryVersion(version); err != nil {
 		return nil, err
@@ -218,21 +220,26 @@ func (m *Manager) SetEnvTarget(envID uint, version, by string) (*EnvTarget, erro
 	}
 	var t EnvTarget
 	err = m.db.Transaction(func(tx *gorm.DB) error {
-		e := tx.Unscoped().Where("environment_id = ?", envID).Limit(1).Find(&t).Error
-		if e == nil && t.ID == 0 {
-			t = EnvTarget{EnvironmentID: envID, Version: version, RequestID: id, UpdatedBy: by}
-			return tx.Create(&t).Error
-		}
-		if e != nil {
-			return e
-		}
-		t.Version, t.RequestID, t.UpdatedBy = version, id, by
-		return tx.Unscoped().Save(&t).Error
+		return upsertEnvTarget(tx, &t, envID, version, id, by)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &t, nil
+}
+
+// upsertEnvTarget writes the environment's target row into t.
+func upsertEnvTarget(tx *gorm.DB, t *EnvTarget, envID uint, version, id, by string) error {
+	e := tx.Unscoped().Where("environment_id = ?", envID).Limit(1).Find(t).Error
+	if e == nil && t.ID == 0 {
+		*t = EnvTarget{EnvironmentID: envID, Version: version, RequestID: id, UpdatedBy: by}
+		return tx.Create(t).Error
+	}
+	if e != nil {
+		return e
+	}
+	t.Version, t.RequestID, t.UpdatedBy = version, id, by
+	return tx.Unscoped().Save(t).Error
 }
 
 // GetEnvTarget returns the environment's target, or nil when none is set.
@@ -246,8 +253,16 @@ func (m *Manager) GetEnvTarget(envID uint) (*EnvTarget, error) {
 
 // ClearEnvTarget removes the environment's target and reports whether one was set.
 func (m *Manager) ClearEnvTarget(envID uint) (bool, error) {
-	res := m.db.Unscoped().Where("environment_id = ?", envID).Delete(&EnvTarget{})
-	return res.RowsAffected > 0, res.Error
+	var cleared bool
+	err := m.db.Transaction(func(tx *gorm.DB) error {
+		if err := abortActive(tx, envID, "target cleared", time.Now()); err != nil {
+			return err
+		}
+		res := tx.Unscoped().Where("environment_id = ?", envID).Delete(&EnvTarget{})
+		cleared = res.RowsAffected > 0
+		return res.Error
+	})
+	return cleared, err
 }
 
 // SetPin pins a node to a library version. expiresAt, when set, must be in the

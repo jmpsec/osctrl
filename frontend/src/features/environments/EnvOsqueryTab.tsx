@@ -4,6 +4,7 @@ import { clearEnvOsquery, getEnvOsquery, setEnvOsquery } from '$/api/osqueryVers
 import type { EnvOsquery } from '$/api/types';
 import { buttonClasses } from '$/components/atoms/Button';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { RolloutPanel } from './RolloutPanel';
 import { plainBtn, warnBtn } from '$/features/nodes/overrideShared';
 
 const fmt = (iso: string) => {
@@ -88,6 +89,7 @@ export function EnvOsqueryTab({ env }: { env: string }) {
           <span className="text-[color:var(--text-2)]">No target version is set.</span>
         )}
       </div>
+      {data.rollout && <RolloutPanel env={env} rollout={data.rollout} />}
       {actionError && (
         <p role="alert" className="text-xs text-[color:var(--danger)]">
           {actionError}
@@ -126,7 +128,7 @@ export function EnvOsqueryTab({ env }: { env: string }) {
         >
           <div className="space-y-4">
             <p className="text-sm text-[color:var(--text-1)]">
-              {`This rolls ${hostsText} out to osquery ${pick}. osctrld upgrades each host on its next sync (up to an hour), verifies it, and rolls back automatically on failure.`}
+              {`This rolls ${hostsText} out to osquery ${pick}. The rollout starts at the first stage (1%) and widens in steps. osctrld upgrades each host on its next sync (up to an hour), verifies it, and rolls back automatically on failure.`}
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <button type="button" onClick={() => setConfirmOpen(false)} disabled={set.isPending} className={plainBtn}>

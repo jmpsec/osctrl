@@ -1,12 +1,16 @@
 package osqueryversions
 
 import (
+	"errors"
 	"regexp"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 var now = time.Now()
@@ -381,4 +385,126 @@ func TestSameExpiryTolerance(t *testing.T) {
 	} {
 		assert.Equal(t, c.want, sameExpiry(c.a, c.b), name)
 	}
+}
+
+// rolloutHosts returns the 10 rollout hosts sorted by bucket for the 5.14.0 target.
+func rolloutHosts() []string {
+	us := uuids(10)
+	sort.Slice(us, func(i, j int) bool { return Bucket(1, "5.14.0", us[i]) < Bucket(1, "5.14.0", us[j]) })
+	return us
+}
+
+func rolloutIn(uuid, installed string) ResolveInput {
+	in := linuxIn(installed)
+	in.NodeUUID = uuid
+	return in
+}
+
+// resolveManager has 5.13.0 and 5.14.0 digests and a running rollout to 5.14.0 started at t0.
+func resolveManager(t *testing.T) (*Manager, *Rollout) {
+	m := rolloutManager(t)
+	return m, startRollout(t, m, "5.14.0", t0)
+}
+
+func TestResolveRolloutPendingForIneligibleHost(t *testing.T) {
+	m, r := resolveManager(t)
+	hs := rolloutHosts()
+	got, err := m.Resolve(rolloutIn(hs[9], "5.13.0"), t0)
+	require.NoError(t, err)
+	assert.Equal(t, Resolution{Reason: ReasonRolloutPending, Source: "environment", RequestID: r.RequestID}, got)
+}
+
+func TestResolveRolloutEligibleHostUpgrades(t *testing.T) {
+	m, _ := resolveManager(t)
+	got, err := m.Resolve(rolloutIn(rolloutHosts()[0], "5.13.0"), t0)
+	require.NoError(t, err)
+	assert.Empty(t, got.Reason)
+	assert.Equal(t, "5.14.0", got.Target.Version)
+	assert.Equal(t, "5.13.0", got.Previous.Version)
+}
+
+func TestResolveRolloutOpensLaterStages(t *testing.T) {
+	m, _ := resolveManager(t)
+	h := rolloutHosts()[2]
+	got, err := m.Resolve(rolloutIn(h, "5.13.0"), t0.Add(RolloutStageWait-time.Minute))
+	require.NoError(t, err)
+	assert.Equal(t, ReasonRolloutPending, got.Reason)
+	got, err = m.Resolve(rolloutIn(h, "5.13.0"), t0.Add(2*RolloutStageWait))
+	require.NoError(t, err)
+	assert.Empty(t, got.Reason)
+}
+
+func TestResolveRolloutPausedBlocksNotUpgradedHosts(t *testing.T) {
+	m, r := resolveManager(t)
+	ok, err := m.PauseRollout(1, r.RequestID, "h", "why", t0, t0)
+	require.NoError(t, err)
+	require.True(t, ok)
+	hs := rolloutHosts()
+	for _, h := range []string{hs[0], hs[9]} {
+		got, err := m.Resolve(rolloutIn(h, "5.13.0"), t0)
+		require.NoError(t, err)
+		assert.Equal(t, ReasonRolloutPaused, got.Reason)
+		assert.Equal(t, "environment", got.Source)
+		assert.Equal(t, r.RequestID, got.RequestID)
+		assert.Nil(t, got.Target)
+		assert.Nil(t, got.Previous)
+	}
+}
+
+func TestResolveRolloutAheadOfTargetStillFirst(t *testing.T) {
+	m, r := resolveManager(t)
+	ok, err := m.PauseRollout(1, r.RequestID, "h", "why", t0, t0)
+	require.NoError(t, err)
+	require.True(t, ok)
+	got, err := m.Resolve(rolloutIn(rolloutHosts()[9], "5.14.0"), t0)
+	require.NoError(t, err)
+	assert.Equal(t, ReasonAheadOfTarget, got.Reason)
+}
+
+func TestResolvePinBypassesRollout(t *testing.T) {
+	m, _ := resolveManager(t)
+	exp := time.Now().Add(time.Hour)
+	_, err := m.SetPin("UUID-X", 1, "5.14.0", &exp, "admin")
+	require.NoError(t, err)
+	got, err := m.Resolve(rolloutIn("UUID-X", "5.13.0"), time.Now())
+	require.NoError(t, err)
+	assert.Empty(t, got.Reason)
+	assert.Equal(t, "pin", got.Source)
+}
+
+func TestResolveRolloutCompletedOrNoRolloutIsNotGated(t *testing.T) {
+	m, _ := resolveManager(t)
+	h := rolloutHosts()[9]
+	got, err := m.Resolve(rolloutIn(h, "5.13.0"), t0.Add(3*RolloutStageWait))
+	require.NoError(t, err)
+	assert.Empty(t, got.Reason)
+
+	m2 := newTestManager(t)
+	seed(t, m2, "5.13.0", deb(digestA))
+	seed(t, m2, "5.14.0", deb(digestB))
+	_, err = m2.SetEnvTarget(1, "5.14.0", "admin")
+	require.NoError(t, err)
+	got, err = m2.Resolve(rolloutIn(h, "5.13.0"), t0)
+	require.NoError(t, err)
+	assert.Empty(t, got.Reason)
+}
+
+func TestResolveRolloutRowOfOtherRequestIDIgnored(t *testing.T) {
+	m, _ := resolveManager(t)
+	_, err := m.SetEnvTarget(1, "5.14.0", "admin") // new request id, no rollout row for it
+	require.NoError(t, err)
+	got, err := m.Resolve(rolloutIn(rolloutHosts()[9], "5.13.0"), t0)
+	require.NoError(t, err)
+	assert.Empty(t, got.Reason)
+}
+
+func TestResolveRolloutDoesNotScanHosts(t *testing.T) {
+	m, _ := resolveManager(t)
+	require.NoError(t, m.db.Callback().Query().Before("gorm:query").Register("deny_nodes", func(tx *gorm.DB) {
+		if tx.Statement.Table == "osquery_nodes" || strings.Contains(tx.Statement.SQL.String(), "osquery_nodes") {
+			_ = tx.AddError(errors.New("nodes table queried"))
+		}
+	}))
+	_, err := m.Resolve(rolloutIn(rolloutHosts()[9], "5.13.0"), t0)
+	require.NoError(t, err)
 }

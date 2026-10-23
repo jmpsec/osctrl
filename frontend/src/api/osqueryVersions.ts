@@ -42,6 +42,16 @@ export function clearEnvOsquery(env: string): Promise<EnvOsquery> {
   return apiFetch<EnvOsquery>(envPath(env), { method: 'DELETE' });
 }
 
+/** 409 when the rollout is not paused. */
+export function resumeEnvRollout(env: string): Promise<EnvOsquery> {
+  return apiFetch<EnvOsquery>(`${envPath(env)}/rollout/resume`, { method: 'POST' });
+}
+
+/** 409 when the rollout is already finished. */
+export function abortEnvRollout(env: string): Promise<EnvOsquery> {
+  return apiFetch<EnvOsquery>(`${envPath(env)}/rollout/abort`, { method: 'POST' });
+}
+
 export function getNodeOsquery(env: string, uuid: string): Promise<NodeOsquery> {
   return apiFetch<NodeOsquery>(nodePath(env, uuid));
 }

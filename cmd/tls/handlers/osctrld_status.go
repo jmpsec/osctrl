@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/nodeconfig"
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -61,6 +63,26 @@ func (h *HandlersTLS) StatusHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Msgf("node UUID: %s in %s environment: error recording osctrld report", node.UUID, env.Name)
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
+	}
+	// A rollback under the current rollout's request id pauses it, whether or
+	// not this report's event was new: a failed pause is repaired by the next
+	// report. The compare-and-set makes a pin's or an old target's id a no-op.
+	if u := t.Upgrade; h.OsqueryVersions != nil && u != nil && u.Result == "rejected" && u.RequestID != "" && nodeconfig.ValidUpgrade(*u) {
+		host := osqueryversions.HostName(node.Hostname, node.Localname, node.UUID)
+		// Server time of the first report of this rollback; a host clock is not trusted.
+		var paused bool
+		st, err := h.FlagsOverrides.Status(node.UUID)
+		if err == nil && st != nil && st.UpgradeEventID == u.EventID && st.UpgradeEventAt != nil {
+			paused, err = h.OsqueryVersions.PauseRollout(env.ID, u.RequestID, host, u.Reason, *st.UpgradeEventAt, time.Now())
+		}
+		if err != nil {
+			log.Err(err).Msgf("node UUID: %s in %s environment: error pausing osquery rollout", node.UUID, env.Name)
+			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+			return
+		}
+		if paused {
+			h.AuditLog.RolloutPaused(ip, env.Name, host, u.Version, u.Reason, env.ID)
+		}
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, struct{}{})
 }

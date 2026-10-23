@@ -842,6 +842,8 @@ export interface EnvOsquery {
   target: OsqueryTarget | null;
   counts: OsqueryVersionHostCount[];
   available: string[];
+  /** The environment's latest rollout, null when it never had one. */
+  rollout: EnvOsqueryRollout | null;
 }
 
 export interface OsqueryPin {
@@ -870,4 +872,33 @@ export interface NodeOsquery {
   available: string[];
   /** True when the node's stored platform is windows (osctrld does not upgrade it). */
   platform_unsupported: boolean;
+}
+
+/** Wire shape of EnvOsqueryRolloutCounts. */
+export interface EnvOsqueryRolloutCounts {
+  eligible: number;
+  upgraded: number;
+  waiting: number;
+  rolled_back: number;
+}
+
+/** Host and reason are host-reported and untrusted: render as plain text. */
+export interface RolledBackHost {
+  host: string;
+  reason: string;
+  at: string;
+}
+
+/** Wire shape of EnvOsqueryRollout. `stage` is 1-based; `stages` lists the percent of hosts per stage. */
+export interface EnvOsqueryRollout {
+  state: 'running' | 'paused' | 'completed' | 'aborted' | string;
+  request_id: string;
+  version: string;
+  stage: number;
+  stages: number[];
+  stage_opened_at: string;
+  next_stage_at: string | null;
+  counts: EnvOsqueryRolloutCounts;
+  paused: RolledBackHost | null;
+  rolled_back_hosts: RolledBackHost[] | null;
 }

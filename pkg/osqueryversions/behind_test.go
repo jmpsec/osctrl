@@ -15,16 +15,20 @@ type behindNode struct {
 	EnvironmentID  uint
 	OsqueryVersion string
 	Platform       string
+	Hostname       string
+	Localname      string
 	DeletedAt      *time.Time
 }
 
 func (behindNode) TableName() string { return "osquery_nodes" }
 
 type behindStatus struct {
-	ID            uint `gorm:"primaryKey"`
-	NodeUUID      string
-	EnvironmentID uint
-	ReportedAt    *time.Time
+	ID                                             uint `gorm:"primaryKey"`
+	NodeUUID                                       string
+	EnvironmentID                                  uint
+	ReportedAt                                     *time.Time
+	UpgradeResult, UpgradeReason, UpgradeRequestID string
+	UpgradeReportedAt                              *time.Time
 }
 
 func (behindStatus) TableName() string { return "node_osctrld_status" }

@@ -44,6 +44,8 @@ func osqueryError(w http.ResponseWriter, err error, notFound int) {
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 	case errors.Is(err, osqueryversions.ErrInUse):
 		apiErrorResponse(w, "version is used by an environment target or a node pin", http.StatusConflict, err)
+	case errors.Is(err, osqueryversions.ErrRolloutState):
+		apiErrorResponse(w, "rollout is not in a state that allows this", http.StatusConflict, err)
 	case errors.Is(err, osqueryversions.ErrNotFound):
 		apiErrorResponse(w, "version not found", notFound, err)
 	default:
@@ -242,6 +244,40 @@ func (h *HandlersApi) OsqueryVersionDeleteHandler(w http.ResponseWriter, r *http
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "osquery version removed"})
 }
 
+// rolloutView is the environment's latest rollout with its progress at now,
+// nil when it never had one.
+func (h *HandlersApi) rolloutView(envID uint, now time.Time) (*types.EnvOsqueryRollout, error) {
+	r, err := h.OsqueryVersions.GetRollout(envID)
+	if err != nil || r == nil {
+		return nil, err
+	}
+	// An aborted rollout is history: its counts are not shown, so skip the host scan.
+	p := osqueryversions.RolloutProgress{Rollout: *r, State: r.EffectiveState(now), Stage: r.EffectiveStage(now)}
+	if p.State != osqueryversions.RolloutAborted {
+		var err error
+		if p, err = h.OsqueryVersions.Progress(*r, now); err != nil {
+			return nil, err
+		}
+	}
+	stages := make([]int, len(osqueryversions.RolloutStages))
+	for i, s := range osqueryversions.RolloutStages {
+		stages[i] = int(s / 100)
+	}
+	out := &types.EnvOsqueryRollout{
+		State: p.State, RequestID: r.RequestID, Version: r.Version, Stage: p.Stage + 1, Stages: stages,
+		StageOpenedAt: r.StageOpenedAt, NextStageAt: p.NextStageAt,
+		Counts:          types.EnvOsqueryRolloutCounts{Eligible: p.Counts.Eligible, Upgraded: p.Counts.Upgraded, Waiting: p.Counts.Waiting, RolledBack: p.Counts.RolledBack},
+		RolledBackHosts: make([]types.EnvOsqueryRolledBackHost, 0, len(p.RolledBackHosts)),
+	}
+	if p.State == osqueryversions.RolloutPaused && r.PausedAt != nil {
+		out.Paused = &types.EnvOsqueryRolledBackHost{Host: r.PausedHost, Reason: r.PausedReason, At: *r.PausedAt}
+	}
+	for _, rb := range p.RolledBackHosts {
+		out.RolledBackHosts = append(out.RolledBackHosts, types.EnvOsqueryRolledBackHost{Host: rb.Host, Reason: rb.Reason, At: rb.At})
+	}
+	return out, nil
+}
+
 // serveEnvOsquery writes the environment's target and per-version host counts.
 func (h *HandlersApi) serveEnvOsquery(w http.ResponseWriter, envID uint) {
 	resp := types.EnvOsqueryResponse{Counts: []types.OsqueryVersionHostCount{}}
@@ -258,6 +294,10 @@ func (h *HandlersApi) serveEnvOsquery(w http.ResponseWriter, envID uint) {
 	if t != nil {
 		resp.Target = &types.OsqueryTargetView{Version: t.Version, RequestID: t.RequestID, UpdatedBy: t.UpdatedBy, UpdatedAt: t.UpdatedAt}
 	}
+	if resp.Rollout, err = h.rolloutView(envID, time.Now()); err != nil {
+		osqueryError(w, err, http.StatusInternalServerError)
+		return
+	}
 	counts, err := h.Nodes.GetOsqueryVersionCountsByEnv(envID)
 	if err != nil {
 		osqueryError(w, err, http.StatusInternalServerError)
@@ -271,7 +311,7 @@ func (h *HandlersApi) serveEnvOsquery(w http.ResponseWriter, envID uint) {
 
 // EnvOsqueryGetHandler - GET Handler for an environment's osquery target
 // @Summary Get environment osquery target
-// @Description Returns the osquery version the environment is rolled out to and the number of its hosts per installed version, plus the names (no digests) of the library versions it can be set to. The installed versions are reported by the hosts and are untrusted. Environment admins.
+// @Description Returns the osquery version the environment is rolled out to and the number of its hosts per installed version, plus the names (no digests) of the library versions it can be set to, and the latest staged rollout (null when none). The installed versions, and the host names and reasons in the rollout's paused and rolled_back_hosts fields, are reported by the hosts and are untrusted. Environment admins.
 // @Tags environments
 // @Produce json
 // @Param env path string true "Environment name or UUID"
@@ -292,7 +332,7 @@ func (h *HandlersApi) EnvOsqueryGetHandler(w http.ResponseWriter, r *http.Reques
 
 // EnvOsqueryPutHandler - PUT Handler to set an environment's osquery target
 // @Summary Set environment osquery target
-// @Description Rolls the environment out to a version of the library. Hosts at or above it are left alone; osctrld upgrades the others when osqueryd is running. Setting the same version again retries hosts that rejected it. Unknown body fields are refused, and so is expires_at: environment targets do not expire (use a node pin for a temporary override). Environment admins.
+// @Description Rolls the environment out to a version of the library in stages of 1%, 10%, 50% and 100% of its hosts, two hours apart; the first stage opens now. Any active rollout is replaced. Hosts at or above the version are left alone; osctrld upgrades the others when osqueryd is running. Setting the same version again starts a new rollout and retries hosts that rejected it. The rollout pauses on a rollback and needs Resume. Unknown body fields are refused, and so is expires_at: environment targets do not expire (use a node pin for a temporary override). Environment admins.
 // @Tags environments
 // @Accept json
 // @Produce json
@@ -320,11 +360,16 @@ func (h *HandlersApi) EnvOsqueryPutHandler(w http.ResponseWriter, r *http.Reques
 		apiErrorResponse(w, "environment targets do not expire; use a node pin for a temporary override", http.StatusBadRequest, nil)
 		return
 	}
-	if _, err := h.OsqueryVersions.SetEnvTarget(env.ID, req.Version, ctx[ctxUser]); err != nil {
+	uuids, err := h.Nodes.UUIDsByEnv(env.ID)
+	if err != nil {
+		osqueryError(w, err, http.StatusInternalServerError)
+		return
+	}
+	if _, _, err := h.OsqueryVersions.SetEnvTargetRollout(env.ID, req.Version, ctx[ctxUser], uuids, time.Now()); err != nil {
 		osqueryError(w, err, http.StatusBadRequest)
 		return
 	}
-	h.AuditLog.EnvAction(ctx[ctxUser], fmt.Sprintf("set osquery target of environment %s to %s", env.Name, req.Version), utils.GetIP(r), env.ID)
+	h.AuditLog.EnvAction(ctx[ctxUser], fmt.Sprintf("set osquery target of environment %s to %s; rollout starts at stage 1", env.Name, req.Version), utils.GetIP(r), env.ID)
 	h.serveEnvOsquery(w, env.ID)
 }
 
@@ -354,6 +399,68 @@ func (h *HandlersApi) EnvOsqueryDeleteHandler(w http.ResponseWriter, r *http.Req
 	if cleared {
 		h.AuditLog.EnvAction(ctx[ctxUser], "cleared osquery target of environment "+env.Name, utils.GetIP(r), env.ID)
 	}
+	h.serveEnvOsquery(w, env.ID)
+}
+
+// EnvOsqueryRolloutResumeHandler - POST Handler to resume a paused rollout
+// @Summary Resume environment osquery rollout
+// @Description Resumes a paused rollout at the stage it paused in and restarts that stage's wait. Answers 409 unless the rollout is paused. The host names and reasons in the response are reported by hosts and are untrusted. Environment admins.
+// @Tags environments
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {object} types.EnvOsqueryResponse
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "Rollout is not paused"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/osquery/{env}/rollout/resume [post]
+func (h *HandlersApi) EnvOsqueryRolloutResumeHandler(w http.ResponseWriter, r *http.Request) {
+	env, ctx, ok := h.inactivityEnvironment(w, r, users.AdminLevel)
+	if !ok {
+		return
+	}
+	if _, err := h.OsqueryVersions.ResumeRollout(env.ID, ctx[ctxUser], time.Now()); err != nil {
+		if errors.Is(err, osqueryversions.ErrNotFound) {
+			apiErrorResponse(w, "no rollout", http.StatusConflict, err)
+			return
+		}
+		osqueryError(w, err, http.StatusInternalServerError)
+		return
+	}
+	h.AuditLog.EnvAction(ctx[ctxUser], "resumed osquery rollout of environment "+env.Name, utils.GetIP(r), env.ID)
+	h.serveEnvOsquery(w, env.ID)
+}
+
+// EnvOsqueryRolloutAbortHandler - POST Handler to abort a rollout
+// @Summary Abort environment osquery rollout
+// @Description Aborts a running or paused rollout and clears the environment target; hosts keep the version they have and node pins are kept. Answers 409 when there is no active rollout. The host names and reasons in the response are reported by hosts and are untrusted. Environment admins.
+// @Tags environments
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {object} types.EnvOsqueryResponse
+// @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
+// @Failure 403 {object} types.ApiErrorResponse "Forbidden"
+// @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 409 {object} types.ApiErrorResponse "No running or paused rollout"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
+// @Security ApiKeyAuth
+// @Router /api/v1/environments/osquery/{env}/rollout/abort [post]
+func (h *HandlersApi) EnvOsqueryRolloutAbortHandler(w http.ResponseWriter, r *http.Request) {
+	env, ctx, ok := h.inactivityEnvironment(w, r, users.AdminLevel)
+	if !ok {
+		return
+	}
+	if _, err := h.OsqueryVersions.AbortRollout(env.ID, ctx[ctxUser], time.Now()); err != nil {
+		if errors.Is(err, osqueryversions.ErrNotFound) {
+			apiErrorResponse(w, "no rollout", http.StatusConflict, err)
+			return
+		}
+		osqueryError(w, err, http.StatusInternalServerError)
+		return
+	}
+	h.AuditLog.EnvAction(ctx[ctxUser], "aborted osquery rollout of environment "+env.Name+" and cleared its target", utils.GetIP(r), env.ID)
 	h.serveEnvOsquery(w, env.ID)
 }
 
