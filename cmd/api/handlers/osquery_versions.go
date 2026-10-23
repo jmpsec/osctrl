@@ -254,15 +254,18 @@ func (h *HandlersApi) rolloutView(envID uint, now time.Time) (*types.EnvOsqueryR
 	// An aborted rollout is history: its counts are not shown, so skip the host scan.
 	p := osqueryversions.RolloutProgress{Rollout: *r, State: r.EffectiveState(now), Stage: r.EffectiveStage(now)}
 	if p.State != osqueryversions.RolloutAborted {
-		var err error
-		if p, err = h.OsqueryVersions.Progress(*r, now); err != nil {
-			return nil, err
+		key := rolloutProgressKey{rolloutID: r.ID, state: p.State, stage: p.Stage}
+		if cached, ok := h.rolloutCache.get(envID, key); ok {
+			p = cached
+		} else {
+			var err error
+			if p, err = h.OsqueryVersions.Progress(*r, now); err != nil {
+				return nil, err
+			}
+			h.rolloutCache.put(envID, key, p)
 		}
 	}
-	stages := make([]int, len(osqueryversions.RolloutStages))
-	for i, s := range osqueryversions.RolloutStages {
-		stages[i] = int(s / 100)
-	}
+	stages := rolloutStagePercents()
 	out := &types.EnvOsqueryRollout{
 		State: p.State, RequestID: r.RequestID, Version: r.Version, Stage: p.Stage + 1, Stages: stages,
 		StageOpenedAt: r.StageOpenedAt, NextStageAt: p.NextStageAt,
@@ -274,6 +277,39 @@ func (h *HandlersApi) rolloutView(envID uint, now time.Time) (*types.EnvOsqueryR
 	}
 	for _, rb := range p.RolledBackHosts {
 		out.RolledBackHosts = append(out.RolledBackHosts, types.EnvOsqueryRolledBackHost{Host: rb.Host, Reason: rb.Reason, At: rb.At})
+	}
+	return out, nil
+}
+
+// rolloutStagePercents lists the share of hosts per stage, in percent.
+func rolloutStagePercents() []int {
+	stages := make([]int, len(osqueryversions.RolloutStages))
+	for i, s := range osqueryversions.RolloutStages {
+		stages[i] = int(s / 100)
+	}
+	return stages
+}
+
+// nodeRollout is where the node stands in the rollout its environment target
+// belongs to, nil when there is none, it is over, or the stage is unknown. The
+// bucket is computed as osqueryversions.Resolve does.
+func (h *HandlersApi) nodeRollout(envID uint, uuid string, t *osqueryversions.EnvTarget, now time.Time) (*types.NodeOsqueryRollout, error) {
+	r, err := h.OsqueryVersions.GetRollout(envID)
+	if err != nil || r == nil || r.RequestID != t.RequestID {
+		return nil, err
+	}
+	state := r.EffectiveState(now)
+	if state != osqueryversions.RolloutRunning && state != osqueryversions.RolloutPaused {
+		return nil, nil
+	}
+	stage := r.NodeStage(osqueryversions.Bucket(envID, t.Version, uuid))
+	if stage < 0 {
+		return nil, nil
+	}
+	out := &types.NodeOsqueryRollout{State: state, Stage: stage + 1, Stages: rolloutStagePercents()}
+	if state == osqueryversions.RolloutRunning && stage > r.EffectiveStage(now) {
+		at := r.StageOpenedAt.Add(time.Duration(stage-r.Stage) * osqueryversions.RolloutStageWait)
+		out.EligibleAt = &at
 	}
 	return out, nil
 }
@@ -369,6 +405,7 @@ func (h *HandlersApi) EnvOsqueryPutHandler(w http.ResponseWriter, r *http.Reques
 		osqueryError(w, err, http.StatusBadRequest)
 		return
 	}
+	h.rolloutCache.invalidate(env.ID)
 	h.AuditLog.EnvAction(ctx[ctxUser], fmt.Sprintf("set osquery target of environment %s to %s; rollout starts at stage 1", env.Name, req.Version), utils.GetIP(r), env.ID)
 	h.serveEnvOsquery(w, env.ID)
 }
@@ -396,6 +433,7 @@ func (h *HandlersApi) EnvOsqueryDeleteHandler(w http.ResponseWriter, r *http.Req
 		osqueryError(w, err, http.StatusInternalServerError)
 		return
 	}
+	h.rolloutCache.invalidate(env.ID)
 	if cleared {
 		h.AuditLog.EnvAction(ctx[ctxUser], "cleared osquery target of environment "+env.Name, utils.GetIP(r), env.ID)
 	}
@@ -429,6 +467,7 @@ func (h *HandlersApi) EnvOsqueryRolloutResumeHandler(w http.ResponseWriter, r *h
 		osqueryError(w, err, http.StatusInternalServerError)
 		return
 	}
+	h.rolloutCache.invalidate(env.ID)
 	h.AuditLog.EnvAction(ctx[ctxUser], "resumed osquery rollout of environment "+env.Name, utils.GetIP(r), env.ID)
 	h.serveEnvOsquery(w, env.ID)
 }
@@ -460,12 +499,14 @@ func (h *HandlersApi) EnvOsqueryRolloutAbortHandler(w http.ResponseWriter, r *ht
 		osqueryError(w, err, http.StatusInternalServerError)
 		return
 	}
+	h.rolloutCache.invalidate(env.ID)
 	h.AuditLog.EnvAction(ctx[ctxUser], "aborted osquery rollout of environment "+env.Name+" and cleared its target", utils.GetIP(r), env.ID)
 	h.serveEnvOsquery(w, env.ID)
 }
 
 // serveNodeOsquery writes the node's pin, effective target, installed version,
-// whether its platform is unsupported (windows) and the last stored upgrade
+// whether its platform is unsupported (windows), its place in the environment
+// rollout (only when the target comes from it) and the last stored upgrade
 // report. A pin or report recorded for another
 // environment is not applied by osctrl-tls and is treated as absent.
 func (h *HandlersApi) serveNodeOsquery(w http.ResponseWriter, env environments.TLSEnvironment, node nodes.OsqueryNode) {
@@ -498,6 +539,12 @@ func (h *HandlersApi) serveNodeOsquery(w http.ResponseWriter, env environments.T
 		}
 		if t != nil {
 			resp.Target = &types.OsqueryEffectiveTarget{Version: t.Version, Source: "environment"}
+			if !resp.PlatformUnsupported {
+				if resp.Rollout, err = h.nodeRollout(env.ID, uuid, t, time.Now()); err != nil {
+					osqueryError(w, err, http.StatusInternalServerError)
+					return
+				}
+			}
 		}
 	}
 	if h.FlagsOverrides != nil {
@@ -518,7 +565,7 @@ func (h *HandlersApi) serveNodeOsquery(w http.ResponseWriter, env environments.T
 
 // NodeOsqueryGetHandler - GET Handler for a node's osquery upgrade state
 // @Summary Get node osquery upgrade state
-// @Description Returns the node's pin, the version it is rolled out to (the unexpired pin, else the environment target), the osquery version it reports as installed, whether its platform is unsupported by osctrld upgrades (windows), the names (no digests) of the library versions it can be pinned to and the last upgrade report of its osctrld. The installed version and the upgrade result, version, reason and request_id are reported by the host and are untrusted; reported_at is the server's receive time. Environment admins.
+// @Description Returns the node's pin, the version it is rolled out to (the unexpired pin, else the environment target), the osquery version it reports as installed, whether its platform is unsupported by osctrld upgrades (windows), its stage in the environment rollout (rollout, null unless the environment target is a running or paused rollout; eligible_at is when that stage opens and is null when paused or already open), the names (no digests) of the library versions it can be pinned to and the last upgrade report of its osctrld. The installed version and the upgrade result, version, reason and request_id are reported by the host and are untrusted; reported_at is the server's receive time. Environment admins.
 // @Tags nodes
 // @Produce json
 // @Param env path string true "Environment name or UUID"

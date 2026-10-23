@@ -1233,4 +1233,17 @@ type NodeOsqueryResponse struct {
 	// PlatformUnsupported is true when the node's stored platform is windows,
 	// which osctrld does not upgrade.
 	PlatformUnsupported bool `json:"platform_unsupported"`
+	// Rollout is set only while the environment's staged rollout (running or
+	// paused) is what the node's target comes from; null otherwise.
+	Rollout *NodeOsqueryRollout `json:"rollout"`
+}
+
+// NodeOsqueryRollout tells where a node stands in the environment rollout.
+// Stage is the 1-based stage the host joins, Stages the percent per stage.
+// EligibleAt is when that stage opens, null when paused or already open.
+type NodeOsqueryRollout struct {
+	State      string     `json:"state"`
+	Stage      int        `json:"stage"`
+	Stages     []int      `json:"stages"`
+	EligibleAt *time.Time `json:"eligible_at"`
 }

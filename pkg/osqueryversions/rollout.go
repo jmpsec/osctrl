@@ -118,6 +118,21 @@ func (r Rollout) Eligible(bucket uint32, now time.Time) bool {
 	return bucket < th[st]
 }
 
+// NodeStage is the 0-based stage that first includes a host with this bucket,
+// or -1 when the thresholds are invalid.
+func (r Rollout) NodeStage(bucket uint32) int {
+	var th [4]uint32
+	if err := json.Unmarshal([]byte(r.Thresholds), &th); err != nil {
+		return -1
+	}
+	for i, t := range th {
+		if bucket < t {
+			return i
+		}
+	}
+	return -1
+}
+
 // NextStageAt is when the next stage opens, or nil unless running and not at the last stage.
 func (r Rollout) NextStageAt(now time.Time) *time.Time {
 	if r.EffectiveState(now) != RolloutRunning {

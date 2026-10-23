@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeOsqueryView } from './NodeOsqueryView';
 import type { NodeOsquery } from '$/api/types';
 
@@ -16,6 +16,7 @@ function make(o: Partial<NodeOsquery> = {}): NodeOsquery {
     upgrade: null,
     available: ['5.12.1', '5.13.0', '5.14.0'],
     platform_unsupported: false,
+    rollout: null,
     ...o,
   };
 }
@@ -161,5 +162,56 @@ describe('NodeOsqueryView', () => {
     api.getNodeOsquery.mockResolvedValue(make({ upgrade: upgrade({ result: 'skipped', reason }) }));
     renderView();
     expect(await screen.findByTestId('upgrade')).toHaveTextContent(text);
+  });
+
+  describe('rollout wording', () => {
+    const NOW = new Date('2026-10-23T12:00:00Z');
+    beforeEach(() => vi.useFakeTimers({ toFake: ['Date'], now: NOW }));
+    afterEach(() => vi.useRealTimers());
+
+    const rollout = (o: Partial<NonNullable<NodeOsquery['rollout']>> = {}): NodeOsquery['rollout'] => ({
+      state: 'running',
+      stage: 3,
+      stages: [1, 10, 50, 100],
+      eligible_at: '2026-10-23T13:20:00Z',
+      ...o,
+    });
+    const show = async (reason: string, r: NodeOsquery['rollout']) => {
+      api.getNodeOsquery.mockResolvedValue(make({ rollout: r, upgrade: upgrade({ result: 'skipped', reason }) }));
+      renderView();
+      return screen.findByTestId('upgrade');
+    };
+
+    it('says which stage the host is in and when it opens', async () => {
+      expect(await show('rollout_pending', rollout())).toHaveTextContent(
+        'Not in the rollout yet: this host is in the 50% stage, which opens in about 1 h 20 min.',
+      );
+    });
+
+    it('says shortly when the opening time has passed or is under a minute away', async () => {
+      expect(await show('rollout_pending', rollout({ eligible_at: '2026-10-23T11:00:00Z' }))).toHaveTextContent(
+        'Not in the rollout yet: this host is in the 50% stage, which opens shortly.',
+      );
+    });
+
+    it('does not claim the host is blocked once its stage has opened', async () => {
+      const el = await show('rollout_pending', rollout({ eligible_at: null }));
+      expect(el).toHaveTextContent("The rollout has reached this host's stage (50%); it will upgrade at its next sync.");
+      expect(el).not.toHaveTextContent('Not in the rollout yet');
+    });
+
+    it('mentions the stage when paused', async () => {
+      expect(await show('rollout_paused', rollout({ state: 'paused', eligible_at: null }))).toHaveTextContent(
+        'The rollout of this version is paused, so this host is not upgrading. It is in the 50% stage.',
+      );
+    });
+
+    it('keeps the generic sentence without rollout info', async () => {
+      expect(await show('rollout_pending', null)).toHaveTextContent(/not in the current rollout stage yet/);
+    });
+
+    it('keeps the generic sentence for an unknown stage', async () => {
+      expect(await show('rollout_pending', rollout({ stage: 9 }))).toHaveTextContent(/not in the current rollout stage yet/);
+    });
   });
 });

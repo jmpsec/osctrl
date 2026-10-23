@@ -6979,11 +6979,14 @@ paths:
       description: Returns the node's pin, the version it is rolled out to (the
         unexpired pin, else the environment target), the osquery version it
         reports as installed, whether its platform is unsupported by osctrld
-        upgrades (windows), the names (no digests) of the library versions it
-        can be pinned to and the last upgrade report of its osctrld. The
-        installed version and the upgrade result, version, reason and request_id
-        are reported by the host and are untrusted; reported_at is the server's
-        receive time. Environment admins.
+        upgrades (windows), its stage in the environment rollout (rollout, null
+        unless the environment target is a running or paused rollout;
+        eligible_at is when that stage opens and is null when paused or already
+        open), the names (no digests) of the library versions it can be pinned
+        to and the last upgrade report of its osctrld. The installed version and
+        the upgrade result, version, reason and request_id are reported by the
+        host and are untrusted; reported_at is the server's receive time.
+        Environment admins.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -13652,10 +13655,31 @@ components:
 
             which osctrld does not upgrade.
           type: boolean
+        rollout:
+          allOf:
+            - $ref: "#/components/schemas/types.NodeOsqueryRollout"
+          description: >-
+            Rollout is set only while the environment's staged rollout (running
+            or
+
+            paused) is what the node's target comes from; null otherwise.
         target:
           $ref: "#/components/schemas/types.OsqueryEffectiveTarget"
         upgrade:
           $ref: "#/components/schemas/types.OsqueryUpgradeView"
+      type: object
+    types.NodeOsqueryRollout:
+      properties:
+        eligible_at:
+          type: string
+        stage:
+          type: integer
+        stages:
+          items:
+            type: integer
+          type: array
+        state:
+          type: string
       type: object
     types.NodePostureSummary:
       properties:
