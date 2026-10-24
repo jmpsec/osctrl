@@ -149,7 +149,7 @@ func TestOsqueryHandlerNeverAnswers404(t *testing.T) {
 		"unknown":     osqBody(s, "CCCCCCCC-CCCC-4CCC-8CCC-CCCCCCCCCCCC", "linux", "amd64", "deb", ""),
 		"bad secret":  osqBody("x", nfNodeA, "linux", "amd64", "deb", ""),
 		"bad platf":   osqBody(s, nfNodeA, "!", "amd64", "deb", ""),
-		"unsupported": osqBody(s, nfNodeA, "windows", "amd64", "msi", ""),
+		"unsupported": osqBody(s, nfNodeA, "freebsd", "amd64", "deb", ""),
 	} {
 		code := f.post(body).Code
 		require.NotEqual(t, http.StatusNotFound, code, name)

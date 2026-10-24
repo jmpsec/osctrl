@@ -389,7 +389,7 @@ func (n *NodeManager) GetOsqueryVersionCountsByEnv(envID uint) ([]OsqueryVersion
 func (n *NodeManager) CountWindowsByEnv(envID uint) (int64, error) {
 	var count int64
 	err := n.DB.Model(&OsqueryNode{}).
-		Where("environment_id = ? AND LOWER(COALESCE(platform, '')) = 'windows'", envID).
+		Where("environment_id = ? AND LOWER(COALESCE(platform, '')) IN ?", envID, WindowsPlatforms()).
 		Count(&count).Error
 	return count, err
 }

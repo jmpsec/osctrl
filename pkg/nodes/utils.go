@@ -175,6 +175,11 @@ var platformsByBucket = map[string][]string{
 	"windows": {"windows", "win", "win32", "win64"},
 }
 
+// WindowsPlatforms returns the platform column values bucketed as Windows.
+func WindowsPlatforms() []string {
+	return platformsByBucket["windows"]
+}
+
 // applyPlatformBucket narrows a node query to one of the four buckets.
 // Empty / unknown bucket → no filter (passthrough).
 // "other" is the negation of (linux ∪ darwin ∪ windows): every platform that

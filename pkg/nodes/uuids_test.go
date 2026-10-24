@@ -28,3 +28,24 @@ func TestUUIDsByEnvIncludesWindowsExcludesUnsupported(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"A1", "A2", "WIN"}, got)
 }
+
+func TestCountWindowsByEnvMatchesAllWindowsPlatformNames(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&OsqueryNode{}))
+	for _, n := range []OsqueryNode{
+		{UUID: "W1", EnvironmentID: 1, Platform: "win32"},
+		{UUID: "W2", EnvironmentID: 1, Platform: "Win64"},
+		{UUID: "W3", EnvironmentID: 1, Platform: "windows"},
+		{UUID: "U1", EnvironmentID: 1, Platform: "ubuntu"},
+		{UUID: "D1", EnvironmentID: 1, Platform: "darwin"},
+		{UUID: "O1", EnvironmentID: 2, Platform: "windows"},
+		{UUID: "GONE", EnvironmentID: 1, Platform: "windows"},
+	} {
+		require.NoError(t, db.Create(&n).Error)
+	}
+	require.NoError(t, db.Where("uuid = ?", "GONE").Delete(&OsqueryNode{}).Error)
+	got, err := (&NodeManager{DB: db}).CountWindowsByEnv(1)
+	require.NoError(t, err)
+	require.EqualValues(t, 3, got)
+}

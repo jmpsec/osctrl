@@ -89,7 +89,7 @@ describe('NodeOsqueryView', () => {
     ).toBeInTheDocument();
   });
 
-  it('says upgrades are unsupported on a Windows host without a report', async () => {
+  it('says upgrades are unsupported on a non-Windows host the API flags, without a report', async () => {
     api.getNodeOsquery.mockResolvedValue(make({ platform_unsupported: true }));
     renderView();
     expect(await screen.findByText('Upgrades are not supported on this platform yet.')).toBeInTheDocument();
@@ -225,6 +225,11 @@ describe('NodeOsqueryView', () => {
     expect(screen.getByTestId('installed')).toHaveTextContent('5.12.1');
     expect(screen.getByTestId('upgrade')).toHaveTextContent('rejected');
     expect(screen.queryByText('Upgrades are not supported on this platform yet.')).not.toBeInTheDocument();
+  });
+
+  it('shows the warning for a win32 host', async () => {
+    renderView('win32');
+    expect(await screen.findByText(WINDOWS_UPGRADE_WARNING)).toBeInTheDocument();
   });
 
   it('shows no Windows warning on other hosts', async () => {
