@@ -1664,7 +1664,7 @@ func initializeLoggers(cfg config.YAMLConfigurationService) {
 }
 
 // @title osctrl API
-// @version 0.6.0
+// @version 0.6.1
 // @description API service for osctrl, a fast and efficient osquery management solution.
 // @termsOfService https://github.com/jmpsec/osctrl
 // @contact.name osctrl
