@@ -5,8 +5,8 @@ import "time"
 // CountBehind returns, per environment id, the nodes with an osctrld report
 // newer than fresh whose stored osquery version is lower than their effective
 // target: an unexpired pin of the same environment, else the environment's
-// target. Nodes without a target, with an unparseable version or on Windows
-// (not upgraded by osctrld) are not counted.
+// target. Nodes without a target, with an unparseable version or on an
+// unsupported platform (see NodePlatformSupported) are not counted.
 // The table names are those of the nodes and osctrld status models, which this
 // package must not import.
 func (m *Manager) CountBehind(now time.Time, fresh time.Duration) (map[uint]int, error) {
@@ -20,8 +20,7 @@ func (m *Manager) CountBehind(now time.Time, fresh time.Duration) (map[uint]int,
 		// The environment is part of the join: re-enrolling into another
 		// environment leaves the old node row with the same UUID behind.
 		Joins("JOIN osquery_nodes AS n ON n.uuid = s.node_uuid AND n.environment_id = s.environment_id").
-		// osctrld does not upgrade Windows hosts, so they are never behind.
-		Where("s.reported_at >= ? AND n.deleted_at IS NULL AND n.osquery_version <> '' AND LOWER(COALESCE(n.platform, '')) <> 'windows'", now.Add(-fresh)).
+		Where("s.reported_at >= ? AND n.deleted_at IS NULL AND n.osquery_version <> '' AND "+SupportedNodePlatformSQL("n.platform"), now.Add(-fresh)).
 		Scan(&nodes).Error
 	if err != nil {
 		return nil, err

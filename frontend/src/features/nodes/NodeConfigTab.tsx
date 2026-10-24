@@ -271,7 +271,7 @@ const KINDS: { id: Kind; label: string }[] = [
 ];
 
 /** Per-node overrides: osquery configuration (JSON), startup flags (flagfile) or extensions. */
-export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {
+export function NodeConfigTab({ env, uuid, hostname, platform }: { env: string; uuid: string; hostname: string; platform?: string }) {
   const [picked, setKind] = useState<Kind>('configuration');
   const { enabled: osctrldEnabled } = useOsctrldEnabled();
   // Flags, extensions and osquery version are all applied by osctrld; without
@@ -299,7 +299,7 @@ export function NodeConfigTab({ env, uuid, hostname }: { env: string; uuid: stri
       ) : kind === 'extensions' ? (
         <NodeExtensionsView env={env} uuid={uuid} hostname={hostname} />
       ) : (
-        <NodeOsqueryView env={env} uuid={uuid} hostname={hostname} />
+        <NodeOsqueryView env={env} uuid={uuid} hostname={hostname} platform={platform} />
       )}
     </div>
   );

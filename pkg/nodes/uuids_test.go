@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestUUIDsByEnv(t *testing.T) {
+func TestUUIDsByEnvIncludesWindowsExcludesUnsupported(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(&OsqueryNode{}))
@@ -16,6 +16,8 @@ func TestUUIDsByEnv(t *testing.T) {
 		{UUID: "A1", EnvironmentID: 1, Platform: "ubuntu"},
 		{UUID: "A2", EnvironmentID: 1, Platform: ""},
 		{UUID: "WIN", EnvironmentID: 1, Platform: "Windows"},
+		{UUID: "BSD", EnvironmentID: 1, Platform: "freebsd"},
+		{UUID: "B2", EnvironmentID: 2, Platform: "windows"},
 		{UUID: "GONE", EnvironmentID: 1, Platform: "darwin"},
 		{UUID: "B1", EnvironmentID: 2, Platform: "ubuntu"},
 	} {
@@ -24,5 +26,5 @@ func TestUUIDsByEnv(t *testing.T) {
 	require.NoError(t, db.Where("uuid = ?", "GONE").Delete(&OsqueryNode{}).Error)
 	got, err := (&NodeManager{DB: db}).UUIDsByEnv(1)
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"A1", "A2"}, got)
+	require.ElementsMatch(t, []string{"A1", "A2", "WIN"}, got)
 }

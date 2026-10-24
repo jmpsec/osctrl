@@ -5,6 +5,7 @@ import type { EnvOsquery } from '$/api/types';
 import { buttonClasses } from '$/components/atoms/Button';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { RolloutPanel } from './RolloutPanel';
+import { WINDOWS_UPGRADE_WARNING } from '$/features/nodes/windowsWarning';
 import { plainBtn, warnBtn } from '$/features/nodes/overrideShared';
 
 const fmt = (iso: string) => {
@@ -128,8 +129,9 @@ export function EnvOsqueryTab({ env }: { env: string }) {
         >
           <div className="space-y-4">
             <p className="text-sm text-[color:var(--text-1)]">
-              {`This rolls ${hostsText} out to osquery ${pick}. The rollout starts at the first stage (1%) and widens in steps. osctrld upgrades each host on its next sync (up to an hour), verifies it, and rolls back automatically on failure.`}
+              {`This rolls ${hostsText} out to osquery ${pick}. The rollout starts at the first stage (1%) and widens in steps. osctrld upgrades each host on its next sync (up to an hour), verifies it${data.windows_hosts > 0 ? ', and rolls back other hosts automatically on failure (not Windows hosts).' : ', and rolls back automatically on failure.'}`}
             </p>
+            {data.windows_hosts > 0 && <p className="text-xs text-[color:var(--warning)]">{WINDOWS_UPGRADE_WARNING}</p>}
             <div className="flex items-center justify-end gap-2 pt-2">
               <button type="button" onClick={() => setConfirmOpen(false)} disabled={set.isPending} className={plainBtn}>
                 Cancel

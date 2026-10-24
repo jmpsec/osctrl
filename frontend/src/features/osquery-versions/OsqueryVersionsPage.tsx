@@ -11,6 +11,7 @@ import type { OsqueryEntryRequest } from '$/api/types';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { buttonClasses } from '$/components/atoms/Button';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { WINDOWS_UPGRADE_WARNING } from '$/features/nodes/windowsWarning';
 import { EmptyState } from '$/components/data/EmptyState';
 
 const IN_USE_TIP = 'Assigned to an environment or host';
@@ -23,6 +24,7 @@ const PACKAGES: ReadonlyArray<{ platform: string; arch: string; format: string }
   { platform: 'linux', arch: 'amd64', format: 'rpm' },
   { platform: 'linux', arch: 'arm64', format: 'rpm' },
   { platform: 'darwin', arch: 'universal', format: 'pkg' },
+  { platform: 'windows', arch: 'amd64', format: 'msi' },
 ];
 const pkgLabel = (p: { platform: string; arch: string; format: string }) => `${p.platform} / ${p.format} / ${p.arch}`;
 
@@ -126,6 +128,9 @@ export function OsqueryVersionsPage() {
                   ))}
                 </tbody>
               </table>
+              {v.entries.some((e) => e.platform === 'windows') && (
+                <p className="px-3 py-2 text-xs text-[color:var(--warning)]">{WINDOWS_UPGRADE_WARNING}</p>
+              )}
             </section>
           ))
         )}
@@ -238,6 +243,9 @@ function AddVersionDialog({ onClose, onSaved }: { onClose: () => void; onSaved: 
             </button>
           </div>
         ))}
+        {rows.some((r) => PACKAGES[r.pkg].platform === 'windows') && (
+          <p className="text-xs text-[color:var(--warning)]">{WINDOWS_UPGRADE_WARNING}</p>
+        )}
         <button type="button" className={buttonClasses({ variant: 'ghost', size: 'sm' })} onClick={() => setRows([...rows, { pkg: 0, sha: '' }])}>
           <Plus size={13} /> Add package
         </button>

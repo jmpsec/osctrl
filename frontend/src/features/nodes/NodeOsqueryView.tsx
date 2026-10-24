@@ -6,6 +6,7 @@ import { buttonClasses } from '$/components/atoms/Button';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { plainBtn, warnBtn } from './overrideShared';
 import { REASONS, reasonText } from './osqueryReasons';
+import { WINDOWS_UPGRADE_WARNING, isWindows } from './windowsWarning';
 
 const fmt = (iso: string | null | undefined) => {
   if (!iso) return '—';
@@ -14,7 +15,8 @@ const fmt = (iso: string | null | undefined) => {
 };
 
 /** Per-node osquery version: effective target, last upgrade report, and a pin (confirm-to-unlock). */
-export function NodeOsqueryView({ env, uuid, hostname }: { env: string; uuid: string; hostname: string }) {
+export function NodeOsqueryView({ env, uuid, hostname, platform }: { env: string; uuid: string; hostname: string; platform?: string }) {
+  const windows = isWindows(platform);
   const qc = useQueryClient();
   const queryKey = ['node-osquery', env, uuid];
   const { data, isLoading, error } = useQuery({
@@ -117,6 +119,8 @@ export function NodeOsqueryView({ env, uuid, hostname }: { env: string; uuid: st
       {!up && data.platform_unsupported && (
         <p className="text-sm text-[color:var(--text-2)]">{REASONS.unsupported_platform(data)}</p>
       )}
+
+      {windows && <p className="text-xs text-[color:var(--warning)]">{WINDOWS_UPGRADE_WARNING}</p>}
 
       <p className="text-xs text-[color:var(--text-3)]">
         A pin overrides the environment&apos;s target for this host only. osctrld applies it on its next sync (up to an hour).
@@ -232,9 +236,9 @@ export function NodeOsqueryView({ env, uuid, hostname }: { env: string; uuid: st
         >
           <div className="space-y-4">
             <p className="text-sm text-[color:var(--text-1)]">
-              osctrld upgrades this host to that version on its next sync (up to an hour), verifies it, and rolls back automatically
-              if osquery does not come up and report the new version.
+              {`osctrld upgrades this host to that version on its next sync (up to an hour) and verifies it${windows ? '.' : ', and rolls back automatically if osquery does not come up and report the new version.'}`}
             </p>
+            {windows && <p className="text-xs text-[color:var(--warning)]">{WINDOWS_UPGRADE_WARNING}</p>}
             <div className="flex items-center justify-end gap-2 pt-2">
               <button type="button" onClick={() => setConfirmOpen(false)} disabled={pin.isPending} className={plainBtn}>
                 Cancel

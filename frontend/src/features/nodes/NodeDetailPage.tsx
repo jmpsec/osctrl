@@ -1511,7 +1511,7 @@ export function NodeDetailPage() {
           <NodeVulnerabilitiesTab env={env} uuid={uuid} />
         )}
         {activeTab === 'configuration' && canAdminNode && node && (
-          <NodeConfigTab env={env} uuid={uuid} hostname={node.hostname} />
+          <NodeConfigTab env={env} uuid={uuid} hostname={node.hostname} platform={node.platform} />
         )}
         {activeTab === 'file-explorer' && fileExplorerEnabled && (
           <NodeFileExplorerTab env={env} uuid={uuid} />

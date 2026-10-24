@@ -6979,14 +6979,14 @@ paths:
       description: Returns the node's pin, the version it is rolled out to (the
         unexpired pin, else the environment target), the osquery version it
         reports as installed, whether its platform is unsupported by osctrld
-        upgrades (windows), its stage in the environment rollout (rollout, null
-        unless the environment target is a running or paused rollout;
-        eligible_at is when that stage opens and is null when paused or already
-        open), the names (no digests) of the library versions it can be pinned
-        to and the last upgrade report of its osctrld. The installed version and
-        the upgrade result, version, reason and request_id are reported by the
-        host and are untrusted; reported_at is the server's receive time.
-        Environment admins.
+        upgrades (no package, e.g. freebsd), its stage in the environment
+        rollout (rollout, null unless the environment target is a running or
+        paused rollout; eligible_at is when that stage opens and is null when
+        paused or already open), the names (no digests) of the library versions
+        it can be pinned to and the last upgrade report of its osctrld. The
+        installed version and the upgrade result, version, reason and request_id
+        are reported by the host and are untrusted; reported_at is the server's
+        receive time. Environment admins.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -7570,10 +7570,10 @@ paths:
         - osquery
     put:
       description: Adds or replaces the package SHA-256 digests of a version (linux
-        deb/rpm amd64/arm64, darwin pkg universal), each combination at most
-        once. Unknown body fields are refused. Windows is not supported.
-        Changing a digest of a version used by a target or pin is refused with
-        409. Super admins only.
+        deb/rpm amd64/arm64, darwin pkg universal, windows msi amd64), each
+        combination at most once. Unknown body fields are refused. Changing a
+        digest of a version used by a target or pin is refused with 409. Super
+        admins only.
       parameters:
         - description: Osquery version, for example 5.13.0
           in: path
@@ -13223,6 +13223,13 @@ components:
             one.
         target:
           $ref: "#/components/schemas/types.OsqueryTargetView"
+        windows_hosts:
+          description: >-
+            WindowsHosts is the number of Windows hosts in the environment;
+            Windows
+
+            upgrades cannot be rolled back automatically.
+          type: integer
       type: object
     types.EnvOsqueryRolledBackHost:
       properties:
@@ -13649,11 +13656,10 @@ components:
         pin:
           $ref: "#/components/schemas/types.OsqueryPinView"
         platform_unsupported:
-          description: >-
-            PlatformUnsupported is true when the node's stored platform is
-            windows,
-
-            which osctrld does not upgrade.
+          description: |-
+            PlatformUnsupported is true when the node's stored platform has no
+            osquery package (for example freebsd), so osctrld cannot upgrade it.
+            Windows is supported.
           type: boolean
         rollout:
           allOf:

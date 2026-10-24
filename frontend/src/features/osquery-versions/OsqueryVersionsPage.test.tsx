@@ -10,6 +10,7 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router';
+import { WINDOWS_UPGRADE_WARNING } from '$/features/nodes/windowsWarning';
 import { OsqueryVersionsPage } from './OsqueryVersionsPage';
 import type { OsqueryVersion } from '$/api/types';
 
@@ -108,5 +109,41 @@ describe('OsqueryVersionsPage', () => {
         { platform: 'darwin', arch: 'universal', format: 'pkg', sha256: HEX },
       ]),
     );
+  });
+
+  it('offers a Windows amd64 msi package (no arm64) and warns next to them', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Add version' }));
+    expect(screen.queryByText(WINDOWS_UPGRADE_WARNING)).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'windows / msi / arm64' })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Package 1'), 'windows / msi / amd64');
+    expect(screen.getByText(WINDOWS_UPGRADE_WARNING)).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Version'), '5.14.0');
+    await user.type(screen.getByLabelText('SHA-256 1'), HEX);
+    await user.click(screen.getByRole('button', { name: 'Save version' }));
+    await waitFor(() =>
+      expect(api.putOsqueryVersion).toHaveBeenCalledWith('5.14.0', [{ platform: 'windows', arch: 'amd64', format: 'msi', sha256: HEX }]),
+    );
+  });
+
+  it('shows no Windows warning for a listed version with only linux and darwin entries', async () => {
+    api.listOsqueryVersions.mockResolvedValue([
+      ver({ entries: [
+        { platform: 'linux', arch: 'amd64', format: 'deb', sha256: HEX, created_by: 'root', created_at: '2026-10-01T10:00:00Z' },
+        { platform: 'darwin', arch: 'universal', format: 'pkg', sha256: HEX, created_by: 'root', created_at: '2026-10-01T10:00:00Z' },
+      ] }),
+    ]);
+    renderPage();
+    await screen.findByText('5.13.0');
+    expect(screen.queryByText(WINDOWS_UPGRADE_WARNING)).not.toBeInTheDocument();
+  });
+
+  it('warns on a listed version with a Windows entry', async () => {
+    api.listOsqueryVersions.mockResolvedValue([
+      ver({ entries: [{ platform: 'windows', arch: 'amd64', format: 'msi', sha256: HEX, created_by: 'root', created_at: '2026-10-01T10:00:00Z' }] }),
+    ]);
+    renderPage();
+    expect(await screen.findByText(WINDOWS_UPGRADE_WARNING)).toBeInTheDocument();
   });
 });

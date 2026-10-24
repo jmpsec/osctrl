@@ -1,6 +1,8 @@
 package osqueryversions
 
-import "time"
+import (
+	"time"
+)
 
 // Reasons Resolve gives for not upgrading; "" means upgrade.
 const (
@@ -78,6 +80,10 @@ func (m *Manager) Resolve(in ResolveInput, now time.Time) (Resolution, error) {
 	}
 	if target == nil {
 		return Resolution{Reason: ReasonNoDigestForTarget, Source: res.Source, RequestID: res.RequestID}, nil
+	}
+	if in.Platform == "windows" {
+		res.Target = target
+		return res, nil
 	}
 	var prev *Ref
 	if installedOK {

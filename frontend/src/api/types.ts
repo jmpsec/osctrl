@@ -844,6 +844,8 @@ export interface EnvOsquery {
   available: string[];
   /** The environment's latest rollout, null when it never had one. */
   rollout: EnvOsqueryRollout | null;
+  /** Windows hosts in the environment; their upgrades cannot be rolled back automatically. */
+  windows_hosts: number;
 }
 
 export interface OsqueryPin {
@@ -870,7 +872,7 @@ export interface NodeOsquery {
   installed_version: string;
   upgrade: OsqueryUpgrade | null;
   available: string[];
-  /** True when the node's stored platform is windows (osctrld does not upgrade it). */
+  /** True when the node's stored platform has no osquery package (e.g. freebsd). */
   platform_unsupported: boolean;
   /** Set only while the environment target is a running or paused rollout. */
   rollout: NodeOsqueryRollout | null;

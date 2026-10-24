@@ -317,3 +317,8 @@ func TestValidUpgradeAcceptsRolloutReasons(t *testing.T) {
 		assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "rejected", Version: "5.13.0", Reason: reason, EventID: evID(3, "c")}), reason)
 	}
 }
+
+func TestValidUpgradeAcceptsRollbackUnavailable(t *testing.T) {
+	assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "rejected", Version: "5.13.0", Reason: "rollback_unavailable", RequestID: strings.Repeat("a", 32), EventID: evID(3, "c")}))
+	assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "skipped", Reason: "rollback_unavailable"}))
+}

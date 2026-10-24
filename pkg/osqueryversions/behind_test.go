@@ -109,14 +109,15 @@ func TestCountBehindJoinsOnEnvironment(t *testing.T) {
 	require.Equal(t, map[uint]int{2: 1}, got)
 }
 
-// osctrld does not upgrade Windows hosts, so they are never counted behind.
-func TestCountBehindExcludesWindows(t *testing.T) {
+// Windows hosts are upgraded like any other, so they count as behind. Empty
+// and distro platforms keep counting; only unsupported ones (freebsd) do not.
+func TestCountBehindIncludesWindows(t *testing.T) {
 	m := behindFixture(t) // env 1 target 5.13.0
-	for _, n := range []struct{ uuid, platform string }{{"w1", "windows"}, {"w2", "Windows"}, {"l", "ubuntu"}} {
+	for _, n := range []struct{ uuid, platform string }{{"w1", "windows"}, {"w2", "Windows"}, {"l", "ubuntu"}, {"e", ""}, {"f", "freebsd"}} {
 		require.NoError(t, m.db.Create(&behindNode{UUID: n.uuid, EnvironmentID: 1, OsqueryVersion: "5.12.1", Platform: n.platform}).Error)
 		require.NoError(t, m.db.Create(&behindStatus{NodeUUID: n.uuid, EnvironmentID: 1, ReportedAt: &now}).Error)
 	}
 	got, err := m.CountBehind(now, fresh)
 	require.NoError(t, err)
-	require.Equal(t, map[uint]int{1: 1}, got)
+	require.Equal(t, map[uint]int{1: 4}, got)
 }

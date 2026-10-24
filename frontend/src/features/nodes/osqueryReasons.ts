@@ -48,6 +48,7 @@ export const REASONS: Record<string, (d?: NodeOsquery) => string> = {
   install_failed: () => 'The package install failed.',
   config_changed: () => "The install changed osquery's configuration files; the host was rolled back.",
   rolled_back: () => 'The host was rolled back to its previous version.',
+  rollback_unavailable: () => 'The upgrade failed and the previous version could not be restored. The host needs manual attention.',
   rollout_pending: rolloutPending,
   rollout_paused: (d) => {
     const stage = stageLabel(d);
