@@ -28,7 +28,7 @@ function makeStatus(overrides: Partial<HealthStatus> = {}): HealthStatus {
       { id: 'tls', name: 'osctrl-tls', status: 'stale', summary: 'last reported 4m0s ago' },
       { id: 'workers', name: 'Workers', status: 'degraded', summary: 'alerts worker dropped 12 hits' },
     ],
-    upgrade: { current: '0.5.8', suggested: '0.5.8', latest: '0.6.0', up_to_date: true, checked: true, skew: false },
+    upgrade: { current: '0.5.8', suggested: '0.5.8', latest: '0.6.1', up_to_date: true, checked: true, skew: false },
     ...overrides,
   };
 }
@@ -156,13 +156,13 @@ describe('HealthPage', () => {
 
   it('shows upgrade status and hides the skew row when versions agree', async () => {
     renderPage();
-    expect(await screen.findByText('0.6.0')).toBeInTheDocument();
+    expect(await screen.findByText('0.6.1')).toBeInTheDocument();
     expect(screen.queryByText(/version mismatch/i)).not.toBeInTheDocument();
   });
 
   it('calls out version skew between services', async () => {
     mockGetHealth.mockResolvedValue(makeStatus({
-      upgrade: { current: '0.5.8', suggested: '0.5.8', latest: '0.6.0', up_to_date: true, checked: true, skew: true, api_version: '0.5.8', tls_version: '0.5.7' },
+      upgrade: { current: '0.5.8', suggested: '0.5.8', latest: '0.6.1', up_to_date: true, checked: true, skew: true, api_version: '0.5.8', tls_version: '0.5.7' },
     }));
     renderPage();
     expect(await screen.findByText(/version mismatch/i)).toBeInTheDocument();
