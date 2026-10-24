@@ -105,7 +105,7 @@ type OsctrldOsqueryRef struct {
 }
 
 // OsctrldOsqueryResponse is the osquery version osctrld should run. An empty
-// Reason means upgrade; Target and Previous are set only then.
+// Reason means upgrade; Target is set only then; Previous too, except for Windows.
 type OsctrldOsqueryResponse struct {
 	Reason          string             `json:"reason"`
 	Source          string             `json:"source,omitempty"`
@@ -1157,6 +1157,9 @@ type EnvOsqueryResponse struct {
 	Available []string `json:"available"`
 	// Rollout is the environment's latest rollout, null when it never had one.
 	Rollout *EnvOsqueryRollout `json:"rollout"`
+	// WindowsHosts is the number of Windows hosts in the environment; Windows
+	// upgrades cannot be rolled back automatically.
+	WindowsHosts int `json:"windows_hosts"`
 }
 
 // EnvOsqueryRolloutCounts are the host counts of a rollout.
@@ -1230,8 +1233,9 @@ type NodeOsqueryResponse struct {
 	Upgrade          *OsqueryUpgradeView     `json:"upgrade"`
 	// Available lists the library version names (no digests), ascending.
 	Available []string `json:"available"`
-	// PlatformUnsupported is true when the node's stored platform is windows,
-	// which osctrld does not upgrade.
+	// PlatformUnsupported is true when the node's stored platform has no
+	// osquery package (for example freebsd), so osctrld cannot upgrade it.
+	// Windows is supported.
 	PlatformUnsupported bool `json:"platform_unsupported"`
 	// Rollout is set only while the environment's staged rollout (running or
 	// paused) is what the node's target comes from; null otherwise.

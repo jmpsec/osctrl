@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EnvOsqueryTab } from './EnvOsqueryTab';
+import { WINDOWS_UPGRADE_WARNING } from '$/features/nodes/windowsWarning';
 import type { EnvOsquery } from '$/api/types';
 
 const api = vi.hoisted(() => ({ getEnvOsquery: vi.fn(), setEnvOsquery: vi.fn(), clearEnvOsquery: vi.fn() }));
@@ -17,6 +18,7 @@ function make(o: Partial<EnvOsquery> = {}): EnvOsquery {
     ],
     available: ['5.12.1', '5.13.0', '5.14.0'],
     rollout: null,
+    windows_hosts: 0,
     ...o,
   };
 }
@@ -108,5 +110,24 @@ describe('EnvOsqueryTab', () => {
     renderTab();
     await screen.findByText(/Target version/);
     expect(screen.queryByRole('button', { name: 'Abort rollout' })).toBeNull();
+  });
+
+  it('warns in the Set target confirmation only when the environment has Windows hosts', async () => {
+    const user = userEvent.setup();
+    for (const [windows_hosts, shown] of [[0, false], [2, true]] as const) {
+      api.getEnvOsquery.mockResolvedValue(make({ windows_hosts }));
+      const { unmount } = renderTab();
+      await user.selectOptions(await screen.findByLabelText('Target version to set'), '5.14.0');
+      await user.click(screen.getByRole('button', { name: 'Set target' }));
+      const dialog = await screen.findByRole('dialog');
+      if (shown) {
+        expect(dialog).toHaveTextContent(WINDOWS_UPGRADE_WARNING);
+        expect(dialog).not.toHaveTextContent('rolls back automatically');
+      } else {
+        expect(dialog).not.toHaveTextContent(WINDOWS_UPGRADE_WARNING);
+        expect(dialog).toHaveTextContent('rolls back automatically');
+      }
+      unmount();
+    }
   });
 });

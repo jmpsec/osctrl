@@ -53,6 +53,9 @@ func part(p []string, i int) (int, error) {
 var supported = map[string]map[string][]string{
 	"linux":  {"deb": {"amd64", "arm64"}, "rpm": {"amd64", "arm64"}},
 	"darwin": {"pkg": {"universal"}},
+	// Windows hosts get the target only: no rollback digest is needed. amd64
+	// only: osctrld has no verified ARM64 MSI asset yet.
+	"windows": {"msi": {"amd64"}},
 }
 
 // ValidEntry checks that the platform, arch and format are a supported
@@ -73,4 +76,31 @@ func ValidEntry(platform, arch, format, sha256 string) error {
 		return fmt.Errorf("sha256 must be 64 lowercase hex characters")
 	}
 	return nil
+}
+
+// unsupportedNodePlatforms are stored node platforms (osquery's platform
+// column, which holds distro names such as ubuntu, so the library's
+// platform table does not apply to it) for which the library has no package: osctrld cannot
+// upgrade these hosts. ponytail: deny-list, extend when another is reported.
+var unsupportedNodePlatforms = []string{"freebsd"}
+
+// NodePlatformSupported is the one rule for whether a stored node platform is
+// part of upgrades, shared by thresholds, progress, the behind gauge and the
+// node API. Windows is supported; an empty or unknown platform keeps counting
+// (it is unsupported only if listed above), case-insensitive.
+func NodePlatformSupported(platform string) bool {
+	p := strings.ToLower(platform)
+	for _, u := range unsupportedNodePlatforms {
+		if p == u {
+			return false
+		}
+	}
+	return true
+}
+
+// SupportedNodePlatformSQL is NodePlatformSupported as a WHERE fragment on the
+// given platform column, for the raw queries of packages that cannot be
+// imported here.
+func SupportedNodePlatformSQL(column string) string {
+	return "LOWER(COALESCE(" + column + ", '')) NOT IN ('" + strings.Join(unsupportedNodePlatforms, "','") + "')"
 }

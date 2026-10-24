@@ -689,3 +689,22 @@ func TestStatusHandlerPauseFailureAfterResumeIsRepairedByRetry(t *testing.T) {
 	require.Equal(t, http.StatusOK, f.post(body).Code)
 	require.Equal(t, osqueryversions.RolloutPaused, f.rollout(t).State)
 }
+
+func TestStatusHandlerRollbackUnavailablePausesRollout(t *testing.T) {
+	f := newStatusFixture(t)
+	r := f.startRollout(t)
+	body := upgradeBody(f.env.Secret, nfNodeA, `{"result":"rejected","version":"5.13.0","reason":"rollback_unavailable","request_id":"`+r.RequestID+`","event_id":"`+statusEvent+`"}`)
+	require.Equal(t, http.StatusOK, f.post(body).Code)
+	got := f.rollout(t)
+	require.Equal(t, osqueryversions.RolloutPaused, got.State)
+	require.Equal(t, "rollback_unavailable", got.PausedReason)
+	require.Len(t, f.pausedAudits(t), 1)
+
+	time.Sleep(5 * time.Millisecond)
+	_, err := f.ov.ResumeRollout(f.env.ID, "op", time.Now())
+	require.NoError(t, err)
+	// The same report resent after Resume does not re-pause.
+	require.Equal(t, http.StatusOK, f.post(body).Code)
+	require.Equal(t, osqueryversions.RolloutRunning, f.rollout(t).State)
+	require.Len(t, f.pausedAudits(t), 1)
+}

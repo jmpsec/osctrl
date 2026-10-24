@@ -149,7 +149,7 @@ func (h *HandlersApi) OsqueryVersionsListHandler(w http.ResponseWriter, r *http.
 
 // OsqueryVersionPutHandler - PUT Handler to add or replace the digests of a version
 // @Summary Set osquery version digests
-// @Description Adds or replaces the package SHA-256 digests of a version (linux deb/rpm amd64/arm64, darwin pkg universal), each combination at most once. Unknown body fields are refused. Windows is not supported. Changing a digest of a version used by a target or pin is refused with 409. Super admins only.
+// @Description Adds or replaces the package SHA-256 digests of a version (linux deb/rpm amd64/arm64, darwin pkg universal, windows msi amd64), each combination at most once. Unknown body fields are refused. Changing a digest of a version used by a target or pin is refused with 409. Super admins only.
 // @Tags osquery
 // @Accept json
 // @Produce json
@@ -342,6 +342,12 @@ func (h *HandlersApi) serveEnvOsquery(w http.ResponseWriter, envID uint) {
 	for _, c := range counts {
 		resp.Counts = append(resp.Counts, types.OsqueryVersionHostCount{Version: c.Version, Count: c.Count})
 	}
+	win, err := h.Nodes.CountWindowsByEnv(envID)
+	if err != nil {
+		osqueryError(w, err, http.StatusInternalServerError)
+		return
+	}
+	resp.WindowsHosts = int(win)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
 
@@ -505,7 +511,7 @@ func (h *HandlersApi) EnvOsqueryRolloutAbortHandler(w http.ResponseWriter, r *ht
 }
 
 // serveNodeOsquery writes the node's pin, effective target, installed version,
-// whether its platform is unsupported (windows), its place in the environment
+// whether its platform is unsupported (no package, e.g. freebsd), its place in the environment
 // rollout (only when the target comes from it) and the last stored upgrade
 // report. A pin or report recorded for another
 // environment is not applied by osctrl-tls and is treated as absent.
@@ -513,7 +519,7 @@ func (h *HandlersApi) serveNodeOsquery(w http.ResponseWriter, env environments.T
 	uuid := node.UUID
 	resp := types.NodeOsqueryResponse{
 		InstalledVersion:    node.OsqueryVersion,
-		PlatformUnsupported: strings.EqualFold(node.Platform, "windows"),
+		PlatformUnsupported: !osqueryversions.NodePlatformSupported(node.Platform),
 	}
 	var err error
 	if resp.Available, err = h.OsqueryVersions.VersionNames(); err != nil {
@@ -565,7 +571,7 @@ func (h *HandlersApi) serveNodeOsquery(w http.ResponseWriter, env environments.T
 
 // NodeOsqueryGetHandler - GET Handler for a node's osquery upgrade state
 // @Summary Get node osquery upgrade state
-// @Description Returns the node's pin, the version it is rolled out to (the unexpired pin, else the environment target), the osquery version it reports as installed, whether its platform is unsupported by osctrld upgrades (windows), its stage in the environment rollout (rollout, null unless the environment target is a running or paused rollout; eligible_at is when that stage opens and is null when paused or already open), the names (no digests) of the library versions it can be pinned to and the last upgrade report of its osctrld. The installed version and the upgrade result, version, reason and request_id are reported by the host and are untrusted; reported_at is the server's receive time. Environment admins.
+// @Description Returns the node's pin, the version it is rolled out to (the unexpired pin, else the environment target), the osquery version it reports as installed, whether its platform is unsupported by osctrld upgrades (no package, e.g. freebsd), its stage in the environment rollout (rollout, null unless the environment target is a running or paused rollout; eligible_at is when that stage opens and is null when paused or already open), the names (no digests) of the library versions it can be pinned to and the last upgrade report of its osctrld. The installed version and the upgrade result, version, reason and request_id are reported by the host and are untrusted; reported_at is the server's receive time. Environment admins.
 // @Tags nodes
 // @Produce json
 // @Param env path string true "Environment name or UUID"

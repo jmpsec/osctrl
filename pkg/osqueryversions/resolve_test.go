@@ -118,7 +118,7 @@ func TestResolveNoDigestForInstalled(t *testing.T) {
 
 func TestResolveWindowsAndUnsupportedCombos(t *testing.T) {
 	m := libWithTarget(t)
-	for _, c := range [][3]string{{"windows", "amd64", "msi"}, {"linux", "386", "deb"}, {"freebsd", "amd64", "pkg"}} {
+	for _, c := range [][3]string{{"windows", "386", "msi"}, {"windows", "arm64", "msi"}, {"linux", "386", "deb"}, {"freebsd", "amd64", "deb"}} {
 		in := linuxIn("5.12.1")
 		in.Platform, in.Arch, in.Format = c[0], c[1], c[2]
 		r, err := m.Resolve(in, now)
@@ -507,4 +507,89 @@ func TestResolveRolloutDoesNotScanHosts(t *testing.T) {
 	}))
 	_, err := m.Resolve(rolloutIn(rolloutHosts()[9], "5.13.0"), t0)
 	require.NoError(t, err)
+}
+
+func winMSI(sha string) DigestEntry {
+	return DigestEntry{Platform: "windows", Arch: "amd64", Format: "msi", SHA256: sha}
+}
+
+func winIn(installed string) ResolveInput {
+	in := linuxIn(installed)
+	in.Platform, in.Format = "windows", "msi"
+	return in
+}
+
+// winLib has a windows digest for the 5.13.0 target only.
+func winLib(t *testing.T) *Manager {
+	m := newTestManager(t)
+	seed(t, m, "5.12.1", deb(digestA))
+	seed(t, m, "5.13.0", deb(digestB), winMSI(digestB))
+	_, err := m.SetEnvTarget(1, "5.13.0", "admin")
+	require.NoError(t, err)
+	return m
+}
+
+func TestResolveWindowsTargetOnly(t *testing.T) {
+	m := winLib(t)
+	r, err := m.Resolve(winIn("5.12.1"), now)
+	require.NoError(t, err)
+	assert.Empty(t, r.Reason)
+	assert.Equal(t, "environment", r.Source)
+	assert.Equal(t, &Ref{Version: "5.13.0", SHA256: digestB}, r.Target)
+	assert.Nil(t, r.Previous)
+	require.NoError(t, m.PutEntries("5.12.1", []DigestEntry{winMSI(digestA)}, "t"))
+	exp := now.Add(time.Hour)
+	_, err = m.SetPin("u1", 1, "5.13.0", &exp, "admin")
+	require.NoError(t, err)
+	r, err = m.Resolve(winIn("5.12.1"), now)
+	require.NoError(t, err)
+	assert.Equal(t, "pin", r.Source)
+	assert.Nil(t, r.Previous)
+}
+
+func TestResolveWindowsEmptyInstalledVersion(t *testing.T) {
+	m := winLib(t)
+	for _, v := range []string{"", "garbage"} {
+		r, err := m.Resolve(winIn(v), now)
+		require.NoError(t, err)
+		assert.Empty(t, r.Reason, v)
+		assert.NotNil(t, r.Target)
+		assert.Nil(t, r.Previous)
+	}
+}
+
+func TestResolveWindowsNoDigestForTarget(t *testing.T) {
+	m := libWithTarget(t) // linux digests only
+	r, err := m.Resolve(winIn("5.12.1"), now)
+	require.NoError(t, err)
+	assert.Equal(t, ReasonNoDigestForTarget, r.Reason)
+}
+
+func TestResolveWindowsAheadOfTarget(t *testing.T) {
+	m := winLib(t)
+	r, err := m.Resolve(winIn("5.13.0"), now)
+	require.NoError(t, err)
+	assert.Equal(t, ReasonAheadOfTarget, r.Reason)
+}
+
+func TestResolveWindowsStillHonoursRolloutGate(t *testing.T) {
+	m, _ := resolveManager(t)
+	require.NoError(t, m.PutEntries("5.14.0", []DigestEntry{winMSI(digestB)}, "t"))
+	in := winIn("5.13.0")
+	in.NodeUUID = rolloutHosts()[9]
+	r, err := m.Resolve(in, t0)
+	require.NoError(t, err)
+	assert.Equal(t, ReasonRolloutPending, r.Reason)
+	in.NodeUUID = rolloutHosts()[0]
+	r, err = m.Resolve(in, t0)
+	require.NoError(t, err)
+	assert.Empty(t, r.Reason)
+	assert.Nil(t, r.Previous)
+}
+
+func TestResolveLinuxStillNeedsPrevious(t *testing.T) {
+	m := winLib(t)
+	r, err := m.Resolve(linuxIn("5.11.0"), now)
+	require.NoError(t, err)
+	assert.Equal(t, ReasonNoDigestForInstalled, r.Reason)
 }

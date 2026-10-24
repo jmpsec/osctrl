@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -163,7 +164,7 @@ func TestOsqueryHandlerNeverAnswers404(t *testing.T) {
 func TestOsqueryHandlerUnsupportedPlatformIs200WithReason(t *testing.T) {
 	f := newOsqueryFixture(t)
 	f.seed(t)
-	w := f.post(osqBody(f.env.Secret, nfNodeA, "windows", "amd64", "msi", "5.12.1"))
+	w := f.post(osqBody(f.env.Secret, nfNodeA, "windows", "386", "msi", "5.12.1"))
 	require.Equal(t, http.StatusOK, w.Code)
 	require.JSONEq(t, `{"reason":"unsupported_platform","reported_version":"5.12.1"}`, w.Body.String())
 }
@@ -207,4 +208,17 @@ func TestOsqueryHandlerAppliesPinKeyedByNodeRowUUID(t *testing.T) {
 	w := f.post(osqBody(f.env.Secret, strings.ToLower(nfNodeA), "linux", "amd64", "deb", "5.12.1"))
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Contains(t, w.Body.String(), `"source":"pin"`)
+}
+
+func TestOsqueryHandlerWindowsTargetWithoutPrevious(t *testing.T) {
+	f := newOsqueryFixture(t)
+	f.seed(t)
+	require.NoError(t, f.m.PutEntries("5.13.0", []osqueryversions.DigestEntry{{Platform: "windows", Arch: "amd64", Format: "msi", SHA256: strings.Repeat("c", 64)}}, "t"))
+	w := f.post(osqBody(f.env.Secret, nfNodeA, "windows", "amd64", "msi", "5.12.1"))
+	require.Equal(t, http.StatusOK, w.Code)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	require.Equal(t, "", got["reason"])
+	require.Equal(t, map[string]any{"version": "5.13.0", "sha256": strings.Repeat("c", 64)}, got["target"])
+	require.NotContains(t, got, "previous")
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -384,12 +385,22 @@ func (n *NodeManager) GetOsqueryVersionCountsByEnv(envID uint) ([]OsqueryVersion
 	return GetOsqueryVersionCountsByEnv(n.DB, envID)
 }
 
+// CountWindowsByEnv counts the environment's non-deleted Windows nodes.
+func (n *NodeManager) CountWindowsByEnv(envID uint) (int64, error) {
+	var count int64
+	err := n.DB.Model(&OsqueryNode{}).
+		Where("environment_id = ? AND LOWER(COALESCE(platform, '')) = 'windows'", envID).
+		Count(&count).Error
+	return count, err
+}
+
 // UUIDsByEnv returns the stored (upper-case) uuids of the environment's
-// non-deleted, non-Windows nodes: the hosts a rollout can upgrade.
+// non-deleted nodes on a supported platform (Windows included): the hosts a
+// rollout can upgrade. It must use the same rule as osqueryversions.Progress.
 func (n *NodeManager) UUIDsByEnv(envID uint) ([]string, error) {
 	var uuids []string
 	err := n.DB.Model(&OsqueryNode{}).
-		Where("environment_id = ? AND LOWER(COALESCE(platform, '')) <> 'windows'", envID).
+		Where("environment_id = ? AND "+osqueryversions.SupportedNodePlatformSQL("platform"), envID).
 		Pluck("uuid", &uuids).Error
 	return uuids, err
 }

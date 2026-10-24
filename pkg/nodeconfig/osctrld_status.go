@@ -39,6 +39,7 @@ var validUpgradeReasons = map[string]bool{
 	"unsupported_platform": true, "previous_unavailable": true, "target_unavailable": true, "digest_mismatch": true,
 	"version_not_reported": true, "osqueryd_not_running": true, "install_failed": true, "config_changed": true,
 	"rolled_back": true, "rollout_pending": true, "rollout_paused": true,
+	"rollback_unavailable": true,
 }
 
 // ValidUpgradeReason reports whether r is a known upgrade reason.

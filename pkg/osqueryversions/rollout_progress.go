@@ -30,9 +30,10 @@ type RolloutProgress struct {
 	RolledBackHosts []RolledBackHost
 }
 
-// Progress counts the environment's hosts against the rollout at now. Windows
-// hosts are left out entirely: osctrld does not upgrade them and Resolve
-// answers unsupported_platform, so they are never eligible or waiting. The
+// Progress counts the environment's hosts against the rollout at now. Hosts on
+// an unsupported platform (NodePlatformSupported, the same rule as the
+// thresholds' host set) are left out entirely: they are never eligible or
+// waiting, nor listed when rolled back. Windows hosts count. The
 // table names are those of the nodes and osctrld status models, which this
 // package must not import.
 func (m *Manager) Progress(r Rollout, now time.Time) (RolloutProgress, error) {
@@ -42,7 +43,7 @@ func (m *Manager) Progress(r Rollout, now time.Time) (RolloutProgress, error) {
 	}
 	err := m.db.Table("osquery_nodes").
 		Select("uuid, hostname, localname, osquery_version").
-		Where("environment_id = ? AND deleted_at IS NULL AND LOWER(COALESCE(platform, '')) <> 'windows'", r.EnvironmentID).
+		Where("environment_id = ? AND deleted_at IS NULL AND "+SupportedNodePlatformSQL("platform"), r.EnvironmentID).
 		Scan(&nodes).Error
 	if err != nil {
 		return out, err
@@ -92,7 +93,7 @@ func (m *Manager) Progress(r Rollout, now time.Time) (RolloutProgress, error) {
 	})
 	for _, s := range rejected {
 		if !known[s.NodeUUID] {
-			continue // soft-deleted, Windows or unknown node
+			continue // soft-deleted, unsupported-platform or unknown node
 		}
 		out.Counts.RolledBack++
 		if len(out.RolledBackHosts) < maxRolledBackHosts {

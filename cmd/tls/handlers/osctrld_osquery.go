@@ -55,8 +55,10 @@ func (h *HandlersTLS) OsqueryHandler(w http.ResponseWriter, r *http.Request) {
 	out := types.OsctrldOsqueryResponse{
 		Reason: res.Reason, Source: res.Source, RequestID: res.RequestID, ReportedVersion: node.OsqueryVersion,
 	}
-	if res.Target != nil && res.Previous != nil {
+	if res.Target != nil {
 		out.Target = &types.OsctrldOsqueryRef{Version: res.Target.Version, SHA256: res.Target.SHA256}
+	}
+	if res.Previous != nil {
 		out.Previous = &types.OsctrldOsqueryRef{Version: res.Previous.Version, SHA256: res.Previous.SHA256}
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)

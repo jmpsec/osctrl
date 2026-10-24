@@ -277,7 +277,7 @@ func TestOsqueryDatabaseErrorsAre500(t *testing.T) {
 func TestLibraryPutValidatesEntries(t *testing.T) {
 	f := setupOsqueryHandlers(t)
 	for name, body := range map[string]string{
-		"windows": `{"entries":[{"platform":"windows","arch":"amd64","format":"msi","sha256":"` + oqDigest1 + `"}]}`,
+		"windows": `{"entries":[{"platform":"windows","arch":"386","format":"msi","sha256":"` + oqDigest1 + `"}]}`,
 		"digest":  `{"entries":[{"platform":"linux","arch":"amd64","format":"deb","sha256":"ABC"}]}`,
 		"empty":   `{"entries":[]}`,
 		"json":    `{`,
@@ -288,6 +288,15 @@ func TestLibraryPutValidatesEntries(t *testing.T) {
 	rr := oqCall(f.h, libPut, http.MethodPut, "root", map[string]string{"version": "evil"}, okEntries)
 	require.Equal(t, http.StatusBadRequest, rr.Code)
 	require.Empty(t, auditLines(t, f.db, auditlog.LogTypeSetting, auditlog.NoEnvironment))
+}
+
+func TestLibraryPutAcceptsWindowsMSI(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	for arch, want := range map[string]int{"amd64": http.StatusOK, "arm64": http.StatusBadRequest} {
+		body := `{"entries":[{"platform":"windows","arch":"` + arch + `","format":"msi","sha256":"` + oqDigest1 + `"}]}`
+		rr := oqCall(f.h, libPut, http.MethodPut, "root", map[string]string{"version": "5.12.1"}, body)
+		require.Equal(t, want, rr.Code, arch+rr.Body.String())
+	}
 }
 
 func TestLibraryDeleteInUseIs409(t *testing.T) {
@@ -563,10 +572,10 @@ func TestAvailableIsEmptyArrayNotNull(t *testing.T) {
 	require.Contains(t, rr.Body.String(), `"available":[]`)
 }
 
-// osctrld does not upgrade Windows hosts; the node page needs to say so.
-func TestNodeOsqueryGetPlatformUnsupported(t *testing.T) {
+// Windows is upgraded like other platforms; only platforms without a package are flagged.
+func TestNodeOsqueryWindowsNotUnsupported(t *testing.T) {
 	f := setupOsqueryHandlers(t)
-	for platform, want := range map[string]bool{"windows": true, "Windows": true, "darwin": false, "ubuntu": false, "": false} {
+	for platform, want := range map[string]bool{"freebsd": true, "windows": false, "Windows": false, "darwin": false, "ubuntu": false, "": false} {
 		require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", "NODE-A").Update("platform", platform).Error)
 		rr := oqCall(f.h, pinGet, http.MethodGet, "alice", nodeVals(f.envA, "NODE-A"), "")
 		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
@@ -915,11 +924,14 @@ func TestNodeOsqueryRolloutAbsent(t *testing.T) {
 	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("stage_opened_at", time.Now().Add(-7*time.Hour)).Error)
 	require.Nil(t, getNodeOsquery(t, f).Rollout, "completed")
 
-	// windows hosts are never upgraded
+	// windows hosts are in the rollout like any other
 	require.NoError(t, f.db.Model(&osqueryversions.Rollout{}).Where("environment_id = ?", f.envA.ID).Update("stage_opened_at", time.Now()).Error)
 	require.NotNil(t, getNodeOsquery(t, f).Rollout)
 	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", "NODE-A").Update("platform", "windows").Error)
-	require.Nil(t, getNodeOsquery(t, f).Rollout, "windows")
+	require.NotNil(t, getNodeOsquery(t, f).Rollout, "windows")
+	// hosts without a package are outside it
+	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", "NODE-A").Update("platform", "freebsd").Error)
+	require.Nil(t, getNodeOsquery(t, f).Rollout, "freebsd")
 }
 
 func (f oqFixture) targetRequestID(t *testing.T) string {
@@ -953,4 +965,44 @@ func TestNodeOsqueryRolloutAgreesWithResolve(t *testing.T) {
 	out = getNodeOsquery(t, f)
 	require.NotNil(t, out.Rollout)
 	require.Nil(t, out.Rollout.EligibleAt)
+}
+
+// The thresholds computed at rollout start (UUIDsByEnv) and the hosts Progress
+// counts must be the same set, Windows included and unsupported platforms out.
+func TestThresholdsAndProgressUseSameHostSet(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	for _, n := range []nodes.OsqueryNode{
+		{UUID: "NODE-WIN", EnvironmentID: f.envA.ID, Platform: "windows", OsqueryVersion: "5.12.1"},
+		{UUID: "NODE-BSD", EnvironmentID: f.envA.ID, Platform: "freebsd", OsqueryVersion: "5.12.1"},
+	} {
+		require.NoError(t, f.db.Create(&n).Error)
+	}
+	f.put(t, "5.13.0")
+	rr := oqCall(f.h, envPut, http.MethodPut, "alice", map[string]string{"env": f.envA.Name}, `{"version":"5.13.0"}`)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	uuids, err := f.h.Nodes.UUIDsByEnv(f.envA.ID)
+	require.NoError(t, err)
+	require.Contains(t, uuids, "NODE-WIN")
+	require.NotContains(t, uuids, "NODE-BSD")
+	r, err := f.mgr.GetRollout(f.envA.ID)
+	require.NoError(t, err)
+	r.StageOpenedAt = time.Now().Add(-7 * time.Hour) // final stage: every counted host is eligible
+	p, err := f.mgr.Progress(*r, time.Now())
+	require.NoError(t, err)
+	require.Equal(t, len(uuids), p.Counts.Eligible)
+}
+
+func TestEnvOsqueryWindowsHosts(t *testing.T) {
+	f := setupOsqueryHandlers(t)
+	get := func() int {
+		rr := oqCall(f.h, envGet, http.MethodGet, "alice", map[string]string{"env": f.envA.Name}, "")
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+		var out types.EnvOsqueryResponse
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &out))
+		return out.WindowsHosts
+	}
+	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", "NODE-A").Update("platform", "ubuntu").Error)
+	require.Equal(t, 0, get())
+	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", "NODE-A").Update("platform", "Windows").Error)
+	require.Equal(t, 1, get())
 }

@@ -71,7 +71,11 @@ func TestValidEntry(t *testing.T) {
 		{"linux rpm arm64", "linux", "arm64", "rpm", digestA, true},
 		{"darwin pkg universal", "darwin", "universal", "pkg", digestA, true},
 		{"darwin amd64", "darwin", "amd64", "pkg", digestA, false},
-		{"windows msi", "windows", "amd64", "msi", digestA, false},
+		{"windows msi", "windows", "amd64", "msi", digestA, true},
+		{"windows msi arm64", "windows", "arm64", "msi", digestA, false},
+		{"windows 386", "windows", "386", "msi", digestA, false},
+		{"windows universal", "windows", "universal", "msi", digestA, false},
+		{"windows zip", "windows", "amd64", "zip", digestA, false},
 		{"linux pkg", "linux", "amd64", "pkg", digestA, false},
 		{"short digest", "linux", "amd64", "deb", "abc", false},
 		{"uppercase digest", "linux", "amd64", "deb", strings.Repeat("A", 64), false},
@@ -128,7 +132,7 @@ func TestPutEntriesRejectsInvalidEntryAndStoresNothing(t *testing.T) {
 	m := newTestManager(t)
 	err := m.PutEntries("5.12.1", []DigestEntry{
 		{Platform: "linux", Arch: "amd64", Format: "deb", SHA256: digestA},
-		{Platform: "windows", Arch: "amd64", Format: "msi", SHA256: digestA},
+		{Platform: "windows", Arch: "386", Format: "msi", SHA256: digestA},
 	}, "admin")
 	require.Error(t, err)
 	got, err := m.GetEntries("5.12.1")
@@ -136,4 +140,23 @@ func TestPutEntriesRejectsInvalidEntryAndStoresNothing(t *testing.T) {
 	assert.Empty(t, got)
 	assert.Error(t, m.PutEntries("bad", []DigestEntry{{Platform: "linux", Arch: "amd64", Format: "deb", SHA256: digestA}}, "admin"))
 	assert.Error(t, m.PutEntries("5.12.1", nil, "admin"))
+}
+
+// The Go rule and its SQL fragment must agree for every platform string.
+func TestNodePlatformSupportedMatchesSQL(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.Exec("CREATE TABLE n (platform TEXT)").Error)
+	for _, p := range []string{"windows", "Windows", "ubuntu", "darwin", "freebsd", "FreeBSD", ""} {
+		require.NoError(t, db.Exec("DELETE FROM n").Error)
+		require.NoError(t, db.Exec("INSERT INTO n (platform) VALUES (?)", p).Error)
+		var c int64
+		require.NoError(t, db.Table("n").Where(SupportedNodePlatformSQL("platform")).Count(&c).Error)
+		assert.Equal(t, NodePlatformSupported(p), c == 1, p)
+	}
+	require.NoError(t, db.Exec("DELETE FROM n").Error)
+	require.NoError(t, db.Exec("INSERT INTO n (platform) VALUES (NULL)").Error)
+	var c int64
+	require.NoError(t, db.Table("n").Where(SupportedNodePlatformSQL("platform")).Count(&c).Error)
+	assert.Equal(t, NodePlatformSupported(""), c == 1)
 }

@@ -100,7 +100,7 @@ describe('RolloutPanel', () => {
 
   it('resume calls the endpoint only after confirming and updates the query data', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const resp: EnvOsquery = { target: null, counts: [], available: [], rollout: make() };
+    const resp: EnvOsquery = { target: null, counts: [], available: [], windows_hosts: 0, rollout: make() };
     api.resumeEnvRollout.mockResolvedValue(resp);
     renderPanel(paused());
     await user.click(screen.getByRole('button', { name: 'Resume rollout' }));
@@ -113,7 +113,7 @@ describe('RolloutPanel', () => {
 
   it('abort explains the consequence, then calls the endpoint', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    api.abortEnvRollout.mockResolvedValue({ target: null, counts: [], available: [], rollout: make({ state: 'aborted' }) });
+    api.abortEnvRollout.mockResolvedValue({ target: null, counts: [], available: [], windows_hosts: 0, rollout: make({ state: 'aborted' }) });
     renderPanel(make());
     await user.click(screen.getByRole('button', { name: 'Abort rollout' }));
     const dialog = await screen.findByRole('dialog');
@@ -162,7 +162,7 @@ describe('RolloutPanel', () => {
 
   it('abort updates the query data', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const resp: EnvOsquery = { target: null, counts: [], available: [], rollout: make({ state: 'aborted' }) };
+    const resp: EnvOsquery = { target: null, counts: [], available: [], windows_hosts: 0, rollout: make({ state: 'aborted' }) };
     api.abortEnvRollout.mockResolvedValue(resp);
     renderPanel(make());
     await user.click(screen.getByRole('button', { name: 'Abort rollout' }));

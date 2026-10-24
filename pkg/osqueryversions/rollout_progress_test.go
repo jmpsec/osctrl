@@ -61,7 +61,7 @@ func TestProgressCounts(t *testing.T) {
 		require.NotEqual(t, nbs[i-1].b, nbs[i].b)
 	}
 	// rank 0..9 -> state: 0 upgraded, 1 waiting(old), 2 rolled back, 3 empty version,
-	// 4 ahead, 5 old, 6 old, 7 windows old, 8 old, 9 old.
+	// 4 ahead, 5 old, 6 old, 7 windows old (counted like any host), 8 old, 9 old.
 	ver := []string{"5.13.0", "5.12.1", "5.12.1", "", "5.14.0", "5.12.1", "5.12.1", "5.12.1", "5.12.1", "5.12.1"}
 	for i, n := range nbs {
 		p := "linux"
@@ -81,18 +81,17 @@ func TestProgressCounts(t *testing.T) {
 	require.Equal(t, RolloutRunning, p.State)
 	require.NotNil(t, p.NextStageAt)
 
-	// Stage 2 (one wait later): ranks 0-6 eligible; rank 7 windows never waiting.
+	// Stage 2 (one wait later): ranks 0-6 eligible; Windows rank 7 opens at stage 3 and then waits like the others.
 	p, err = m.Progress(rolloutWith(th, RolloutRunning, 0, now.Add(-RolloutStageWait)), now)
 	require.NoError(t, err)
 	// Eligible ranks 0-6; the empty-version host (rank 3) counts as waiting.
 	require.Equal(t, RolloutCounts{Eligible: 7, Upgraded: 2, Waiting: 4, RolledBack: 1}, p.Counts)
 	require.Equal(t, 1, p.Stage)
 
-	// Windows host is excluded entirely (Resolve answers unsupported_platform).
 	p, err = m.Progress(rolloutWith(th, RolloutRunning, 0, now.Add(-3*RolloutStageWait)), now)
 	require.NoError(t, err)
 	require.Equal(t, RolloutCompleted, p.State)
-	require.Equal(t, RolloutCounts{Eligible: 9, Upgraded: 2, Waiting: 6, RolledBack: 1}, p.Counts)
+	require.Equal(t, RolloutCounts{Eligible: 10, Upgraded: 2, Waiting: 7, RolledBack: 1}, p.Counts)
 	require.Nil(t, p.NextStageAt)
 
 	// Paused freezes the stage.
@@ -197,9 +196,10 @@ func TestProgressReasonTruncated(t *testing.T) {
 
 func TestProgressRejectedEdgeCases(t *testing.T) {
 	m := progressFixture(t)
-	// U: upgraded and rejected; W: rejected Windows; O: rejected, outside stage 1.
+	// U: upgraded and rejected; W: rejected Windows (listed); F: rejected freebsd (unsupported, not listed); O: rejected, outside stage 1.
 	addPN(t, m, pn{uuid: "U", version: "5.13.0", env: 1, platform: "linux"})
 	addPN(t, m, pn{uuid: "W", version: "5.12.1", env: 1, platform: "windows"})
+	addPN(t, m, pn{uuid: "F", version: "5.12.1", env: 1, platform: "freebsd"}) // unsupported: never listed
 	// O is the first fixture UUID whose bucket is above U's, so it is outside stage 1.
 	o := ""
 	for i := 0; o == ""; i++ {
@@ -208,7 +208,7 @@ func TestProgressRejectedEdgeCases(t *testing.T) {
 		}
 	}
 	addPN(t, m, pn{uuid: o, version: "5.12.1", env: 1, platform: "linux"})
-	for _, u := range []string{"U", "W", o} {
+	for _, u := range []string{"U", "W", "F", o} {
 		reject(t, m, u, 1, "req1", "r", now)
 	}
 	// Only U is eligible at stage 1.
@@ -216,12 +216,12 @@ func TestProgressRejectedEdgeCases(t *testing.T) {
 	require.GreaterOrEqual(t, Bucket(1, "5.13.0", o), th[0])
 	p, err := m.Progress(rolloutWith(th, RolloutRunning, 0, now), now)
 	require.NoError(t, err)
-	require.Equal(t, RolloutCounts{Eligible: 1, Upgraded: 1, Waiting: 0, RolledBack: 2}, p.Counts)
+	require.Equal(t, RolloutCounts{Eligible: 1, Upgraded: 1, Waiting: 0, RolledBack: 3}, p.Counts)
 	var hosts []string
 	for _, h := range p.RolledBackHosts {
 		hosts = append(hosts, h.Host)
 	}
-	require.ElementsMatch(t, []string{"U", o}, hosts)
+	require.ElementsMatch(t, []string{"U", "W", o}, hosts)
 }
 
 func TestProgressHostNameCleaned(t *testing.T) {
@@ -247,4 +247,16 @@ func TestCleanHost(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) { require.Equal(t, c.want, CleanHost(c.in)) })
 	}
+}
+
+func TestProgressListsRollbackUnavailableHost(t *testing.T) {
+	m := progressFixture(t)
+	addPN(t, m, pn{uuid: "W", host: "win-1", version: "5.12.1", env: 1, platform: "windows"})
+	reject(t, m, "W", 1, "req1", "rollback_unavailable", now)
+	p, err := m.Progress(rolloutWith([4]uint32{10001, 10001, 10001, 10001}, RolloutRunning, 0, now), now)
+	require.NoError(t, err)
+	require.Equal(t, 1, p.Counts.RolledBack)
+	require.Len(t, p.RolledBackHosts, 1)
+	require.Equal(t, "win-1", p.RolledBackHosts[0].Host)
+	require.Equal(t, "rollback_unavailable", p.RolledBackHosts[0].Reason)
 }

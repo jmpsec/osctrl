@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeOsqueryView } from './NodeOsqueryView';
+import { WINDOWS_UPGRADE_WARNING } from './windowsWarning';
 import type { NodeOsquery } from '$/api/types';
 
 const api = vi.hoisted(() => ({ getNodeOsquery: vi.fn(), pinNodeOsquery: vi.fn(), unpinNodeOsquery: vi.fn() }));
@@ -25,11 +26,11 @@ function upgrade(o: Partial<NonNullable<NodeOsquery['upgrade']>> = {}): NodeOsqu
   return { result: 'rejected', version: '5.13.0', reason: 'install_failed', request_id: 'r', reported_at: '2026-10-18T10:00:00Z', ...o };
 }
 
-function renderView() {
+function renderView(platform?: string) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <NodeOsqueryView env="prod" uuid="uuid-1" hostname="web-prod-07" />
+      <NodeOsqueryView env="prod" uuid="uuid-1" hostname="web-prod-07" platform={platform} />
     </QueryClientProvider>,
   );
 }
@@ -64,6 +65,7 @@ describe('NodeOsqueryView', () => {
     ['install_failed', 'The package install failed.'],
     ['config_changed', "The install changed osquery's configuration files; the host was rolled back."],
     ['rolled_back', 'The host was rolled back to its previous version.'],
+    ['rollback_unavailable', 'The upgrade failed and the previous version could not be restored. The host needs manual attention.'],
   ])('words the reason %s', async (reason, text) => {
     api.getNodeOsquery.mockResolvedValue(make({ upgrade: upgrade({ reason }) }));
     renderView();
@@ -213,5 +215,49 @@ describe('NodeOsqueryView', () => {
     it('keeps the generic sentence for an unknown stage', async () => {
       expect(await show('rollout_pending', rollout({ stage: 9 }))).toHaveTextContent(/not in the current rollout stage yet/);
     });
+  });
+
+  it.each(['windows', 'Windows', 'WINDOWS'])('shows the report and the warning, not the unsupported note, for a %s host', async (platform) => {
+    api.getNodeOsquery.mockResolvedValue(make({ upgrade: upgrade({ reason: 'rollback_unavailable' }) }));
+    renderView(platform);
+    expect(await screen.findByText(WINDOWS_UPGRADE_WARNING)).toBeInTheDocument();
+    expect(screen.getByTestId('target')).toHaveTextContent('5.13.0');
+    expect(screen.getByTestId('installed')).toHaveTextContent('5.12.1');
+    expect(screen.getByTestId('upgrade')).toHaveTextContent('rejected');
+    expect(screen.queryByText('Upgrades are not supported on this platform yet.')).not.toBeInTheDocument();
+  });
+
+  it('shows no Windows warning on other hosts', async () => {
+    renderView('ubuntu');
+    await screen.findByText('Installed version');
+    expect(screen.queryByText(WINDOWS_UPGRADE_WARNING)).not.toBeInTheDocument();
+  });
+
+  it('still says unsupported when the API flags the platform', async () => {
+    api.getNodeOsquery.mockResolvedValue(make({ platform_unsupported: true }));
+    renderView('freebsd');
+    expect(await screen.findByText('Upgrades are not supported on this platform yet.')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['windows', true],
+    ['ubuntu', false],
+  ])('pin confirmation for a %s host shows the warning: %s', async (platform, shown) => {
+    const user = userEvent.setup();
+    renderView(platform);
+    await screen.findByLabelText('Version to pin');
+    await user.click(screen.getByRole('button', { name: 'Edit pin' }));
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Unlock editing' }));
+    await user.selectOptions(screen.getByLabelText('Version to pin'), '5.14.0');
+    await user.click(screen.getByRole('button', { name: 'Pin version' }));
+    const dialog = await screen.findByRole('dialog');
+    if (shown) {
+      expect(dialog).toHaveTextContent(WINDOWS_UPGRADE_WARNING);
+      expect(dialog).not.toHaveTextContent('rolls back automatically');
+    } else {
+      expect(dialog).not.toHaveTextContent(WINDOWS_UPGRADE_WARNING);
+      expect(dialog).toHaveTextContent('rolls back automatically');
+    }
   });
 });
