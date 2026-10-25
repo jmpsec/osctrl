@@ -680,7 +680,14 @@ else
   # Enroll host in environment
   if [[ "$ENROLL" == true ]]; then
     log "Adding host in environment $ENVIRONMENT"
-    eval $( "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env node-actions -n "$ENVIRONMENT" quick-add)
+    # Run the one-liner only if osctrl-cli produced it. A failure prints its
+    # error instead of the one-liner, and that must never reach eval.
+    if ! __quick_add=$("$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env node-actions -n "$ENVIRONMENT" quick-add 2>&1); then
+      log "Could not generate the quick-add one-liner for environment $ENVIRONMENT:"
+      echo "$__quick_add"
+      exit 1
+    fi
+    eval "$__quick_add"
   fi
 fi
 

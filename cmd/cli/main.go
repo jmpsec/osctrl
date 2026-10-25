@@ -2316,6 +2316,9 @@ func main() {
 	}
 	// Run the app
 	if err := app.Run(context.Background(), os.Args); err != nil {
-		log.Fatal().Msgf("❌ %v", err)
+		// Errors go to stderr: stdout can carry output meant to be run or piped
+		// (for example the quick-add one-liner).
+		fmt.Fprintf(os.Stderr, "❌ %v\n", err)
+		os.Exit(1)
 	}
 }
