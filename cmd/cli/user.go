@@ -158,7 +158,8 @@ func editUser(ctx context.Context, cmd *cli.Command) error {
 			}
 		}
 	}
-	if apiFlag {
+	// apiFlag is on by default: with --db the API client is never initialised
+	if !dbFlag && apiFlag {
 		u := types.ApiUserRequest{
 			Username:   username,
 			Password:   password,
