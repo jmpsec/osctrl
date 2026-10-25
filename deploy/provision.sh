@@ -644,8 +644,13 @@ else
 
   # Create admin user
   if [[ -n "$_ADMIN_PASS" ]]; then
-    log "Creating admin user"
-    "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
+    if "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user show -u "$_ADMIN_USER" >/dev/null 2>&1; then
+      log "Updating admin password"
+      "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user edit -u "$_ADMIN_USER" -p "$_ADMIN_PASS"
+    else
+      log "Creating admin user"
+      "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
+    fi
   fi
 
   # If we are in dev, create an initial environment to enroll machines
