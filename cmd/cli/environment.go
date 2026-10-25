@@ -366,7 +366,7 @@ func quickAddEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
+		fmt.Fprintln(os.Stderr, "❌ environment name is required")
 		os.Exit(1)
 	}
 	var env environments.TLSEnvironment
@@ -389,7 +389,7 @@ func quickAddEnvironment(ctx context.Context, cmd *cli.Command) error {
 	case targetPowershell:
 		oneLiner, _ = environments.QuickAddOneLinerPowershell(insecure, env)
 	default:
-		fmt.Printf("❌ invalid target! It can be %s or %s\n", targetShell, targetPowershell)
+		fmt.Fprintf(os.Stderr, "❌ invalid target! It can be %s or %s\n", targetShell, targetPowershell)
 		os.Exit(1)
 	}
 	fmt.Printf("%s\n", oneLiner)
