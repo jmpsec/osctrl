@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,7 +115,7 @@ func init() {
 			Name:        "db",
 			Aliases:     []string{"d"},
 			Value:       false,
-			Usage:       "Connect to local osctrl DB using YAML config file",
+			Usage:       "Connect to local osctrl DB using YAML config file (required by db-only commands)",
 			Sources:     cli.EnvVars("DB_CONFIG"),
 			Destination: &dbFlag,
 		},
@@ -122,7 +123,7 @@ func init() {
 			Name:        "api",
 			Aliases:     []string{"a"},
 			Value:       true,
-			Usage:       "Connect to remote osctrl using JSON config file",
+			Usage:       "Connect to remote osctrl using JSON config file (ignored when --db is set)",
 			Sources:     cli.EnvVars("API_CONFIG"),
 			Destination: &apiFlag,
 		},
@@ -269,7 +270,7 @@ func init() {
 					Name:    "rules",
 					Aliases: []string{"r"},
 					Usage:   "List alert rules",
-					Action:  cliWrapper(alertRulesList),
+					Action:  cliWrapperAPI(alertRulesList),
 				},
 				{
 					Name:    "rule-create",
@@ -285,7 +286,7 @@ func init() {
 						&cli.StringFlag{Name: "channels", Usage: "Comma-separated channel IDs"},
 						&cli.BoolFlag{Name: "enabled", Value: true, Usage: "Create the rule enabled"},
 					},
-					Action: cliWrapper(alertRuleCreate),
+					Action: cliWrapperAPI(alertRuleCreate),
 				},
 				{
 					Name:    "rule-delete",
@@ -294,13 +295,13 @@ func init() {
 					Flags: []cli.Flag{
 						&cli.UintFlag{Name: "id", Usage: "Rule ID"},
 					},
-					Action: cliWrapper(alertRuleDelete),
+					Action: cliWrapperAPI(alertRuleDelete),
 				},
 				{
 					Name:    "channels",
 					Aliases: []string{"c"},
 					Usage:   "List alert channels",
-					Action:  cliWrapper(alertChannelsList),
+					Action:  cliWrapperAPI(alertChannelsList),
 				},
 				{
 					Name:    "channel-create",
@@ -312,7 +313,7 @@ func init() {
 						&cli.StringFlag{Name: "config", Usage: "Channel config as JSON"},
 						&cli.BoolFlag{Name: "enabled", Value: true, Usage: "Create the channel enabled"},
 					},
-					Action: cliWrapper(alertChannelCreate),
+					Action: cliWrapperAPI(alertChannelCreate),
 				},
 				{
 					Name:    "channel-delete",
@@ -321,12 +322,12 @@ func init() {
 					Flags: []cli.Flag{
 						&cli.UintFlag{Name: "id", Usage: "Channel ID"},
 					},
-					Action: cliWrapper(alertChannelDelete),
+					Action: cliWrapperAPI(alertChannelDelete),
 				},
 				{
 					Name:   "apply",
 					Usage:  "Apply alert changes (hot-reload rules and channels in osctrl-tls)",
-					Action: cliWrapper(alertsApply),
+					Action: cliWrapperAPI(alertsApply),
 				},
 			},
 		},
@@ -557,7 +558,7 @@ func init() {
 							Usage:   "Generate flags for osquery's file carve plugin",
 						},
 					},
-					Action: cliWrapper(addEnvironment),
+					Action: cliWrapperDB(addEnvironment),
 				},
 				{
 					Name:    "update",
@@ -643,7 +644,7 @@ func init() {
 							Usage: "Generate flags for osquery's file carve plugin",
 						},
 					},
-					Action: cliWrapper(updateEnvironment),
+					Action: cliWrapperDB(updateEnvironment),
 				},
 				{
 					Name:  "add-scheduled-query",
@@ -686,7 +687,7 @@ func init() {
 							Usage:   "Only run on osquery versions greater than or equal-to this version",
 						},
 					},
-					Action: cliWrapper(addScheduledQuery),
+					Action: cliWrapperDB(addScheduledQuery),
 				},
 				{
 					Name:  "add-posture-queries",
@@ -717,7 +718,7 @@ func init() {
 							Usage:   "Override posture query interval in seconds; 0 keeps profile defaults",
 						},
 					},
-					Action: cliWrapper(addPostureQueries),
+					Action: cliWrapperDB(addPostureQueries),
 				},
 				{
 					Name:  "remove-scheduled-query",
@@ -736,7 +737,7 @@ func init() {
 							Usage:   "Query to be removed from the schedule",
 						},
 					},
-					Action: cliWrapper(removeScheduledQuery),
+					Action: cliWrapperDB(removeScheduledQuery),
 				},
 				{
 					Name:  "add-osquery-option",
@@ -776,7 +777,7 @@ func init() {
 							Usage:   "Boolean value for the option",
 						},
 					},
-					Action: cliWrapper(addOsqueryOption),
+					Action: cliWrapperDB(addOsqueryOption),
 				},
 				{
 					Name:  "remove-osquery-option",
@@ -795,7 +796,7 @@ func init() {
 							Usage:   "Option name to be added",
 						},
 					},
-					Action: cliWrapper(removeOsqueryOption),
+					Action: cliWrapperDB(removeOsqueryOption),
 				},
 				{
 					Name:  "add-new-pack",
@@ -829,7 +830,7 @@ func init() {
 							Usage:   "Restrict this query to a percentage (1-100) of target hosts",
 						},
 					},
-					Action: cliWrapper(addNewPack),
+					Action: cliWrapperDB(addNewPack),
 				},
 				{
 					Name:  "add-local-pack",
@@ -853,7 +854,7 @@ func init() {
 							Usage:   "Local full path to load the query pack within osquery",
 						},
 					},
-					Action: cliWrapper(addLocalPack),
+					Action: cliWrapperDB(addLocalPack),
 				},
 				{
 					Name:  "remove-pack",
@@ -872,7 +873,7 @@ func init() {
 							Usage:   "Pack name to be removed",
 						},
 					},
-					Action: cliWrapper(removePack),
+					Action: cliWrapperDB(removePack),
 				},
 				{
 					Name:  "add-query-to-pack",
@@ -921,7 +922,7 @@ func init() {
 							Usage:   "Only run on osquery versions greater than or equal-to this version",
 						},
 					},
-					Action: cliWrapper(addPackQuery),
+					Action: cliWrapperDB(addPackQuery),
 				},
 				{
 					Name:  "remove-query-from-pack",
@@ -946,7 +947,7 @@ func init() {
 							Usage:   "Query name to be removed",
 						},
 					},
-					Action: cliWrapper(removePackQuery),
+					Action: cliWrapperDB(removePackQuery),
 				},
 				{
 					Name: "node-actions",
@@ -987,7 +988,7 @@ func init() {
 									Usage:   "Generate flags for osquery's file carve plugin",
 								},
 							},
-							Action: cliWrapper(newFlagsEnvironment),
+							Action: cliWrapperDB(newFlagsEnvironment),
 						},
 						{
 							Name:    "gen-flags",
@@ -1145,7 +1146,7 @@ func init() {
 							Usage:   "Environment name to be deleted",
 						},
 					},
-					Action: cliWrapper(deleteEnvironment),
+					Action: cliWrapperDB(deleteEnvironment),
 				},
 				{
 					Name:    "show",
@@ -1528,7 +1529,7 @@ func init() {
 							Usage:   "Setting info",
 						},
 					},
-					Action: cliWrapper(addSetting),
+					Action: cliWrapperDB(addSetting),
 				},
 				{
 					Name:    "update",
@@ -1577,7 +1578,7 @@ func init() {
 							Usage:   "Setting info",
 						},
 					},
-					Action: cliWrapper(updateSetting),
+					Action: cliWrapperDB(updateSetting),
 				},
 				{
 					Name:    "delete",
@@ -1595,13 +1596,13 @@ func init() {
 							Usage:   "Value service to be deleted",
 						},
 					},
-					Action: cliWrapper(deleteSetting),
+					Action: cliWrapperDB(deleteSetting),
 				},
 				{
 					Name:    "show",
 					Aliases: []string{"s"},
 					Usage:   "Show all configuration values",
-					Action:  cliWrapper(listConfiguration),
+					Action:  cliWrapperDB(listConfiguration),
 				},
 			},
 		},
@@ -1901,7 +1902,7 @@ func init() {
 							Usage:   "Grant carve permissions",
 						},
 					},
-					Action: cliWrapper(changePermissions),
+					Action: cliWrapperDB(changePermissions),
 				},
 				{
 					Name:    "reset-permissions",
@@ -1943,7 +1944,7 @@ func init() {
 							Usage:   "Grant carve permissions",
 						},
 					},
-					Action: cliWrapper(resetPermissions),
+					Action: cliWrapperDB(resetPermissions),
 				},
 				{
 					Name:    "show-permissions",
@@ -1961,7 +1962,7 @@ func init() {
 							Usage:   "Environment for this user",
 						},
 					},
-					Action: cliWrapper(showPermissions),
+					Action: cliWrapperDB(showPermissions),
 				},
 				{
 					Name:    "all-permissions",
@@ -1974,7 +1975,7 @@ func init() {
 							Usage:   "User to perform the action",
 						},
 					},
-					Action: cliWrapper(allPermissions),
+					Action: cliWrapperDB(allPermissions),
 				},
 				{
 					Name:    "delete",
@@ -2185,9 +2186,47 @@ func showFlags(ctx context.Context, cmd *cli.Command) {
 	fmt.Println("==================")
 }
 
-// Function to wrap actions
-func cliWrapper(action func(context.Context, *cli.Command) error) func(context.Context, *cli.Command) error {
+// cliMode is the connection mode(s) an action supports.
+type cliMode int
+
+const (
+	modeAny cliMode = iota // works with --db and through the API
+	modeDB                 // local database only
+	modeAPI                // API only
+)
+
+// checkMode rejects an action in a mode it cannot run in. It is checked before
+// anything is initialised, so the action never sees nil managers or client.
+func checkMode(mode cliMode, dbFlag, apiFlag bool) error {
+	switch {
+	case mode == modeDB && !dbFlag:
+		return errors.New("this command works with the local database only: run it with --db (and -D <db config file>)")
+	case mode == modeAPI && dbFlag:
+		return errors.New("this command works through the API only: run it without --db")
+	case mode == modeAPI && !apiFlag:
+		return errors.New("this command works through the API only: enable --api")
+	case !dbFlag && !apiFlag:
+		return errors.New("no connection mode selected: use --db (with -D <db config file>) or --api")
+	}
+	return nil
+}
+
+// cliWrapper wraps an action that supports both --db and the API.
+func cliWrapper(action cli.ActionFunc) cli.ActionFunc { return cliWrapperMode(modeAny, action) }
+
+// cliWrapperDB wraps an action that only works with --db.
+func cliWrapperDB(action cli.ActionFunc) cli.ActionFunc { return cliWrapperMode(modeDB, action) }
+
+// cliWrapperAPI wraps an action that only works through the API.
+func cliWrapperAPI(action cli.ActionFunc) cli.ActionFunc { return cliWrapperMode(modeAPI, action) }
+
+// Function to wrap actions. Errors are returned (main prints them to stderr and
+// exits 1), including the wrong-mode ones.
+func cliWrapperMode(mode cliMode, action cli.ActionFunc) cli.ActionFunc {
 	return func(ctx context.Context, cmd *cli.Command) error {
+		if err := checkMode(mode, dbFlag, apiFlag); err != nil {
+			return err
+		}
 		if verboseFlag {
 			showFlags(ctx, cmd)
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -2242,6 +2281,9 @@ func cliWrapper(action func(context.Context, *cli.Command) error) func(context.C
 			if err != nil {
 				return fmt.Errorf("error creating audit log manager - %w", err)
 			}
+			// apiFlag defaults to true, but the API client is not initialised
+			// here: --db wins, so no action can take an API branch.
+			apiFlag = false
 			// Execute action
 			return action(ctx, cmd)
 		}
@@ -2272,8 +2314,8 @@ func cliWrapper(action func(context.Context, *cli.Command) error) func(context.C
 			// Execute action
 			return action(ctx, cmd)
 		}
-		// If we are here, nor DB or API has been enabled
-		return nil
+		// Unreachable: checkMode rejects having neither enabled
+		return errors.New("no connection mode selected")
 	}
 }
 

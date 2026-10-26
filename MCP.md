@@ -37,8 +37,11 @@ Create a dedicated service user rather than reusing a human's token:
 
 ```bash
 osctrl-cli user add -u mcp-agent -s -e prod
-osctrl-cli user permissions -u mcp-agent -e prod --user
+osctrl-cli --db -D /path/to/tls.yml user permissions -u mcp-agent -e prod --user
 ```
+
+`user permissions` works with the local database only, so it needs `--db` and the
+database configuration file of osctrl-tls or osctrl-api.
 
 Grant `--user` (read) unless the agent genuinely needs query results, which
 require query-level access on the environment. The tool set here issues no

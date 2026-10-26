@@ -17,17 +17,7 @@ import (
 
 // alert.go — actions behind the `alert` CLI command group (API mode only).
 
-func requireAPI() error {
-	if dbFlag || !apiFlag {
-		return fmt.Errorf("alert management requires --api mode (run against osctrl-api)")
-	}
-	return nil
-}
-
 func alertRulesList(ctx context.Context, cmd *cli.Command) error {
-	if err := requireAPI(); err != nil {
-		return err
-	}
 	rules, err := osctrlAPI.GetAlertRules()
 	if err != nil {
 		return fmt.Errorf("❌ %w", err)
@@ -93,9 +83,6 @@ func uintsToStrings(ids []uint) []string {
 }
 
 func alertRuleCreate(ctx context.Context, cmd *cli.Command) error {
-	if err := requireAPI(); err != nil {
-		return err
-	}
 	name := cmd.String("name")
 	source := cmd.String("source")
 	matchValue := cmd.String("match-value")
@@ -132,9 +119,6 @@ func alertRuleCreate(ctx context.Context, cmd *cli.Command) error {
 }
 
 func alertRuleDelete(ctx context.Context, cmd *cli.Command) error {
-	if err := requireAPI(); err != nil {
-		return err
-	}
 	id := cmd.Uint("id")
 	if id == 0 {
 		return fmt.Errorf("❌ --id is required")
@@ -147,9 +131,6 @@ func alertRuleDelete(ctx context.Context, cmd *cli.Command) error {
 }
 
 func alertChannelsList(ctx context.Context, cmd *cli.Command) error {
-	if err := requireAPI(); err != nil {
-		return err
-	}
 	channels, err := osctrlAPI.GetAlertChannels()
 	if err != nil {
 		return fmt.Errorf("❌ %w", err)
@@ -203,9 +184,6 @@ func channelToRow(c apiclient.AlertChannelJSON) []string {
 }
 
 func alertChannelCreate(ctx context.Context, cmd *cli.Command) error {
-	if err := requireAPI(); err != nil {
-		return err
-	}
 	name := cmd.String("name")
 	typ := cmd.String("type")
 	configJSON := cmd.String("config")
@@ -223,9 +201,6 @@ func alertChannelCreate(ctx context.Context, cmd *cli.Command) error {
 }
 
 func alertChannelDelete(ctx context.Context, cmd *cli.Command) error {
-	if err := requireAPI(); err != nil {
-		return err
-	}
 	id := cmd.Uint("id")
 	if id == 0 {
 		return fmt.Errorf("❌ --id is required")
@@ -238,9 +213,6 @@ func alertChannelDelete(ctx context.Context, cmd *cli.Command) error {
 }
 
 func alertsApply(ctx context.Context, cmd *cli.Command) error {
-	if err := requireAPI(); err != nil {
-		return err
-	}
 	if err := osctrlAPI.ApplyAlerts(); err != nil {
 		return fmt.Errorf("❌ %w", err)
 	}
