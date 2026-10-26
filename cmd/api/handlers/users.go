@@ -2,15 +2,40 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
+
+// resolveEnvUUIDs maps environment names or UUIDs to deduplicated UUIDs.
+// Blank entries are skipped: old clients send [""], and a permission row
+// for environment "" would pass the AdminLevel/NoEnvironment gate. On error
+// it returns the entry that failed.
+func (h *HandlersApi) resolveEnvUUIDs(ids []string) ([]string, string, error) {
+	res := []string{}
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		env, err := h.Envs.Get(id)
+		if err != nil {
+			return nil, id, err
+		}
+		if !slices.Contains(res, env.UUID) {
+			res = append(res, env.UUID)
+		}
+	}
+	return res, "", nil
+}
 
 // projectAdminUserView strips network-and-timing metadata
 // (LastIPAddress / LastUserAgent / LastAccess / LastTokenUse) from an
@@ -188,6 +213,16 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "error adding user", http.StatusInternalServerError, fmt.Errorf("user %s already exists", u.Username))
 			return
 		}
+		// Resolve environments (name or UUID) before creating anything
+		envs, missing, err := h.resolveEnvUUIDs(u.Environments)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				apiErrorResponse(w, "environment not found: "+missing, http.StatusNotFound, err)
+				return
+			}
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+			return
+		}
 		// Prepare user to create
 		newUser, err := h.Users.New(u.Username, u.Password, u.Email, u.Fullname, u.Admin, u.Service)
 		if err != nil {
@@ -200,7 +235,6 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		// If user is admin, give access to all environments
-		envs := u.Environments
 		if u.Admin {
 			envs, err = h.Envs.UUIDs()
 			if err != nil {

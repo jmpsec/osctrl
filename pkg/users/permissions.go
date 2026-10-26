@@ -67,10 +67,14 @@ func (m *UserManager) CreatePermissions(permissions []UserPermission) error {
 	return nil
 }
 
-// GenEnvUserAccess to generate the struct with empty access
+// GenEnvUserAccess to generate the struct with empty access.
+// Environment "" is skipped: see GenPermissions.
 func (m *UserManager) GenEnvUserAccess(envs []string, user, query, carve, admin bool) UserAccess {
 	access := make(UserAccess)
 	for _, e := range envs {
+		if e == "" {
+			continue
+		}
 		access[e] = EnvAccess{
 			User:  user,
 			Query: query,
@@ -104,6 +108,11 @@ func (m *UserManager) GenUserPermission(username, granted, env string, aType int
 func (m *UserManager) GenPermissions(username, granted string, access UserAccess) []UserPermission {
 	var res []UserPermission
 	for env, a := range access {
+		// Never emit rows for environment "": an AdminLevel row there passes
+		// the AdminLevel/NoEnvironment gate like a global admin.
+		if env == "" {
+			continue
+		}
 		var p UserPermission
 		// User
 		p = m.GenUserPermission(username, granted, env, int(UserLevel), a.User)
