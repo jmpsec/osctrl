@@ -13,7 +13,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -1365,21 +1364,47 @@ func (s *dbStore) AddSetting(service, name, typ, value string) error {
 }
 
 func (s *dbStore) UpdateSetting(service, name, typ, value string) error {
-	if service == config.ServiceAPI && name == settings.InactiveHours {
-		if typ = strings.ToLower(typ); typ != "integer" && typ != "int" {
-			return fmt.Errorf("inactive_hours must be an integer")
-		}
-		hours, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
+	// Same checks as the API PATCH: an existing setting keeps its type and
+	// integers go through the range validators.
+	switch strings.ToLower(typ) {
+	case "string":
+		typ = settings.TypeString
+	case "boolean", "bool":
+		typ = settings.TypeBoolean
+	case "integer", "int":
+		typ = settings.TypeInteger
+	default:
+		return fmt.Errorf("unknown type %q (string|boolean|integer)", typ)
+	}
+	existing, err := settingsmgr.RetrieveValue(service, name, settings.NoEnvironmentID)
+	if err != nil {
+		return fmt.Errorf("setting not found or unreadable - %w", err)
+	}
+	if existing.Type != typ {
+		return fmt.Errorf("setting is %s - provide `%s`, not %s", existing.Type, existing.Type, typ)
+	}
+	var iv int64
+	if typ == settings.TypeInteger {
+		if iv, err = strconv.ParseInt(value, 10, 64); err != nil {
 			return fmt.Errorf("integer: %w", err)
 		}
-		return settingsmgr.SetInteger(hours, service, name, settings.NoEnvironmentID)
+		if err := settings.ValidateIntegerSetting(service, name, iv); err != nil {
+			return err
+		}
 	}
-	// Delete-then-create keeps the value fresh without a generic setter.
-	if err := settingsmgr.DeleteValue(service, name, settings.NoEnvironmentID); err != nil {
-		return err
+	// update in place: keeps the row and its info
+	switch typ {
+	case settings.TypeInteger:
+		return settingsmgr.SetInteger(iv, service, name, settings.NoEnvironmentID)
+	case settings.TypeBoolean:
+		b, err := parseBoolStrict(value)
+		if err != nil {
+			return err
+		}
+		return settingsmgr.SetBoolean(b, service, name, settings.NoEnvironmentID)
+	default:
+		return settingsmgr.SetString(value, service, name, settings.NoEnvironmentID)
 	}
-	return s.AddSetting(service, name, typ, value)
 }
 
 func (s *dbStore) DeleteSetting(service, name string) error {

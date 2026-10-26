@@ -252,3 +252,42 @@ func TestEditEnvConfigSectionRejectsNonJSONAndUnknownSection(t *testing.T) {
 	}
 	require.Equal(t, before, storedConf(t, rig, "dev"))
 }
+
+// Schedule edits keep keys ScheduleQuery does not model (description, blacklist,
+// anything else) on every other query, and on a re-added one, in both modes.
+func TestScheduleEditsKeepUnmodelledKeysParity(t *testing.T) {
+	rig := newParityRig(t)
+	const sched = `{"k1":{"query":"select 1","interval":10,"description":"d1","blacklist":true},"k2":{"query":"select 2","interval":20,"x_custom":{"a":1}}}`
+	for _, mode := range []string{"db", "api"} {
+		name := "sch-" + mode
+		rig.SeedEnv(name)
+		require.NoError(t, rig.Envs.UpdateSchedule(name, sched))
+		run := func(args ...string) {
+			_, err := rig.runner(mode)(append([]string{"env", args[0], "-n", name}, args[1:]...)...)
+			require.NoError(t, err, mode, args)
+		}
+		check := func() {
+			env, err := rig.Envs.Get(name)
+			require.NoError(t, err)
+			var got map[string]map[string]interface{}
+			require.NoError(t, json.Unmarshal([]byte(env.Schedule), &got))
+			require.Equal(t, "d1", got["k1"]["description"], mode)
+			require.Equal(t, true, got["k1"]["blacklist"], mode)
+			require.Equal(t, map[string]interface{}{"a": float64(1)}, got["k2"]["x_custom"], mode)
+		}
+		run("add-scheduled-query", "-Q", "new", "-q", "select 3", "-i", "30")
+		check()
+		run("add-posture-queries", "-p", "linux-server")
+		check()
+		run("remove-scheduled-query", "-q", "new")
+		check()
+		// re-adding an existing name replaces modelled fields, keeps the rest
+		run("add-scheduled-query", "-Q", "k1", "-q", "select 11", "-i", "11")
+		env, err := rig.Envs.Get(name)
+		require.NoError(t, err)
+		var got map[string]map[string]interface{}
+		require.NoError(t, json.Unmarshal([]byte(env.Schedule), &got))
+		require.Equal(t, "select 11", got["k1"]["query"], mode)
+		require.Equal(t, "d1", got["k1"]["description"], mode)
+	}
+}

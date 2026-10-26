@@ -110,3 +110,18 @@ func TestEditSectionSavedButRefreshFails(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, env.Schedule, "select 1")
 }
+
+func TestAddQueryToPackConfReplacesModelledFields(t *testing.T) {
+	envs, name := packsEnv(t, `{"p1":{"queries":{"a":{"query":"select 1","interval":60,"snapshot":true,"removed":true,"denylist":true,"platform":"linux","version":"5.0","shard":5,"custom":"keep"}}}}`)
+	require.NoError(t, envs.AddQueryToPackConf(name, "p1", "a", ScheduleQuery{Query: "select 2", Interval: "30"}))
+	env, err := envs.Get(name)
+	require.NoError(t, err)
+	var packs map[string]map[string]map[string]map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(env.Packs), &packs))
+	q := packs["p1"]["queries"]["a"]
+	require.Equal(t, "select 2", q["query"])
+	for _, k := range []string{"snapshot", "removed", "denylist", "platform", "version", "shard"} {
+		require.NotContains(t, q, k, "re-add clears %s", k)
+	}
+	require.Equal(t, "keep", q["custom"], "keys outside ScheduleQuery survive")
+}

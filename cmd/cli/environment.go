@@ -100,9 +100,11 @@ func addEnvironment(ctx context.Context, cmd *cli.Command) error {
 		// Audit log
 		auditlogsmgr.EnvAction(getShellUsername(), "add environment "+envName, "CLI", 0)
 	} else if apiFlag {
-		if err := addEnvironmentAPI(envName, envHost, certificate, cmd.Bool("debug"), osqueryValues); err != nil {
+		stored, err := addEnvironmentAPI(envName, envHost, certificate, cmd.Bool("debug"), osqueryValues)
+		if err != nil {
 			return err
 		}
+		envName = stored // the API lowercases the name
 	}
 	fmt.Printf("✅ environment %s was created successfully\n", envName)
 	return nil
@@ -111,7 +113,8 @@ func addEnvironment(ctx context.Context, cmd *cli.Command) error {
 // addEnvironmentAPI creates the environment, then applies the follow-ups DB
 // mode does, flags last. A failed follow-up leaves the environment in place
 // and the error names the step.
-func addEnvironmentAPI(name, host, certificate string, debug bool, osq config.YAMLConfigurationOsquery) error {
+// It returns the stored name.
+func addEnvironmentAPI(name, host, certificate string, debug bool, osq config.YAMLConfigurationOsquery) (string, error) {
 	created, err := osctrlAPI.CreateEnvironment(types.EnvCreateRequest{
 		Name:     name,
 		Hostname: host,
@@ -119,19 +122,19 @@ func addEnvironmentAPI(name, host, certificate string, debug bool, osq config.YA
 		Icon:     environments.DefaultEnvironmentIcon,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	id := created.UUID
 	step := func(what string, err error) error {
 		if err == nil {
 			return nil
 		}
-		return fmt.Errorf("environment %s was created, but %s failed (finish or delete it): %w", name, what, err)
+		return fmt.Errorf("environment %s was created, but %s failed (finish or delete it): %w", created.Name, what, err)
 	}
 	// Default configuration parts and decorators, as DB mode stores them
 	cnf, err := pureEnvs.GenStructConf([]byte(pureEnvs.GenEmptyConfiguration(true)))
 	if err != nil {
-		return step("default configuration", err)
+		return created.Name, step("default configuration", err)
 	}
 	for _, part := range []struct {
 		section string
@@ -148,26 +151,26 @@ func addEnvironmentAPI(name, host, certificate string, debug bool, osq config.YA
 			err = osctrlAPI.PatchEnvConfig(id, part.section, value)
 		}
 		if err != nil {
-			return step("default configuration ("+part.section+")", err)
+			return created.Name, step("default configuration ("+part.section+")", err)
 		}
 	}
 	if _, err := osctrlAPI.ExtendEnrollment(id); err != nil {
-		return step("enroll link extension", err)
+		return created.Name, step("enroll link extension", err)
 	}
 	if _, err := osctrlAPI.ExtendRemove(id); err != nil {
-		return step("remove link extension", err)
+		return created.Name, step("remove link extension", err)
 	}
 	if certificate != "" {
 		if err := osctrlAPI.UploadCertificate(id, certificate); err != nil {
-			return step("certificate upload", err)
+			return created.Name, step("certificate upload", err)
 		}
 	}
 	if debug {
 		if err := osctrlAPI.PatchEnvironment(id, types.EnvUpdateRequest{DebugHTTP: &debug}); err != nil {
-			return step("debug", err)
+			return created.Name, step("debug", err)
 		}
 	}
-	return step("flags update", patchGeneratedFlagsAPI(id, osq))
+	return created.Name, step("flags update", patchGeneratedFlagsAPI(id, osq))
 }
 
 // pureEnvs runs the environments manager methods that do not use the
@@ -273,6 +276,12 @@ func updateEnvironment(ctx context.Context, cmd *cli.Command) error {
 		// Audit log
 		auditlogsmgr.EnvAction(getShellUsername(), "update environment "+envName, "CLI", env.ID)
 	} else if apiFlag {
+		// The API rejects intervals below 1: fail before applying anything
+		for _, v := range []int{configInterval, logInterval, queryInterval} {
+			if v < 0 {
+				return fmt.Errorf("intervals must be greater than zero, got %d", v)
+			}
+		}
 		if hostname != "" || debug != nil || enroll != nil {
 			req := types.EnvUpdateRequest{DebugHTTP: debug, AcceptEnrolls: enroll}
 			if hostname != "" {
@@ -465,6 +474,9 @@ func newFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.UpdateFlags(envName, flags); err != nil {
 			return err
 		}
+		if env, err := envs.Get(envName); err == nil { // same line the API writes for a config PATCH
+			auditlogsmgr.ConfAction(getShellUsername(), "config patch on env "+env.Name, "CLI", env.ID)
+		}
 	} else if apiFlag {
 		if err := patchGeneratedFlagsAPI(envName, osqueryValues); err != nil {
 			return err
@@ -502,10 +514,10 @@ func listEnvironment(ctx context.Context, cmd *cli.Command) error {
 			data = append(data, e)
 		}
 		if err := table.Bulk(data); err != nil {
-			return fmt.Errorf("❌ error bulk table - %w", err)
+			return fmt.Errorf("error bulk table - %w", err)
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	} else {
 		fmt.Printf("No environments\n")
@@ -588,6 +600,7 @@ func rotateEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.RotateEnroll(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "rotate enrollment for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.RotateEnrollment(envName)
 		if err != nil {
@@ -725,6 +738,7 @@ func rotateRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.RotateRemove(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "rotate removal for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.RotateRemove(envName)
 		if err != nil {

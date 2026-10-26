@@ -37,11 +37,12 @@ Create a dedicated service user rather than reusing a human's token:
 
 ```bash
 osctrl-cli user add -u mcp-agent -s -e prod
-osctrl-cli --db -D /path/to/tls.yml user permissions -u mcp-agent -e prod --user
+osctrl-cli user change-permissions -u mcp-agent -e prod --user
 ```
 
-`user permissions` works with the local database only, so it needs `--db` and the
-database configuration file of osctrl-tls or osctrl-api.
+`user change-permissions` (alias `user p`) works in both modes: through the API,
+where the token must belong to a global admin, or with `--db -D /path/to/tls.yml`
+directly against the database.
 
 Grant `--user` (read) unless the agent genuinely needs query results, which
 require query-level access on the environment. The tool set here issues no
@@ -152,7 +153,7 @@ Always available. Nothing here mutates anything.
 | `get_node` | Full detail for one node, optionally with its posture score. |
 | `list_osquery_tables` | Discover queryable tables, filtered by name or platform. |
 | `get_table_schema` | Columns and metadata for one table. |
-| `list_queries` | Distributed queries and how many nodes have answered. |
+| `list_queries` | Distributed queries and how many nodes have answered, newest first. Capped by `limit` (default 50, maximum 200); check the `truncated` flag. It works against the API and no longer returns an unbounded list. |
 | `list_saved_queries` | Stored, reusable query templates. |
 | `get_query_results` | Rows collected so far for a query. Requires query-level permission. |
 

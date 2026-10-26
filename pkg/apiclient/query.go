@@ -19,6 +19,13 @@ func (api *OsctrlAPI) GetQueries(target, env string) ([]queries.DistributedQuery
 	return getAllPages[queries.DistributedQuery](api, reqURL)
 }
 
+// GetQueriesLimited is GetQueries bounded to maxItems (> 0): it stops fetching
+// pages once the cap is exceeded and reports whether more queries exist.
+func (api *OsctrlAPI) GetQueriesLimited(target, env string, maxItems int) ([]queries.DistributedQuery, bool, error) {
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIQueries, env, "list", target))
+	return getPages[queries.DistributedQuery](api, reqURL, maxItems)
+}
+
 // GetQuery to retrieve one query from osctrl
 func (api *OsctrlAPI) GetQuery(env, name string) (queries.DistributedQuery, error) {
 	var q queries.DistributedQuery

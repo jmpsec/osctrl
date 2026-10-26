@@ -107,13 +107,13 @@ func listCarves(ctx context.Context, cmd *cli.Command) error {
 			fmt.Printf("Existing carves (%d):\n", len(cs))
 			data := carvesToData(cs, nil)
 			if err := table.Bulk(data); err != nil {
-				return fmt.Errorf("❌ error bulk table - %w", err)
+				return fmt.Errorf("error bulk table - %w", err)
 			}
 		} else {
 			fmt.Println("No carves")
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	}
 	return nil
@@ -149,16 +149,16 @@ func listCarveQueries(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		qs, err = queriesmgr.GetCarves(target, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ error get carve queries - %w", err)
+			return fmt.Errorf("error get carve queries - %w", err)
 		}
 	} else if apiFlag {
 		qs, err = osctrlAPI.GetCarveQueries(target, env)
 		if err != nil {
-			return fmt.Errorf("❌ error get carve queries - %w", err)
+			return fmt.Errorf("error get carve queries - %w", err)
 		}
 	}
 	return printCarveQueries(target, qs)
@@ -185,14 +185,14 @@ func printCarveQueries(target string, qs []queries.DistributedQuery) error {
 	case jsonFormat:
 		jsonRaw, err := json.Marshal(qs)
 		if err != nil {
-			return fmt.Errorf("❌ error json marshal - %w", err)
+			return fmt.Errorf("error json marshal - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
 	case csvFormat:
 		data := queriesToData(qs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("❌ error csv writeall - %w", err)
+			return fmt.Errorf("error csv writeall - %w", err)
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
@@ -201,13 +201,13 @@ func printCarveQueries(target string, qs []queries.DistributedQuery) error {
 			fmt.Printf("Existing %s carve queries (%d):\n", target, len(qs))
 			data := queriesToData(qs, nil)
 			if err := table.Bulk(data); err != nil {
-				return fmt.Errorf("❌ error bulk table - %w", err)
+				return fmt.Errorf("error bulk table - %w", err)
 			}
 		} else {
 			fmt.Printf("No %s carve queries\n", target)
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	}
 	return nil
@@ -226,17 +226,17 @@ func completeCarve(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		if err := queriesmgr.Complete(name, e.ID); err != nil {
-			return fmt.Errorf("❌ error completing carve - %w", err)
+			return fmt.Errorf("error completing carve - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.CarveAction(getShellUsername(), "complete carve "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.CompleteCarve(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ error completing carve - %w", err)
+			return fmt.Errorf("error completing carve - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -258,17 +258,17 @@ func deleteCarve(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		if err := queriesmgr.Delete(name, e.ID); err != nil {
-			return fmt.Errorf("❌ error deleting carve - %w", err)
+			return fmt.Errorf("error deleting carve - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.CarveAction(getShellUsername(), "delete carve "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.DeleteCarve(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ error deleting carve - %w", err)
+			return fmt.Errorf("error deleting carve - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -290,17 +290,17 @@ func expireCarve(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		if err := queriesmgr.Expire(name, e.ID); err != nil {
-			return fmt.Errorf("❌ error expiring carve - %w", err)
+			return fmt.Errorf("error expiring carve - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.CarveAction(getShellUsername(), "expire carve "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.ExpireCarve(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ error expiring carve - %w", err)
+			return fmt.Errorf("error expiring carve - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -351,7 +351,7 @@ func runCarve(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		expTime := queries.QueryExpiration(expHours)
 		if expHours == 0 {
@@ -369,7 +369,7 @@ func runCarve(ctx context.Context, cmd *cli.Command) error {
 			EnvironmentID: e.ID,
 		}
 		if err := queriesmgr.Create(&newQuery); err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		// Prepare data for the handler code
 		data := handlers.ProcessingQuery{
@@ -388,23 +388,23 @@ func runCarve(ctx context.Context, cmd *cli.Command) error {
 		}
 		targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
 		if err != nil {
-			return fmt.Errorf("❌ error creating query carve - %w", err)
+			return fmt.Errorf("error creating query carve - %w", err)
 		}
 		// If the list is empty, we don't need to create node queries
 		if len(targetNodesID) != 0 {
 			if err := queriesmgr.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
-				return fmt.Errorf("❌ error creating node queries - %w", err)
+				return fmt.Errorf("error creating node queries - %w", err)
 			}
 		}
 		if err := queriesmgr.SetExpected(cName, len(targetNodesID), e.ID); err != nil {
-			return fmt.Errorf("❌ error setting expected - %w", err)
+			return fmt.Errorf("error setting expected - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.NewCarve(getShellUsername(), path, "CLI", e.ID)
 	} else if apiFlag {
 		c, err := osctrlAPI.RunCarve(env, path, uuidList, hostList, platformList, tagList, hidden, expHours)
 		if err != nil {
-			return fmt.Errorf("❌ error running carve - %w", err)
+			return fmt.Errorf("error running carve - %w", err)
 		}
 		cName = c.Name
 	}

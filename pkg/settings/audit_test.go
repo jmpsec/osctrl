@@ -27,3 +27,25 @@ func TestAuditRetentionSetting(t *testing.T) {
 	_, err = m.AuditLogRetentionDays()
 	require.Error(t, err)
 }
+
+func TestValidateIntegerSetting(t *testing.T) {
+	for _, tc := range []struct {
+		service, name string
+		value         int64
+		ok            bool
+	}{
+		{config.ServiceAPI, InactiveHours, 0, false},
+		{config.ServiceAPI, InactiveHours, 1, true},
+		{config.ServiceAPI, InactiveHours, MaxInactiveHours, true},
+		{config.ServiceAPI, InactiveHours, MaxInactiveHours + 1, false},
+		{config.ServiceAPI, AuditLogRetentionDays, 0, false},
+		{config.ServiceAPI, AuditLogRetentionDays, 1, true},
+		{config.ServiceAPI, AuditLogRetentionDays, 36500, true},
+		{config.ServiceAPI, AuditLogRetentionDays, 36501, false},
+		{config.ServiceTLS, InactiveHours, -5, true}, // other service: pass-through
+		{config.ServiceAPI, "other_setting", -5, true},
+	} {
+		err := ValidateIntegerSetting(tc.service, tc.name, tc.value)
+		require.Equal(t, tc.ok, err == nil, "%s/%s=%d: %v", tc.service, tc.name, tc.value, err)
+	}
+}

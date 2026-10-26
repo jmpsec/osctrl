@@ -1,8 +1,11 @@
 package environments
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -389,21 +392,73 @@ func RemoveOption(current, option string) (string, error) {
 	return serializeSection(SectionOptions, options)
 }
 
-// AddScheduleQueries returns schedule section current with queries added or replaced.
+// scheduleModelledKeys are the JSON keys ScheduleQuery models.
+func scheduleModelledKeys() map[string]bool {
+	modelled := map[string]bool{}
+	t := reflect.TypeOf(ScheduleQuery{})
+	for i := 0; i < t.NumField(); i++ {
+		modelled[strings.Split(t.Field(i).Tag.Get("json"), ",")[0]] = true
+	}
+	return modelled
+}
+
+// scheduleEntry is the stored form of query: the modelled fields in struct
+// order, followed by the keys of old (an existing entry) that ScheduleQuery
+// does not model.
+func scheduleEntry(query ScheduleQuery, old json.RawMessage) (json.RawMessage, error) {
+	raw, err := json.Marshal(query)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding query - %w", err)
+	}
+	var oldKeys map[string]json.RawMessage
+	if len(old) > 0 {
+		_ = json.Unmarshal(old, &oldKeys) // a non-object old entry is replaced
+	}
+	modelled := scheduleModelledKeys()
+	extra := []string{}
+	for k := range oldKeys {
+		if !modelled[k] {
+			extra = append(extra, k)
+		}
+	}
+	if len(extra) == 0 {
+		return raw, nil
+	}
+	sort.Strings(extra)
+	out := bytes.TrimSuffix(raw, []byte("}"))
+	for _, k := range extra {
+		kb, _ := json.Marshal(k)
+		if len(out) > 1 {
+			out = append(out, ',')
+		}
+		out = append(out, kb...)
+		out = append(out, ':')
+		out = append(out, oldKeys[k]...)
+	}
+	return append(out, '}'), nil
+}
+
+// AddScheduleQueries returns schedule section current with queries added or
+// replaced. Other entries are left as stored, and a replaced entry keeps its
+// keys that ScheduleQuery does not model.
 func AddScheduleQueries(current string, queries ScheduleConf) (string, error) {
-	schedule, err := parseSection[ScheduleConf](SectionSchedule, current)
+	schedule, err := parseSection[map[string]json.RawMessage](SectionSchedule, current)
 	if err != nil {
 		return "", err
 	}
 	for qName, query := range queries {
-		schedule[qName] = query
+		entry, err := scheduleEntry(query, schedule[qName])
+		if err != nil {
+			return "", err
+		}
+		schedule[qName] = entry
 	}
 	return serializeSection(SectionSchedule, schedule)
 }
 
 // RemoveScheduleQuery returns schedule section current without query qName.
 func RemoveScheduleQuery(current, qName string) (string, error) {
-	schedule, err := parseSection[ScheduleConf](SectionSchedule, current)
+	schedule, err := parseSection[map[string]json.RawMessage](SectionSchedule, current)
 	if err != nil {
 		return "", err
 	}
@@ -452,10 +507,12 @@ func AddQueryToPack(current, pName, qName string, query ScheduleQuery) (string, 
 	if err := json.Unmarshal(rawQuery, &qv); err != nil {
 		return "", fmt.Errorf("error encoding query - %w", err)
 	}
-	// Keep keys of an existing query that the new definition does not set
+	// A re-add replaces the modelled fields (so they can be cleared); only keys
+	// outside ScheduleQuery are preserved
 	if old, ok := qs[qName].(map[string]interface{}); ok {
+		modelled := scheduleModelledKeys()
 		for k, v := range old {
-			if _, set := qv[k]; !set {
+			if !modelled[k] {
 				qv[k] = v
 			}
 		}

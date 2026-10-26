@@ -122,8 +122,10 @@ func dbLockoutActor(target string) string {
 	return actor
 }
 
-// dbLockoutGuard (users.CheckLockout, shared with the handler) applies the same refusals as the API handler
-// (SetUserPermissionsHandler), before any write.
+// dbLockoutGuard (users.CheckLockout, shared with the handler) refuses, before
+// any write, demoting the last super-admin and, in DB mode, demoting yourself
+// only when you are a global super-admin; the API handler
+// (SetUserPermissionsHandler) refuses self-demotion for anyone.
 func dbLockoutGuard(target string, access users.EnvAccess) error {
 	err := adminUsers.CheckLockout(dbLockoutActor(target), target, access)
 	if errors.Is(err, users.ErrSelfDemote) {
@@ -225,10 +227,10 @@ func showPermissions(ctx context.Context, cmd *cli.Command) error {
 		table.Header(stringSliceToAnySlice(header)...)
 		data := accessToData(access, envName, nil)
 		if err := table.Bulk(data); err != nil {
-			return fmt.Errorf("❌ error bulk table - %w", err)
+			return fmt.Errorf("error bulk table - %w", err)
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	}
 	return nil
@@ -310,10 +312,10 @@ func allPermissions(ctx context.Context, cmd *cli.Command) error {
 		table.Header(stringSliceToAnySlice(header)...)
 		data := permissionsToData(existingAccess, nil)
 		if err := table.Bulk(data); err != nil {
-			return fmt.Errorf("❌ error bulk table - %w", err)
+			return fmt.Errorf("error bulk table - %w", err)
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	}
 	return nil

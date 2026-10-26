@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -155,6 +156,9 @@ func TestEnvAddAPIFollowUpFailureLeavesEnvAndNamesStep(t *testing.T) {
 	require.False(t, env.DebugHTTP)
 }
 
+// Intentional DB-vs-API `env update` differences: the API rejects intervals
+// below 1 and invalid hostnames with 400, while DB mode stores them as given
+// (API mode rejects negative intervals client-side, before any request).
 func TestEnvUpdateOmittedBooleansUnchanged(t *testing.T) {
 	rig := newParityRig(t)
 	for _, mode := range []string{"db", "api"} {
@@ -345,4 +349,50 @@ func TestShellEnvDeleteUsesStore(t *testing.T) {
 		found = found || (l.Service == "osctrl-cli" && strings.Contains(l.Line, "delete environment sh-db"))
 	}
 	require.True(t, found, "DB store audits the delete")
+}
+
+// A negative interval in API mode fails before the first request, so a
+// combined -d is not left applied; env add prints the name the API stored.
+func TestEnvUpdateAPINegativeIntervalAppliesNothing(t *testing.T) {
+	rig := newParityRig(t)
+	rig.SeedEnv("neg")
+	_, err := rig.RunAPI("env", "update", "-n", "neg", "-d", "-l", "-5")
+	require.Error(t, err)
+	require.False(t, rig.env("neg").DebugHTTP, "debug must not be applied")
+}
+
+func TestEnvAddAPIPrintsStoredName(t *testing.T) {
+	rig := newParityRig(t)
+	out, err := rig.RunAPI("env", "add", "-n", "MixedCase", "--host", "mc.example.com")
+	require.NoError(t, err)
+	require.Contains(t, out, "environment mixedcase was created")
+}
+
+// env new-flags and rotate-enroll/rotate-remove write the same audit lines in
+// DB mode as the API does for them.
+func TestEnvFlagsAndRotateAuditParity(t *testing.T) {
+	rig := newParityRig(t)
+	lines := map[string][]string{}
+	for _, mode := range []string{"db", "api"} {
+		name := "aud"
+		if mode == "api" {
+			name = "aud2"
+		}
+		rig.SeedEnv(name)
+		envAuditRows(t, rig, name)
+		for _, a := range []string{"new-flags", "rotate-enroll", "rotate-remove"} {
+			_, err := rig.runner(mode)("env", "node-actions", "-n", name, a)
+			require.NoError(t, err, mode, a)
+		}
+		for _, r := range envAuditRows(t, rig, name) {
+			l := r.Line
+			if _, rest, ok := strings.Cut(l, " performed "); ok {
+				l = rest
+			}
+			lines[mode] = append(lines[mode], strings.ReplaceAll(l, name, "ENV"))
+		}
+		sort.Strings(lines[mode])
+	}
+	require.NotEmpty(t, lines["api"])
+	require.Equal(t, lines["api"], lines["db"])
 }

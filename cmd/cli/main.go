@@ -117,7 +117,7 @@ func init() {
 			Name:        "db",
 			Aliases:     []string{"d"},
 			Value:       false,
-			Usage:       "Connect to local osctrl DB using YAML config file (required by db-only commands)",
+			Usage:       "Connect to local osctrl DB using YAML config file (required by db-only commands: settings add, settings delete)",
 			Sources:     cli.EnvVars("DB_CONFIG"),
 			Destination: &dbFlag,
 		},
@@ -125,7 +125,7 @@ func init() {
 			Name:        "api",
 			Aliases:     []string{"a"},
 			Value:       true,
-			Usage:       "Connect to remote osctrl using JSON config file (ignored when --db is set)",
+			Usage:       "Connect to remote osctrl using JSON config file (the default; every command except settings add/delete also works with --db; ignored when --db is set)",
 			Sources:     cli.EnvVars("API_CONFIG"),
 			Destination: &apiFlag,
 		},
@@ -241,7 +241,7 @@ func init() {
 			Name:        "silent",
 			Aliases:     []string{"s"},
 			Value:       false,
-			Usage:       "Silent mode",
+			Usage:       "Silent mode: suppress output and skip confirmation prompts",
 			Destination: &silentFlag,
 		},
 	}
@@ -272,7 +272,8 @@ func init() {
 					Name:    "rules",
 					Aliases: []string{"r"},
 					Usage:   "List alert rules",
-					Action:  cliWrapperAPI(alertRulesList),
+					Flags:   []cli.Flag{&cli.UintFlag{Name: "environment", Aliases: []string{"e"}, Usage: "Only rules of this environment ID"}},
+					Action:  cliWrapper(alertRulesList),
 				},
 				{
 					Name:    "rule-create",
@@ -280,15 +281,20 @@ func init() {
 					Usage:   "Create an alert rule",
 					Flags: []cli.Flag{
 						&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "Rule name"},
-						&cli.StringFlag{Name: "source", Aliases: []string{"s"}, Usage: "Source: result_log | status_log | query_log | node_inactive | node_recovered"},
+						&cli.StringFlag{Name: "source", Aliases: []string{"s"}, Usage: "Source: result_log | status_log | query_log | node_inactive | node_recovered | vuln_finding"},
 						&cli.StringFlag{Name: "match-type", Aliases: []string{"m"}, Value: "substring", Usage: "Match type: substring | regex"},
 						&cli.StringFlag{Name: "match-field", Usage: "Field to match (empty = any field)"},
 						&cli.StringFlag{Name: "match-value", Aliases: []string{"v"}, Usage: "Pattern to match"},
 						&cli.IntFlag{Name: "cooldown", Value: 0, Usage: "Cooldown minutes between repeat alerts"},
 						&cli.StringFlag{Name: "channels", Usage: "Comma-separated channel IDs"},
 						&cli.BoolFlag{Name: "enabled", Value: true, Usage: "Create the rule enabled"},
+						&cli.UintFlag{Name: "environment", Aliases: []string{"e"}, Value: 0, Usage: "Environment ID (0 = global)"},
+						&cli.StringFlag{Name: "node-uuid", Usage: "Only match this node (empty = all nodes)"},
+						&cli.StringFlag{Name: "status-severity", Usage: "Status log severity: error | warning | any"},
+						&cli.StringFlag{Name: "vuln-min-severity", Usage: "Vulnerability threshold: kev | critical | high | medium | low | any"},
+						&cli.StringFlag{Name: "info", Usage: "Free-form description"},
 					},
-					Action: cliWrapperAPI(alertRuleCreate),
+					Action: cliWrapper(alertRuleCreate),
 				},
 				{
 					Name:    "rule-delete",
@@ -297,13 +303,13 @@ func init() {
 					Flags: []cli.Flag{
 						&cli.UintFlag{Name: "id", Usage: "Rule ID"},
 					},
-					Action: cliWrapperAPI(alertRuleDelete),
+					Action: cliWrapper(alertRuleDelete),
 				},
 				{
 					Name:    "channels",
 					Aliases: []string{"c"},
 					Usage:   "List alert channels",
-					Action:  cliWrapperAPI(alertChannelsList),
+					Action:  cliWrapper(alertChannelsList),
 				},
 				{
 					Name:    "channel-create",
@@ -314,8 +320,10 @@ func init() {
 						&cli.StringFlag{Name: "type", Aliases: []string{"t"}, Usage: "Channel type: webhook | email"},
 						&cli.StringFlag{Name: "config", Usage: "Channel config as JSON"},
 						&cli.BoolFlag{Name: "enabled", Value: true, Usage: "Create the channel enabled"},
+						&cli.UintFlag{Name: "environment", Aliases: []string{"e"}, Value: 0, Usage: "Environment ID (0 = global)"},
+						&cli.StringFlag{Name: "info", Usage: "Free-form description"},
 					},
-					Action: cliWrapperAPI(alertChannelCreate),
+					Action: cliWrapper(alertChannelCreate),
 				},
 				{
 					Name:    "channel-delete",
@@ -324,12 +332,12 @@ func init() {
 					Flags: []cli.Flag{
 						&cli.UintFlag{Name: "id", Usage: "Channel ID"},
 					},
-					Action: cliWrapperAPI(alertChannelDelete),
+					Action: cliWrapper(alertChannelDelete),
 				},
 				{
 					Name:   "apply",
 					Usage:  "Apply alert changes (hot-reload rules and channels in osctrl-tls)",
-					Action: cliWrapperAPI(alertsApply),
+					Action: cliWrapper(alertsApply),
 				},
 			},
 		},
@@ -567,7 +575,7 @@ func init() {
 				{
 					Name:    "update",
 					Aliases: []string{"u"},
-					Usage:   "Update an existing TLS environment",
+					Usage:   "Update an existing TLS environment (works with --db and through the API; stored flags are regenerated when a plugin flag, --hostname or an interval is given, resetting plugin choices to their defaults, so hand-edited flags are lost)",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "name",
@@ -2237,7 +2245,8 @@ func cliWrapper(action cli.ActionFunc) cli.ActionFunc { return cliWrapperMode(mo
 // cliWrapperDB wraps an action that only works with --db.
 func cliWrapperDB(action cli.ActionFunc) cli.ActionFunc { return cliWrapperMode(modeDB, action) }
 
-// cliWrapperAPI wraps an action that only works through the API.
+// cliWrapperAPI wraps an action that only works through the API. No command
+// uses it now that every command has an API path; kept for the guard and tests.
 func cliWrapperAPI(action cli.ActionFunc) cli.ActionFunc { return cliWrapperMode(modeAPI, action) }
 
 // Function to wrap actions. Errors are returned (main prints them to stderr and

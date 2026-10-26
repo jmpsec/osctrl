@@ -149,3 +149,29 @@ func TestCLIEnvironmentThresholds(t *testing.T) {
 		}
 	}
 }
+
+// The shell cannot store out-of-range values or change a setting's type.
+func TestShellUpdateSettingKeepsTypeAndRange(t *testing.T) {
+	oldSettings := settingsmgr
+	t.Cleanup(func() { settingsmgr = oldSettings })
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	settingsmgr = settings.NewSettings(db)
+	require.NoError(t, settingsmgr.NewIntegerValue(config.ServiceAPI, settings.AuditLogRetentionDays, 90, 0))
+	require.NoError(t, settingsmgr.NewStringValue("tls", "a-string", "v", 0))
+	store := &dbStore{}
+	require.Error(t, store.UpdateSetting(config.ServiceAPI, settings.AuditLogRetentionDays, "integer", "0"))
+	require.Error(t, store.UpdateSetting(config.ServiceAPI, settings.AuditLogRetentionDays, "string", "x"))
+	require.Error(t, store.UpdateSetting("tls", "a-string", "integer", "5"))
+	v, err := settingsmgr.RetrieveValue(config.ServiceAPI, settings.AuditLogRetentionDays, 0)
+	require.NoError(t, err)
+	require.Equal(t, int64(90), v.Integer)
+	s, err := settingsmgr.RetrieveValue("tls", "a-string", 0)
+	require.NoError(t, err)
+	require.Equal(t, "v", s.String)
+	require.NoError(t, store.UpdateSetting(config.ServiceAPI, settings.AuditLogRetentionDays, "int", "30"))
+	// A missing setting is not created (the CLI --db refuses and the API 404s)
+	require.ErrorContains(t, store.UpdateSetting("tls", "missing", "string", "x"), "not found")
+	_, err = settingsmgr.RetrieveValue("tls", "missing", 0)
+	require.Error(t, err)
+}

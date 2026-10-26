@@ -3,6 +3,7 @@ package apiclient
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -125,6 +126,23 @@ func TestGetQueriesErrorMidPagination(t *testing.T) {
 		}
 		writeJSON(w, types.QueriesPagedResponse{Items: []queries.DistributedQuery{{Name: "q1"}}, Page: 1, PageSize: 500, TotalItems: 2, TotalPages: 2})
 	})
-	_, err := newRealURLServer(t, mux).GetQueries("all", "dev")
+	got, err := newRealURLServer(t, mux).GetQueries("all", "dev")
 	require.Error(t, err)
+	require.Nil(t, got, "no partial items on a failed page")
+}
+
+func TestGetQueriesLimitedStopsEarly(t *testing.T) {
+	pages := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/queries/{env}/list/{target}", func(w http.ResponseWriter, r *http.Request) {
+		pages++
+		size, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+		items := make([]queries.DistributedQuery, size)
+		writeJSON(w, types.QueriesPagedResponse{Items: items, Page: pages, PageSize: size, TotalItems: 100000, TotalPages: 100000 / size})
+	})
+	got, truncated, err := newRealURLServer(t, mux).GetQueriesLimited("all", "dev", 5)
+	require.NoError(t, err)
+	require.Len(t, got, 5)
+	require.True(t, truncated)
+	require.Equal(t, 1, pages, "must not follow every page")
 }

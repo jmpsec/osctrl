@@ -81,16 +81,16 @@ func listQueries(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		qs, err = queriesmgr.GetQueries(target, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ error get queries - %w", err)
+			return fmt.Errorf("error get queries - %w", err)
 		}
 	} else if apiFlag {
 		qs, err = osctrlAPI.GetQueries(target, env)
 		if err != nil {
-			return fmt.Errorf("❌ error get queries - %w", err)
+			return fmt.Errorf("error get queries - %w", err)
 		}
 	}
 	header := []string{
@@ -112,14 +112,14 @@ func listQueries(ctx context.Context, cmd *cli.Command) error {
 	case jsonFormat:
 		jsonRaw, err := json.Marshal(qs)
 		if err != nil {
-			return fmt.Errorf("❌ error json marshal - %w", err)
+			return fmt.Errorf("error json marshal - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
 	case csvFormat:
 		data := queriesToData(qs, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
-			return fmt.Errorf("❌ error csv writeall - %w", err)
+			return fmt.Errorf("error csv writeall - %w", err)
 		}
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
@@ -128,13 +128,13 @@ func listQueries(ctx context.Context, cmd *cli.Command) error {
 			fmt.Printf("Existing %s queries (%d):\n", target, len(qs))
 			data := queriesToData(qs, nil)
 			if err := table.Bulk(data); err != nil {
-				return fmt.Errorf("❌ error bulk table - %w", err)
+				return fmt.Errorf("error bulk table - %w", err)
 			}
 		} else {
 			fmt.Printf("No %s queries\n", target)
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	}
 	return nil
@@ -155,17 +155,17 @@ func completeQuery(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		if err := queriesmgr.Complete(name, e.ID); err != nil {
-			return fmt.Errorf("❌ error completing query - %w", err)
+			return fmt.Errorf("error completing query - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.QueryAction(getShellUsername(), "complete query "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.CompleteQuery(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ error completing query - %w", err)
+			return fmt.Errorf("error completing query - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -189,17 +189,17 @@ func deleteQuery(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		if err := queriesmgr.Delete(name, e.ID); err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		// Audit log
 		auditlogsmgr.QueryAction(getShellUsername(), "delete query "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.DeleteQuery(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	}
 	if !silentFlag {
@@ -223,17 +223,17 @@ func expireQuery(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		if err := queriesmgr.Expire(name, e.ID); err != nil {
-			return fmt.Errorf("❌ error expiring query - %w", err)
+			return fmt.Errorf("error expiring query - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.QueryAction(getShellUsername(), "expire query "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.ExpireQuery(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ error expiring query - %w", err)
+			return fmt.Errorf("error expiring query - %w", err)
 		}
 	}
 	if !silentFlag {
@@ -284,7 +284,7 @@ func runQuery(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		expTime := queries.QueryExpiration(expHours)
 		if expHours == 0 {
@@ -301,7 +301,7 @@ func runQuery(ctx context.Context, cmd *cli.Command) error {
 			EnvironmentID: e.ID,
 		}
 		if err := queriesmgr.Create(&newQuery); err != nil {
-			return fmt.Errorf("❌ error query create - %w", err)
+			return fmt.Errorf("error query create - %w", err)
 		}
 		// Prepare data for the handler code
 		data := handlers.ProcessingQuery{
@@ -320,23 +320,23 @@ func runQuery(ctx context.Context, cmd *cli.Command) error {
 		}
 		targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
 		if err != nil {
-			return fmt.Errorf("❌ error creating query carve - %w", err)
+			return fmt.Errorf("error creating query carve - %w", err)
 		}
 		// If the list is empty, we don't need to create node queries
 		if len(targetNodesID) != 0 {
 			if err := queriesmgr.CreateNodeQueries(targetNodesID, newQuery.ID); err != nil {
-				return fmt.Errorf("❌ error creating node queries - %w", err)
+				return fmt.Errorf("error creating node queries - %w", err)
 			}
 		}
 		if err := queriesmgr.SetExpected(queryName, len(targetNodesID), e.ID); err != nil {
-			return fmt.Errorf("❌ error set expected - %w", err)
+			return fmt.Errorf("error set expected - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.NewQuery(getShellUsername(), query, "CLI", e.ID)
 	} else if apiFlag {
 		q, err := osctrlAPI.RunQuery(env, query, uuidList, hostList, platformList, tagList, hidden, expHours)
 		if err != nil {
-			return fmt.Errorf("❌ error run query - %w", err)
+			return fmt.Errorf("error run query - %w", err)
 		}
 		queryName = q.Name
 	}
