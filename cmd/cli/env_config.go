@@ -8,11 +8,17 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 )
 
+// envCacheNote warns that direct-database edits cannot invalidate the shared
+// Redis environment cache (see pkg/environments/env-cache.go).
+const envCacheNote = "With --db the edit cannot invalidate the shared Redis environment cache, so osctrl-api and " +
+	"osctrl-tls may keep serving the old environment for up to 5 minutes (60 while the database is degraded); " +
+	"API mode invalidates immediately."
+
 // envConfigEditNote is the help Description of every command that edits an
 // environment configuration section.
 const envConfigEditNote = "In API mode the edit is read-modify-write: the CLI reads the whole section, " +
 	"changes it and writes the whole section back. It is not atomic: a change saved by someone else " +
-	"in between (for example in the UI) is overwritten."
+	"in between (for example in the UI) is overwritten. " + envCacheNote
 
 // envConfigSections maps a section to its field in the API config response.
 var envConfigSections = map[string]func(types.EnvConfigResponse) string{

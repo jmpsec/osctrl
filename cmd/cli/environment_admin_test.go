@@ -380,7 +380,7 @@ func TestEnvFlagsAndRotateAuditParity(t *testing.T) {
 		}
 		rig.SeedEnv(name)
 		envAuditRows(t, rig, name)
-		for _, a := range []string{"new-flags", "rotate-enroll", "rotate-remove"} {
+		for _, a := range []string{"new-flags", "rotate-enroll", "rotate-remove", "extend-enroll", "expire-enroll", "notexpire-enroll", "extend-remove", "expire-remove", "notexpire-remove"} {
 			_, err := rig.runner(mode)("env", "node-actions", "-n", name, a)
 			require.NoError(t, err, mode, a)
 		}
