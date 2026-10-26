@@ -99,9 +99,6 @@ func addEnvironment(ctx context.Context, cmd *cli.Command) error {
 		// Audit log
 		auditlogsmgr.EnvAction(getShellUsername(), "add environment "+envName, "CLI", 0)
 		fmt.Printf("✅ environment %s was created successfully\n", envName)
-	} else if apiFlag {
-		fmt.Println("❌ API not supported yet for this operation")
-		os.Exit(1)
 	}
 	return nil
 }
@@ -179,9 +176,6 @@ func updateEnvironment(ctx context.Context, cmd *cli.Command) error {
 		// Audit log
 		auditlogsmgr.EnvAction(getShellUsername(), "update environment "+envName, "CLI", env.ID)
 		fmt.Printf("✅ environment %s was updated successfully\n", envName)
-	} else if apiFlag {
-		fmt.Println("❌ API not supported yet for this operation")
-		os.Exit(1)
 	}
 	return nil
 }
@@ -197,9 +191,6 @@ func deleteEnvironment(ctx context.Context, cmd *cli.Command) error {
 		// Audit log
 		auditlogsmgr.EnvAction(getShellUsername(), "delete environment "+envName, "CLI", 0)
 		return envs.Delete(envName)
-	} else if apiFlag {
-		fmt.Println("❌ API not supported yet for this operation")
-		os.Exit(1)
 	}
 	return nil
 }
@@ -316,9 +307,6 @@ func newFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.UpdateFlags(envName, flags); err != nil {
 			return err
 		}
-	} else if apiFlag {
-		fmt.Println("❌ API not supported yet for this operation")
-		os.Exit(1)
 	}
 	return nil
 }
@@ -795,9 +783,6 @@ func addPostureQueries(ctx context.Context, cmd *cli.Command) error {
 		}
 		auditlogsmgr.EnvAction(getShellUsername(), "add posture queries "+profileID+" to "+envName, "CLI", env.ID)
 		fmt.Printf("✅ posture profile %s added %d scheduled queries to %s\n", profileID, len(schedule), envName)
-	} else if apiFlag {
-		fmt.Println("❌ API not supported yet for this operation")
-		os.Exit(1)
 	}
 	return nil
 }
