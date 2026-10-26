@@ -459,15 +459,11 @@ func shEnvShow(s *shellState, args []string) {
 }
 
 func shEnvDelete(s *shellState, args []string) {
-	if s.store.Mode() == "api" {
-		errf("environment deletion is not exposed via the REST API; use --db mode")
-		return
-	}
 	if !s.confirm(fmt.Sprintf("Delete environment %s?", args[0])) {
 		fmt.Println("aborted")
 		return
 	}
-	if err := envs.Delete(args[0]); err != nil {
+	if err := s.store.DeleteEnvironment(args[0]); err != nil {
 		errf("%v", err)
 		return
 	}

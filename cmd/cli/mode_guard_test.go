@@ -10,7 +10,7 @@ import (
 )
 
 // dbManagerGlobals are the package-level managers only initialised with --db.
-var dbManagerGlobals = []string{"adminUsers", "envs", "nodesmgr", "tagsmgr", "queriesmgr", "filecarves", "settingsmgr", "auditlogsmgr", "db"}
+var dbManagerGlobals = []string{"adminUsers", "envs", "nodesmgr", "tagsmgr", "queriesmgr", "filecarves", "settingsmgr", "auditlogsmgr", "mfamgr", "db"}
 
 // mentions reports whether n contains an identifier with one of the names.
 func mentions(n ast.Node, names ...string) bool {
@@ -30,7 +30,8 @@ func mentions(n ast.Node, names ...string) bool {
 // mode whose globals (DB managers or osctrlAPI) are nil, which is a panic.
 //
 // Limits: it only matches identifier names inside the registered function's own
-// body; use through a helper function is not detected, and only registrations
+// body (a call to a helper in bothModeHelpers counts as both modes); other use
+// through a helper function is not detected, and only registrations
 // of a plain function identifier (cliWrapper*(name)) are inspected.
 func TestCommandsRegisteredForTheirMode(t *testing.T) {
 	fset := token.NewFileSet()
@@ -54,6 +55,14 @@ func TestCommandsRegisteredForTheirMode(t *testing.T) {
 			}
 		}
 	}
+	// Helpers that branch on the mode themselves: calling one counts as using
+	// both modes. Each must really mention both.
+	bothModeHelpers := []string{"editEnvConfigSection"}
+	for _, h := range bothModeHelpers {
+		if funcs[h] == nil || !mentions(funcs[h].Body, "osctrlAPI") || !mentions(funcs[h].Body, "envs") {
+			t.Errorf("%s is listed as handling both modes but does not use osctrlAPI and envs", h)
+		}
+	}
 	// (i) and (ii): the plain cliWrapper means the action handles both modes.
 	ast.Inspect(mainFile, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -66,8 +75,8 @@ func TestCommandsRegisteredForTheirMode(t *testing.T) {
 			return true
 		}
 		fd := funcs[arg.Name]
-		usesAPI := mentions(fd.Body, "osctrlAPI", "apiFlag")
-		usesDB := mentions(fd.Body, append([]string{"dbFlag"}, dbManagerGlobals...)...)
+		usesAPI := mentions(fd.Body, append([]string{"osctrlAPI", "apiFlag"}, bothModeHelpers...)...)
+		usesDB := mentions(fd.Body, append(append([]string{"dbFlag"}, dbManagerGlobals...), bothModeHelpers...)...)
 		switch {
 		case wrapper.Name == "cliWrapper" && !usesAPI:
 			t.Errorf("%s only uses the database: register it with cliWrapperDB", arg.Name)

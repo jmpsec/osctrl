@@ -15,6 +15,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/mfa"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
@@ -76,6 +77,7 @@ var (
 	envs         *environments.EnvManager
 	db           *backend.DBManager
 	auditlogsmgr *auditlog.AuditLogManager
+	mfamgr       *mfa.Manager
 	osctrlAPI    *apiclient.OsctrlAPI
 	formats      map[string]bool
 )
@@ -437,6 +439,8 @@ func init() {
 					Name:    "list",
 					Aliases: []string{"l"},
 					Usage:   "List file carves",
+					Description: "With --db it lists carved files (one per node). With --api it lists carve queries " +
+						"(one per carve operation: name, creator, query, status), because the API does not list carved files.",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "env",
@@ -558,7 +562,7 @@ func init() {
 							Usage:   "Generate flags for osquery's file carve plugin",
 						},
 					},
-					Action: cliWrapperDB(addEnvironment),
+					Action: cliWrapper(addEnvironment),
 				},
 				{
 					Name:    "update",
@@ -644,7 +648,7 @@ func init() {
 							Usage: "Generate flags for osquery's file carve plugin",
 						},
 					},
-					Action: cliWrapperDB(updateEnvironment),
+					Action: cliWrapper(updateEnvironment),
 				},
 				{
 					Name:  "add-scheduled-query",
@@ -687,7 +691,8 @@ func init() {
 							Usage:   "Only run on osquery versions greater than or equal-to this version",
 						},
 					},
-					Action: cliWrapperDB(addScheduledQuery),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(addScheduledQuery),
 				},
 				{
 					Name:  "add-posture-queries",
@@ -718,7 +723,8 @@ func init() {
 							Usage:   "Override posture query interval in seconds; 0 keeps profile defaults",
 						},
 					},
-					Action: cliWrapperDB(addPostureQueries),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(addPostureQueries),
 				},
 				{
 					Name:  "remove-scheduled-query",
@@ -737,7 +743,8 @@ func init() {
 							Usage:   "Query to be removed from the schedule",
 						},
 					},
-					Action: cliWrapperDB(removeScheduledQuery),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(removeScheduledQuery),
 				},
 				{
 					Name:  "add-osquery-option",
@@ -777,7 +784,8 @@ func init() {
 							Usage:   "Boolean value for the option",
 						},
 					},
-					Action: cliWrapperDB(addOsqueryOption),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(addOsqueryOption),
 				},
 				{
 					Name:  "remove-osquery-option",
@@ -796,7 +804,8 @@ func init() {
 							Usage:   "Option name to be added",
 						},
 					},
-					Action: cliWrapperDB(removeOsqueryOption),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(removeOsqueryOption),
 				},
 				{
 					Name:  "add-new-pack",
@@ -830,7 +839,8 @@ func init() {
 							Usage:   "Restrict this query to a percentage (1-100) of target hosts",
 						},
 					},
-					Action: cliWrapperDB(addNewPack),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(addNewPack),
 				},
 				{
 					Name:  "add-local-pack",
@@ -854,7 +864,8 @@ func init() {
 							Usage:   "Local full path to load the query pack within osquery",
 						},
 					},
-					Action: cliWrapperDB(addLocalPack),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(addLocalPack),
 				},
 				{
 					Name:  "remove-pack",
@@ -873,7 +884,8 @@ func init() {
 							Usage:   "Pack name to be removed",
 						},
 					},
-					Action: cliWrapperDB(removePack),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(removePack),
 				},
 				{
 					Name:  "add-query-to-pack",
@@ -922,7 +934,8 @@ func init() {
 							Usage:   "Only run on osquery versions greater than or equal-to this version",
 						},
 					},
-					Action: cliWrapperDB(addPackQuery),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(addPackQuery),
 				},
 				{
 					Name:  "remove-query-from-pack",
@@ -947,7 +960,8 @@ func init() {
 							Usage:   "Query name to be removed",
 						},
 					},
-					Action: cliWrapperDB(removePackQuery),
+					Description: envConfigEditNote,
+					Action:      cliWrapper(removePackQuery),
 				},
 				{
 					Name: "node-actions",
@@ -988,7 +1002,7 @@ func init() {
 									Usage:   "Generate flags for osquery's file carve plugin",
 								},
 							},
-							Action: cliWrapperDB(newFlagsEnvironment),
+							Action: cliWrapper(newFlagsEnvironment),
 						},
 						{
 							Name:    "gen-flags",
@@ -1145,8 +1159,13 @@ func init() {
 							Aliases: []string{"n"},
 							Usage:   "Environment name to be deleted",
 						},
+						&cli.BoolFlag{
+							Name:    "yes",
+							Aliases: []string{"y"},
+							Usage:   "Delete without asking to type the environment name",
+						},
 					},
-					Action: cliWrapperDB(deleteEnvironment),
+					Action: cliWrapper(deleteEnvironment),
 				},
 				{
 					Name:    "show",
@@ -1578,7 +1597,7 @@ func init() {
 							Usage:   "Setting info",
 						},
 					},
-					Action: cliWrapperDB(updateSetting),
+					Action: cliWrapper(updateSetting),
 				},
 				{
 					Name:    "delete",
@@ -1602,7 +1621,7 @@ func init() {
 					Name:    "show",
 					Aliases: []string{"s"},
 					Usage:   "Show all configuration values",
-					Action:  cliWrapperDB(listConfiguration),
+					Action:  cliWrapper(listConfiguration),
 				},
 			},
 		},
@@ -1863,9 +1882,10 @@ func init() {
 					Action: cliWrapper(editUser),
 				},
 				{
-					Name:    "change-permissions",
-					Aliases: []string{"p", "access"},
-					Usage:   "Change permission in an environment for an existing user",
+					Name:        "change-permissions",
+					Aliases:     []string{"p", "access"},
+					Usage:       "Change permission in an environment for an existing user",
+					Description: "Additive: grants the given levels and never removes existing ones (admin implies user, query and carve). It reads the current access and writes the merged result, so a concurrent change to the same user and environment can be overwritten. Use reset-permissions to replace levels (reset refuses demoting yourself or the last super-admin; set USER= to act as another user).",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "username",
@@ -1902,7 +1922,7 @@ func init() {
 							Usage:   "Grant carve permissions",
 						},
 					},
-					Action: cliWrapperDB(changePermissions),
+					Action: cliWrapper(changePermissions),
 				},
 				{
 					Name:    "reset-permissions",
@@ -1944,7 +1964,7 @@ func init() {
 							Usage:   "Grant carve permissions",
 						},
 					},
-					Action: cliWrapperDB(resetPermissions),
+					Action: cliWrapper(resetPermissions),
 				},
 				{
 					Name:    "show-permissions",
@@ -1962,7 +1982,7 @@ func init() {
 							Usage:   "Environment for this user",
 						},
 					},
-					Action: cliWrapperDB(showPermissions),
+					Action: cliWrapper(showPermissions),
 				},
 				{
 					Name:    "all-permissions",
@@ -1975,7 +1995,7 @@ func init() {
 							Usage:   "User to perform the action",
 						},
 					},
-					Action: cliWrapperDB(allPermissions),
+					Action: cliWrapper(allPermissions),
 				},
 				{
 					Name:    "delete",
@@ -2281,6 +2301,8 @@ func cliWrapperMode(mode cliMode, action cli.ActionFunc) cli.ActionFunc {
 			if err != nil {
 				return fmt.Errorf("error creating audit log manager - %w", err)
 			}
+			// Initialize MFA (user deletion removes second factors)
+			mfamgr = mfa.NewManager(db.Conn)
 			// apiFlag defaults to true, but the API client is not initialised
 			// here: --db wins, so no action can take an API branch.
 			apiFlag = false

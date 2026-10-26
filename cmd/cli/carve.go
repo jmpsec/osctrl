@@ -53,10 +53,11 @@ func listCarves(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	env := cmd.String("env")
 	if env == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+		return fmt.Errorf("environment is required")
 	}
-	// Retrieve data
+	// Retrieve data. The API lists carve queries (one per carve operation)
+	// while the DB lists carved files (one per node), so the API branch
+	// prints the carve queries table instead.
 	var cs []carves.CarvedFile
 	if dbFlag {
 		e, err := envs.Get(env)
@@ -68,10 +69,11 @@ func listCarves(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 	} else if apiFlag {
-		cs, err = osctrlAPI.GetCarves(env)
+		qs, err := osctrlAPI.GetCarves(env)
 		if err != nil {
 			return err
 		}
+		return printCarveQueries("all", qs)
 	}
 	header := []string{
 		"QueryName",
@@ -140,8 +142,7 @@ func listCarveQueries(ctx context.Context, cmd *cli.Command) error {
 	}
 	env := cmd.String("env")
 	if env == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+		return fmt.Errorf("environment is required")
 	}
 	// Retrieve data
 	var qs []queries.DistributedQuery
@@ -160,6 +161,11 @@ func listCarveQueries(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("❌ error get carve queries - %w", err)
 		}
 	}
+	return printCarveQueries(target, qs)
+}
+
+// printCarveQueries prints carve queries in the selected output format
+func printCarveQueries(target string, qs []queries.DistributedQuery) error {
 	header := []string{
 		"Name",
 		"Creator",
@@ -211,13 +217,11 @@ func completeCarve(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	name := cmd.String("name")
 	if name == "" {
-		fmt.Println("❌ carve name is required")
-		os.Exit(1)
+		return fmt.Errorf("carve name is required")
 	}
 	env := cmd.String("env")
 	if env == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+		return fmt.Errorf("environment is required")
 	}
 	if dbFlag {
 		e, err := envs.Get(env)
@@ -230,7 +234,7 @@ func completeCarve(ctx context.Context, cmd *cli.Command) error {
 		// Audit log
 		auditlogsmgr.CarveAction(getShellUsername(), "complete carve "+name, "CLI", e.ID)
 	} else if apiFlag {
-		_, err := osctrlAPI.CompleteQuery(env, name)
+		_, err := osctrlAPI.CompleteCarve(env, name)
 		if err != nil {
 			return fmt.Errorf("❌ error completing carve - %w", err)
 		}
@@ -245,13 +249,11 @@ func deleteCarve(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	name := cmd.String("name")
 	if name == "" {
-		fmt.Println("❌ carve name is required")
-		os.Exit(1)
+		return fmt.Errorf("carve name is required")
 	}
 	env := cmd.String("env")
 	if env == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+		return fmt.Errorf("environment is required")
 	}
 	if dbFlag {
 		e, err := envs.Get(env)
@@ -264,7 +266,7 @@ func deleteCarve(ctx context.Context, cmd *cli.Command) error {
 		// Audit log
 		auditlogsmgr.CarveAction(getShellUsername(), "delete carve "+name, "CLI", e.ID)
 	} else if apiFlag {
-		_, err := osctrlAPI.DeleteQuery(env, name)
+		_, err := osctrlAPI.DeleteCarve(env, name)
 		if err != nil {
 			return fmt.Errorf("❌ error deleting carve - %w", err)
 		}
@@ -279,13 +281,11 @@ func expireCarve(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	name := cmd.String("name")
 	if name == "" {
-		fmt.Println("❌ carve name is required")
-		os.Exit(1)
+		return fmt.Errorf("carve name is required")
 	}
 	env := cmd.String("env")
 	if env == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+		return fmt.Errorf("environment is required")
 	}
 	if dbFlag {
 		e, err := envs.Get(env)
@@ -298,7 +298,7 @@ func expireCarve(ctx context.Context, cmd *cli.Command) error {
 		// Audit log
 		auditlogsmgr.CarveAction(getShellUsername(), "expire carve "+name, "CLI", e.ID)
 	} else if apiFlag {
-		_, err := osctrlAPI.ExpireQuery(env, name)
+		_, err := osctrlAPI.ExpireCarve(env, name)
 		if err != nil {
 			return fmt.Errorf("❌ error expiring carve - %w", err)
 		}

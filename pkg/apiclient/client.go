@@ -35,6 +35,8 @@ const (
 	APIEnvironments = "/environments"
 	// APITags for the tags path
 	APITags = "/tags"
+	// APISettings for the settings path
+	APISettings = "/settings"
 	// APILogin for the login path
 	APILogin = "/login"
 	// APIAuditLogs for the audit logs path

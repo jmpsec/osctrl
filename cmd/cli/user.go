@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/olekukonko/tablewriter"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
 )
 
@@ -184,20 +185,34 @@ func editUser(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+// deleteUserWithPermissions clears the permissions BEFORE deleting the user:
+// DeleteAllPermissions fails its Exists() check once the user is gone and
+// would leave orphaned permission rows.
+func deleteUserWithPermissions(username string) error {
+	if err := adminUsers.DeleteAllPermissions(username); err != nil {
+		return fmt.Errorf("deleting permissions: %w", err)
+	}
+	if err := adminUsers.Delete(username); err != nil {
+		return err
+	}
+	// Second factors must not outlive the account (same as the API handler)
+	if mfamgr != nil {
+		if err := mfamgr.DeleteUser(username); err != nil {
+			log.Err(err).Msgf("error removing MFA factors for %s", username)
+		}
+	}
+	return nil
+}
+
 func deleteUser(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	username := cmd.String("username")
 	if username == "" {
-		fmt.Println("❌ username is required")
-		os.Exit(1)
+		return fmt.Errorf("username is required")
 	}
 	if dbFlag {
-		if err := adminUsers.Delete(username); err != nil {
+		if err := deleteUserWithPermissions(username); err != nil {
 			return fmt.Errorf("error deleting - %w", err)
-		}
-		// Delete permissions
-		if err := adminUsers.DeleteAllPermissions(username); err != nil {
-			return fmt.Errorf("error deleting permissions - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.UserAction(getShellUsername(), "delete user "+username, "CLI")

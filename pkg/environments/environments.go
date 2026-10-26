@@ -387,6 +387,26 @@ func (environment *EnvManager) Update(e TLSEnvironment) error {
 	return nil
 }
 
+// UpdateBooleans sets the non-nil debug_http and accept_enrolls columns of an
+// environment. Update cannot set them to false: gorm skips zero values in a
+// struct update.
+func (environment *EnvManager) UpdateBooleans(idEnv string, debugHTTP, acceptEnrolls *bool) error {
+	cols := map[string]interface{}{}
+	if debugHTTP != nil {
+		cols["debug_http"] = *debugHTTP
+	}
+	if acceptEnrolls != nil {
+		cols["accept_enrolls"] = *acceptEnrolls
+	}
+	if len(cols) == 0 {
+		return nil
+	}
+	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Updates(cols).Error; err != nil {
+		return fmt.Errorf("UpdateBooleans %w", err)
+	}
+	return nil
+}
+
 // UpdateOptions to update options for an environment
 func (environment *EnvManager) UpdateOptions(idEnv, options string) error {
 	if err := environment.DB.Model(&TLSEnvironment{}).Where("name = ? OR uuid = ?", idEnv, idEnv).Update("options", options).Error; err != nil {

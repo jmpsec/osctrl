@@ -74,8 +74,7 @@ func listQueries(ctx context.Context, cmd *cli.Command) error {
 	}
 	env := cmd.String("env")
 	if env == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+		return fmt.Errorf("environment is required")
 	}
 	// Retrieve data
 	var qs []queries.DistributedQuery

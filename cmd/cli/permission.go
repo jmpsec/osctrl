@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/olekukonko/tablewriter"
@@ -48,88 +50,155 @@ func accessToData(access users.EnvAccess, env string, header []string) [][]strin
 	return data
 }
 
-func changePermissions(ctx context.Context, cmd *cli.Command) error {
-	// Get values from flags
-	username := cmd.String("username")
-	if username == "" {
-		fmt.Println("❌ username is required")
-		os.Exit(1)
+// permTarget holds the validated flags shared by the permission commands.
+type permTarget struct {
+	username, envName string
+	access            users.EnvAccess
+}
+
+func permFlags(cmd *cli.Command, needEnv bool) (permTarget, error) {
+	t := permTarget{username: cmd.String("username"), envName: cmd.String("environment")}
+	if t.username == "" {
+		return t, errors.New("username is required")
 	}
-	envName := cmd.String("environment")
-	if envName == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+	if needEnv && t.envName == "" {
+		return t, errors.New("environment is required")
 	}
-	admin := cmd.Bool("admin")
-	user := cmd.Bool("user")
-	carve := cmd.Bool("carve")
-	query := cmd.Bool("query")
+	t.access = users.EnvAccess{User: cmd.Bool("user"), Query: cmd.Bool("query"), Carve: cmd.Bool("carve"), Admin: cmd.Bool("admin")}
+	if t.access.Admin { // admin implies everything
+		t.access.User, t.access.Query, t.access.Carve = true, true, true
+	}
+	return t, nil
+}
+
+// permEnv resolves an environment name to its UUID (and DB ID, DB mode only).
+func permEnv(envName string) (string, uint, error) {
 	if dbFlag {
 		env, err := envs.Get(envName)
 		if err != nil {
-			return fmt.Errorf("error getting environment - %w", err)
+			return "", 0, fmt.Errorf("error getting environment - %w", err)
 		}
-		// If admin, then all permissions follow
-		if admin {
-			user = true
-			query = true
-			carve = true
+		return env.UUID, env.ID, nil
+	} else if apiFlag {
+		env, err := osctrlAPI.GetEnvironment(envName)
+		if err != nil {
+			return "", 0, fmt.Errorf("error getting environment - %w", err)
 		}
-		// Reset permissions to regular user access
-		if user {
-			if err := adminUsers.SetEnvUser(username, env.UUID, user); err != nil {
-				return fmt.Errorf("error setting user - %w", err)
-			}
+		return env.UUID, env.ID, nil
+	}
+	return "", 0, errors.New("no mode selected")
+}
+
+// dbUserAccess and apiUserAccess return the access of a user per environment
+// UUID. An environment without rows is absent (reads as all-false).
+func dbUserAccess(username string) (users.UserAccess, error) {
+	access, err := adminUsers.GetAccess(username)
+	if err != nil {
+		return nil, fmt.Errorf("error getting access - %w", err)
+	}
+	return access, nil
+}
+
+func apiUserAccess(username string) (users.UserAccess, error) {
+	resp, err := osctrlAPI.GetUserPermissions(username)
+	if err != nil {
+		return nil, fmt.Errorf("error getting access - %w", err)
+	}
+	out := make(users.UserAccess, len(resp.Permissions))
+	for uuid, a := range resp.Permissions {
+		out[uuid] = users.EnvAccess{User: a.User, Query: a.Query, Carve: a.Carve, Admin: a.Admin}
+	}
+	return out, nil
+}
+
+// dbLockoutActor is the identity compared with the target in the DB-mode
+// lockout guard: the shell user (also without the "env: " display prefix, so a
+// shell user named like the osctrl user counts as that user).
+func dbLockoutActor(target string) string {
+	actor := getShellUsername()
+	if strings.TrimPrefix(actor, "env: ") == target {
+		return target
+	}
+	return actor
+}
+
+// dbLockoutGuard (users.CheckLockout, shared with the handler) applies the same refusals as the API handler
+// (SetUserPermissionsHandler), before any write.
+func dbLockoutGuard(target string, access users.EnvAccess) error {
+	err := adminUsers.CheckLockout(dbLockoutActor(target), target, access)
+	if errors.Is(err, users.ErrSelfDemote) {
+		return fmt.Errorf("%w (you are %q: set USER= to act as another user; better, have another super-admin do it)", err, target)
+	}
+	return err
+}
+
+// Change is read-modify-write in both modes (read current access, OR in the
+// flags, write all four levels): a concurrent change to the same user and
+// environment between the read and the write can be overwritten.
+func changePermissions(ctx context.Context, cmd *cli.Command) error {
+	t, err := permFlags(cmd, true)
+	if err != nil {
+		return err
+	}
+	uuid, envID, err := permEnv(t.envName)
+	if err != nil {
+		return err
+	}
+	var existing users.UserAccess
+	if dbFlag {
+		existing, err = dbUserAccess(t.username)
+	} else if apiFlag {
+		existing, err = apiUserAccess(t.username)
+	}
+	if err != nil {
+		return err
+	}
+	cur := existing[uuid]
+	merged := users.EnvAccess{
+		User:  cur.User || t.access.User,
+		Query: cur.Query || t.access.Query,
+		Carve: cur.Carve || t.access.Carve,
+		Admin: cur.Admin || t.access.Admin,
+	}
+	if merged.Admin {
+		merged.User, merged.Query, merged.Carve = true, true, true
+	}
+	if dbFlag {
+		// No lockout guard: change is additive and never demotes anyone.
+		if err := adminUsers.ChangeAccess(t.username, uuid, merged); err != nil {
+			return fmt.Errorf("error setting permissions - %w", err)
 		}
-		if admin {
-			if err := adminUsers.SetEnvAdmin(username, env.UUID, admin); err != nil {
-				return fmt.Errorf("error setting admin - %w", err)
-			}
+		auditlogsmgr.Permissions(getShellUsername(), "changed permissions for user "+t.username, "CLI", envID)
+	} else if apiFlag {
+		if err := osctrlAPI.SetUserPermissions(t.username, uuid, merged); err != nil {
+			return fmt.Errorf("error setting permissions - %w", err)
 		}
-		if carve {
-			if err := adminUsers.SetEnvCarve(username, env.UUID, carve); err != nil {
-				return fmt.Errorf("error setting carve - %w", err)
-			}
-		}
-		if query {
-			if err := adminUsers.SetEnvQuery(username, env.UUID, query); err != nil {
-				return fmt.Errorf("error setting query - %w", err)
-			}
-		}
-		// Audit log
-		auditlogsmgr.Permissions(getShellUsername(), "changed permissions for user "+username, "CLI", env.ID)
 	}
 	if !silentFlag {
-		fmt.Printf("✅ permissions changed for user %s successfully\n", username)
+		fmt.Printf("✅ permissions changed for user %s successfully\n", t.username)
 	}
 	return nil
 }
 
 func showPermissions(ctx context.Context, cmd *cli.Command) error {
-	// Get values from flags
-	username := cmd.String("username")
-	if username == "" {
-		fmt.Println("❌ username is required")
-		os.Exit(1)
+	t, err := permFlags(cmd, true)
+	if err != nil {
+		return err
 	}
-	envName := cmd.String("environment")
-	if envName == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+	uuid, _, err := permEnv(t.envName)
+	if err != nil {
+		return err
 	}
-	// Retrieve data
-	var userAccess users.EnvAccess
+	var existing users.UserAccess
 	if dbFlag {
-		env, err := envs.Get(envName)
-		if err != nil {
-			return fmt.Errorf("error env get - %w", err)
-		}
-		// Show is just display user existing permissions and return
-		userAccess, err = adminUsers.GetEnvAccess(username, env.UUID)
-		if err != nil {
-			return fmt.Errorf("error getting access - %w", err)
-		}
+		existing, err = dbUserAccess(t.username)
+	} else if apiFlag {
+		existing, err = apiUserAccess(t.username)
 	}
+	if err != nil {
+		return err
+	}
+	access, envName := existing[uuid], t.envName
 	header := []string{
 		"Environment",
 		"User access",
@@ -140,13 +209,13 @@ func showPermissions(ctx context.Context, cmd *cli.Command) error {
 	// Prepare output
 	switch formatFlag {
 	case jsonFormat:
-		jsonRaw, err := json.Marshal(userAccess)
+		jsonRaw, err := json.Marshal(access)
 		if err != nil {
 			return fmt.Errorf("error serializing - %w", err)
 		}
 		fmt.Println(string(jsonRaw))
 	case csvFormat:
-		data := accessToData(userAccess, envName, header)
+		data := accessToData(access, envName, header)
 		w := csv.NewWriter(os.Stdout)
 		if err := w.WriteAll(data); err != nil {
 			return fmt.Errorf("error WriteAll - %w", err)
@@ -154,7 +223,7 @@ func showPermissions(ctx context.Context, cmd *cli.Command) error {
 	case prettyFormat:
 		table := tablewriter.NewWriter(os.Stdout)
 		table.Header(stringSliceToAnySlice(header)...)
-		data := accessToData(userAccess, envName, nil)
+		data := accessToData(access, envName, nil)
 		if err := table.Bulk(data); err != nil {
 			return fmt.Errorf("❌ error bulk table - %w", err)
 		}
@@ -166,64 +235,55 @@ func showPermissions(ctx context.Context, cmd *cli.Command) error {
 }
 
 func resetPermissions(ctx context.Context, cmd *cli.Command) error {
-	// Get values from flags
-	username := cmd.String("username")
-	if username == "" {
-		fmt.Println("❌ username is required")
-		os.Exit(1)
+	t, err := permFlags(cmd, true)
+	if err != nil {
+		return err
 	}
-	envName := cmd.String("environment")
-	if envName == "" {
-		fmt.Println("❌ environment is required")
-		os.Exit(1)
+	uuid, envID, err := permEnv(t.envName)
+	if err != nil {
+		return err
 	}
-	admin := cmd.Bool("admin")
-	user := cmd.Bool("user")
-	carve := cmd.Bool("carve")
-	query := cmd.Bool("query")
 	if dbFlag {
-		env, err := envs.Get(envName)
-		if err != nil {
+		if !adminUsers.Exists(t.username) {
+			return fmt.Errorf("user %s does not exist", t.username)
+		}
+		if err := dbLockoutGuard(t.username, t.access); err != nil {
 			return err
 		}
-		// If admin, then all permissions follow
-		if admin {
-			user = true
-			query = true
-			carve = true
-		}
-		if err := adminUsers.DeleteEnvPermissions(username, env.UUID); err != nil {
+		if err := adminUsers.DeleteEnvPermissions(t.username, uuid); err != nil {
 			return err
 		}
-		access := adminUsers.GenEnvUserAccess([]string{env.UUID}, user, query, carve, admin)
-		perms := adminUsers.GenPermissions(username, appName, access)
+		perms := adminUsers.GenPermissions(t.username, appName, adminUsers.GenEnvUserAccess([]string{uuid}, t.access.User, t.access.Query, t.access.Carve, t.access.Admin))
 		if err := adminUsers.CreatePermissions(perms); err != nil {
 			return err
 		}
-		// Audit log
-		auditlogsmgr.Permissions(getShellUsername(), "reset permissions for user "+username, "CLI", env.ID)
+		auditlogsmgr.Permissions(getShellUsername(), "reset permissions for user "+t.username, "CLI", envID)
+	} else if apiFlag {
+		if err := osctrlAPI.SetUserPermissions(t.username, uuid, t.access); err != nil {
+			return fmt.Errorf("error setting permissions - %w", err)
+		}
 	}
 	if !silentFlag {
-		fmt.Printf("✅ permissions reset for user %s successfully\n", username)
+		fmt.Printf("✅ permissions reset for user %s successfully\n", t.username)
 	}
 	return nil
 }
 
 func allPermissions(ctx context.Context, cmd *cli.Command) error {
-	// Get values from flags
-	username := cmd.String("username")
-	if username == "" {
-		fmt.Println("❌ username is required")
-		os.Exit(1)
+	t, err := permFlags(cmd, false)
+	if err != nil {
+		return err
 	}
 	var existingAccess users.UserAccess
 	if dbFlag {
-		// Show is just display user existing permissions and return
-		existingAccess, err = adminUsers.GetAccess(username)
-		if err != nil {
-			return fmt.Errorf("error getting access - %w", err)
-		}
+		existingAccess, err = dbUserAccess(t.username)
+	} else if apiFlag {
+		existingAccess, err = apiUserAccess(t.username)
 	}
+	if err != nil {
+		return err
+	}
+
 	header := []string{
 		"Environment",
 		"User access",

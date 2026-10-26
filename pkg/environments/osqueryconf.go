@@ -297,269 +297,255 @@ func (environment *EnvManager) GenEmptyConfiguration(indent bool) string {
 	return str
 }
 
-// AddOptionsConf to add an osquery option to the configuration
-func (environment *EnvManager) AddOptionsConf(name, option string, value interface{}) error {
+// Configuration sections EditSection and the pure edit functions work on.
+const (
+	SectionOptions    = "options"
+	SectionSchedule   = "schedule"
+	SectionPacks      = "packs"
+	SectionDecorators = "decorators"
+	SectionATC        = "atc"
+)
+
+// EditSection reads one stored configuration section of environment name,
+// applies edit to it, stores the result and refreshes the assembled
+// configuration. Errors from edit are returned as they are.
+func (environment *EnvManager) EditSection(name, section string, edit func(current string) (string, error)) error {
 	env, err := environment.Get(name)
 	if err != nil {
 		return fmt.Errorf("error getting environment %w", err)
 	}
-	// Parse options into struct
-	_options, err := environment.GenStructOptions([]byte(env.Options))
+	var current string
+	var update func(string, string) error
+	switch section {
+	case SectionOptions:
+		current, update = env.Options, environment.UpdateOptions
+	case SectionSchedule:
+		current, update = env.Schedule, environment.UpdateSchedule
+	case SectionPacks:
+		current, update = env.Packs, environment.UpdatePacks
+	case SectionDecorators:
+		current, update = env.Decorators, environment.UpdateDecorators
+	case SectionATC:
+		current, update = env.ATC, environment.UpdateATC
+	default:
+		return fmt.Errorf("unknown configuration section %q", section)
+	}
+	updated, err := edit(current)
 	if err != nil {
-		return fmt.Errorf("error structuring options %w", err)
+		return err
 	}
-	// Add new option
-	_options[option] = value
-	// Generate serialized indented options
-	indentedOptions, err := environment.GenSerializedConf(_options, true)
-	if err != nil {
-		return fmt.Errorf("error serializing options %w", err)
+	if err := update(name, updated); err != nil {
+		return fmt.Errorf("error updating %s %w", section, err)
 	}
-	// Update options in environment
-	if err := environment.UpdateOptions(name, indentedOptions); err != nil {
-		return fmt.Errorf("error updating options %w", err)
-	}
-	// Refresh all configuration
+	// The section is stored; a failure here means another stored section is
+	// malformed and the assembled configuration was not rebuilt.
 	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
+		return fmt.Errorf("%s saved, but refreshing the assembled configuration failed: %w", section, err)
 	}
 	return nil
+}
+
+// parseSection decodes a stored section. Empty and "null" are an empty
+// section; anything that is not a JSON object is an error.
+func parseSection[M ~map[string]V, V any](section, current string) (M, error) {
+	var m M
+	if s := strings.TrimSpace(current); s != "" {
+		if err := json.Unmarshal([]byte(s), &m); err != nil {
+			return nil, fmt.Errorf("error structuring %s %w", section, err)
+		}
+	}
+	if m == nil {
+		m = M{}
+	}
+	return m, nil
+}
+
+// serializeSection is the stored (indented) form of a section.
+func serializeSection(section string, v interface{}) (string, error) {
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("error serializing %s %w", section, err)
+	}
+	return string(out), nil
+}
+
+// SetOption returns options section current with option set to value.
+func SetOption(current, option string, value interface{}) (string, error) {
+	options, err := parseSection[OptionsConf](SectionOptions, current)
+	if err != nil {
+		return "", err
+	}
+	options[option] = value
+	return serializeSection(SectionOptions, options)
+}
+
+// RemoveOption returns options section current without option.
+func RemoveOption(current, option string) (string, error) {
+	options, err := parseSection[OptionsConf](SectionOptions, current)
+	if err != nil {
+		return "", err
+	}
+	delete(options, option)
+	return serializeSection(SectionOptions, options)
+}
+
+// AddScheduleQueries returns schedule section current with queries added or replaced.
+func AddScheduleQueries(current string, queries ScheduleConf) (string, error) {
+	schedule, err := parseSection[ScheduleConf](SectionSchedule, current)
+	if err != nil {
+		return "", err
+	}
+	for qName, query := range queries {
+		schedule[qName] = query
+	}
+	return serializeSection(SectionSchedule, schedule)
+}
+
+// RemoveScheduleQuery returns schedule section current without query qName.
+func RemoveScheduleQuery(current, qName string) (string, error) {
+	schedule, err := parseSection[ScheduleConf](SectionSchedule, current)
+	if err != nil {
+		return "", err
+	}
+	delete(schedule, qName)
+	return serializeSection(SectionSchedule, schedule)
+}
+
+// SetPack returns packs section current with pack pName set to pack (a
+// PackEntry, or a path string for a local pack).
+func SetPack(current, pName string, pack interface{}) (string, error) {
+	packs, err := parseSection[PacksConf](SectionPacks, current)
+	if err != nil {
+		return "", err
+	}
+	packs[pName] = pack
+	return serializeSection(SectionPacks, packs)
+}
+
+// RemovePack returns packs section current without pack pName.
+func RemovePack(current, pName string) (string, error) {
+	packs, err := parseSection[PacksConf](SectionPacks, current)
+	if err != nil {
+		return "", err
+	}
+	delete(packs, pName)
+	return serializeSection(SectionPacks, packs)
+}
+
+// AddQueryToPack returns packs section current with query qName added to
+// pack pName. Keys of the pack, and of an existing query, that this package
+// does not model are kept.
+func AddQueryToPack(current, pName, qName string, query ScheduleQuery) (string, error) {
+	packs, err := parseSection[PacksConf](SectionPacks, current)
+	if err != nil {
+		return "", err
+	}
+	_, qs, err := packQueries(packs, pName)
+	if err != nil {
+		return "", err
+	}
+	rawQuery, err := json.Marshal(query)
+	if err != nil {
+		return "", fmt.Errorf("error encoding query - %w", err)
+	}
+	var qv map[string]interface{}
+	if err := json.Unmarshal(rawQuery, &qv); err != nil {
+		return "", fmt.Errorf("error encoding query - %w", err)
+	}
+	// Keep keys of an existing query that the new definition does not set
+	if old, ok := qs[qName].(map[string]interface{}); ok {
+		for k, v := range old {
+			if _, set := qv[k]; !set {
+				qv[k] = v
+			}
+		}
+	}
+	qs[qName] = qv
+	return serializeSection(SectionPacks, packs)
+}
+
+// RemoveQueryFromPack returns packs section current without query qName in pack pName.
+func RemoveQueryFromPack(current, pName, qName string) (string, error) {
+	packs, err := parseSection[PacksConf](SectionPacks, current)
+	if err != nil {
+		return "", err
+	}
+	_, qs, err := packQueries(packs, pName)
+	if err != nil {
+		return "", err
+	}
+	delete(qs, qName)
+	return serializeSection(SectionPacks, packs)
+}
+
+// AddOptionsConf to add an osquery option to the configuration
+func (environment *EnvManager) AddOptionsConf(name, option string, value interface{}) error {
+	return environment.EditSection(name, SectionOptions, func(c string) (string, error) { return SetOption(c, option, value) })
 }
 
 // RemoveOptionsConf to remove an osquery option from the configuration
 func (environment *EnvManager) RemoveOptionsConf(name, option string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %w", err)
-	}
-	// Parse options into struct
-	_options, err := environment.GenStructOptions([]byte(env.Options))
-	if err != nil {
-		return fmt.Errorf("error structuring options %w", err)
-	}
-	// Remove option
-	delete(_options, option)
-	// Generate serialized indented options
-	indentedOptions, err := environment.GenSerializedConf(_options, true)
-	if err != nil {
-		return fmt.Errorf("error serializing options %w", err)
-	}
-	// Update options in environment
-	if err := environment.UpdateOptions(name, indentedOptions); err != nil {
-		return fmt.Errorf("error updating options %w", err)
-	}
-	// Refresh all configuration
-	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
-	}
-	return nil
+	return environment.EditSection(name, SectionOptions, func(c string) (string, error) { return RemoveOption(c, option) })
 }
 
 // AddScheduleConfQuery to add a new query to the osquery schedule
 func (environment *EnvManager) AddScheduleConfQuery(name, qName string, query ScheduleQuery) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %w", err)
-	}
-	// Parse schedule into struct
-	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
-	if err != nil {
-		return fmt.Errorf("error structuring schedule %w", err)
-	}
-	// Add new query
-	_schedule[qName] = query
-	// Generate serialized indented schedule
-	indentedSchedule, err := environment.GenSerializedConf(_schedule, true)
-	if err != nil {
-		return fmt.Errorf("error serializing schedule %w", err)
-	}
-	// Update schedule in environment
-	if err := environment.UpdateSchedule(name, indentedSchedule); err != nil {
-		return fmt.Errorf("error updating schedule %w", err)
-	}
-	// Refresh all configuration
-	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
-	}
-	return nil
+	return environment.AddScheduleConfQueries(name, ScheduleConf{qName: query})
 }
 
 // AddScheduleConfQueries merges multiple queries into the osquery schedule.
 func (environment *EnvManager) AddScheduleConfQueries(name string, queries ScheduleConf) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %w", err)
-	}
-	// Parse schedule into struct
-	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
-	if err != nil {
-		return fmt.Errorf("error structuring schedule %w", err)
-	}
-	// Add new queries
-	for qName, query := range queries {
-		_schedule[qName] = query
-	}
-	// Generate serialized indented schedule
-	indentedSchedule, err := environment.GenSerializedConf(_schedule, true)
-	if err != nil {
-		return fmt.Errorf("error serializing schedule %w", err)
-	}
-	// Update schedule in environment
-	if err := environment.UpdateSchedule(name, indentedSchedule); err != nil {
-		return fmt.Errorf("error updating schedule %w", err)
-	}
-	// Refresh all configuration
-	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
-	}
-	return nil
+	return environment.EditSection(name, SectionSchedule, func(c string) (string, error) { return AddScheduleQueries(c, queries) })
 }
 
 // RemoveScheduleConfQuery to remove a query from the osquery schedule
 func (environment *EnvManager) RemoveScheduleConfQuery(name, qName string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %w", err)
-	}
-	// Parse schedule into struct
-	_schedule, err := environment.GenStructSchedule([]byte(env.Schedule))
-	if err != nil {
-		return fmt.Errorf("error structuring schedule %w", err)
-	}
-	// Remove query
-	delete(_schedule, qName)
-	// Generate serialized indented schedule
-	indentedSchedule, err := environment.GenSerializedConf(_schedule, true)
-	if err != nil {
-		return fmt.Errorf("error serializing schedule %w", err)
-	}
-	// Update schedule in environment
-	if err := environment.UpdateSchedule(name, indentedSchedule); err != nil {
-		return fmt.Errorf("error updating schedule %w", err)
-	}
-	// Refresh all configuration
-	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
-	}
-	return nil
+	return environment.EditSection(name, SectionSchedule, func(c string) (string, error) { return RemoveScheduleQuery(c, qName) })
 }
 
 // AddQueryPackConf to add a new query pack to the osquery configuration
 func (environment *EnvManager) AddQueryPackConf(name, pName string, pack interface{}) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %w", err)
-	}
-	// Parse packs into struct
-	_packs, err := environment.GenStructPacks([]byte(env.Packs))
-	if err != nil {
-		return fmt.Errorf("error structuring packs %w", err)
-	}
-	// Add new local pack
-	_packs[pName] = pack
-	// Generate serialized indented packs
-	indentedPacks, err := environment.GenSerializedConf(_packs, true)
-	if err != nil {
-		return fmt.Errorf("error serializing packs %w", err)
-	}
-	// Update schedule in environment
-	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
-		return fmt.Errorf("error updating packs %w", err)
-	}
-	// Refresh all configuration
-	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
-	}
-	return nil
+	return environment.EditSection(name, SectionPacks, func(c string) (string, error) { return SetPack(c, pName, pack) })
 }
 
-// RemoveQueryPackConf to add a new query pack to the osquery configuration
+// RemoveQueryPackConf to remove a query pack from the osquery configuration
 func (environment *EnvManager) RemoveQueryPackConf(name, pName string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %w", err)
+	return environment.EditSection(name, SectionPacks, func(c string) (string, error) { return RemovePack(c, pName) })
+}
+
+// packQueries returns pack pName and its queries as generic maps, so editing
+// a query keeps every key this package does not model. A missing "queries" is
+// created. GenStructPacks decodes JSON, so a pack is a map or, for a local
+// pack, a string path.
+func packQueries(packs PacksConf, pName string) (map[string]interface{}, map[string]interface{}, error) {
+	raw, ok := packs[pName]
+	if !ok {
+		return nil, nil, fmt.Errorf("pack %s not found", pName)
 	}
-	// Parse packs into struct
-	_packs, err := environment.GenStructPacks([]byte(env.Packs))
-	if err != nil {
-		return fmt.Errorf("error structuring packs %w", err)
+	pack, ok := raw.(map[string]interface{})
+	if !ok {
+		if _, isPath := raw.(string); isPath {
+			return nil, nil, fmt.Errorf("pack %s is a local pack (a file path) and has no queries to edit", pName)
+		}
+		return nil, nil, fmt.Errorf("pack %s is not a valid pack", pName)
 	}
-	// Remove pack
-	delete(_packs, pName)
-	// Generate serialized indented packs
-	indentedPacks, err := environment.GenSerializedConf(_packs, true)
-	if err != nil {
-		return fmt.Errorf("error serializing packs %w", err)
+	qs, ok := pack["queries"].(map[string]interface{})
+	if !ok {
+		if pack["queries"] != nil {
+			return nil, nil, fmt.Errorf("pack %s has invalid queries", pName)
+		}
+		qs = map[string]interface{}{}
+		pack["queries"] = qs
 	}
-	// Update schedule in environment
-	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
-		return fmt.Errorf("error updating packs %w", err)
-	}
-	// Refresh all configuration
-	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
-	}
-	return nil
+	return pack, qs, nil
 }
 
 // AddQueryToPackConf to add a new query to an existing pack in the osquery configuration
 func (environment *EnvManager) AddQueryToPackConf(name, pName, qName string, query ScheduleQuery) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %w", err)
-	}
-	// Parse packs into struct
-	_packs, err := environment.GenStructPacks([]byte(env.Packs))
-	if err != nil {
-		return fmt.Errorf("error structuring packs %w", err)
-	}
-	// Get pack to add the query
-	pack := _packs[pName].(PackEntry)
-	pack.Queries[qName] = query
-	_packs[pName] = pack
-	// Generate serialized indented packs
-	indentedPacks, err := environment.GenSerializedConf(_packs, true)
-	if err != nil {
-		return fmt.Errorf("error serializing packs %w", err)
-	}
-	// Update schedule in environment
-	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
-		return fmt.Errorf("error updating packs %w", err)
-	}
-	// Refresh all configuration
-	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
-	}
-	return nil
+	return environment.EditSection(name, SectionPacks, func(c string) (string, error) { return AddQueryToPack(c, pName, qName, query) })
 }
 
 // RemoveQueryFromPackConf to remove a query from an existing query pack in the osquery configuration
 func (environment *EnvManager) RemoveQueryFromPackConf(name, pName, qName string) error {
-	env, err := environment.Get(name)
-	if err != nil {
-		return fmt.Errorf("error getting environment %w", err)
-	}
-	// Parse packs into struct
-	_packs, err := environment.GenStructPacks([]byte(env.Packs))
-	if err != nil {
-		return fmt.Errorf("error structuring packs %w", err)
-	}
-	// Get pack to remove the query
-	pack := _packs[pName].(PackEntry)
-	delete(pack.Queries, qName)
-	_packs[pName] = pack
-	// Generate serialized indented packs
-	indentedPacks, err := environment.GenSerializedConf(_packs, true)
-	if err != nil {
-		return fmt.Errorf("error serializing packs %w", err)
-	}
-	// Update schedule in environment
-	if err := environment.UpdatePacks(name, indentedPacks); err != nil {
-		return fmt.Errorf("error updating packs %w", err)
-	}
-	// Refresh all configuration
-	if err := environment.RefreshConfiguration(name); err != nil {
-		return fmt.Errorf("error refreshing configuration %w", err)
-	}
-	return nil
+	return environment.EditSection(name, SectionPacks, func(c string) (string, error) { return RemoveQueryFromPack(c, pName, qName) })
 }
