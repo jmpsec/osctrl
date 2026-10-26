@@ -117,7 +117,7 @@ func init() {
 			Name:        "db",
 			Aliases:     []string{"d"},
 			Value:       false,
-			Usage:       "Connect to local osctrl DB using YAML config file (required by db-only commands: settings add, settings delete)",
+			Usage:       "Connect to local osctrl DB using YAML config file (required by db-only commands: settings add, settings delete). DB-mode environment edits do not invalidate the shared Redis environment cache: osctrl-api/osctrl-tls may serve the old environment for up to 5 minutes",
 			Sources:     cli.EnvVars("DB_CONFIG"),
 			Destination: &dbFlag,
 		},
@@ -573,9 +573,10 @@ func init() {
 					Action: cliWrapper(addEnvironment),
 				},
 				{
-					Name:    "update",
-					Aliases: []string{"u"},
-					Usage:   "Update an existing TLS environment (works with --db and through the API; stored flags are regenerated when a plugin flag, --hostname or an interval is given, resetting plugin choices to their defaults, so hand-edited flags are lost)",
+					Name:        "update",
+					Aliases:     []string{"u"},
+					Usage:       "Update an existing TLS environment (works with --db and through the API; stored flags are regenerated when a plugin flag, --hostname or an interval is given, resetting plugin choices to their defaults, so hand-edited flags are lost)",
+					Description: envCacheNote,
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "name",
@@ -1158,9 +1159,10 @@ func init() {
 					},
 				},
 				{
-					Name:    "delete",
-					Aliases: []string{"d"},
-					Usage:   "Delete an existing TLS environment",
+					Name:        "delete",
+					Aliases:     []string{"d"},
+					Usage:       "Delete an existing TLS environment",
+					Description: envCacheNote,
 					Flags: []cli.Flag{
 						&cli.StringFlag{
 							Name:    "name",

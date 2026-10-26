@@ -575,6 +575,7 @@ func extendEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.ExtendEnroll(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "extend enrollment for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.ExtendEnrollment(envName)
 		if err != nil {
@@ -627,6 +628,7 @@ func expireEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.ExpireEnroll(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "expire enrollment for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.ExpireEnrollment(envName)
 		if err != nil {
@@ -653,6 +655,7 @@ func notexpireEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.NotExpireEnroll(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "notexpire enrollment for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.NotexpireEnrollment(envName)
 		if err != nil {
@@ -713,6 +716,7 @@ func extendRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.ExtendRemove(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "extend removal for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.ExtendRemove(envName)
 		if err != nil {
@@ -765,6 +769,7 @@ func expireRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.ExpireRemove(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "expire removal for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.ExpireRemove(envName)
 		if err != nil {
@@ -791,6 +796,7 @@ func notexpireRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.NotExpireRemove(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "notexpire removal for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.NotexpireRemove(envName)
 		if err != nil {

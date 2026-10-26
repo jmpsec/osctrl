@@ -1331,6 +1331,11 @@ func (s *dbStore) EnvAction(name, target, action string) (string, error) {
 	if aerr != nil {
 		return "", aerr
 	}
+	noun := "enrollment"
+	if target == "remove" {
+		noun = "removal"
+	}
+	auditlogsmgr.EnvAction(getShellUsername(), action+" "+noun+" for environment "+e.Name, "CLI", e.ID)
 	return fmt.Sprintf("%s %s %s", target, action, "ok"), nil
 }
 
