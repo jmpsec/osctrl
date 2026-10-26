@@ -202,6 +202,18 @@ _ADMIN_PASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1 | m
 # Secret for API JWT
 _JWT_SECRET="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1 | sha256sum | cut -d " " -f1)"
 
+# Exact match of a value in a list. A regex match would accept an empty or
+# partial value (for example "" or "de" for the mode "dev").
+in_array() {
+  local needle="$1"
+  shift
+  local item
+  for item in "$@"; do
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
 # Arrays with valid arguments
 VALID_MODE=("dev" "prod")
 VALID_TYPE=("self" "own" "certbot")
@@ -222,7 +234,7 @@ while true; do
       ;;
     -m|--mode)
       GIVEN_ARG=$2
-      if [[ "${VALID_MODE[@]}" =~ "${GIVEN_ARG}" ]]; then
+      if in_array "${GIVEN_ARG}" "${VALID_MODE[@]}"; then
         SHOW_USAGE=false
         MODE=$2
         ENVIRONMENT=$MODE
@@ -235,7 +247,7 @@ while true; do
       ;;
     -t|--type)
       GIVEN_ARG=$2
-      if [[ "${VALID_TYPE[@]}" =~ "${GIVEN_ARG}" ]]; then
+      if in_array "${GIVEN_ARG}" "${VALID_TYPE[@]}"; then
         SHOW_USAGE=false
         TYPE=$2
         shift 2
@@ -247,7 +259,7 @@ while true; do
       ;;
     -p|--part)
       GIVEN_ARG=$2
-      if [[ "${VALID_PART[@]}" =~ "${GIVEN_ARG}" ]]; then
+      if in_array "${GIVEN_ARG}" "${VALID_PART[@]}"; then
         SHOW_USAGE=false
         PART=$2
         shift 2
