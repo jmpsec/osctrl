@@ -418,7 +418,7 @@ func (h *HandlersApi) AlertChannelsListHandler(w http.ResponseWriter, r *http.Re
 // AlertChannelsTypesHandler — GET /api/v1/alerts/channels/types
 //
 // @Summary List supported alert channel types
-// @Description Returns the channel type registry: type, description, whether the config carries secrets, and which JSON keys hold them.
+// @Description Returns the channel type registry: type, description, whether the config carries secrets, and which JSON keys hold them (for webhooks, url and secret).
 // @Tags alerts
 // @Produce json
 // @Success 200 {array} types.AlertChannelTypeSpec

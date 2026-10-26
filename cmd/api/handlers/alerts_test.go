@@ -217,13 +217,14 @@ func TestAlertChannelCRUDRoundTrip(t *testing.T) {
 	var cfg map[string]any
 	require.NoError(t, json.Unmarshal(list[0].Config, &cfg))
 	require.Equal(t, "***", cfg["secret"])
-	require.Equal(t, "https://hooks.example.com/x", cfg["url"])
+	require.Equal(t, "***", cfg["url"], "the webhook URL is a bearer secret")
 
 	// list with reveal → secret visible
 	rr = call(t, h.AlertChannelsListHandler, http.MethodGet, "/api/v1/alerts/channels?reveal=1", nil)
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &list))
 	require.NoError(t, json.Unmarshal(list[0].Config, &cfg))
 	require.Equal(t, "hunter2", cfg["secret"])
+	require.Equal(t, "https://hooks.example.com/x", cfg["url"])
 
 	// update with redacted placeholder → secret preserved
 	rr = callWithID(t, h.AlertChannelsUpdateHandler, http.MethodPut, "/api/v1/alerts/channels/{id}", created.ID, map[string]any{
@@ -236,6 +237,69 @@ func TestAlertChannelCRUDRoundTrip(t *testing.T) {
 	require.NoError(t, json.Unmarshal(updated.Config, &cfg))
 	require.Equal(t, "https://hooks.example.com/y", cfg["url"])
 	require.Equal(t, "hunter2", cfg["secret"], "placeholder must merge the stored secret")
+}
+
+func revealedChannelConfig(t *testing.T, h *HandlersApi) map[string]any {
+	t.Helper()
+	rr := call(t, h.AlertChannelsListHandler, http.MethodGet, "/api/v1/alerts/channels?reveal=1", nil)
+	require.Equal(t, http.StatusOK, rr.Code)
+	var list []alertChannelDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &list))
+	require.Len(t, list, 1)
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(list[0].Config, &cfg))
+	return cfg
+}
+
+func TestAlertChannelUpdateURLSecret(t *testing.T) {
+	h := setupAlertsHandler(t)
+	rr := call(t, h.AlertChannelsCreateHandler, http.MethodPost, "/api/v1/alerts/channels", map[string]any{
+		"name": "soc-hook", "type": "webhook", "enabled": true,
+		"config": map[string]any{"url": "https://hooks.example.com/x", "secret": "hunter2"},
+	})
+	require.Equal(t, http.StatusCreated, rr.Code)
+	var created alertChannelDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &created))
+	update := func(cfg map[string]any) {
+		rr := callWithID(t, h.AlertChannelsUpdateHandler, http.MethodPut, "/api/v1/alerts/channels/{id}", created.ID, map[string]any{
+			"name": "soc-hook", "type": "webhook", "enabled": true, "config": cfg,
+		})
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	update(map[string]any{"url": "***", "secret": "***"})
+	cfg := revealedChannelConfig(t, h)
+	require.Equal(t, "https://hooks.example.com/x", cfg["url"])
+	require.Equal(t, "hunter2", cfg["secret"])
+
+	update(map[string]any{"url": "https://hooks.example.com/new", "secret": "***"})
+	cfg = revealedChannelConfig(t, h)
+	require.Equal(t, "https://hooks.example.com/new", cfg["url"])
+	require.Equal(t, "hunter2", cfg["secret"])
+}
+
+func TestAlertChannelTestMergesStoredURL(t *testing.T) {
+	h := setupAlertsHandler(t)
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	rr := call(t, h.AlertChannelsCreateHandler, http.MethodPost, "/api/v1/alerts/channels", map[string]any{
+		"name": "hook", "type": "webhook", "enabled": true,
+		"config": json.RawMessage(fmt.Sprintf(`{"url":%q,"timeoutSeconds":5,"allowPrivateTargets":true}`, srv.URL)),
+	})
+	require.Equal(t, http.StatusCreated, rr.Code)
+	var created alertChannelDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &created))
+
+	rr = call(t, h.AlertChannelsTestHandler, http.MethodPost, "/api/v1/alerts/channels/test", map[string]any{
+		"id": created.ID, "type": "webhook",
+		"config": json.RawMessage(`{"url":"***","timeoutSeconds":5,"allowPrivateTargets":true}`),
+	})
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	require.Equal(t, 1, hits, "stored URL must be merged into the test send")
 }
 
 func TestAlertChannelRejectsBadConfig(t *testing.T) {
@@ -329,6 +393,11 @@ func TestAlertChannelTypesHandler(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &specs))
 	require.Len(t, specs, 2)
+	for _, sp := range specs {
+		if sp.Type == "webhook" {
+			require.Equal(t, []string{"url", "secret"}, sp.SecretFields)
+		}
+	}
 }
 
 func TestAlertHistoryHandler(t *testing.T) {

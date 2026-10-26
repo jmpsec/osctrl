@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -72,7 +73,7 @@ func buildWebhook(cfg WebhookConfig) (ChannelSender, error) {
 	}
 	u, err := url.Parse(cfg.URL)
 	if err != nil {
-		return nil, fmt.Errorf("webhook url: %w", err)
+		return nil, fmt.Errorf("webhook url: %w", stripURLError(err))
 	}
 	if u.Scheme != "https" && u.Scheme != "http" {
 		return nil, fmt.Errorf("webhook url scheme must be http or https")
@@ -135,7 +136,7 @@ func (s *webhookSender) Send(h Hit) error {
 		}
 		resp, err := s.client.Do(req)
 		if err != nil {
-			lastErr = err
+			lastErr = stripURLError(err)
 			continue
 		}
 		_, _ = io.Copy(io.Discard, resp.Body)
@@ -151,6 +152,17 @@ func (s *webhookSender) Send(h Hit) error {
 		lastErr = fmt.Errorf("webhook receiver status %d", resp.StatusCode)
 	}
 	return fmt.Errorf("webhook delivery failed after %d attempts: %w", webhookMaxRetries, lastErr)
+}
+
+// stripURLError drops the request URL from a *url.Error: the webhook URL
+// is a secret (Slack/Teams hooks carry the token in the path) and must
+// not reach API responses or logs.
+func stripURLError(err error) error {
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		return fmt.Errorf("%s: %w", ue.Op, ue.Err)
+	}
+	return err
 }
 
 // hmacHex computes the HMAC-SHA256 of body keyed by secret, hex-encoded.

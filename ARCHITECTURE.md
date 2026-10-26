@@ -58,7 +58,7 @@ Main runtime components:
 - `cmd/*/handlers`: HTTP handlers and service-specific request logic.
 - `pkg/backend`: GORM database bootstrap and DSN handling.
 - `pkg/cache`: Redis bootstrap, typed Redis JSON caching, process-local generic caching, and cache metrics.
-- `pkg/activity`, `pkg/alerts`: Redis-backed node activity and rule-driven alert evaluation/dispatch.
+- `pkg/activity`, `pkg/alerts`: Redis-backed node activity and rule-driven alert evaluation/dispatch. Webhook channel URLs and signing secrets are redacted in list responses and the CLI, and shown only with `?reveal=1` or in create/update responses.
 - `pkg/auth`, `pkg/authproviders`, `pkg/mfa`: OIDC/SAML providers, federated-login state, TOTP, WebAuthn, and recovery codes.
 - `pkg/console`, `pkg/fileexplorer`: interactive workflows implemented through distributed queries.
 - `pkg/environments`: environment model, enrollment/config path metadata, package/script metadata.

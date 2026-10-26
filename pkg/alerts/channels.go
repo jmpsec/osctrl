@@ -50,9 +50,9 @@ var ChannelRegistry = map[string]ChannelSpec{
 		Type:         ChannelWebhook,
 		Description:  "HTTP POST to a URL with the alert as JSON",
 		HasSecret:    true,
-		SecretFields: []string{"secret"},
+		SecretFields: []string{"url", "secret"},
 		Fields: []FieldSpec{
-			{Name: "url", Label: "URL", Type: FieldString, Required: true, Placeholder: "https://example.com/hook", Help: "HTTPS URL receiving the alert as a JSON POST."},
+			{Name: "url", Label: "URL", Type: FieldSecret, Required: true, Placeholder: "https://example.com/hook", Help: "HTTPS URL receiving the alert as a JSON POST. Treated as a secret: stored redacted and shown as *** after saving."},
 			{Name: "secret", Label: "HMAC secret", Type: FieldSecret, Help: "When set, the payload is signed with X-Osctrl-Signature (HMAC-SHA256, hex)."},
 			{Name: "timeoutSeconds", Label: "Timeout (seconds)", Type: FieldInteger, Default: 10, Help: "Per-request timeout, including retries."},
 			{Name: "insecureSkipVerify", Label: "Skip TLS verify", Type: FieldBoolean, Default: false, Help: "Do not verify the server certificate. Avoid in production."},
