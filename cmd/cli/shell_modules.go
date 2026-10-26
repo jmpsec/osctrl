@@ -420,7 +420,7 @@ func envCommands() []shellCmd {
 	return []shellCmd{
 		{name: "list", aliases: "ls", args: "", help: "list environments", fn: shEnvList},
 		{name: "show", args: "<name>", help: "show environment detail", min: 1, fn: shEnvShow},
-		{name: "delete", aliases: "rm", args: "<name>", help: "delete an environment (db)", min: 1, fn: shEnvDelete},
+		{name: "delete", aliases: "rm", args: "<name>", help: "delete an environment", min: 1, fn: shEnvDelete},
 		{name: "extend-enroll", args: "<name>", help: "extend enroll URL expiry", min: 1, fn: shEnvAction("enroll", "extend")},
 		{name: "rotate-enroll", args: "<name>", help: "rotate enroll URL", min: 1, fn: shEnvAction("enroll", "rotate")},
 		{name: "expire-enroll", args: "<name>", help: "expire enroll URL", min: 1, fn: shEnvAction("enroll", "expire")},
@@ -459,15 +459,11 @@ func shEnvShow(s *shellState, args []string) {
 }
 
 func shEnvDelete(s *shellState, args []string) {
-	if s.store.Mode() == "api" {
-		errf("environment deletion is not exposed via the REST API; use --db mode")
-		return
-	}
 	if !s.confirm(fmt.Sprintf("Delete environment %s?", args[0])) {
 		fmt.Println("aborted")
 		return
 	}
-	if err := envs.Delete(args[0]); err != nil {
+	if err := s.store.DeleteEnvironment(args[0]); err != nil {
 		errf("%v", err)
 		return
 	}
@@ -703,7 +699,7 @@ func settingsCommands() []shellCmd {
 	return []shellCmd{
 		{name: "list", aliases: "ls", args: "", help: "list configuration values", fn: shSettingsList},
 		{name: "add", args: "<service> <name> <type> <value>", help: "add a setting (db)", min: 4, fn: shSettingsAdd},
-		{name: "update", args: "<service> <name> <type> <value>", help: "update a setting (db)", min: 4, fn: shSettingsUpdate},
+		{name: "update", args: "<service> <name> <type> <value>", help: "update a setting", min: 4, fn: shSettingsUpdate},
 		{name: "delete", aliases: "rm", args: "<service> <name>", help: "delete a setting (db)", min: 2, fn: shSettingsDelete},
 	}
 }

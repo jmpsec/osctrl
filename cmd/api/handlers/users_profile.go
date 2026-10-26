@@ -163,20 +163,14 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 	//      and the target is the only AdminUser.Admin=true row, the
 	//      system has no remaining super-admin and no one can manage
 	//      users / envs / settings. Refuse with 409.
-	if username == ctx[ctxUser] && !access.Admin {
-		apiErrorResponse(w, "super-admins cannot self-demote via this endpoint", http.StatusForbidden, nil)
+	// Self-demotion is refused unconditionally, whatever the actor's global admin flag.
+	if users.IsSelfDemotion(ctx[ctxUser], username, access) {
+		lockoutErrorResponse(w, users.ErrSelfDemote)
 		return
 	}
-	if !access.Admin && h.Users.IsAdmin(username) {
-		count, cerr := h.Users.CountAdmins()
-		if cerr != nil {
-			apiErrorResponse(w, "error checking admin count", http.StatusInternalServerError, cerr)
-			return
-		}
-		if count <= 1 {
-			apiErrorResponse(w, "refusing to demote the last super-admin", http.StatusConflict, fmt.Errorf("only %d admin user(s) remain", count))
-			return
-		}
+	if lerr := h.Users.CheckLockout(ctx[ctxUser], username, access); lerr != nil {
+		lockoutErrorResponse(w, lerr)
+		return
 	}
 
 	if err := h.Users.ChangeAccess(username, body.EnvUUID, access); err != nil {
@@ -263,20 +257,14 @@ func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *htt
 	// escalation hole (an operator could write !admin to ALL envs
 	// and lock the last super-admin out everywhere in a single
 	// call).
-	if username == ctx[ctxUser] && !access.Admin {
-		apiErrorResponse(w, "super-admins cannot self-demote via this endpoint", http.StatusForbidden, nil)
+	// Self-demotion is refused unconditionally, whatever the actor's global admin flag.
+	if users.IsSelfDemotion(ctx[ctxUser], username, access) {
+		lockoutErrorResponse(w, users.ErrSelfDemote)
 		return
 	}
-	if !access.Admin && h.Users.IsAdmin(username) {
-		count, cerr := h.Users.CountAdmins()
-		if cerr != nil {
-			apiErrorResponse(w, "error checking admin count", http.StatusInternalServerError, cerr)
-			return
-		}
-		if count <= 1 {
-			apiErrorResponse(w, "refusing to demote the last super-admin", http.StatusConflict, fmt.Errorf("only %d admin user(s) remain", count))
-			return
-		}
+	if lerr := h.Users.CheckLockout(ctx[ctxUser], username, access); lerr != nil {
+		lockoutErrorResponse(w, lerr)
+		return
 	}
 
 	envs, err := h.Envs.All()
@@ -648,4 +636,16 @@ func (h *HandlersApi) MePasswordHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	h.AuditLog.UserAction(requester, "changed own password", strings.Split(r.RemoteAddr, ":")[0])
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "password changed"})
+}
+
+// lockoutErrorResponse maps a users.CheckLockout error to the API response.
+func lockoutErrorResponse(w http.ResponseWriter, lerr error) {
+	switch {
+	case errors.Is(lerr, users.ErrSelfDemote):
+		apiErrorResponse(w, "super-admins cannot self-demote via this endpoint", http.StatusForbidden, nil)
+	case errors.Is(lerr, users.ErrLastSuperAdmin):
+		apiErrorResponse(w, "refusing to demote the last super-admin", http.StatusConflict, lerr)
+	default:
+		apiErrorResponse(w, "error checking admin count", http.StatusInternalServerError, lerr)
+	}
 }

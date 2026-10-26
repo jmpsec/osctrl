@@ -15,16 +15,15 @@ import (
 
 // GetQueries to retrieve queries from osctrl
 func (api *OsctrlAPI) GetQueries(target, env string) ([]queries.DistributedQuery, error) {
-	var qs []queries.DistributedQuery
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIQueries, env, "list", target))
-	rawQs, err := api.GetGeneric(reqURL, nil)
-	if err != nil {
-		return qs, fmt.Errorf("error api request - %w - %s", err, string(rawQs))
-	}
-	if err := json.Unmarshal(rawQs, &qs); err != nil {
-		return qs, fmt.Errorf("can not parse body - %w", err)
-	}
-	return qs, nil
+	return getAllPages[queries.DistributedQuery](api, reqURL)
+}
+
+// GetQueriesLimited is GetQueries bounded to maxItems (> 0): it stops fetching
+// pages once the cap is exceeded and reports whether more queries exist.
+func (api *OsctrlAPI) GetQueriesLimited(target, env string, maxItems int) ([]queries.DistributedQuery, bool, error) {
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIQueries, env, "list", target))
+	return getPages[queries.DistributedQuery](api, reqURL, maxItems)
 }
 
 // GetQuery to retrieve one query from osctrl

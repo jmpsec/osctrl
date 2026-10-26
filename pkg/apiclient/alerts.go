@@ -36,7 +36,9 @@ type AlertRuleJSON struct {
 	MatchType       string `json:"match_type"`
 	MatchField      string `json:"match_field"`
 	MatchValue      string `json:"match_value"`
+	NodeUUID        string `json:"node_uuid"`
 	StatusSeverity  string `json:"status_severity"`
+	VulnMinSeverity string `json:"vuln_min_severity"`
 	CooldownMinutes int    `json:"cooldown_minutes"`
 	ChannelIDs      []uint `json:"channel_ids"`
 	Enabled         bool   `json:"enabled"`
@@ -54,10 +56,13 @@ type AlertChannelJSON struct {
 	Info          string          `json:"info"`
 }
 
-// GetAlertRules lists alert rules.
-func (api *OsctrlAPI) GetAlertRules() ([]AlertRuleJSON, error) {
+// GetAlertRules lists alert rules, optionally only those of one environment.
+func (api *OsctrlAPI) GetAlertRules(envID *uint) ([]AlertRuleJSON, error) {
 	var rules []AlertRuleJSON
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, "/alerts", "rules"))
+	if envID != nil {
+		reqURL += "?env=" + strconv.FormatUint(uint64(*envID), 10)
+	}
 	raw, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return rules, fmt.Errorf("error api request - %w - %s", err, string(raw))
@@ -74,16 +79,19 @@ func (api *OsctrlAPI) CreateAlertRule(rule alerts.AlertRule) error {
 		Name            string `json:"name"`
 		EnvironmentID   uint   `json:"environment_id"`
 		Source          string `json:"source"`
+		NodeUUID        string `json:"node_uuid,omitempty"`
 		MatchType       string `json:"match_type"`
 		MatchField      string `json:"match_field,omitempty"`
 		MatchValue      string `json:"match_value"`
 		StatusSeverity  string `json:"status_severity,omitempty"`
+		VulnMinSeverity string `json:"vuln_min_severity,omitempty"`
 		CooldownMinutes int    `json:"cooldown_minutes,omitempty"`
 		ChannelIDs      []uint `json:"channel_ids,omitempty"`
 		Enabled         bool   `json:"enabled"`
 		Info            string `json:"info,omitempty"`
 	}{
 		Name: rule.Name, EnvironmentID: rule.EnvironmentID, Source: rule.Source,
+		NodeUUID: rule.NodeUUID, VulnMinSeverity: rule.VulnMinSeverity,
 		MatchType: rule.MatchType, MatchField: rule.MatchField, MatchValue: rule.MatchValue,
 		StatusSeverity: rule.StatusSeverity, CooldownMinutes: rule.CooldownMinutes,
 		ChannelIDs: alerts.DecodeChannelIDsOrEmpty(rule.ChannelIDs), Enabled: rule.Enabled, Info: rule.Info,
@@ -125,15 +133,16 @@ func (api *OsctrlAPI) GetAlertChannels() ([]AlertChannelJSON, error) {
 }
 
 // CreateAlertChannel creates a notification channel.
-func (api *OsctrlAPI) CreateAlertChannel(name, typ, configJSON string, envID uint, enabled bool) error {
+func (api *OsctrlAPI) CreateAlertChannel(name, typ, configJSON, info string, envID uint, enabled bool) error {
 	body := struct {
 		Name          string          `json:"name"`
 		EnvironmentID uint            `json:"environment_id"`
 		Type          string          `json:"type"`
 		Enabled       bool            `json:"enabled"`
 		Config        json.RawMessage `json:"config"`
+		Info          string          `json:"info"`
 	}{
-		Name: name, EnvironmentID: envID, Type: typ, Enabled: enabled,
+		Name: name, EnvironmentID: envID, Type: typ, Enabled: enabled, Info: info,
 		Config: json.RawMessage(configJSON),
 	}
 	jsonMessage, err := json.Marshal(body)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/apiclient"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/carves"
-	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -223,6 +223,7 @@ type DataStore interface {
 	EditUserField(username, field, value string) error
 	DeleteUser(username string) error
 	EnvAction(name, target, action string) (string, error)
+	DeleteEnvironment(name string) error
 	AddSetting(service, name, typ, value string) error
 	UpdateSetting(service, name, typ, value string) error
 	DeleteSetting(service, name string) error
@@ -402,6 +403,17 @@ func carveToRow(c carves.CarvedFile) carveRow {
 	}
 }
 
+// carveQueryToRow maps a carve query, which is what the API lists, onto a
+// carve row. Per-file fields (path, blocks, size, UUID) only exist on carved
+// files, which the DB mode lists, so they are left empty.
+func carveQueryToRow(q queries.DistributedQuery) carveRow {
+	status := q.CarveStatus
+	if status == "" {
+		status = queryStatus(q)
+	}
+	return carveRow{QueryName: q.Name, Status: status, CompletedAt: "—"}
+}
+
 func envToRow(e environments.TLSEnvironment) envRow {
 	return envRow{
 		Name:         e.Name,
@@ -558,7 +570,7 @@ func (s *apiStore) Carves(env string) ([]carveRow, error) {
 	}
 	out := make([]carveRow, 0, len(cs))
 	for _, c := range cs {
-		out = append(out, carveToRow(c))
+		out = append(out, carveQueryToRow(c))
 	}
 	return out, nil
 }
@@ -612,7 +624,15 @@ func (s *apiStore) AuditLogs() ([]auditRow, error) {
 }
 
 func (s *apiStore) Settings() ([]settingRow, error) {
-	return nil, fmt.Errorf("settings are not exposed by the REST API; use --db mode")
+	vs, err := s.api.GetSettings()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]settingRow, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, settingRow{Name: v.Name, Service: v.Service, Type: v.Type, Value: settingValueDisplay(v), Info: v.Info})
+	}
+	return out, nil
 }
 
 func (s *apiStore) DeleteNode(env, id string) error { return s.api.DeleteNode(env, id) }
@@ -1116,18 +1136,60 @@ func (s *apiStore) EnvAction(name, target, action string) (string, error) {
 	return "", fmt.Errorf("unknown action %s/%s", target, action)
 }
 
+func (s *apiStore) DeleteEnvironment(name string) error { return s.api.DeleteEnvironment(name) }
+
 func (s *apiStore) AddSetting(service, name, typ, value string) error {
 	return fmt.Errorf("settings management is not exposed by the REST API; use --db mode")
 }
 func (s *apiStore) UpdateSetting(service, name, typ, value string) error {
-	return fmt.Errorf("settings management is not exposed by the REST API; use --db mode")
+	req := types.SettingPatchRequest{}
+	switch strings.ToLower(typ) {
+	case "string":
+		req.Type, req.String = settings.TypeString, &value
+	case "boolean", "bool":
+		b, err := parseBoolStrict(value)
+		if err != nil {
+			return err
+		}
+		req.Type, req.Boolean = settings.TypeBoolean, &b
+	case "integer", "int":
+		iv, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return fmt.Errorf("integer: %w", err)
+		}
+		req.Type, req.Integer = settings.TypeInteger, &iv
+	default:
+		return fmt.Errorf("unknown type %q (string|boolean|integer)", typ)
+	}
+	return s.api.PatchSetting(service, name, req)
 }
 func (s *apiStore) DeleteSetting(service, name string) error {
 	return fmt.Errorf("settings management is not exposed by the REST API; use --db mode")
 }
 
 func (s *apiStore) Permissions(username string) ([]permRow, error) {
-	return nil, fmt.Errorf("permissions read is not wired for the REST API in this version; use --db mode")
+	resp, err := s.api.GetUserPermissions(username)
+	if err != nil {
+		return nil, err
+	}
+	// The API does not expose who granted a level, so GrantedBy stays empty.
+	// Environments sorted, levels in the order the DB creates the rows.
+	uuids := make([]string, 0, len(resp.Permissions))
+	for uuid := range resp.Permissions {
+		uuids = append(uuids, uuid)
+	}
+	sort.Strings(uuids)
+	var out []permRow
+	for _, uuid := range uuids {
+		a := resp.Permissions[uuid]
+		for _, l := range []struct {
+			name string
+			v    bool
+		}{{"user", a.User}, {"query", a.Query}, {"carve", a.Carve}, {"admin", a.Admin}} {
+			out = append(out, permRow{Username: username, Environment: uuid, AccessType: l.name, AccessValue: l.v})
+		}
+	}
+	return out, nil
 }
 
 // ─────────────────────────────── dbStore: management actions ───────────────────────────────
@@ -1225,7 +1287,7 @@ func (s *dbStore) EditUserField(username, field, value string) error {
 	}
 }
 
-func (s *dbStore) DeleteUser(username string) error { return adminUsers.Delete(username) }
+func (s *dbStore) DeleteUser(username string) error { return deleteUserWithPermissions(username) }
 
 func (s *dbStore) EnvAction(name, target, action string) (string, error) {
 	e, err := envs.Get(name)
@@ -1272,6 +1334,18 @@ func (s *dbStore) EnvAction(name, target, action string) (string, error) {
 	return fmt.Sprintf("%s %s %s", target, action, "ok"), nil
 }
 
+func (s *dbStore) DeleteEnvironment(name string) error {
+	e, err := envs.Get(name)
+	if err != nil {
+		return fmt.Errorf("env: %w", err)
+	}
+	if err := envs.Delete(e.UUID); err != nil {
+		return err
+	}
+	auditlogsmgr.EnvAction(getShellUsername(), "delete environment "+e.Name, "CLI", e.ID)
+	return nil
+}
+
 func (s *dbStore) AddSetting(service, name, typ, value string) error {
 	switch strings.ToLower(typ) {
 	case "string":
@@ -1290,21 +1364,47 @@ func (s *dbStore) AddSetting(service, name, typ, value string) error {
 }
 
 func (s *dbStore) UpdateSetting(service, name, typ, value string) error {
-	if service == config.ServiceAPI && name == settings.InactiveHours {
-		if typ = strings.ToLower(typ); typ != "integer" && typ != "int" {
-			return fmt.Errorf("inactive_hours must be an integer")
-		}
-		hours, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
+	// Same checks as the API PATCH: an existing setting keeps its type and
+	// integers go through the range validators.
+	switch strings.ToLower(typ) {
+	case "string":
+		typ = settings.TypeString
+	case "boolean", "bool":
+		typ = settings.TypeBoolean
+	case "integer", "int":
+		typ = settings.TypeInteger
+	default:
+		return fmt.Errorf("unknown type %q (string|boolean|integer)", typ)
+	}
+	existing, err := settingsmgr.RetrieveValue(service, name, settings.NoEnvironmentID)
+	if err != nil {
+		return fmt.Errorf("setting not found or unreadable - %w", err)
+	}
+	if existing.Type != typ {
+		return fmt.Errorf("setting is %s - provide `%s`, not %s", existing.Type, existing.Type, typ)
+	}
+	var iv int64
+	if typ == settings.TypeInteger {
+		if iv, err = strconv.ParseInt(value, 10, 64); err != nil {
 			return fmt.Errorf("integer: %w", err)
 		}
-		return settingsmgr.SetInteger(hours, service, name, settings.NoEnvironmentID)
+		if err := settings.ValidateIntegerSetting(service, name, iv); err != nil {
+			return err
+		}
 	}
-	// Delete-then-create keeps the value fresh without a generic setter.
-	if err := settingsmgr.DeleteValue(service, name, settings.NoEnvironmentID); err != nil {
-		return err
+	// update in place: keeps the row and its info
+	switch typ {
+	case settings.TypeInteger:
+		return settingsmgr.SetInteger(iv, service, name, settings.NoEnvironmentID)
+	case settings.TypeBoolean:
+		b, err := parseBoolStrict(value)
+		if err != nil {
+			return err
+		}
+		return settingsmgr.SetBoolean(b, service, name, settings.NoEnvironmentID)
+	default:
+		return settingsmgr.SetString(value, service, name, settings.NoEnvironmentID)
 	}
-	return s.AddSetting(service, name, typ, value)
 }
 
 func (s *dbStore) DeleteSetting(service, name string) error {
@@ -1336,6 +1436,17 @@ func parseBool(v string) bool {
 		return true
 	}
 	return false
+}
+
+// parseBoolStrict is parseBool that rejects unrecognised words.
+func parseBoolStrict(v string) (bool, error) {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "true", "yes", "y", "1", "on":
+		return true, nil
+	case "false", "no", "n", "0", "off":
+		return false, nil
+	}
+	return false, fmt.Errorf("boolean: %q is not true/false/yes/no/on/off/1/0", v)
 }
 
 // accessTypeName maps a users.AccessType int to a readable label.

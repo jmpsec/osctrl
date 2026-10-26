@@ -33,3 +33,15 @@ func (conf *Settings) AuditLogRetentionDays() (int64, error) {
 	}
 	return value.Integer, ValidateAuditLogRetentionDays(value.Integer)
 }
+
+// ValidateIntegerSetting applies the range check owned by a setting, if any.
+// Shared by the API PATCH handler and the CLI so both modes reject the same values.
+func ValidateIntegerSetting(service, name string, value int64) error {
+	if service == config.ServiceAPI && name == InactiveHours {
+		return ValidateInactiveHours(value)
+	}
+	if service == config.ServiceAPI && name == AuditLogRetentionDays {
+		return ValidateAuditLogRetentionDays(value)
+	}
+	return nil
+}

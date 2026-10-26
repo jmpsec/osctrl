@@ -81,18 +81,18 @@ func addTag(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		// TODO - Use the correct user
 		if err := tagsmgr.NewTag(name, description, color, icon, appName, e.ID, false, tagType, tags.SetCustomTag(tagType, tagCustom)); err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		// Audit log
 		auditlogsmgr.TagAction(getShellUsername(), "add tag "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom))
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	}
 	if !silentFlag {
@@ -116,17 +116,17 @@ func deleteTag(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		if err := tagsmgr.DeleteGet(name, e.ID); err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		// Audit log
 		auditlogsmgr.TagAction(getShellUsername(), "delete tag "+name, "CLI", e.ID)
 	} else if apiFlag {
 		_, err := osctrlAPI.DeleteTag(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	}
 	if !silentFlag {
@@ -165,38 +165,38 @@ func editTag(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		t, err := tagsmgr.Get(name, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		if description != "" && description != t.Description {
 			if err := tagsmgr.ChangeDescription(&t, description); err != nil {
-				return fmt.Errorf("❌ %w", err)
+				return fmt.Errorf("%w", err)
 			}
 		}
 		if color != "" && color != t.Color {
 			if err := tagsmgr.ChangeColor(&t, color); err != nil {
-				return fmt.Errorf("❌ %w", err)
+				return fmt.Errorf("%w", err)
 			}
 		}
 		if icon != "" && icon != t.Icon {
 			if err := tagsmgr.ChangeIcon(&t, icon); err != nil {
-				return fmt.Errorf("❌ %w", err)
+				return fmt.Errorf("%w", err)
 			}
 		}
 		if tagType != t.TagType {
 			if err := tagsmgr.ChangeTagType(&t, tagType); err != nil {
-				return fmt.Errorf("❌ %w", err)
+				return fmt.Errorf("%w", err)
 			}
 			if err := tagsmgr.ChangeCustom(&t, tags.ValidateCustom(tagCustom)); err != nil {
-				return fmt.Errorf("❌ %w", err)
+				return fmt.Errorf("%w", err)
 			}
 		}
 		if tagCustom != "" && tagCustom != t.CustomTag {
 			if err := tagsmgr.ChangeCustom(&t, tagCustom); err != nil {
-				return fmt.Errorf("❌ %w", err)
+				return fmt.Errorf("%w", err)
 			}
 		}
 		// Audit log
@@ -204,7 +204,7 @@ func editTag(ctx context.Context, cmd *cli.Command) error {
 	} else if apiFlag {
 		_, err = osctrlAPI.EditTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom))
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	}
 	if !silentFlag {
@@ -230,21 +230,21 @@ func showTag(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		t, err = tagsmgr.Get(name, e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		envName = e.Name
 	} else if apiFlag {
 		t, err = osctrlAPI.GetTag(env, name)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		e, err := osctrlAPI.GetEnvironment(env)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		envName = e.Name
 	}
@@ -296,13 +296,13 @@ func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 			fmt.Printf("Existing tags (%d):\n", len(tgs))
 			data := tagsToData(tgs, m, nil)
 			if err := table.Bulk(data); err != nil {
-				return fmt.Errorf("❌ error bulk table - %w", err)
+				return fmt.Errorf("error bulk table - %w", err)
 			}
 		} else {
 			fmt.Println("No tags")
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	}
 	return nil
@@ -321,28 +321,28 @@ func listTagsByEnv(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
-			return fmt.Errorf("❌ error env get - %w", err)
+			return fmt.Errorf("error env get - %w", err)
 		}
 		tgs, err = tagsmgr.GetByEnv(e.ID)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		m, err = envs.GetMapByID()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	} else if apiFlag {
 		tgs, err = osctrlAPI.GetTags(env)
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		m, err = osctrlAPI.GetEnvMap()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	}
 	if err := helperListTags(tgs, m); err != nil {
-		return fmt.Errorf("❌ %w", err)
+		return fmt.Errorf("%w", err)
 	}
 	return nil
 }
@@ -353,24 +353,24 @@ func listAllTags(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		tgs, err = tagsmgr.All()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		m, err = envs.GetMapByID()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	} else if apiFlag {
 		tgs, err = osctrlAPI.GetAllTags()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		m, err = osctrlAPI.GetEnvMap()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	}
 	if err := helperListTags(tgs, m); err != nil {
-		return fmt.Errorf("❌ %w", err)
+		return fmt.Errorf("%w", err)
 	}
 	return nil
 }

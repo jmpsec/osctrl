@@ -102,17 +102,9 @@ func (h *HandlersApi) SettingPatchHandler(w http.ResponseWriter, r *http.Request
 			apiErrorResponse(w, "setting is integer — provide `integer` in body", http.StatusBadRequest, nil)
 			return
 		}
-		if service == config.ServiceAPI && name == settings.InactiveHours {
-			if err := settings.ValidateInactiveHours(*body.Integer); err != nil {
-				apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
-				return
-			}
-		}
-		if service == config.ServiceAPI && name == settings.AuditLogRetentionDays {
-			if err := settings.ValidateAuditLogRetentionDays(*body.Integer); err != nil {
-				apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
-				return
-			}
+		if err := settings.ValidateIntegerSetting(service, name, *body.Integer); err != nil {
+			apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+			return
 		}
 		if err := h.Settings.SetInteger(*body.Integer, service, name, settings.NoEnvironmentID); err != nil {
 			apiErrorResponse(w, "error updating setting", http.StatusInternalServerError, err)

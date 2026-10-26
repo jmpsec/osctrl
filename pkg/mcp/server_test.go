@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -23,6 +24,10 @@ type fakeBackend struct {
 	nodes  []nodes.OsqueryNode
 	tables []types.OsqueryTable
 	err    error
+	// manyQueries, when > 0, makes GetQueriesLimited behave like a backend
+	// holding that many queries; lastLimit records the cap it was given.
+	manyQueries int
+	lastLimit   int
 }
 
 func (f *fakeBackend) GetEnvironments() ([]environments.TLSEnvironment, error) {
@@ -76,10 +81,22 @@ func (f *fakeBackend) GetOsqueryTables() ([]types.OsqueryTable, error) {
 	return f.tables, f.err
 }
 
-func (f *fakeBackend) GetQueries(target, env string) ([]queries.DistributedQuery, error) {
+func (f *fakeBackend) GetQueriesLimited(target, env string, maxItems int) ([]queries.DistributedQuery, bool, error) {
+	f.lastLimit = maxItems
+	if f.manyQueries > 0 {
+		n := f.manyQueries
+		if n > maxItems {
+			n = maxItems
+		}
+		out := make([]queries.DistributedQuery, n)
+		for i := range out {
+			out[i].Name = fmt.Sprintf("q%d", i)
+		}
+		return out, f.manyQueries > maxItems, f.err
+	}
 	return []queries.DistributedQuery{
 		{Name: "query_1", Query: "select * from uptime", Creator: "admin", Executions: 2, Expected: 3, Active: true},
-	}, f.err
+	}, false, f.err
 }
 
 func (f *fakeBackend) GetQueryResults(env, name string, page, pageSize int) (types.QueryResultsResponse, error) {
@@ -311,6 +328,27 @@ func TestSchemaTools(t *testing.T) {
 	})
 	if err == nil && !res.IsError {
 		t.Fatal("unknown table should be an error, not an empty schema")
+	}
+}
+
+func TestListQueriesIsCapped(t *testing.T) {
+	f := newFake()
+	f.manyQueries = 1000
+	s := connect(t, f)
+	for _, tc := range []struct {
+		limit, wantLimit, wantLen int
+	}{{0, defaultQueryLimit, 50}, {10, 10, 10}, {100000, maxQueryLimit, 200}} {
+		var qs listQueriesOut
+		call(t, s, "list_queries", map[string]any{"environment": "dev", "limit": tc.limit}, &qs)
+		if f.lastLimit != tc.wantLimit || len(qs.Queries) != tc.wantLen || !qs.Truncated {
+			t.Fatalf("limit %d: backend cap %d, got %d queries, truncated=%v", tc.limit, f.lastLimit, len(qs.Queries), qs.Truncated)
+		}
+	}
+	f.manyQueries = 3
+	var qs listQueriesOut
+	call(t, s, "list_queries", map[string]any{"environment": "dev"}, &qs)
+	if len(qs.Queries) != 3 || qs.Truncated {
+		t.Fatalf("under the cap must not be truncated: %+v", qs)
 	}
 }
 

@@ -5,12 +5,14 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
 
 // dbManagerGlobals are the package-level managers only initialised with --db.
-var dbManagerGlobals = []string{"adminUsers", "envs", "nodesmgr", "tagsmgr", "queriesmgr", "filecarves", "settingsmgr", "auditlogsmgr", "db"}
+var dbManagerGlobals = []string{"adminUsers", "envs", "nodesmgr", "tagsmgr", "queriesmgr", "filecarves", "settingsmgr", "auditlogsmgr", "mfamgr", "db"}
 
 // mentions reports whether n contains an identifier with one of the names.
 func mentions(n ast.Node, names ...string) bool {
@@ -30,7 +32,8 @@ func mentions(n ast.Node, names ...string) bool {
 // mode whose globals (DB managers or osctrlAPI) are nil, which is a panic.
 //
 // Limits: it only matches identifier names inside the registered function's own
-// body; use through a helper function is not detected, and only registrations
+// body (a call to a helper in bothModeHelpers counts as both modes); other use
+// through a helper function is not detected, and only registrations
 // of a plain function identifier (cliWrapper*(name)) are inspected.
 func TestCommandsRegisteredForTheirMode(t *testing.T) {
 	fset := token.NewFileSet()
@@ -54,6 +57,14 @@ func TestCommandsRegisteredForTheirMode(t *testing.T) {
 			}
 		}
 	}
+	// Helpers that branch on the mode themselves: calling one counts as using
+	// both modes. Each must really mention both.
+	bothModeHelpers := []string{"editEnvConfigSection"}
+	for _, h := range bothModeHelpers {
+		if funcs[h] == nil || !mentions(funcs[h].Body, "osctrlAPI") || !mentions(funcs[h].Body, "envs") {
+			t.Errorf("%s is listed as handling both modes but does not use osctrlAPI and envs", h)
+		}
+	}
 	// (i) and (ii): the plain cliWrapper means the action handles both modes.
 	ast.Inspect(mainFile, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -66,8 +77,8 @@ func TestCommandsRegisteredForTheirMode(t *testing.T) {
 			return true
 		}
 		fd := funcs[arg.Name]
-		usesAPI := mentions(fd.Body, "osctrlAPI", "apiFlag")
-		usesDB := mentions(fd.Body, append([]string{"dbFlag"}, dbManagerGlobals...)...)
+		usesAPI := mentions(fd.Body, append([]string{"osctrlAPI", "apiFlag"}, bothModeHelpers...)...)
+		usesDB := mentions(fd.Body, append(append([]string{"dbFlag"}, dbManagerGlobals...), bothModeHelpers...)...)
 		switch {
 		case wrapper.Name == "cliWrapper" && !usesAPI:
 			t.Errorf("%s only uses the database: register it with cliWrapperDB", arg.Name)
@@ -95,6 +106,65 @@ func TestCommandsRegisteredForTheirMode(t *testing.T) {
 				if id, ok := s.Cond.(*ast.Ident); ok && id.Name == "apiFlag" && !elseIfs[s] {
 					t.Errorf("%s: bare `if apiFlag {` at %s: use `else if apiFlag`", name, fset.Position(s.Pos()))
 				}
+			}
+			return true
+		})
+	}
+}
+
+// TestOnlySettingsAddDeleteRemainDBOnly pins the commands without an API
+// equivalent: exactly addSetting and deleteSetting stay on cliWrapperDB and no
+// command is API-only (cliWrapperAPI is kept for the guard and its tests).
+func TestOnlySettingsAddDeleteRemainDBOnly(t *testing.T) {
+	f, err := parser.ParseFile(token.NewFileSet(), "main.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string][]string{}
+	ast.Inspect(f, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || len(call.Args) != 1 {
+			return true
+		}
+		w, ok := call.Fun.(*ast.Ident)
+		a, isIdent := call.Args[0].(*ast.Ident)
+		if ok && isIdent && (w.Name == "cliWrapperDB" || w.Name == "cliWrapperAPI") {
+			got[w.Name] = append(got[w.Name], a.Name)
+		}
+		return true
+	})
+	sort.Strings(got["cliWrapperDB"])
+	if want := []string{"addSetting", "deleteSetting"}; !reflect.DeepEqual(got["cliWrapperDB"], want) {
+		t.Errorf("DB-only commands = %v, want %v", got["cliWrapperDB"], want)
+	}
+	if len(got["cliWrapperAPI"]) != 0 {
+		t.Errorf("no command should be API-only, got %v", got["cliWrapperAPI"])
+	}
+}
+
+// main() prints returned errors as "❌ <err>", so an error text must not start
+// with its own marker (it would print "❌ ❌ ...").
+func TestErrorsHaveNoLeadingMarker(t *testing.T) {
+	files, _ := filepath.Glob("*.go")
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(token.NewFileSet(), name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok || len(call.Args) == 0 {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || (sel.Sel.Name != "Errorf" && sel.Sel.Name != "New") {
+				return true
+			}
+			if lit, ok := call.Args[0].(*ast.BasicLit); ok && strings.HasPrefix(lit.Value, `"❌`) {
+				t.Errorf("%s: error text starts with ❌: %s", name, lit.Value)
 			}
 			return true
 		})

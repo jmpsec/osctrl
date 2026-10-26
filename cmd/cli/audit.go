@@ -77,13 +77,13 @@ func helperAuditLogs(als []auditlog.AuditLog, m environments.MapEnvByID) error {
 			fmt.Printf("Existing audit logs (%d):\n", len(als))
 			data := auditlogsToData(als, m, nil)
 			if err := table.Bulk(data); err != nil {
-				return fmt.Errorf("❌ error bulk table - %w", err)
+				return fmt.Errorf("error bulk table - %w", err)
 			}
 		} else {
 			fmt.Println("No audit logs")
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	}
 	return nil
@@ -95,26 +95,26 @@ func auditLogs(ctx context.Context, cmd *cli.Command) error {
 	if dbFlag {
 		als, err = auditlogsmgr.GetAll()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		m, err = envs.GetMapByID()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		// Audit log
 		auditlogsmgr.Visit(getShellUsername(), "get audit logs", "CLI", 0)
 	} else if apiFlag {
 		als, err = osctrlAPI.GetAuditLogs()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 		m, err = osctrlAPI.GetEnvMap()
 		if err != nil {
-			return fmt.Errorf("❌ %w", err)
+			return fmt.Errorf("%w", err)
 		}
 	}
 	if err := helperAuditLogs(als, m); err != nil {
-		return fmt.Errorf("❌ %w", err)
+		return fmt.Errorf("%w", err)
 	}
 	return nil
 }

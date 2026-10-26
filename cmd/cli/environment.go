@@ -1,17 +1,23 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/posture"
+	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v3"
 )
@@ -28,14 +34,12 @@ func addEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
 	// Get environment hostname
 	envHost := cmd.String("hostname")
 	if envHost == "" {
-		fmt.Println("❌ environment hostname is required")
-		os.Exit(1)
+		return fmt.Errorf("environment hostname is required")
 	}
 	// Get certificate
 	var certificate string
@@ -51,121 +55,41 @@ func addEnvironment(ctx context.Context, cmd *cli.Command) error {
 		Carve:  cmd.Bool("carve"),
 	}
 	if dbFlag {
-		// Create environment if it does not exist
-		if !envs.Exists(envName) {
-			newEnv := envs.Empty(envName, envHost)
-			newEnv.DebugHTTP = cmd.Bool("debug")
-			newEnv.Configuration = envs.GenEmptyConfiguration(true)
-			newEnv.Certificate = certificate
-			newEnv.EnrollExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
-			newEnv.RemoveExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
-			if err := envs.Create(&newEnv); err != nil {
-				return err
-			}
-			// Update configuration parts from serialized
-			cnf, err := envs.GenStructConf([]byte(newEnv.Configuration))
-			if err != nil {
-				return err
-			}
-			if err := envs.UpdateConfigurationParts(envName, cnf); err != nil {
-				return err
-			}
-			// Create a tag for this new environment
-			if err := tagsmgr.NewTag(
-				newEnv.Name,
-				"Tag for environment "+newEnv.Name,
-				tags.RandomColor(),
-				newEnv.Icon,
-				appName,
-				newEnv.ID,
-				false,
-				tags.TagTypeEnv,
-				tags.TagCustomEnv); err != nil {
-				return err
-			}
-			// Generate flags
-			flags, err := envs.GenerateFlags(newEnv, "", "", osqueryValues)
-			if err != nil {
-				return err
-			}
-			// Update flags in the newly created environment
-			if err := envs.UpdateFlags(envName, flags); err != nil {
-				return err
-			}
-		} else {
-			fmt.Printf("❌ environment %s already exists!\n", envName)
-			os.Exit(1)
+		if envs.Exists(envName) {
+			return fmt.Errorf("environment %s already exists", envName)
 		}
-		// Audit log
-		auditlogsmgr.EnvAction(getShellUsername(), "add environment "+envName, "CLI", 0)
-		fmt.Printf("✅ environment %s was created successfully\n", envName)
-	}
-	return nil
-}
-
-func updateEnvironment(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
-	envName := cmd.String("name")
-	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
-	}
-	// Get osquery values to generate flags
-	osqueryValues := config.YAMLConfigurationOsquery{
-		Config: cmd.Bool("config-plugin"),
-		Logger: cmd.Bool("logger-plugin"),
-		Query:  cmd.Bool("query-plugin"),
-		Carve:  cmd.Bool("carve-plugin"),
-	}
-	if dbFlag {
-		env, err := envs.Get(envName)
+		newEnv := envs.Empty(envName, envHost)
+		newEnv.DebugHTTP = cmd.Bool("debug")
+		newEnv.Configuration = envs.GenEmptyConfiguration(true)
+		newEnv.Certificate = certificate
+		newEnv.EnrollExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
+		newEnv.RemoveExpire = time.Now().Add(time.Duration(environments.DefaultLinkExpire) * time.Hour)
+		if err := envs.Create(&newEnv); err != nil {
+			return err
+		}
+		// Update configuration parts from serialized
+		cnf, err := envs.GenStructConf([]byte(newEnv.Configuration))
 		if err != nil {
 			return err
 		}
-		debug := cmd.Bool("debug")
-		env.DebugHTTP = debug
-		enroll := cmd.Bool("enroll")
-		env.AcceptEnrolls = enroll
-		hostname := cmd.String("hostname")
-		if hostname != "" {
-			env.Hostname = hostname
-		}
-		// Packages
-		deb := cmd.String("deb")
-		if deb != "" {
-			env.DebPackage = deb
-		}
-		rpm := cmd.String("rpm")
-		if rpm != "" {
-			env.RpmPackage = rpm
-		}
-		msi := cmd.String("msi")
-		if msi != "" {
-			env.MsiPackage = msi
-		}
-		pkg := cmd.String("pkg")
-		if pkg != "" {
-			env.PkgPackage = pkg
-		}
-		// Intervals
-		loggingInterval := cmd.Int("logging")
-		if loggingInterval != 0 {
-			env.LogInterval = loggingInterval
-		}
-		configInterval := cmd.Int("config")
-		if configInterval != 0 {
-			env.ConfigInterval = configInterval
-		}
-		queryInterval := cmd.Int("query")
-		if queryInterval != 0 {
-			env.QueryInterval = queryInterval
-		}
-		// Update environment
-		if err := envs.Update(env); err != nil {
+		if err := envs.UpdateConfigurationParts(envName, cnf); err != nil {
 			return err
 		}
-		// Make sure flags are up to date
-		flags, err := envs.GenerateFlags(env, "", "", osqueryValues)
+		// Create a tag for this new environment
+		if err := tagsmgr.NewTag(
+			newEnv.Name,
+			"Tag for environment "+newEnv.Name,
+			tags.RandomColor(),
+			newEnv.Icon,
+			appName,
+			newEnv.ID,
+			false,
+			tags.TagTypeEnv,
+			tags.TagCustomEnv); err != nil {
+			return err
+		}
+		// Generate flags
+		flags, err := envs.GenerateFlags(newEnv, "", "", osqueryValues)
 		if err != nil {
 			return err
 		}
@@ -174,8 +98,237 @@ func updateEnvironment(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 		// Audit log
+		auditlogsmgr.EnvAction(getShellUsername(), "add environment "+envName, "CLI", 0)
+	} else if apiFlag {
+		stored, err := addEnvironmentAPI(envName, envHost, certificate, cmd.Bool("debug"), osqueryValues)
+		if err != nil {
+			return err
+		}
+		envName = stored // the API lowercases the name
+	}
+	fmt.Printf("✅ environment %s was created successfully\n", envName)
+	return nil
+}
+
+// addEnvironmentAPI creates the environment, then applies the follow-ups DB
+// mode does, flags last. A failed follow-up leaves the environment in place
+// and the error names the step.
+// It returns the stored name.
+func addEnvironmentAPI(name, host, certificate string, debug bool, osq config.YAMLConfigurationOsquery) (string, error) {
+	created, err := osctrlAPI.CreateEnvironment(types.EnvCreateRequest{
+		Name:     name,
+		Hostname: host,
+		Type:     environments.DefaultEnvironmentType,
+		Icon:     environments.DefaultEnvironmentIcon,
+	})
+	if err != nil {
+		return "", err
+	}
+	id := created.UUID
+	step := func(what string, err error) error {
+		if err == nil {
+			return nil
+		}
+		return fmt.Errorf("environment %s was created, but %s failed (finish or delete it): %w", created.Name, what, err)
+	}
+	// Default configuration parts and decorators, as DB mode stores them
+	cnf, err := pureEnvs.GenStructConf([]byte(pureEnvs.GenEmptyConfiguration(true)))
+	if err != nil {
+		return created.Name, step("default configuration", err)
+	}
+	for _, part := range []struct {
+		section string
+		value   interface{}
+	}{
+		{environments.SectionOptions, cnf.Options},
+		{environments.SectionSchedule, cnf.Schedule},
+		{environments.SectionPacks, cnf.Packs},
+		{environments.SectionDecorators, cnf.Decorators},
+		{environments.SectionATC, cnf.ATC},
+	} {
+		value, err := pureEnvs.GenSerializedConf(part.value, true)
+		if err == nil {
+			err = osctrlAPI.PatchEnvConfig(id, part.section, value)
+		}
+		if err != nil {
+			return created.Name, step("default configuration ("+part.section+")", err)
+		}
+	}
+	if _, err := osctrlAPI.ExtendEnrollment(id); err != nil {
+		return created.Name, step("enroll link extension", err)
+	}
+	if _, err := osctrlAPI.ExtendRemove(id); err != nil {
+		return created.Name, step("remove link extension", err)
+	}
+	if certificate != "" {
+		if err := osctrlAPI.UploadCertificate(id, certificate); err != nil {
+			return created.Name, step("certificate upload", err)
+		}
+	}
+	if debug {
+		if err := osctrlAPI.PatchEnvironment(id, types.EnvUpdateRequest{DebugHTTP: &debug}); err != nil {
+			return created.Name, step("debug", err)
+		}
+	}
+	return created.Name, step("flags update", patchGeneratedFlagsAPI(id, osq))
+}
+
+// pureEnvs runs the environments manager methods that do not use the
+// database (configuration and flag generation) in API mode.
+var pureEnvs = &environments.EnvManager{}
+
+// patchGeneratedFlagsAPI regenerates the flags of env from what the API
+// returns for it and stores them. The token must be an environment admin.
+func patchGeneratedFlagsAPI(env string, osq config.YAMLConfigurationOsquery) error {
+	e, err := osctrlAPI.GetEnvironment(env)
+	if err != nil {
+		return err
+	}
+	flags, err := pureEnvs.GenerateFlags(e, "", "", osq)
+	if err != nil {
+		return err
+	}
+	return osctrlAPI.PatchEnvConfig(env, "flags", flags)
+}
+
+func updateEnvironment(ctx context.Context, cmd *cli.Command) error {
+	// Get environment name
+	envName := cmd.String("name")
+	if envName == "" {
+		return fmt.Errorf("environment name is required")
+	}
+	// Get osquery values to generate flags
+	osqueryValues := config.YAMLConfigurationOsquery{
+		Config: cmd.Bool("config-plugin"),
+		Logger: cmd.Bool("logger-plugin"),
+		Query:  cmd.Bool("query-plugin"),
+		Carve:  cmd.Bool("carve-plugin"),
+	}
+	// --debug and --enroll change only when given
+	var debug, enroll *bool
+	if cmd.IsSet("debug") {
+		v := cmd.Bool("debug")
+		debug = &v
+	}
+	if cmd.IsSet("enroll") {
+		v := cmd.Bool("enroll")
+		enroll = &v
+	}
+	hostname := cmd.String("hostname")
+	// Package URLs by enroll action, in a fixed order
+	packages := [][2]string{
+		{settings.SetDebPackage, cmd.String("deb")},
+		{settings.SetRpmPackage, cmd.String("rpm")},
+		{settings.SetMsiPackage, cmd.String("msi")},
+		{settings.SetMacPackage, cmd.String("pkg")},
+	}
+	// Intervals, 0 is unchanged
+	configInterval, logInterval, queryInterval := cmd.Int("config"), cmd.Int("logging"), cmd.Int("query")
+	// Flags are regenerated only when something they encode is given: a
+	// plugin flag, the hostname or an interval. --debug, --enroll and package
+	// URLs leave stored (possibly hand-edited) flags alone.
+	regenFlags := cmd.IsSet("config-plugin") || cmd.IsSet("logger-plugin") || cmd.IsSet("query-plugin") || cmd.IsSet("carve-plugin") ||
+		hostname != "" || configInterval != 0 || logInterval != 0 || queryInterval != 0
+	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if hostname != "" {
+			env.Hostname = hostname
+		}
+		pkgFields := map[string]*string{
+			settings.SetDebPackage: &env.DebPackage,
+			settings.SetRpmPackage: &env.RpmPackage,
+			settings.SetMsiPackage: &env.MsiPackage,
+			settings.SetMacPackage: &env.PkgPackage,
+		}
+		for _, p := range packages {
+			if p[1] != "" {
+				*pkgFields[p[0]] = p[1]
+			}
+		}
+		if logInterval != 0 {
+			env.LogInterval = logInterval
+		}
+		if configInterval != 0 {
+			env.ConfigInterval = configInterval
+		}
+		if queryInterval != 0 {
+			env.QueryInterval = queryInterval
+		}
+		// Update environment
+		if err := envs.Update(env); err != nil {
+			return err
+		}
+		if err := envs.UpdateBooleans(env.UUID, debug, enroll); err != nil {
+			return err
+		}
+		if regenFlags {
+			flags, err := envs.GenerateFlagsEnv(env.UUID, "", "", osqueryValues)
+			if err != nil {
+				return err
+			}
+			if err := envs.UpdateFlags(env.UUID, flags); err != nil {
+				return err
+			}
+		}
+		// Audit log
 		auditlogsmgr.EnvAction(getShellUsername(), "update environment "+envName, "CLI", env.ID)
-		fmt.Printf("✅ environment %s was updated successfully\n", envName)
+	} else if apiFlag {
+		// The API rejects intervals below 1: fail before applying anything
+		for _, v := range []int{configInterval, logInterval, queryInterval} {
+			if v < 0 {
+				return fmt.Errorf("intervals must be greater than zero, got %d", v)
+			}
+		}
+		if hostname != "" || debug != nil || enroll != nil {
+			req := types.EnvUpdateRequest{DebugHTTP: debug, AcceptEnrolls: enroll}
+			if hostname != "" {
+				req.Hostname = &hostname
+			}
+			if err := osctrlAPI.PatchEnvironment(envName, req); err != nil {
+				return fmt.Errorf("updating environment: %w", err)
+			}
+		}
+		nonZero := func(v int) *int {
+			if v == 0 {
+				return nil
+			}
+			return &v
+		}
+		if configInterval != 0 || logInterval != 0 || queryInterval != 0 {
+			if err := osctrlAPI.PatchEnvironmentIntervals(envName, nonZero(configInterval), nonZero(logInterval), nonZero(queryInterval)); err != nil {
+				return fmt.Errorf("updating intervals: %w", err)
+			}
+		}
+		for _, p := range packages {
+			if p[1] != "" {
+				if err := osctrlAPI.SetEnrollPackageURL(envName, p[0], p[1]); err != nil {
+					return fmt.Errorf("updating package (%s): %w", p[0], err)
+				}
+			}
+		}
+		if regenFlags {
+			if err := patchGeneratedFlagsAPI(envName, osqueryValues); err != nil {
+				return fmt.Errorf("updating flags: %w", err)
+			}
+		}
+	}
+	fmt.Printf("✅ environment %s was updated successfully\n", envName)
+	return nil
+}
+
+// confirmEnvDelete asks for the environment name on in and returns an error
+// unless the line read is exactly name.
+func confirmEnvDelete(name string, in io.Reader, out io.Writer) error {
+	fmt.Fprint(out, "Type the environment name to confirm deletion: ")
+	line, err := bufio.NewReader(in).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("deletion of environment %s not confirmed: %w", name, err)
+	}
+	if strings.TrimRight(line, "\r\n") != name {
+		return fmt.Errorf("deletion of environment %s not confirmed", name)
 	}
 	return nil
 }
@@ -184,14 +337,29 @@ func deleteEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
+	}
+	if !cmd.Bool("yes") && !silentFlag {
+		if err := confirmEnvDelete(envName, os.Stdin, os.Stdout); err != nil {
+			return err
+		}
 	}
 	if dbFlag {
+		env, err := envs.Get(envName)
+		if err != nil {
+			return err
+		}
+		if err := envs.Delete(env.UUID); err != nil {
+			return err
+		}
 		// Audit log
-		auditlogsmgr.EnvAction(getShellUsername(), "delete environment "+envName, "CLI", 0)
-		return envs.Delete(envName)
+		auditlogsmgr.EnvAction(getShellUsername(), "delete environment "+env.Name, "CLI", env.ID)
+	} else if apiFlag {
+		if err := osctrlAPI.DeleteEnvironment(envName); err != nil {
+			return err
+		}
 	}
+	fmt.Printf("✅ environment %s was deleted successfully\n", envName)
 	return nil
 }
 
@@ -289,8 +457,7 @@ func newFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
 	// Get osquery values to generate flags
 	osqueryValues := config.YAMLConfigurationOsquery{
@@ -307,7 +474,15 @@ func newFlagsEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.UpdateFlags(envName, flags); err != nil {
 			return err
 		}
+		if env, err := envs.Get(envName); err == nil { // same line the API writes for a config PATCH
+			auditlogsmgr.ConfAction(getShellUsername(), "config patch on env "+env.Name, "CLI", env.ID)
+		}
+	} else if apiFlag {
+		if err := patchGeneratedFlagsAPI(envName, osqueryValues); err != nil {
+			return err
+		}
 	}
+	fmt.Printf("✅ flags for environment %s were regenerated\n", envName)
 	return nil
 }
 
@@ -339,10 +514,10 @@ func listEnvironment(ctx context.Context, cmd *cli.Command) error {
 			data = append(data, e)
 		}
 		if err := table.Bulk(data); err != nil {
-			return fmt.Errorf("❌ error bulk table - %w", err)
+			return fmt.Errorf("error bulk table - %w", err)
 		}
 		if err := table.Render(); err != nil {
-			return fmt.Errorf("❌ error rendering table - %w", err)
+			return fmt.Errorf("error rendering table - %w", err)
 		}
 	} else {
 		fmt.Printf("No environments\n")
@@ -414,8 +589,7 @@ func rotateEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
 	msg := "enrollment rotated successfully"
 	if dbFlag {
@@ -423,11 +597,12 @@ func rotateEnrollEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err != nil {
 			return err
 		}
-		if err := envs.ExtendEnroll(env.UUID); err != nil {
+		if err := envs.RotateEnroll(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "rotate enrollment for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
-		msg, err = osctrlAPI.ExtendEnrollment(envName)
+		msg, err = osctrlAPI.RotateEnrollment(envName)
 		if err != nil {
 			return err
 		}
@@ -552,8 +727,7 @@ func rotateRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
 	msg := "remove rotated successfully"
 	if dbFlag {
@@ -564,6 +738,7 @@ func rotateRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 		if err := envs.RotateRemove(env.UUID); err != nil {
 			return err
 		}
+		auditlogsmgr.EnvAction(getShellUsername(), "rotate removal for environment "+env.Name, "CLI", env.ID)
 	} else if apiFlag {
 		msg, err = osctrlAPI.RotateRemove(envName)
 		if err != nil {
@@ -708,39 +883,41 @@ func certificateEnvironment(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func addScheduledQuery(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
-	envName := cmd.String("name")
-	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
-	}
-	// Get query name
-	queryName := cmd.String("query-name")
-	if queryName == "" {
-		fmt.Println("❌ query name is required")
-		os.Exit(1)
-	}
-	// Get query
+// scheduleQueryFromFlags is the scheduled or pack query given with --query,
+// --interval, --platform and --version.
+func scheduleQueryFromFlags(cmd *cli.Command) (environments.ScheduleQuery, error) {
 	query := cmd.String("query")
 	if query == "" {
-		fmt.Println("❌ query is required")
-		os.Exit(1)
+		return environments.ScheduleQuery{}, fmt.Errorf("query is required")
 	}
-	// Get interval
 	interval := cmd.Int("interval")
 	if interval == 0 {
-		fmt.Println("❌ interval is required")
-		os.Exit(1)
+		return environments.ScheduleQuery{}, fmt.Errorf("interval is required")
 	}
-	// Add new scheduled query
-	qData := environments.ScheduleQuery{
+	return environments.ScheduleQuery{
 		Query:    query,
 		Interval: json.Number(strconv.Itoa(interval)),
 		Platform: cmd.String("platform"),
 		Version:  cmd.String("version"),
+	}, nil
+}
+
+func addScheduledQuery(ctx context.Context, cmd *cli.Command) error {
+	envName := cmd.String("name")
+	if envName == "" {
+		return fmt.Errorf("environment name is required")
 	}
-	if err := envs.AddScheduleConfQuery(envName, queryName, qData); err != nil {
+	queryName := cmd.String("query-name")
+	if queryName == "" {
+		return fmt.Errorf("query name is required")
+	}
+	qData, err := scheduleQueryFromFlags(cmd)
+	if err != nil {
+		return err
+	}
+	if err := editEnvConfigSection(envName, environments.SectionSchedule, func(c string) (string, error) {
+		return environments.AddScheduleQueries(c, environments.ScheduleConf{queryName: qData})
+	}); err != nil {
 		return err
 	}
 	fmt.Printf("✅ query %s was created successfully\n", queryName)
@@ -750,40 +927,30 @@ func addScheduledQuery(ctx context.Context, cmd *cli.Command) error {
 func addPostureQueries(ctx context.Context, cmd *cli.Command) error {
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
 	profileID := cmd.String("profile")
 	if profileID == "" {
-		fmt.Println("❌ posture profile is required")
-		os.Exit(1)
+		return fmt.Errorf("posture profile is required")
 	}
 	prefix := cmd.String("prefix")
 	if prefix == "" {
-		fmt.Println("❌ posture query prefix is required")
-		os.Exit(1)
+		return fmt.Errorf("posture query prefix is required")
 	}
 	interval := cmd.Int("interval")
 	if interval < 0 {
-		fmt.Println("❌ posture query interval must be zero or greater")
-		os.Exit(1)
+		return fmt.Errorf("posture query interval must be zero or greater")
 	}
-
-	if dbFlag {
-		schedule, err := postureProfileScheduleQueries(profileID, prefix, interval)
-		if err != nil {
-			return err
-		}
-		env, err := envs.Get(envName)
-		if err != nil {
-			return err
-		}
-		if err := envs.AddScheduleConfQueries(envName, schedule); err != nil {
-			return err
-		}
-		auditlogsmgr.EnvAction(getShellUsername(), "add posture queries "+profileID+" to "+envName, "CLI", env.ID)
-		fmt.Printf("✅ posture profile %s added %d scheduled queries to %s\n", profileID, len(schedule), envName)
+	schedule, err := postureProfileScheduleQueries(profileID, prefix, interval)
+	if err != nil {
+		return err
 	}
+	if err := editEnvConfigSection(envName, environments.SectionSchedule, func(c string) (string, error) {
+		return environments.AddScheduleQueries(c, schedule)
+	}); err != nil {
+		return err
+	}
+	fmt.Printf("✅ posture profile %s added %d scheduled queries to %s\n", profileID, len(schedule), envName)
 	return nil
 }
 
@@ -813,20 +980,17 @@ func postureProfileScheduleQueries(profileID, prefix string, intervalOverride in
 }
 
 func removeScheduledQuery(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
-	// Get query name
 	queryName := cmd.String("query-name")
 	if queryName == "" {
-		fmt.Println("❌ query name is required")
-		os.Exit(1)
+		return fmt.Errorf("query name is required")
 	}
-	// Remove query
-	if err := envs.RemoveScheduleConfQuery(envName, queryName); err != nil {
+	if err := editEnvConfigSection(envName, environments.SectionSchedule, func(c string) (string, error) {
+		return environments.RemoveScheduleQuery(c, queryName)
+	}); err != nil {
 		return err
 	}
 	fmt.Printf("✅ query %s was removed successfully\n", queryName)
@@ -834,27 +998,19 @@ func removeScheduledQuery(ctx context.Context, cmd *cli.Command) error {
 }
 
 func addOsqueryOption(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
-	// Get option
 	option := cmd.String("option")
 	if option == "" {
-		fmt.Println("❌ option is required")
-		os.Exit(1)
-	}
-	// Get option type
-	optionType := cmd.String("type")
-	if optionType == "" {
-		fmt.Println("❌ option type is required")
-		os.Exit(1)
+		return fmt.Errorf("option is required")
 	}
 	// Get option value based on the type
 	var optionValue interface{}
 	switch cmd.String("type") {
+	case "":
+		return fmt.Errorf("option type is required")
 	case optionTypeBool:
 		optionValue = cmd.Bool("bool-value")
 	case optionTypeInt:
@@ -862,11 +1018,11 @@ func addOsqueryOption(ctx context.Context, cmd *cli.Command) error {
 	case optionTypeString:
 		optionValue = cmd.String("string-value")
 	default:
-		fmt.Printf("❌ invalid type! It can be %s, %s or %s\n", optionTypeBool, optionTypeInt, optionTypeString)
-		os.Exit(1)
+		return fmt.Errorf("invalid type! It can be %s, %s or %s", optionTypeBool, optionTypeInt, optionTypeString)
 	}
-	// Add osquery option
-	if err := envs.AddOptionsConf(envName, option, optionValue); err != nil {
+	if err := editEnvConfigSection(envName, environments.SectionOptions, func(c string) (string, error) {
+		return environments.SetOption(c, option, optionValue)
+	}); err != nil {
 		return err
 	}
 	fmt.Printf("✅ option %s was added successfully\n", option)
@@ -874,47 +1030,40 @@ func addOsqueryOption(ctx context.Context, cmd *cli.Command) error {
 }
 
 func removeOsqueryOption(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
-	// Get option
 	option := cmd.String("option")
 	if option == "" {
-		fmt.Println("❌ option is required")
-		os.Exit(1)
+		return fmt.Errorf("option is required")
 	}
-	// Remove osquery option
-	if err := envs.RemoveOptionsConf(envName, option); err != nil {
+	if err := editEnvConfigSection(envName, environments.SectionOptions, func(c string) (string, error) {
+		return environments.RemoveOption(c, option)
+	}); err != nil {
 		return err
 	}
-	fmt.Printf("✅ option %s was added successfully\n", option)
+	fmt.Printf("✅ option %s was removed successfully\n", option)
 	return nil
 }
 
 func addNewPack(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
-	// Get pack name
 	pName := cmd.String("pack")
 	if pName == "" {
-		fmt.Println("❌ pack name is required")
-		os.Exit(1)
+		return fmt.Errorf("pack name is required")
 	}
-	// Compose query pack
 	pack := environments.PackEntry{
 		Platform: cmd.String("platform"),
 		Version:  cmd.String("version"),
 		Shard:    json.Number(strconv.Itoa(cmd.Int("shard"))),
 	}
-	// Add pack to configuration
-	if err := envs.AddQueryPackConf(envName, pName, pack); err != nil {
+	if err := editEnvConfigSection(envName, environments.SectionPacks, func(c string) (string, error) {
+		return environments.SetPack(c, pName, pack)
+	}); err != nil {
 		return err
 	}
 	fmt.Printf("✅ pack %s was added successfully\n", pName)
@@ -922,47 +1071,39 @@ func addNewPack(ctx context.Context, cmd *cli.Command) error {
 }
 
 func removePack(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
-	// Get pack name
 	pName := cmd.String("pack")
 	if pName == "" {
-		fmt.Println("❌ pack name is required")
-		os.Exit(1)
+		return fmt.Errorf("pack name is required")
 	}
-	// Remove pack from configuration
-	if err := envs.RemoveQueryPackConf(envName, pName); err != nil {
+	if err := editEnvConfigSection(envName, environments.SectionPacks, func(c string) (string, error) {
+		return environments.RemovePack(c, pName)
+	}); err != nil {
 		return err
 	}
-	fmt.Printf("✅ pack %s was added successfully\n", pName)
+	fmt.Printf("✅ pack %s was removed successfully\n", pName)
 	return nil
 }
 
 func addLocalPack(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
-	// Get pack name
 	pName := cmd.String("pack")
 	if pName == "" {
-		fmt.Println("❌ pack name is required")
-		os.Exit(1)
+		return fmt.Errorf("pack name is required")
 	}
-	// Get pack local path
 	pPath := cmd.String("pack-path")
 	if pPath == "" {
-		fmt.Println("❌ pack path is required")
-		os.Exit(1)
+		return fmt.Errorf("pack path is required")
 	}
-	// Add pack to configuration option
-	if err := envs.AddQueryPackConf(envName, pName, pPath); err != nil {
+	if err := editEnvConfigSection(envName, environments.SectionPacks, func(c string) (string, error) {
+		return environments.SetPack(c, pName, pPath)
+	}); err != nil {
 		return err
 	}
 	fmt.Printf("✅ pack %s was added successfully\n", pName)
@@ -970,44 +1111,25 @@ func addLocalPack(ctx context.Context, cmd *cli.Command) error {
 }
 
 func addPackQuery(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
-	// Get query name
 	packName := cmd.String("pack")
 	if packName == "" {
-		fmt.Println("❌ pack name is required")
-		os.Exit(1)
+		return fmt.Errorf("pack name is required")
 	}
-	// Get query
-	query := cmd.String("query")
-	if query == "" {
-		fmt.Println("❌ query is required")
-		os.Exit(1)
-	}
-	// Get query name
 	queryName := cmd.String("query-name")
 	if queryName == "" {
-		fmt.Println("❌ query name is required")
-		os.Exit(1)
+		return fmt.Errorf("query name is required")
 	}
-	// Get interval
-	interval := cmd.Int("interval")
-	if interval == 0 {
-		fmt.Println("❌ interval is required")
-		os.Exit(1)
+	qData, err := scheduleQueryFromFlags(cmd)
+	if err != nil {
+		return err
 	}
-	// Add new scheduled query
-	qData := environments.ScheduleQuery{
-		Query:    query,
-		Interval: json.Number(strconv.Itoa(interval)),
-		Platform: cmd.String("platform"),
-		Version:  cmd.String("version"),
-	}
-	if err := envs.AddQueryToPackConf(envName, packName, queryName, qData); err != nil {
+	if err := editEnvConfigSection(envName, environments.SectionPacks, func(c string) (string, error) {
+		return environments.AddQueryToPack(c, packName, queryName, qData)
+	}); err != nil {
 		return err
 	}
 	fmt.Printf("✅ query %s was added to pack %s successfully\n", queryName, packName)
@@ -1015,26 +1137,21 @@ func addPackQuery(ctx context.Context, cmd *cli.Command) error {
 }
 
 func removePackQuery(ctx context.Context, cmd *cli.Command) error {
-	// Get environment name
 	envName := cmd.String("name")
 	if envName == "" {
-		fmt.Println("❌ environment name is required")
-		os.Exit(1)
+		return fmt.Errorf("environment name is required")
 	}
-	// Get query name
 	packName := cmd.String("pack")
 	if packName == "" {
-		fmt.Println("❌ pack name is required")
-		os.Exit(1)
+		return fmt.Errorf("pack name is required")
 	}
-	// Get query name
 	queryName := cmd.String("query-name")
 	if queryName == "" {
-		fmt.Println("❌ query name is required")
-		os.Exit(1)
+		return fmt.Errorf("query name is required")
 	}
-	// Remove query
-	if err := envs.RemoveQueryFromPackConf(envName, packName, queryName); err != nil {
+	if err := editEnvConfigSection(envName, environments.SectionPacks, func(c string) (string, error) {
+		return environments.RemoveQueryFromPack(c, packName, queryName)
+	}); err != nil {
 		return err
 	}
 	fmt.Printf("✅ query %s was removed from pack %s successfully\n", queryName, packName)

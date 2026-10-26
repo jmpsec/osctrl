@@ -54,7 +54,8 @@ type Backend interface {
 
 	GetOsqueryTables() ([]types.OsqueryTable, error)
 
-	GetQueries(target, env string) ([]queries.DistributedQuery, error)
+	// GetQueriesLimited returns at most maxItems queries and whether more exist.
+	GetQueriesLimited(target, env string, maxItems int) ([]queries.DistributedQuery, bool, error)
 	GetQueryResults(env, name string, page, pageSize int) (types.QueryResultsResponse, error)
 	GetSavedQueries(env string) ([]types.SavedQueryView, error)
 }

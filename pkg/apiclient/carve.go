@@ -27,18 +27,11 @@ func (api *OsctrlAPI) GetCarveQueries(target, env string) ([]queries.Distributed
 	return qs, nil
 }
 
-// GetCarves to retrieve carves from osctrl
-func (api *OsctrlAPI) GetCarves(env string) ([]carves.CarvedFile, error) {
-	var cs []carves.CarvedFile
+// GetCarves to retrieve the carve queries of an environment from osctrl. The
+// API lists carve operations (one per carve query), not carved files.
+func (api *OsctrlAPI) GetCarves(env string) ([]queries.DistributedQuery, error) {
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APICarves, env, "list"))
-	rawCs, err := api.GetGeneric(reqURL, nil)
-	if err != nil {
-		return cs, fmt.Errorf("error api request - %w - %s", err, string(rawCs))
-	}
-	if err := json.Unmarshal(rawCs, &cs); err != nil {
-		return cs, fmt.Errorf("can not parse body - %w", err)
-	}
-	return cs, nil
+	return getAllPages[queries.DistributedQuery](api, reqURL)
 }
 
 // GetCarve to retrieve one carve from osctrl

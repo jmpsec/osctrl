@@ -6,6 +6,9 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNodeToRowActiveInactive(t *testing.T) {
@@ -81,4 +84,46 @@ func TestParseHidden(t *testing.T) {
 			t.Fatalf("expected not hidden for %q", v)
 		}
 	}
+}
+
+func TestAPIStoreSettings(t *testing.T) {
+	r := newParityRig(t)
+	sm := seedSettings(t, r)
+	s := &apiStore{api: r.API}
+	rows, err := s.Settings()
+	require.NoError(t, err)
+	require.Len(t, rows, 3)
+	require.NoError(t, s.UpdateSetting("tls", "i-set", "integer", "9"))
+	v, _ := sm.RetrieveValue("tls", "i-set", settings.NoEnvironmentID)
+	require.Equal(t, int64(9), v.Integer)
+	require.NoError(t, s.UpdateSetting("tls", "b-set", "bool", "yes"))
+	v, _ = sm.RetrieveValue("tls", "b-set", settings.NoEnvironmentID)
+	require.True(t, v.Boolean)
+	require.NoError(t, s.UpdateSetting("tls", "b-set", "boolean", "off"))
+	v, _ = sm.RetrieveValue("tls", "b-set", settings.NoEnvironmentID)
+	require.False(t, v.Boolean)
+	require.ErrorContains(t, s.UpdateSetting("tls", "b-set", "boolean", "maybe"), "not true/false")
+	require.NoError(t, s.UpdateSetting("tls", "i-set", "int", "11"))
+	require.Error(t, s.UpdateSetting("tls", "i-set", "integer", "abc"))
+	require.Error(t, s.AddSetting("tls", "x", "string", "v"))
+	require.Error(t, s.DeleteSetting("tls", "x"))
+}
+
+func TestAPIStorePermissions(t *testing.T) {
+	r := newParityRig(t)
+	env, err := r.Envs.Get("dev")
+	require.NoError(t, err)
+	r.SeedUser("bob", false)
+	require.NoError(t, r.Users.ChangeAccess("bob", env.UUID, users.EnvAccess{User: true, Carve: true}))
+	rows, err := (&apiStore{api: r.API}).Permissions("bob")
+	require.NoError(t, err)
+	want := map[string]bool{"user": true, "query": false, "carve": true, "admin": false}
+	require.Len(t, rows, len(want))
+	for _, row := range rows {
+		require.Equal(t, "bob", row.Username)
+		require.Equal(t, env.UUID, row.Environment)
+		require.Equal(t, want[row.AccessType], row.AccessValue, row.AccessType)
+	}
+	_, err = (&apiStore{api: r.API}).Permissions("ghost")
+	require.Error(t, err)
 }

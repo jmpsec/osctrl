@@ -412,3 +412,52 @@ func (m *UserManager) DeleteAllPermissions(username string) error {
 	}
 	return nil
 }
+
+// Lockout refusals returned by CheckLockout. The API handler maps
+// ErrSelfDemote to 403 and ErrLastSuperAdmin to 409.
+var (
+	ErrSelfDemote     = errors.New("super-admins cannot self-demote via this endpoint")
+	ErrLastSuperAdmin = errors.New("refusing to demote the last super-admin")
+)
+
+// IsSelfDemotion reports whether actor is lowering their own access (target ==
+// actor and the new access is not admin). The API handlers refuse this
+// unconditionally (403), whatever the actor's global admin flag: the
+// AdminLevel/NoEnvironment gate also admits a user holding an admin permission
+// row with environment "", who has no global flag.
+//
+// Truth table (self-demote refused?), access.Admin=false, target == actor:
+//
+//	actor                          origin/develop API   API now   CheckLockout (DB path)
+//	global super-admin             403                  403       ErrSelfDemote
+//	env="" admin row, no flag      403                  403       nil (not a super-admin)
+//	any actor, target != actor     no                   no        n/a (last-super-admin rule)
+func IsSelfDemotion(actor, target string, access EnvAccess) bool {
+	return !access.Admin && actor == target
+}
+
+// CheckLockout is the guard shared by the permissions API handler and the CLI
+// DB path, run before any permission write. It refuses (1) actor demoting
+// themselves (target == actor, a global super-admin, and the new access is not admin) and (2)
+// demoting the only global super-admin (new access not admin while the
+// target has the admin flag and CountAdmins <= 1). Any other error means the
+// check itself failed and the write must not proceed.
+func (m *UserManager) CheckLockout(actor, target string, access EnvAccess) error {
+	if access.Admin {
+		return nil
+	}
+	if !m.IsAdmin(target) {
+		return nil // only a global super-admin can lock themselves or the system out
+	}
+	if IsSelfDemotion(actor, target, access) {
+		return ErrSelfDemote
+	}
+	count, err := m.CountAdmins()
+	if err != nil {
+		return fmt.Errorf("error checking admin count - %w", err)
+	}
+	if count <= 1 {
+		return fmt.Errorf("%w: only %d admin user(s) remain", ErrLastSuperAdmin, count)
+	}
+	return nil
+}

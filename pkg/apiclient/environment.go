@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -42,7 +43,7 @@ func (api *OsctrlAPI) GetEnvironment(identifier string) (environments.TLSEnviron
 // GetEnvMap to retrieve a map of environments by ID
 func (api *OsctrlAPI) GetEnvMap() (environments.MapEnvByID, error) {
 	var envMap environments.MapEnvByID
-	reqURL := path.Join(api.Configuration.URL, APIPath, APIEnvironments, "map", "id")
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIEnvironments, "map", "id"))
 	rawE, err := api.GetGeneric(reqURL, nil)
 	if err != nil {
 		return envMap, fmt.Errorf("error api request - %w - %s", err, string(rawE))
@@ -96,7 +97,11 @@ func (api *OsctrlAPI) NotexpireRemove(identifier string) (string, error) {
 // ExtendEnrollment to extend in time the enrollment URL of an environment
 func (api *OsctrlAPI) ActionEnrollmentRemove(identifier, action, target string, data io.Reader) (string, error) {
 	var res types.ApiGenericResponse
-	reqURL := path.Join(api.Configuration.URL, APIPath, APIEnvironments, identifier, target, action)
+	// The server decodes a JSON body for every action, so an empty one fails with a 500
+	if data == nil {
+		data = strings.NewReader("{}")
+	}
+	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIEnvironments, identifier, target, action))
 	rawE, err := api.PostGeneric(reqURL, data)
 	if err != nil {
 		return "", fmt.Errorf("error api request - %w - %s", err, string(rawE))

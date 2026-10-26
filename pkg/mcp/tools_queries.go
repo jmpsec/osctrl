@@ -11,6 +11,13 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 )
 
+// list_queries is capped like search_nodes: never an unbounded list in model
+// context, and the truncated flag says when more exist.
+const (
+	defaultQueryLimit = 50
+	maxQueryLimit     = 200
+)
+
 // defaultResultPageSize matches osctrl-api's own default. The API clamps
 // anything above maxResultPageSize, so we reject rather than silently
 // return a different page size than the model asked for.
@@ -58,10 +65,13 @@ type SavedQuerySummary struct {
 type listQueriesIn struct {
 	Environment string `json:"environment" jsonschema:"environment name, from list_environments"`
 	Target      string `json:"target,omitempty" jsonschema:"which queries to list: all (default), active, completed, expired, saved, hidden, or deleted"`
+	Limit       int    `json:"limit,omitempty" jsonschema:"maximum queries to return (default 50, maximum 200)"`
 }
 
 type listQueriesOut struct {
 	Queries []QuerySummary `json:"queries"`
+	// Truncated is true when more queries exist than Limit allowed.
+	Truncated bool `json:"truncated"`
 }
 
 type listSavedQueriesIn struct {
@@ -95,7 +105,8 @@ func addQueryTools(s *sdk.Server, b Backend) {
 		Name: "list_queries",
 		Description: "List distributed queries in an environment, newest first, " +
 			"including how many nodes have answered so far. Use target=active to " +
-			"see queries still collecting results.",
+			"see queries still collecting results. Results are capped (default 50, " +
+			"maximum 200): check the truncated flag.",
 	}, func(ctx context.Context, _ *sdk.CallToolRequest, in listQueriesIn) (*sdk.CallToolResult, listQueriesOut, error) {
 		if strings.TrimSpace(in.Environment) == "" {
 			return nil, listQueriesOut{}, fmt.Errorf("environment is required; call list_environments first")
@@ -107,11 +118,18 @@ func addQueryTools(s *sdk.Server, b Backend) {
 		if !validQueryTargets[target] {
 			return nil, listQueriesOut{}, fmt.Errorf("invalid target %q: want all, active, completed, expired, saved, hidden, or deleted", in.Target)
 		}
-		qs, err := b.GetQueries(target, in.Environment)
+		limit := in.Limit
+		if limit <= 0 {
+			limit = defaultQueryLimit
+		}
+		if limit > maxQueryLimit {
+			limit = maxQueryLimit
+		}
+		qs, truncated, err := b.GetQueriesLimited(target, in.Environment, limit)
 		if err != nil {
 			return nil, listQueriesOut{}, err
 		}
-		out := listQueriesOut{Queries: make([]QuerySummary, 0, len(qs))}
+		out := listQueriesOut{Queries: make([]QuerySummary, 0, len(qs)), Truncated: truncated}
 		for _, q := range qs {
 			out.Queries = append(out.Queries, QuerySummary{
 				Name:       q.Name,
