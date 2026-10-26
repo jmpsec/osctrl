@@ -61,6 +61,15 @@ func addUser(ctx context.Context, cmd *cli.Command) error {
 		if adminUsers.Exists(username) {
 			return fmt.Errorf("user %s already exists", username)
 		}
+		// Resolve environment (name or UUID) before creating the user
+		var accessEnvs []string
+		if environment != "" {
+			env, err := envs.Get(environment)
+			if err != nil {
+				return fmt.Errorf("error getting environment %s - %w", environment, err)
+			}
+			accessEnvs = []string{env.UUID}
+		}
 		// Prepare user
 		user, err := adminUsers.New(username, password, email, fullname, admin, service)
 		if err != nil {
@@ -71,7 +80,6 @@ func addUser(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("error creating user - %w", err)
 		}
 		// Prepare permissions
-		accessEnvs := []string{environment}
 		if admin {
 			accessEnvs, err = envs.UUIDs()
 			if err != nil {

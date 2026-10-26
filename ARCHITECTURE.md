@@ -216,6 +216,34 @@ details intentionally omit users, environment UUIDs, query names, and payloads.
 - The user manager's `CheckPermissions(...)` method grants access by environment UUID/string plus level (`user`, `query`, `carve`, `admin`).
 - Full admins bypass per-environment checks.
 - HTTP handlers use `CheckPermissionsContext` with a request-scoped cache. Authentication seeds the user row; each environment's permission rows are loaded once per request. Streams create a fresh snapshot for every batch and heartbeat, preserving database-authoritative revocation across replicas and CLI changes. No permission snapshot is reused between requests or stream batches.
+- `user add` (API `POST /api/v1/users/{username}/add` and the CLI in both modes) resolves environment names or UUIDs to UUIDs before creating the user, rejects unknown environments, and skips blank entries; `GenEnvUserAccess`/`GenPermissions` never emit rows for environment `''`.
+
+#### Legacy `user_permissions` rows on environment `''`
+
+Earlier versions stored the `environments` list of `user add` unvalidated, so older deployments may hold rows with `environment = ''` (from clients sending `[""]` or the CLI without `-e`) or with an environment name instead of a UUID. A name-keyed row never matches a UUID check and is inert. An `AdminLevel` row with `access_value` true on environment `''` is not: every check of `AdminLevel` with `NoEnvironment` (for example user management) reads exactly those rows, so that user acts as a global admin for that gate while `admin_users.admin` is false (not counted by the admin-count and lockout checks, shown as non-admin). Nothing is migrated or deleted automatically; operators can detect such rows read-only (`access_type` 0 is `AdminLevel`):
+
+```sql
+-- Rows on a blank environment
+SELECT username, access_type, access_value, granted_by, created_at
+FROM user_permissions
+WHERE deleted_at IS NULL AND (environment = '' OR environment IS NULL);
+
+-- Shadow admins: AdminLevel granted on '' to users that are not global admins
+SELECT p.username, p.granted_by, p.created_at
+FROM user_permissions p
+JOIN admin_users u ON u.username = p.username AND u.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+  AND (p.environment = '' OR p.environment IS NULL)
+  AND p.access_type = 0 AND p.access_value = true
+  AND u.admin = false;
+
+-- Rows whose environment is not a known environment UUID (includes '' and names)
+SELECT p.username, p.environment, p.access_type, p.access_value
+FROM user_permissions p
+WHERE p.deleted_at IS NULL
+  AND NOT EXISTS (SELECT 1 FROM tls_environments e
+                  WHERE e.uuid = p.environment AND e.deleted_at IS NULL);
+```
 
 ## Settings Subsystem
 

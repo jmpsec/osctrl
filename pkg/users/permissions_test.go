@@ -272,6 +272,22 @@ func TestGenPermissions(t *testing.T) {
 	assert.Equal(t, 4, len(perms))
 }
 
+// An env "" AdminLevel row passes the AdminLevel/NoEnvironment gate, so the
+// generators must never emit one.
+func TestGeneratorsSkipEmptyEnvironment(t *testing.T) {
+	manager, _ := setupTestManagerForPermissions(t)
+	access := manager.GenEnvUserAccess([]string{"", "env1"}, true, true, true, true)
+	assert.Equal(t, 1, len(access))
+	_, ok := access[""]
+	assert.False(t, ok)
+	access[""] = EnvAccess{Admin: true}
+	perms := manager.GenPermissions("u", "g", access)
+	assert.Equal(t, 4, len(perms))
+	for _, p := range perms {
+		assert.Equal(t, "env1", p.Environment)
+	}
+}
+
 func TestCheckPermissions(t *testing.T) {
 	manager, mock := setupTestManagerForPermissions(t)
 	mock.ExpectQuery(
