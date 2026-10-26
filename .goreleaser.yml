@@ -180,6 +180,11 @@ dockers_v2:
     sbom: false
     flags:
       - "--provenance=false"
+    # GoReleaser stages only ids binaries into the context by default; the
+    # bundled osquery schema files the API image ships at /opt/osctrl/data
+    # (see Dockerfile-osctrl-api) must be staged explicitly.
+    extra_files:
+      - deploy/osquery/data
 
   - id: osctrl-cli
     images:

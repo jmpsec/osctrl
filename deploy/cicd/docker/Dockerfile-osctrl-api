@@ -21,6 +21,12 @@ RUN mkdir -p /opt/osctrl/bin \
 COPY ${TARGETPLATFORM}/osctrl-${COMPONENT}-${TARGETOS}-${TARGETARCH} /opt/osctrl/bin/osctrl-${COMPONENT}
 RUN chmod 0755 /opt/osctrl/bin/osctrl-${COMPONENT}
 
+# The default osquery schema path is ./data/<version>.json (pkg/config/flags.go)
+# relative to WORKDIR; copy the bundled schema files so the default works
+# without an external mount. All versions are staged so an osquery version
+# bump in pkg/version needs no Dockerfile change.
+COPY deploy/osquery/data/ /opt/osctrl/data/
+
 USER osctrl-${COMPONENT}
 WORKDIR /opt/osctrl
 EXPOSE 9002/tcp
