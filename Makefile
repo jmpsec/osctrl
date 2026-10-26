@@ -313,7 +313,12 @@ docker_dev_rebuild_api:
 	docker compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(API_NAME)
 
 # Deploy osctrl in a single server using the provision.sh script
+# DEV_ENV and DEV_USER have defaults, DEV_IP is required:
+#   make provision_dev DEV_IP=192.168.1.10
+DEV_ENV ?= dev
+DEV_USER ?= $(USER)
 provision_dev:
+	@test -n "$(DEV_IP)" || { echo "DEV_IP is required, for example: make provision_dev DEV_IP=192.168.1.10"; exit 1; }
 	./deploy/provision.sh -m "$(DEV_ENV)" -s /home/$(DEV_USER)/osctrl -t self -p all --nginx --postgres -E -R --tls-hostname "$(DEV_IP)" --admin-hostname "$(DEV_IP)" --api-hostname "$(DEV_IP)" -X admin
 
 # Run linter
