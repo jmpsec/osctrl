@@ -419,7 +419,8 @@ paths:
   /api/v1/alerts/channels/types:
     get:
       description: "Returns the channel type registry: type, description, whether the
-        config carries secrets, and which JSON keys hold them."
+        config carries secrets, and which JSON keys hold them (for webhooks, url
+        and secret)."
       responses:
         "200":
           description: OK

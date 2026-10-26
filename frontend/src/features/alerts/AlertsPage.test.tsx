@@ -105,7 +105,7 @@ function makeChannel(overrides: Partial<AlertChannel> = {}): AlertChannel {
     environment_id: 0,
     type: 'webhook',
     enabled: true,
-    config: { url: 'https://hooks.example.com/x', secret: '***' },
+    config: { url: '***', secret: '***' },
     info: '',
     ...overrides,
   };
@@ -115,9 +115,9 @@ const webhookType: AlertChannelTypeSpec = {
   type: 'webhook',
   description: 'HTTP POST to a URL with the alert as JSON',
   has_secret: true,
-  secret_fields: ['secret'],
+  secret_fields: ['url', 'secret'],
   fields: [
-    { name: 'url', label: 'URL', type: 'string', required: true, placeholder: 'https://example.com/hook' },
+    { name: 'url', label: 'URL', type: 'secret', required: true, placeholder: 'https://example.com/hook' },
     { name: 'secret', label: 'HMAC secret', type: 'secret', required: false },
     { name: 'timeoutSeconds', label: 'Timeout (seconds)', type: 'integer', required: false, default: 10 },
     { name: 'insecureSkipVerify', label: 'Skip TLS verify', type: 'boolean', required: false, default: false },
@@ -432,6 +432,27 @@ describe('AlertsPage', () => {
     expect(await screen.findByText('webhook delivery failed after 3 attempts')).toBeInTheDocument();
     // Editing a saved channel sends its id so stored secrets are merged.
     expect(mockTestChannel).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+  });
+
+  it('edits a channel with the URL masked and keeps the placeholder on save', async () => {
+    const user = userEvent.setup();
+    mockUpdateChannel.mockResolvedValue(makeChannel());
+    mockListChannels.mockResolvedValue([makeChannel()]);
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Channels' }));
+    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+
+    const url = screen.getByLabelText('URL');
+    expect(url).toHaveAttribute('type', 'password');
+    expect(url).toHaveValue('***');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(mockUpdateChannel).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ config: expect.objectContaining({ url: '***', secret: '***' }) }),
+      ),
+    );
   });
 
   it('deletes a rule from the table', async () => {

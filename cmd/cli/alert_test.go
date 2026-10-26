@@ -182,9 +182,9 @@ func TestAlertChannelListRedactedInBothModes(t *testing.T) {
 			out, err := run("-o", format, "alert", "channels")
 			require.NoError(t, err)
 			outs = append(outs, out)
-			// The registry redacts only secret fields (HMAC secret, SMTP
-			// password); the webhook URL is listed by the API too.
-			for _, secret := range []string{alertWebhookHMAC, alertSMTPPassword} {
+			// The registry redacts every secret field: the webhook URL
+			// (a bearer secret), the HMAC secret and the SMTP password.
+			for _, secret := range []string{alertWebhookSecretURL, "TOPSECRETPATH", alertWebhookHMAC, alertSMTPPassword} {
 				require.NotContains(t, out, secret, format)
 			}
 			require.Contains(t, out, "hook-db", format)
