@@ -140,3 +140,24 @@ func TestBuildQueryTargetRecordsPreservesExplicitTargets(t *testing.T) {
 		{Type: "tag", Value: "critical"},
 	}, targets)
 }
+
+// An environment UUID target must resolve to the environment with that UUID,
+// even when an older environment is named with the same string.
+func TestCreateQueryCarveEnvironmentUUIDWinsOverName(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	manager := Managers{Envs: environments.CreateEnvironment(db), Nodes: nodes.CreateNodes(db), Settings: settings.NewSettings(db)}
+	decoy := environments.TLSEnvironment{UUID: "decoy-uuid", Name: "target-uuid"}
+	require.NoError(t, db.Create(&decoy).Error)
+	target := environments.TLSEnvironment{UUID: "target-uuid", Name: "target"}
+	require.NoError(t, db.Create(&target).Error)
+	var ids []uint
+	for _, env := range []environments.TLSEnvironment{decoy, target} {
+		node := nodes.OsqueryNode{UUID: strings.ToUpper(env.UUID), Environment: env.Name, EnvironmentID: env.ID, LastSeen: time.Now()}
+		require.NoError(t, db.Create(&node).Error)
+		ids = append(ids, node.ID)
+	}
+	got, err := CreateQueryCarve(ProcessingQuery{EnvID: target.ID, Envs: []string{"target-uuid"}}, manager, queries.DistributedQuery{})
+	require.NoError(t, err)
+	require.Equal(t, []uint{ids[1]}, got)
+}

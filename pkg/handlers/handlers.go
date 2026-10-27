@@ -66,7 +66,12 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 		for _, e := range data.Envs {
 			// TODO: Check if user has permissions to query the environment
 			if (e != "") && manager.Envs.Exists(e) {
-				env, err := manager.Envs.Get(e)
+				// An exact UUID match wins, so a UUID authorized by the
+				// caller cannot re-resolve to an environment named like it.
+				env, err := manager.Envs.GetByUUID(e)
+				if err != nil {
+					env, err = manager.Envs.Get(e)
+				}
 				if err != nil {
 					return targetNodesID, fmt.Errorf("error getting environment: %w", err)
 				}

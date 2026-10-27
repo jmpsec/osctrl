@@ -193,8 +193,9 @@ func TestAPIBulkPermissionsSelfDemoteRefused(t *testing.T) {
 	require.True(t, got.Admin)
 }
 
-// An actor admitted only by an admin permission row with environment "" (no
-// global admin flag) must still be refused self-demotion by both endpoints.
+// An actor holding only a legacy admin permission row with environment "" (no
+// global admin flag) is not a global admin: both endpoints refuse it at the
+// AdminLevel/NoEnvironment gate, before the self-demotion check.
 func TestAPISelfDemoteRefusedForNonGlobalAdminActor(t *testing.T) {
 	r, uuid := permRig(t, nil)
 	token := r.SeedUser("envadmin", false)
@@ -211,7 +212,7 @@ func TestAPISelfDemoteRefusedForNonGlobalAdminActor(t *testing.T) {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		require.Equal(t, http.StatusForbidden, resp.StatusCode, path+" "+string(b))
-		require.Contains(t, string(b), "super-admins cannot self-demote via this endpoint", path)
+		require.Contains(t, string(b), "no access", path)
 	}
 	got, err := r.Users.GetEnvAccess("envadmin", uuid)
 	require.NoError(t, err)
