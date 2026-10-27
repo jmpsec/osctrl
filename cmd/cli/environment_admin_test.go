@@ -478,3 +478,25 @@ func TestEnvNameCannotBeUUID(t *testing.T) {
 	code, body = do(http.MethodPost, "/api/v1/environments/actions", `{"action":"create","name":"other","uuid":"7ba7b810-9dad-11d1-80b4-00c04fd430c8","hostname":"h.example.com","type":"osquery","icon":"server"}`)
 	require.Equal(t, http.StatusOK, code, body)
 }
+
+// DB-mode `env add` applies the API's name validation: trimmed and lowercased,
+// then NewEnvNameFilter. Invalid names create nothing, in either mode.
+func TestEnvAddNameValidationParity(t *testing.T) {
+	rig := newParityRig(t)
+	for _, bad := range []string{"has space", "bad!name", "dev.x", "9f1b2c3d-4e5f-4a6b-8c7d-0123456789ab"} {
+		for _, mode := range []string{"db", "api"} {
+			_, err := rig.runner(mode)("env", "add", "-n", bad, "--host", "bad.example.com")
+			require.Error(t, err, "%s %q", mode, bad)
+			require.False(t, rig.Envs.Exists(bad), "%s %q", mode, bad)
+		}
+	}
+	// Uppercase is normalised like the API does, not rejected.
+	out, err := rig.RunDB("env", "add", "-n", " MixedDB ", "--host", "mc.example.com")
+	require.NoError(t, err)
+	require.Contains(t, out, "environment mixeddb was created")
+	require.True(t, rig.Envs.Exists("mixeddb"))
+	require.False(t, rig.Envs.Exists("MixedDB"))
+	// Existing check still sees the canonical form.
+	_, err = rig.RunDB("env", "add", "-n", "MIXEDDB", "--host", "mc.example.com")
+	require.ErrorContains(t, err, "already exists")
+}
