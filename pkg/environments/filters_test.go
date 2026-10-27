@@ -513,3 +513,19 @@ func TestVerifyEnvFilters(t *testing.T) {
 		})
 	}
 }
+
+// Names that parse as a UUID are refused for new/renamed environments: Get
+// matches name OR uuid, so such a name could shadow another environment.
+func TestNewEnvNameFilter(t *testing.T) {
+	for name, want := range map[string]bool{
+		"dev":                                  true,
+		"prod-2":                               true,
+		"6ba7b810-9dad-11d1-80b4-00c04fd430c8": false,
+		"6ba7b8109dad11d180b400c04fd430c8":     false,
+		"Dev":                                  false,
+		"":                                     false,
+	} {
+		assert.Equal(t, want, NewEnvNameFilter(name), name)
+	}
+	assert.False(t, VerifyEnvFilters("6ba7b810-9dad-11d1-80b4-00c04fd430c8", "server", "osquery", "localhost"))
+}

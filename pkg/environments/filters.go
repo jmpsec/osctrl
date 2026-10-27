@@ -1,6 +1,10 @@
 package environments
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/jmpsec/osctrl/pkg/utils"
+)
 
 const (
 	iconRegex string = `^[a-z0-9_-]+$`
@@ -46,6 +50,13 @@ func EnvNameFilter(s string) bool {
 	return re.MatchString(s)
 }
 
+// NewEnvNameFilter - EnvNameFilter for a name an environment is created with or
+// renamed to: it also refuses names that parse as a UUID, since Get matches
+// name OR uuid and such a name could shadow another environment.
+func NewEnvNameFilter(s string) bool {
+	return EnvNameFilter(s) && !utils.CheckUUID(s)
+}
+
 // EnvUUIDFilter - Helper to filter the environment uuid to prevent unsanitized input
 func EnvUUIDFilter(s string) bool {
 	// regex to only allow lowercase letters, numbers and dashes
@@ -53,9 +64,9 @@ func EnvUUIDFilter(s string) bool {
 	return re.MatchString(s)
 }
 
-// VerifyEnvFilters to verify all filters for an environment
+// VerifyEnvFilters to verify all filters for an environment being created
 func VerifyEnvFilters(name, icon, sType, hostname string) bool {
-	if !EnvNameFilter(name) {
+	if !NewEnvNameFilter(name) {
 		return false
 	}
 	if !IconFilter(icon) {

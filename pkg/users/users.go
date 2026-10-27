@@ -320,6 +320,22 @@ func (m *UserManager) Create(user AdminUser) error {
 	return nil
 }
 
+// CreateWithPermissions creates user and its permission rows in one
+// transaction: on any failure neither the user nor any row is left behind.
+func (m *UserManager) CreateWithPermissions(user AdminUser, permissions []UserPermission) error {
+	return m.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&user).Error; err != nil {
+			return fmt.Errorf("Create AdminUser %w", err)
+		}
+		for _, p := range permissions {
+			if err := createPermission(tx, p); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // New empty user
 func (m *UserManager) New(username, password, email, fullname string, admin, service bool) (AdminUser, error) {
 	if !m.Exists(username) {

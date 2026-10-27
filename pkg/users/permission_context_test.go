@@ -63,7 +63,8 @@ func TestLegacyBlankEnvironmentRowsAreNotGlobalAdmin(t *testing.T) {
 	require.NoError(t, m.Create(AdminUser{Username: "root", Admin: true}))
 	require.NoError(t, m.Create(AdminUser{Username: "envadmin"}))
 	for _, level := range []AccessLevel{UserLevel, QueryLevel, CarveLevel, AdminLevel} {
-		require.NoError(t, m.CreatePermission(UserPermission{Username: "shadow", Environment: NoEnvironment, AccessType: int(level), AccessValue: true}))
+		// Seeded directly: CreatePermission now refuses environment "".
+		require.NoError(t, db.Create(&UserPermission{Username: "shadow", Environment: NoEnvironment, AccessType: int(level), AccessValue: true}).Error)
 	}
 	require.NoError(t, m.CreatePermission(UserPermission{Username: "envadmin", Environment: "uuid-dev", AccessType: int(AdminLevel), AccessValue: true}))
 	checks := map[string]func(string, AccessLevel, string) bool{

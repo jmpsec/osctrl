@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -134,7 +135,8 @@ func TestUserAddUnchangedBehaviour(t *testing.T) {
 // pass the user add/edit gate.
 func TestLegacyBlankEnvAdminRowCannotManageUsers(t *testing.T) {
 	h := setupUserAdd(t)
-	require.NoError(t, h.Users.CreatePermission(users.UserPermission{Username: "bob", Environment: users.NoEnvironment, AccessType: int(users.AdminLevel), AccessValue: true}))
+	// Legacy row seeded directly: CreatePermission refuses environment "".
+	require.NoError(t, h.Users.DB.Create(&users.UserPermission{Username: "bob", Environment: users.NoEnvironment, AccessType: int(users.AdminLevel), AccessValue: true}).Error)
 	rr := postUserAdd(t, h, "bob", map[string]any{"admin": true, "environments": []string{"dev"}})
 	require.Equal(t, http.StatusForbidden, rr.Code, rr.Body.String())
 	require.False(t, h.Users.Exists("carol"))
@@ -160,4 +162,26 @@ func TestUserAddAuditRecordsGrantedAccess(t *testing.T) {
 	require.NoError(t, h.Users.DB.Model(&auditlog.AuditLog{}).Pluck("line", &lines).Error)
 	require.Equal(t, []string{"user root performed user action: add user carol admin=false service=true envs=uuid-dev,uuid-prod user=true query=true carve=false admin_access=false"}, lines)
 	require.NotContains(t, strings.Join(lines, "\n"), "s3cret-pass")
+}
+
+// A permission-row failure leaves no half-created user, and a retry succeeds.
+func TestUserAddPermissionFailureCreatesNothing(t *testing.T) {
+	for _, admin := range []bool{false, true} {
+		t.Run(fmt.Sprint(admin), func(t *testing.T) {
+			h := setupUserAdd(t)
+			require.NoError(t, h.Users.DB.Callback().Create().Before("gorm:create").Register("test:fail_perms", func(tx *gorm.DB) {
+				if tx.Statement.Table == "user_permissions" {
+					_ = tx.AddError(errors.New("injected permission failure"))
+				}
+			}))
+			rr := postUserAdd(t, h, "root", map[string]any{"admin": admin, "environments": []string{"dev"}})
+			require.Equal(t, http.StatusInternalServerError, rr.Code, rr.Body.String())
+			require.False(t, h.Users.Exists("carol"))
+			require.Empty(t, permEnvs(t, h))
+			require.NoError(t, h.Users.DB.Callback().Create().Remove("test:fail_perms"))
+			rr = postUserAdd(t, h, "root", map[string]any{"admin": admin, "environments": []string{"dev"}})
+			require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+			require.True(t, h.Users.Exists("carol"))
+		})
+	}
 }

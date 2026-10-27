@@ -199,7 +199,8 @@ func TestAPIBulkPermissionsSelfDemoteRefused(t *testing.T) {
 func TestAPISelfDemoteRefusedForNonGlobalAdminActor(t *testing.T) {
 	r, uuid := permRig(t, nil)
 	token := r.SeedUser("envadmin", false)
-	require.NoError(t, r.Users.CreatePermission(users.UserPermission{Username: "envadmin", Environment: "", AccessType: int(users.AdminLevel), AccessValue: true}))
+	// Legacy row seeded directly: CreatePermission refuses environment "".
+	require.NoError(t, r.DB.Create(&users.UserPermission{Username: "envadmin", Environment: "", AccessType: int(users.AdminLevel), AccessValue: true}).Error)
 	require.NoError(t, r.Users.ChangeAccess("envadmin", uuid, users.EnvAccess{User: true, Query: true}))
 	for _, path := range []string{"permissions", "permissions/all"} {
 		body := `{"env_uuid":"` + uuid + `","access":{"user":true}}`
