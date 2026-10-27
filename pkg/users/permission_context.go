@@ -54,6 +54,10 @@ func (m *UserManager) CheckPermissionsContext(ctx context.Context, username stri
 	if user.Admin || (environment == NoEnvironment && level == UserLevel) {
 		return true
 	}
+	// Global gates are decided by the Admin flag alone; see CheckPermissions.
+	if environment == NoEnvironment {
+		return false
+	}
 	byEnvironment := cache.permissions[username]
 	if byEnvironment == nil {
 		byEnvironment = make(map[string][]UserPermission)

@@ -17,8 +17,8 @@ import (
 
 // resolveEnvUUIDs maps environment names or UUIDs to deduplicated UUIDs.
 // Blank entries are skipped: old clients send [""], and a permission row
-// for environment "" would pass the AdminLevel/NoEnvironment gate. On error
-// it returns the entry that failed.
+// for environment "" is never read by any check. On error it returns the
+// entry that failed.
 func (h *HandlersApi) resolveEnvUUIDs(ids []string) ([]string, string, error) {
 	res := []string{}
 	for _, id := range ids {
@@ -207,6 +207,7 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var returnData string
+	auditAction := actionVar + " user " + usernameVar
 	switch actionVar {
 	case users.ActionAdd:
 		if h.Users.Exists(u.Username) {
@@ -267,6 +268,9 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)
 			return
 		}
+		// Record what was granted, never the password.
+		auditAction += fmt.Sprintf(" admin=%v service=%v envs=%s user=%v query=%v carve=%v admin_access=%v",
+			u.Admin, u.Service, strings.Join(envs, ","), userAcc, queryAcc, carveAcc, adminAcc)
 		returnData = "user added successfully"
 	case users.ActionEdit:
 		// Check if user exists
@@ -359,6 +363,6 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Serialize and serve JSON
 	log.Debug().Msgf("Returned [%s]", returnData)
-	h.AuditLog.UserAction(ctx[ctxUser], actionVar+" user "+usernameVar, strings.Split(r.RemoteAddr, ":")[0])
+	h.AuditLog.UserAction(ctx[ctxUser], auditAction, strings.Split(r.RemoteAddr, ":")[0])
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }

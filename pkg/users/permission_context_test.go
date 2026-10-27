@@ -52,3 +52,41 @@ func TestPermissionSnapshotAdminDemotionAndDeletion(t *testing.T) {
 	require.NoError(t, db.Where("username = ?", "admin").Delete(&AdminUser{}).Error)
 	require.False(t, m.CheckPermissionsContext(WithPermissionCache(ctx), "admin", UserLevel, NoEnvironment))
 }
+
+// Legacy rows on environment "" (written by older versions) must not grant
+// any global (NoEnvironment) gate: only the user's Admin flag decides it.
+func TestLegacyBlankEnvironmentRowsAreNotGlobalAdmin(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	m := CreateUserManager(db)
+	require.NoError(t, m.Create(AdminUser{Username: "shadow"}))
+	require.NoError(t, m.Create(AdminUser{Username: "root", Admin: true}))
+	require.NoError(t, m.Create(AdminUser{Username: "envadmin"}))
+	for _, level := range []AccessLevel{UserLevel, QueryLevel, CarveLevel, AdminLevel} {
+		require.NoError(t, m.CreatePermission(UserPermission{Username: "shadow", Environment: NoEnvironment, AccessType: int(level), AccessValue: true}))
+	}
+	require.NoError(t, m.CreatePermission(UserPermission{Username: "envadmin", Environment: "uuid-dev", AccessType: int(AdminLevel), AccessValue: true}))
+	checks := map[string]func(string, AccessLevel, string) bool{
+		"plain": m.CheckPermissions,
+		"context": func(u string, l AccessLevel, e string) bool {
+			return m.CheckPermissionsContext(WithPermissionCache(context.Background()), u, l, e)
+		},
+	}
+	for name, check := range checks {
+		t.Run(name, func(t *testing.T) {
+			for _, level := range []AccessLevel{AdminLevel, QueryLevel, CarveLevel} {
+				require.False(t, check("shadow", level, NoEnvironment), level)
+				require.False(t, check("envadmin", level, NoEnvironment), level)
+				require.True(t, check("root", level, NoEnvironment), level)
+			}
+			require.True(t, check("envadmin", AdminLevel, "uuid-dev"))
+			require.True(t, check("envadmin", QueryLevel, "uuid-dev"), "admin implies all levels")
+			require.False(t, check("envadmin", AdminLevel, "uuid-prod"))
+			// UserLevel with NoEnvironment is unchanged: any existing user.
+			require.True(t, check("shadow", UserLevel, NoEnvironment))
+			require.True(t, check("envadmin", UserLevel, NoEnvironment))
+			require.False(t, check("ghost", UserLevel, NoEnvironment))
+			require.False(t, check("ghost", AdminLevel, NoEnvironment))
+		})
+	}
+}

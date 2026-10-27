@@ -129,3 +129,35 @@ func TestUserAddUnchangedBehaviour(t *testing.T) {
 	require.Equal(t, http.StatusInternalServerError, rr.Code)
 	require.Contains(t, rr.Body.String(), "error adding user")
 }
+
+// A legacy AdminLevel row on environment "" is not global admin: it must not
+// pass the user add/edit gate.
+func TestLegacyBlankEnvAdminRowCannotManageUsers(t *testing.T) {
+	h := setupUserAdd(t)
+	require.NoError(t, h.Users.CreatePermission(users.UserPermission{Username: "bob", Environment: users.NoEnvironment, AccessType: int(users.AdminLevel), AccessValue: true}))
+	rr := postUserAdd(t, h, "bob", map[string]any{"admin": true, "environments": []string{"dev"}})
+	require.Equal(t, http.StatusForbidden, rr.Code, rr.Body.String())
+	require.False(t, h.Users.Exists("carol"))
+
+	raw, err := json.Marshal(map[string]any{"username": "bob", "admin": true})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/bob/edit", bytes.NewReader(raw))
+	req.SetPathValue("username", "bob")
+	req.SetPathValue("action", users.ActionEdit)
+	req = req.WithContext(context.WithValue(req.Context(), ContextKey(contextAPI), ContextValue{ctxUser: "bob"}))
+	rr = httptest.NewRecorder()
+	h.UserActionHandler(rr, req)
+	require.Equal(t, http.StatusForbidden, rr.Code, rr.Body.String())
+	require.False(t, h.Users.IsAdmin("bob"))
+}
+
+func TestUserAddAuditRecordsGrantedAccess(t *testing.T) {
+	h := setupUserAdd(t)
+	rr := postUserAdd(t, h, "root", map[string]any{"password": "s3cret-pass", "service": true, "environments": []string{"dev", "uuid-prod"}, "query_access": true})
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	require.JSONEq(t, `{"data":"user added successfully"}`, rr.Body.String())
+	var lines []string
+	require.NoError(t, h.Users.DB.Model(&auditlog.AuditLog{}).Pluck("line", &lines).Error)
+	require.Equal(t, []string{"user root performed user action: add user carol admin=false service=true envs=uuid-dev,uuid-prod user=true query=true carve=false admin_access=false"}, lines)
+	require.NotContains(t, strings.Join(lines, "\n"), "s3cret-pass")
+}

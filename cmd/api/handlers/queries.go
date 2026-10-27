@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -185,11 +186,9 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	// Make sure the user has permissions to run queries in the environments
-	for _, e := range q.Environments {
-		if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, e) {
-			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run queries in environment %s", ctx[ctxUser], e), http.StatusForbidden, nil)
-			return
-		}
+	targetEnvs, ok := h.authorizeTargetEnvs(w, r, ctx[ctxUser], users.QueryLevel, q.Environments, "queries")
+	if !ok {
+		return
 	}
 	expTime := queries.QueryExpiration(q.ExpHours)
 	if q.ExpHours == 0 {
@@ -197,7 +196,7 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Prepare data for the handler code
 	data := handlers.ProcessingQuery{
-		Envs:      q.Environments,
+		Envs:      targetEnvs,
 		Platforms: q.Platforms,
 		UUIDs:     q.UUIDs,
 		Hosts:     q.Hosts,
@@ -784,4 +783,34 @@ func (h *HandlersApi) OsqueryTablesHandler(w http.ResponseWriter, r *http.Reques
 	}
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, h.OsqueryTables)
+}
+
+// authorizeTargetEnvs resolves each requested target environment (name or
+// UUID) and checks level against its UUID, so a leftover permission row keyed
+// by a name grants nothing. It returns the UUIDs to target, in request order.
+// Blank entries pass through unresolved and are checked as before (targeting
+// skips them). On failure the error response has been written.
+func (h *HandlersApi) authorizeTargetEnvs(w http.ResponseWriter, r *http.Request, user string, level users.AccessLevel, ids []string, what string) ([]string, bool) {
+	res := make([]string, 0, len(ids))
+	for _, e := range ids {
+		target := e
+		if e != "" {
+			env, err := h.Envs.Get(e)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				apiErrorResponse(w, "environment not found: "+e, http.StatusNotFound, err)
+				return nil, false
+			}
+			if err != nil {
+				apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+				return nil, false
+			}
+			target = env.UUID
+		}
+		if !h.Users.CheckPermissionsContext(r.Context(), user, level, target) {
+			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to run %s in environment %s", user, what, e), http.StatusForbidden, nil)
+			return nil, false
+		}
+		res = append(res, target)
+	}
+	return res, true
 }

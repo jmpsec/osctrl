@@ -108,8 +108,8 @@ func (m *UserManager) GenUserPermission(username, granted, env string, aType int
 func (m *UserManager) GenPermissions(username, granted string, access UserAccess) []UserPermission {
 	var res []UserPermission
 	for env, a := range access {
-		// Never emit rows for environment "": an AdminLevel row there passes
-		// the AdminLevel/NoEnvironment gate like a global admin.
+		// Never emit rows for environment "": no check reads them (global
+		// gates use the Admin flag), so they would only be dead rows.
 		if env == "" {
 			continue
 		}
@@ -144,6 +144,11 @@ func (m *UserManager) CheckPermissions(username string, level AccessLevel, envir
 	// If environment is not set, access is granted based on access level
 	if (environment == NoEnvironment) && (level == UserLevel) {
 		return true
+	}
+	// Any other level on NoEnvironment is a global gate, decided by the Admin
+	// flag alone. Legacy permission rows on environment "" are ignored.
+	if environment == NoEnvironment {
+		return false
 	}
 	// Check if the user has access to the environment
 	var perms []UserPermission
@@ -431,16 +436,16 @@ var (
 
 // IsSelfDemotion reports whether actor is lowering their own access (target ==
 // actor and the new access is not admin). The API handlers refuse this
-// unconditionally (403), whatever the actor's global admin flag: the
-// AdminLevel/NoEnvironment gate also admits a user holding an admin permission
-// row with environment "", who has no global flag.
+// unconditionally (403), whatever the actor's global admin flag. Only global
+// admins pass their AdminLevel/NoEnvironment gate: a legacy admin permission
+// row on environment "" no longer does, so such an actor gets "no access".
 //
 // Truth table (self-demote refused?), access.Admin=false, target == actor:
 //
-//	actor                          origin/develop API   API now   CheckLockout (DB path)
-//	global super-admin             403                  403       ErrSelfDemote
-//	env="" admin row, no flag      403                  403       nil (not a super-admin)
-//	any actor, target != actor     no                   no        n/a (last-super-admin rule)
+//	actor                          API                        CheckLockout (DB path)
+//	global super-admin             403 (self-demote)          ErrSelfDemote
+//	env="" admin row, no flag      403 (no access, gate)      nil (not a super-admin)
+//	any actor, target != actor     no                         n/a (last-super-admin rule)
 func IsSelfDemotion(actor, target string, access EnvAccess) bool {
 	return !access.Admin && actor == target
 }
