@@ -360,6 +360,9 @@ func (environment *EnvManager) GetMapByString() (MapEnvByString, error) {
 	return _map, nil
 }
 
+// userPermissionsTable is the table of users.UserPermission.
+const userPermissionsTable = "user_permissions"
+
 // Delete TLS Environment by name or UUID
 func (environment *EnvManager) Delete(identifier string) error {
 	env, err := environment.Get(identifier)
@@ -369,6 +372,14 @@ func (environment *EnvManager) Delete(identifier string) error {
 	return environment.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Delete(&env).Error; err != nil {
 			return fmt.Errorf("delete %w", err)
+		}
+		// Hard-delete every user permission row on this environment, so one
+		// recreated with the same UUID does not revive old grants. Raw table
+		// (pkg/users imports this package); absent only in package tests.
+		if tx.Migrator().HasTable(userPermissionsTable) {
+			if err := tx.Exec("DELETE FROM "+userPermissionsTable+" WHERE environment = ?", env.UUID).Error; err != nil {
+				return fmt.Errorf("delete permissions %w", err)
+			}
 		}
 		return tx.Unscoped().Where("service = ? AND name = ? AND environment_id = ?", config.ServiceAPI, settings.InactiveHours, env.ID).
 			Delete(&settings.SettingValue{}).Error

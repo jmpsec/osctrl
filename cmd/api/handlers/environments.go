@@ -677,15 +677,15 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 		//   - utils.CheckUUID delegates to google/uuid Parse, accepting only
 		//     canonical UUIDs. EnvUUIDFilter alone is `^[a-z0-9-]+$`, which
 		//     would have happily accepted "-", "a", "deadbeef", etc.
-		//   - ExistsByUUID (vs the polymorphic Exists) ensures a UUID-collision
-		//     check cannot match against an existing env's NAME. The old
-		//     Exists(e.UUID) leaked information across axes.
+		//   - The polymorphic Exists also refuses a UUID that is already some
+		//     environment's NAME (legacy names may look like UUIDs): Get
+		//     matches name OR uuid, so the two would shadow each other.
 		if e.UUID != "" {
 			if !utils.CheckUUID(e.UUID) {
 				apiErrorResponse(w, "invalid uuid", http.StatusBadRequest, fmt.Errorf("rejected uuid %q", e.UUID))
 				return
 			}
-			if h.Envs.ExistsByUUID(e.UUID) {
+			if h.Envs.Exists(e.UUID) {
 				apiErrorResponse(w, "uuid already in use", http.StatusConflict, fmt.Errorf("uuid %q collides", e.UUID))
 				return
 			}

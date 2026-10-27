@@ -58,3 +58,59 @@ func TestEditUserWithDBDoesNotUseAPIClient(t *testing.T) {
 	ok, _ = adminUsers.CheckLoginCredentials("admin", "old-password")
 	require.False(t, ok, "the old password must stop working")
 }
+
+// `user edit --non-admin` and the shell DB store apply users.CheckLockout:
+// never the last super-admin, never yourself; the API refuses self-demotion (403).
+func TestUserEditDemotionLockout(t *testing.T) {
+	r := newParityRig(t)
+	t.Setenv("USER", "operator")
+	_, err := r.RunDB("user", "edit", "-u", "admin", "--non-admin")
+	require.ErrorContains(t, err, "refusing to demote the last super-admin")
+	adminUsers = r.Users // restored by the rig
+	require.ErrorContains(t, (&dbStore{}).EditUserField("admin", "admin", "false"), "refusing to demote the last super-admin")
+	require.True(t, r.Users.IsAdmin("admin"))
+
+	r.SeedUser("root", true)
+	t.Setenv("USER", "admin")
+	_, err = r.RunDB("user", "edit", "-u", "admin", "--non-admin", "--email", "x@example.com")
+	require.ErrorContains(t, err, "self-demote")
+	require.ErrorContains(t, (&dbStore{}).EditUserField("admin", "admin", "false"), "self-demote")
+	_, err = r.RunAPI("user", "edit", "-u", "admin", "--non-admin")
+	require.ErrorContains(t, err, "403")
+	u, err := r.Users.Get("admin")
+	require.NoError(t, err)
+	require.True(t, u.Admin)
+	require.Empty(t, u.Email, "nothing is written when the demotion is refused")
+
+	// Demoting another admin while one remains, and promotion, are unaffected.
+	_, err = r.RunDB("user", "edit", "-u", "root", "--non-admin")
+	require.NoError(t, err)
+	require.False(t, r.Users.IsAdmin("root"))
+	require.NoError(t, (&dbStore{}).EditUserField("root", "admin", "true"))
+	require.NoError(t, (&dbStore{}).EditUserField("root", "admin", "false"))
+	require.False(t, r.Users.IsAdmin("root"))
+	_, err = r.RunAPI("user", "edit", "-u", "root", "--admin")
+	require.NoError(t, err)
+	_, err = r.RunAPI("user", "edit", "-u", "root", "--non-admin")
+	require.NoError(t, err)
+	require.False(t, r.Users.IsAdmin("root"))
+}
+
+// DB-mode `user delete` (and the shell DB store) never deletes the last
+// super-admin or the shell user's own super-admin account.
+func TestUserDeleteLockout(t *testing.T) {
+	r := newParityRig(t)
+	t.Setenv("USER", "operator")
+	_, err := r.RunDB("user", "delete", "-u", "admin")
+	require.ErrorContains(t, err, "refusing to demote the last super-admin")
+	adminUsers = r.Users // restored by the rig
+	require.ErrorContains(t, (&dbStore{}).DeleteUser("admin"), "refusing to demote the last super-admin")
+	r.SeedUser("root", true)
+	t.Setenv("USER", "admin")
+	_, err = r.RunDB("user", "delete", "-u", "admin")
+	require.ErrorContains(t, err, "self-demote")
+	require.True(t, r.Users.IsAdmin("admin"))
+	_, err = r.RunDB("user", "delete", "-u", "root")
+	require.NoError(t, err)
+	require.False(t, r.Users.Exists("root"))
+}

@@ -47,9 +47,20 @@ const (
 	NoEnvironment = ""
 )
 
+// errBlankPermissionEnv: a row on environment "" grants nothing (global
+// gates use the Admin flag), so it is never written.
+var errBlankPermissionEnv = errors.New("permission environment is required")
+
 // CreatePermission new permission
 func (m *UserManager) CreatePermission(permission UserPermission) error {
-	if err := m.DB.Create(&permission).Error; err != nil {
+	return createPermission(m.DB, permission)
+}
+
+func createPermission(db *gorm.DB, permission UserPermission) error {
+	if permission.Environment == NoEnvironment {
+		return errBlankPermissionEnv
+	}
+	if err := db.Create(&permission).Error; err != nil {
 		return fmt.Errorf("Create UserPermission %w", err)
 	}
 	return nil
@@ -280,6 +291,9 @@ func (m *UserManager) SetEnvAdmin(username, environment string, admin bool) erro
 //     caller-side "who granted" context at SetEnvLevel's layer.
 //     The audit log captures the granting operator at the handler.
 func (m *UserManager) SetEnvLevel(username, environment string, level AccessLevel, value bool) error {
+	if environment == NoEnvironment {
+		return errBlankPermissionEnv
+	}
 	perm, err := m.GetPermission(username, environment, level)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

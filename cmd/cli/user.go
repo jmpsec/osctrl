@@ -75,10 +75,6 @@ func addUser(ctx context.Context, cmd *cli.Command) error {
 		if err != nil {
 			return fmt.Errorf("error with new user - %w", err)
 		}
-		// Create user
-		if err := adminUsers.Create(user); err != nil {
-			return fmt.Errorf("error creating user - %w", err)
-		}
 		// Prepare permissions
 		if admin {
 			accessEnvs, err = envs.UUIDs()
@@ -88,8 +84,9 @@ func addUser(ctx context.Context, cmd *cli.Command) error {
 		}
 		access := adminUsers.GenEnvUserAccess(accessEnvs, true, admin, admin, admin)
 		perms := adminUsers.GenPermissions(username, username, access)
-		if err := adminUsers.CreatePermissions(perms); err != nil {
-			return fmt.Errorf("error creating permissions - %w", err)
+		// User and permissions in one transaction: no half-created user.
+		if err := adminUsers.CreateWithPermissions(user, perms); err != nil {
+			return fmt.Errorf("error creating user - %w", err)
 		}
 		// Audit log
 		auditlogsmgr.UserAction(getShellUsername(), "add user "+username, "CLI")
@@ -118,6 +115,12 @@ func editUser(ctx context.Context, cmd *cli.Command) error {
 	notAdmin := cmd.Bool("non-admin")
 	service := cmd.Bool("service")
 	nonService := cmd.Bool("non-service")
+	// Same lockout policy as the permission commands, before any write.
+	if dbFlag && notAdmin {
+		if err := dbLockoutGuard(username, users.EnvAccess{}); err != nil {
+			return err
+		}
+	}
 	if password != "" {
 		if dbFlag {
 			if err := adminUsers.ChangePassword(username, password); err != nil {
@@ -197,6 +200,10 @@ func editUser(ctx context.Context, cmd *cli.Command) error {
 // DeleteAllPermissions fails its Exists() check once the user is gone and
 // would leave orphaned permission rows.
 func deleteUserWithPermissions(username string) error {
+	// Deleting a super-admin removes one: same lockout policy as a demotion.
+	if err := dbLockoutGuard(username, users.EnvAccess{}); err != nil {
+		return err
+	}
 	if err := adminUsers.DeleteAllPermissions(username); err != nil {
 		return fmt.Errorf("deleting permissions: %w", err)
 	}

@@ -1279,7 +1279,13 @@ func (s *dbStore) EditUserField(username, field, value string) error {
 	case "fullname":
 		return adminUsers.ChangeFullname(username, value)
 	case "admin":
-		return adminUsers.ChangeAdmin(username, parseBool(value))
+		admin := parseBool(value)
+		if !admin {
+			if err := dbLockoutGuard(username, users.EnvAccess{}); err != nil {
+				return err
+			}
+		}
+		return adminUsers.ChangeAdmin(username, admin)
 	case "service":
 		return adminUsers.ChangeService(username, parseBool(value))
 	default:

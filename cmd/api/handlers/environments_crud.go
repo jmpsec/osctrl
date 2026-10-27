@@ -187,7 +187,7 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 		// the reasoning. Filter validation runs against the canonical
 		// form so the regex character-class still matches.
 		n := strings.ToLower(strings.TrimSpace(*body.Name))
-		if !environments.EnvNameFilter(n) {
+		if !environments.NewEnvNameFilter(n) {
 			apiErrorResponse(w, "invalid environment name", http.StatusBadRequest, fmt.Errorf("rejected name %q", *body.Name))
 			return
 		}

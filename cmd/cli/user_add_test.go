@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
 
+	"github.com/jmpsec/osctrl/pkg/auditlog"
+	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v3"
+	"gorm.io/gorm"
 )
 
 // userPerms lists name's permission rows as "env/type/value", sorted.
@@ -71,4 +77,37 @@ func TestUserAddUnknownEnvironmentCreatesNoUser(t *testing.T) {
 		require.Error(t, err, mode)
 		require.False(t, r.Users.Exists(mode), mode)
 	}
+}
+
+// DB-mode `user add`: a permission-row failure leaves no half-created user,
+// and a retry succeeds.
+func TestUserAddDBPermissionFailureCreatesNothing(t *testing.T) {
+	r := newParityRig(t)
+	audit, err := auditlog.CreateAuditLogManager(r.DB, "osctrl-cli", true)
+	require.NoError(t, err)
+	adminUsers, envs, auditlogsmgr, dbFlag, silentFlag = r.Users, r.Envs, audit, true, true // restored by the rig
+	add := &cli.Command{
+		Name: "add",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "username"}, &cli.StringFlag{Name: "password"},
+			&cli.StringFlag{Name: "email"}, &cli.StringFlag{Name: "fullname"},
+			&cli.BoolFlag{Name: "admin"}, &cli.BoolFlag{Name: "service"},
+			&cli.StringFlag{Name: "environment"},
+		},
+		Action: addUser,
+	}
+	require.NoError(t, r.DB.Callback().Create().Before("gorm:create").Register("test:fail_perms", func(tx *gorm.DB) {
+		if tx.Statement.Table == "user_permissions" {
+			_ = tx.AddError(errors.New("injected permission failure"))
+		}
+	}))
+	err = add.Run(context.Background(), []string{"add", "--username", "carol", "--environment", "dev"})
+	require.ErrorContains(t, err, "injected permission failure")
+	require.False(t, r.Users.Exists("carol"))
+	var n int64
+	require.NoError(t, r.DB.Model(&users.UserPermission{}).Where("username = ?", "carol").Count(&n).Error)
+	require.Zero(t, n)
+	require.NoError(t, r.DB.Callback().Create().Remove("test:fail_perms"))
+	require.NoError(t, add.Run(context.Background(), []string{"add", "--username", "carol", "--environment", "dev"}))
+	require.Len(t, userPerms(t, r, "carol"), 4)
 }

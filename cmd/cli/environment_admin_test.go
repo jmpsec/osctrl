@@ -8,7 +8,9 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"io"
 	"math/big"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -395,4 +397,84 @@ func TestEnvFlagsAndRotateAuditParity(t *testing.T) {
 	}
 	require.NotEmpty(t, lines["api"])
 	require.Equal(t, lines["api"], lines["db"])
+}
+
+// Deleting an environment (CLI DB/API, shell DB/API store) removes every
+// user_permissions row on it, so recreating it with the same UUID grants nothing.
+func TestEnvDeleteRemovesPermissions(t *testing.T) {
+	rig := newParityRig(t)
+	audit, err := auditlog.CreateAuditLogManager(rig.DB, "osctrl-cli", true)
+	require.NoError(t, err)
+	dev := rig.env("dev")
+	rig.SeedUser("bob", false)
+	full := users.EnvAccess{User: true, Query: true, Carve: true, Admin: true}
+	require.NoError(t, rig.Users.ChangeAccess("bob", dev.UUID, full))
+	deleters := map[string]func(name string) error{
+		"db":  func(n string) error { _, err := rig.RunDB("env", "delete", "-n", n, "--yes"); return err },
+		"api": func(n string) error { _, err := rig.RunAPI("env", "delete", "-n", n, "--yes"); return err },
+		"shell-db": func(n string) error {
+			envs, auditlogsmgr = rig.Envs, audit // restored by the rig
+			return (&dbStore{}).DeleteEnvironment(n)
+		},
+		"shell-api": func(n string) error { return (&apiStore{api: rig.API}).DeleteEnvironment(n) },
+	}
+	for mode, del := range deleters {
+		name := "perm-" + mode
+		env := rig.SeedEnv(name)
+		require.NoError(t, rig.Users.ChangeAccess("bob", env.UUID, full))
+		require.NoError(t, del(name), mode)
+		var n int64
+		require.NoError(t, rig.DB.Model(&users.UserPermission{}).Where("environment = ?", env.UUID).Count(&n).Error)
+		require.Zero(t, n, mode)
+		got, err := rig.Users.GetEnvAccess("bob", dev.UUID)
+		require.NoError(t, err, mode)
+		require.Equal(t, full, got, "other environments untouched (%s)", mode)
+		// Recreated with the same UUID: the old grants are not revived.
+		again := rig.Envs.Empty(name, name+".example.com")
+		again.UUID = env.UUID
+		require.NoError(t, rig.Envs.Create(&again))
+		require.False(t, rig.Users.CheckPermissions("bob", users.UserLevel, env.UUID), mode)
+		require.False(t, rig.Users.CheckPermissions("bob", users.AdminLevel, env.UUID), mode)
+	}
+}
+
+// An environment name can never equal another environment's UUID: names that
+// parse as a UUID are refused on create and rename (API and CLI DB), and the
+// actions create refuses a client UUID that is already some environment's name.
+func TestEnvNameCannotBeUUID(t *testing.T) {
+	rig := newParityRig(t)
+	const u = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+	do := func(method, path, body string) (int, string) {
+		req, err := http.NewRequest(method, rig.URL+path, strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+rig.AdminToken)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		raw, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(raw)
+	}
+	code, body := do(http.MethodPost, "/api/v1/environments", `{"name":"`+u+`","hostname":"h.example.com","type":"osquery","icon":"server"}`)
+	require.Equal(t, http.StatusBadRequest, code, body)
+	code, body = do(http.MethodPost, "/api/v1/environments/actions", `{"action":"create","name":"`+u+`","hostname":"h.example.com","type":"osquery","icon":"server"}`)
+	require.Equal(t, http.StatusBadRequest, code, body)
+	code, body = do(http.MethodPatch, "/api/v1/environments/dev", `{"name":"`+u+`"}`)
+	require.Equal(t, http.StatusBadRequest, code, body)
+	for mode, run := range rig.modes() {
+		_, err := run("env", "add", "-n", u, "--host", "h.example.com")
+		require.Error(t, err, mode)
+	}
+	require.False(t, rig.Envs.Exists(u))
+
+	// A legacy environment already NAMED u: a new one cannot take UUID u.
+	legacy := rig.Envs.Empty("legacy", "l.example.com")
+	require.NoError(t, rig.Envs.Create(&legacy))
+	require.NoError(t, rig.DB.Model(&environments.TLSEnvironment{}).Where("id = ?", legacy.ID).Update("name", u).Error)
+	code, body = do(http.MethodPost, "/api/v1/environments/actions", `{"action":"create","name":"other","uuid":"`+u+`","hostname":"h.example.com","type":"osquery","icon":"server"}`)
+	require.Equal(t, http.StatusConflict, code, body)
+	require.False(t, rig.Envs.ExistsByName("other"))
+	// Unchanged: a fresh UUID still works.
+	code, body = do(http.MethodPost, "/api/v1/environments/actions", `{"action":"create","name":"other","uuid":"7ba7b810-9dad-11d1-80b4-00c04fd430c8","hostname":"h.example.com","type":"osquery","icon":"server"}`)
+	require.Equal(t, http.StatusOK, code, body)
 }

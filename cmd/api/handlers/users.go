@@ -224,17 +224,6 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
 			return
 		}
-		// Prepare user to create
-		newUser, err := h.Users.New(u.Username, u.Password, u.Email, u.Fullname, u.Admin, u.Service)
-		if err != nil {
-			apiErrorResponse(w, "error with new user", http.StatusInternalServerError, err)
-			return
-		}
-		// Create new user
-		if err = h.Users.Create(newUser); err != nil {
-			apiErrorResponse(w, "error creating user", http.StatusInternalServerError, err)
-			return
-		}
 		// If user is admin, give access to all environments
 		if u.Admin {
 			envs, err = h.Envs.UUIDs()
@@ -242,6 +231,12 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 				apiErrorResponse(w, "error getting environments", http.StatusInternalServerError, err)
 				return
 			}
+		}
+		// Prepare user to create
+		newUser, err := h.Users.New(u.Username, u.Password, u.Email, u.Fullname, u.Admin, u.Service)
+		if err != nil {
+			apiErrorResponse(w, "error with new user", http.StatusInternalServerError, err)
+			return
 		}
 		// Determine per-level access. When fine-grained fields are
 		// provided, use them; otherwise fall back to the legacy
@@ -264,8 +259,9 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		access := h.Users.GenEnvUserAccess(envs, userAcc, queryAcc, carveAcc, adminAcc)
 		perms := h.Users.GenPermissions(u.Username, ctx[ctxUser], access)
-		if err := h.Users.CreatePermissions(perms); err != nil {
-			apiErrorResponse(w, "error creating permissions", http.StatusInternalServerError, err)
+		// User and permissions in one transaction: no half-created user.
+		if err := h.Users.CreateWithPermissions(newUser, perms); err != nil {
+			apiErrorResponse(w, "error creating user", http.StatusInternalServerError, err)
 			return
 		}
 		// Record what was granted, never the password.
@@ -278,6 +274,17 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			apiErrorResponse(w, "user does not exist", http.StatusBadRequest, err)
 			return
+		}
+		// Same lockout policy as the permissions endpoints, before any write.
+		if u.NotAdmin && user.Admin {
+			if users.IsSelfDemotion(ctx[ctxUser], u.Username, users.EnvAccess{}) {
+				lockoutErrorResponse(w, users.ErrSelfDemote)
+				return
+			}
+			if lerr := h.Users.CheckLockout(ctx[ctxUser], u.Username, users.EnvAccess{}); lerr != nil {
+				lockoutErrorResponse(w, lerr)
+				return
+			}
 		}
 		if u.Password != "" {
 			if err := h.Users.ChangePassword(u.Username, u.Password); err != nil {
