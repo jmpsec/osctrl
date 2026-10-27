@@ -114,3 +114,34 @@ func TestUserDeleteLockout(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, r.Users.Exists("root"))
 }
+
+// The API-mode shell store must actually demote/undemote (the API only acts on
+// not_admin / not_service), and keep the lockout refusals.
+func TestAPIStoreEditUserFieldDemotes(t *testing.T) {
+	r := newParityRig(t)
+	t.Setenv("USER", "operator")
+	s := &apiStore{api: r.API}
+	r.SeedUser("root", true)
+
+	require.NoError(t, s.EditUserField("root", "admin", "false"))
+	require.False(t, r.Users.IsAdmin("root"))
+	require.NoError(t, s.EditUserField("root", "admin", "true"))
+	require.True(t, r.Users.IsAdmin("root"))
+
+	require.NoError(t, s.EditUserField("root", "service", "true"))
+	u, err := r.Users.Get("root")
+	require.NoError(t, err)
+	require.True(t, u.Service)
+	require.NoError(t, s.EditUserField("root", "service", "false"))
+	u, err = r.Users.Get("root")
+	require.NoError(t, err)
+	require.False(t, u.Service)
+
+	// self-demotion refused (token user is "admin")
+	require.Error(t, s.EditUserField("admin", "admin", "false"))
+	require.True(t, r.Users.IsAdmin("admin"))
+	// last super-admin refused: demote root, then admin is the last one
+	require.NoError(t, s.EditUserField("root", "admin", "false"))
+	require.Error(t, s.EditUserField("admin", "admin", "false"))
+	require.True(t, r.Users.IsAdmin("admin"))
+}

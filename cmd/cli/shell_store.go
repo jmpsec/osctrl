@@ -1103,7 +1103,17 @@ func (s *apiStore) EditUserField(username, field, value string) error {
 	default:
 		return fmt.Errorf("unknown field %q", field)
 	}
-	return s.api.EditUser(username, pass, email, fullname, "", admin, service)
+	// The API only demotes on not_admin / not_service, as `user edit --non-admin` does.
+	return s.api.EditUserReq(types.ApiUserRequest{
+		Username:   username,
+		Password:   pass,
+		Email:      email,
+		Fullname:   fullname,
+		Admin:      admin,
+		NotAdmin:   !admin,
+		Service:    service,
+		NotService: !service,
+	})
 }
 
 func (s *apiStore) DeleteUser(username string) error { return s.api.DeleteUser(username) }

@@ -18,7 +18,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
-	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli/v3"
 )
@@ -56,9 +55,11 @@ func addEnvironment(ctx context.Context, cmd *cli.Command) error {
 		Carve:  cmd.Bool("carve"),
 	}
 	if dbFlag {
-		// Get matches name OR uuid: a UUID-shaped name could shadow another environment
-		if utils.CheckUUID(envName) {
-			return fmt.Errorf("environment name %s must not be a UUID", envName)
+		// Same canonical form and filter as the API create handler. The filter
+		// also refuses UUID-shaped names: Get matches name OR uuid.
+		envName = strings.ToLower(strings.TrimSpace(envName))
+		if !environments.NewEnvNameFilter(envName) {
+			return fmt.Errorf("invalid environment name %q: use lowercase letters, numbers, dashes and underscores, and not a UUID", envName)
 		}
 		if envs.Exists(envName) {
 			return fmt.Errorf("environment %s already exists", envName)
