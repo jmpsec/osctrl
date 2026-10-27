@@ -17,17 +17,17 @@ func TestUpgradeInfoBeforeAnyCheck(t *testing.T) {
 
 func TestUpgradeInfoAfterCheck(t *testing.T) {
 	c := NewVersionCache("0.5.8")
-	c.Set(version.VersionData{LatestRelease: "0.6.1", SuggestedRelease: "0.5.8"})
+	c.Set(version.VersionData{LatestRelease: "0.6.2", SuggestedRelease: "0.5.8"})
 	info := c.Info("0.5.8")
 	require.True(t, info.Checked)
-	require.Equal(t, "0.6.1", info.Latest)
+	require.Equal(t, "0.6.2", info.Latest)
 	require.Equal(t, "0.5.8", info.Suggested)
 	require.False(t, info.Skew)
 }
 
 func TestUpgradeInfoReportsServiceSkew(t *testing.T) {
 	c := NewVersionCache("0.5.8")
-	c.Set(version.VersionData{LatestRelease: "0.6.1", SuggestedRelease: "0.5.8"})
+	c.Set(version.VersionData{LatestRelease: "0.6.2", SuggestedRelease: "0.5.8"})
 	info := c.Info("0.5.7")
 	require.True(t, info.Skew)
 	require.Equal(t, "0.5.7", info.TLS)
