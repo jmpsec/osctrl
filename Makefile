@@ -312,6 +312,41 @@ docker_dev_rebuild_cli:
 docker_dev_rebuild_api:
 	docker compose -f docker-compose-dev.yml up --force-recreate --no-deps -d --build $(API_NAME)
 
+# Assemble a published release; never compile or build local osctrl sources.
+STAGING_COMPOSE = docker compose --env-file .env.staging -f docker-compose-staging.yml
+
+.PHONY: docker_staging docker_staging_build docker_staging_pull docker_staging_up docker_staging_down docker_staging_logs docker_staging_certs docker_staging_check
+
+docker_staging: docker_staging_up
+
+# Compatibility with the dev workflow: staging "build" only pulls images.
+docker_staging_build: docker_staging_pull
+
+docker_staging_pull:
+	$(STAGING_COMPOSE) pull
+
+docker_staging_up:
+	$(STAGING_COMPOSE) up -d --no-build --pull always --force-recreate --wait --wait-timeout 180
+
+docker_staging_down:
+	$(STAGING_COMPOSE) down
+
+docker_staging_logs:
+	$(STAGING_COMPOSE) logs -f
+
+# Local testing certificate; use your own certificate for a remote staging host.
+docker_staging_certs:
+	@test ! -e deploy/docker/conf/staging/tls/osctrl.key -a ! -e deploy/docker/conf/staging/tls/osctrl.crt || { echo "Staging certificate/key already exists; refusing to overwrite it"; exit 1; }
+	mkdir -p deploy/docker/conf/staging/tls
+	openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+		-keyout deploy/docker/conf/staging/tls/osctrl.key \
+		-out deploy/docker/conf/staging/tls/osctrl.crt \
+		-subj '/CN=localhost' \
+		-addext 'subjectAltName=DNS:localhost,DNS:osctrl-nginx,IP:127.0.0.1'
+
+docker_staging_check:
+	python3 tools/test_docker_staging.py
+
 # Deploy osctrl in a single server using the provision.sh script
 # DEV_ENV and DEV_USER have defaults, DEV_IP is required:
 #   make provision_dev DEV_IP=192.168.1.10

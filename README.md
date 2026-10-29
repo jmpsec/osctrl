@@ -187,6 +187,19 @@ The docker development stack exposes:
 
 For the complete stack workflow, endpoints, logs, and reset commands, see [deploy/docker/README.md](./deploy/docker/README.md). For frontend-only development, see [frontend/README.md](./frontend/README.md).
 
+### Docker staging from a published release
+
+Use `docker-compose-staging.yml` to run a selected Docker Hub release without building local source. Staging has a separate Compose project, database, cache, and HTTPS ports (`9443` for agents, `9444` for the frontend).
+
+```bash
+cp .env.staging.example .env.staging
+# Set OSCTRL_VERSION and independent JWT_SECRET, POSTGRES_DB_PASSWORD, OSCTRL_PASS.
+make docker_staging_certs
+make docker_staging
+```
+
+See [the staging instructions](./deploy/docker/README.md#staging-published-release) for configuration, release changes, and shutdown.
+
 ### Runtime and tooling versions
 
 - Go module target: **Go 1.27.3**
