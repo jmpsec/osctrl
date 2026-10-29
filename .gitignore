@@ -104,3 +104,7 @@ cmd/api/docs/swagger.yaml
 # Tools
 fake_news_report.json
 fake_news_state.json
+
+# Staging credentials and local TLS material
+.env.staging
+deploy/docker/conf/staging/tls/

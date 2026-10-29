@@ -100,3 +100,75 @@ make docker_dev_down
 - **Frontend login loops**: use `https://localhost:8444` so the SPA and API cookies remain same-origin.
 - **Services cannot reach PostgreSQL or Redis**: inspect container health and the shared `osctrl-dev-backend` network.
 - **osquery clients do not enroll**: confirm the CLI bootstrap completed and the certificate mounted into the clients matches nginx.
+
+## Staging (published release)
+
+The root `docker-compose-staging.yml` assembles the four published Docker Hub images (`osctrl-tls`, `osctrl-api`, `osctrl-cli`, and `osctrl-frontend`). It does not compile local source or mount the source tree. Configuration files and the bootstrap script are mounted read-only. Use a release that publishes all four images with the current API/frontend split, such as `0.6.2`.
+
+### Configure and start
+
+From the repository root:
+
+```bash
+cp .env.staging.example .env.staging
+```
+
+Edit `.env.staging`:
+
+- Set `OSCTRL_VERSION` to the Docker Hub release tag, without a leading `v`. All four images use this tag; prerelease tags are supported.
+- Set independent, random `JWT_SECRET`, `POSTGRES_DB_PASSWORD`, and `OSCTRL_PASS` values. Generate each with `openssl rand -hex 32`. The JWT secret must be at least 32 bytes.
+- Set `OSCTRL_USER` to the initial administrator's username.
+- Keep `OSCTRL_IMAGE_NAMESPACE=jmpsec` for the official images, or select your own Docker Hub namespace.
+
+Empty required values fail before Compose starts the stack. `.env.staging` is ignored by Git and is separate from development's `.env`.
+
+For local testing, generate the staging certificate, then start:
+
+```bash
+make docker_staging_certs
+make docker_staging
+```
+
+The certificate command refuses to overwrite existing staging certificates. It creates a self-signed certificate for `localhost`, `127.0.0.1`, and the internal proxy name. The browser will need to trust this certificate or accept its warning.
+
+By default all published ports are bound to loopback:
+
+| Surface | URL |
+| --- | --- |
+| Operator frontend and `/api/*` | `https://localhost:9444` |
+| osquery TLS endpoint | `https://localhost:9443` |
+| PostgreSQL | `localhost:15432` |
+| Redis | `localhost:16379` |
+
+PostgreSQL and Redis use non-standard host ports to avoid development conflicts. Configure them with `STAGING_POSTGRES_PORT` and `STAGING_REDIS_PORT` in `.env.staging`; both always bind to `127.0.0.1`, even if HTTPS is exposed remotely. Containers still connect to PostgreSQL on `5432` and Redis on `6379` through the staging network. The API and backend TLS listener remain internal. The Compose project is named `osctrl-staging`, with project-scoped volumes and networking; development can run alongside it.
+
+Bootstrap waits for PostgreSQL, creates the `staging` environment and administrator if absent, then exits. Backend services start only after bootstrap succeeds and Redis is healthy. Subsequent starts preserve the environment, administrator password, and persisted data. Changing `OSCTRL_PASS` in the file does not reset an existing user's password.
+
+For a remote staging host, set `STAGING_BIND_ADDRESS` to the intended interface, set `STAGING_TLS_HOST` and `STAGING_FRONTEND_HOST` to reachable `hostname:port` values, and provide a matching certificate using `STAGING_TLS_CERT` and `STAGING_TLS_KEY`. Keep those hosts consistent with `STAGING_TLS_PORT` and `STAGING_FRONTEND_PORT`. The local certificate generator is for localhost only. Set the external hostname and certificate before the first bootstrap; existing environment settings are preserved on later starts.
+
+### Commands and release changes
+
+```bash
+make docker_staging_pull   # Download the selected images without starting them
+make docker_staging_build  # Alias for pull; no local build
+make docker_staging_up     # Pull and start the selected stack in the background
+make docker_staging_logs
+make docker_staging_down   # Stop the stack; retain database/cache volumes
+make docker_staging_check  # Deployment contract tests; no daemon needed
+```
+
+The start command recreates all staging containers together so nginx resolves the current upstream container addresses. This briefly interrupts staging; named volumes are retained.
+
+To select another release, back up the staging database, edit `OSCTRL_VERSION` in `.env.staging`, and run `make docker_staging`. An unpublished tag fails during image pulling. Backend startup performs database schema migration; switching to an older image tag is not a database rollback. Restore a compatible backup or use a separate fresh Compose project for downgrade testing. Keep the PostgreSQL major version unchanged for an existing database volume.
+
+For an isolated test project, override the project name and host ports explicitly:
+
+```bash
+STAGING_POSTGRES_PORT=25432 STAGING_REDIS_PORT=26379 \
+STAGING_TLS_PORT=10443 STAGING_FRONTEND_PORT=10444 \
+STAGING_TLS_HOST=localhost:10443 STAGING_FRONTEND_HOST=localhost:10444 \
+docker compose -p osctrl-staging-test --env-file .env.staging \
+  -f docker-compose-staging.yml up -d --no-build
+```
+
+Use that same project name when stopping it. Avoid `down -v` unless you intend to delete that project's staging database and cache. The existing `docker_dev_clean` target broadly matches osctrl images/volumes and must not be used while preserving staging data.

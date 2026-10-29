@@ -1,0 +1,153 @@
+name: osctrl-staging
+
+x-osctrl-environment: &osctrl-environment
+  DB_HOST: osctrl-postgres
+  DB_NAME: ${POSTGRES_DB_NAME:-osctrl}
+  DB_USER: ${POSTGRES_DB_USERNAME:-osctrl}
+  DB_PASS: ${POSTGRES_DB_PASSWORD:?Set POSTGRES_DB_PASSWORD in .env.staging}
+  REDIS_HOST: osctrl-redis
+  JWT_SECRET: ${JWT_SECRET:?Set a random JWT_SECRET of at least 32 bytes in .env.staging}
+
+services:
+  osctrl-nginx:
+    image: nginx:${NGINX_VERSION:-1.31.0-alpine}
+    restart: unless-stopped
+    ports:
+      - '${STAGING_BIND_ADDRESS:-127.0.0.1}:${STAGING_TLS_PORT:-9443}:443'
+      - '${STAGING_BIND_ADDRESS:-127.0.0.1}:${STAGING_FRONTEND_PORT:-9444}:8444'
+    volumes:
+      - ./deploy/docker/conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/docker/conf/nginx/osctrl.conf:/etc/nginx/conf.d/osctrl.conf:ro
+      - type: bind
+        source: ${STAGING_TLS_CERT:-./deploy/docker/conf/staging/tls/osctrl.crt}
+        target: /etc/ssl/certs/osctrl.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${STAGING_TLS_KEY:-./deploy/docker/conf/staging/tls/osctrl.key}
+        target: /etc/ssl/private/osctrl.key
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      - osctrl-tls
+      - osctrl-frontend
+
+  osctrl-tls:
+    image: docker.io/${OSCTRL_IMAGE_NAMESPACE:-jmpsec}/osctrl-tls:${OSCTRL_VERSION:?Select a published release in .env.staging}
+    restart: unless-stopped
+    environment:
+      <<: *osctrl-environment
+      SERVICE_LISTENER: 0.0.0.0
+      SERVICE_PORT: '9000'
+      SERVICE_HOST: ${STAGING_TLS_HOST:-localhost:9443}
+      SERVICE_AUTH: none
+      SERVICE_LOGGER: db
+      LOGGER_DB_SAME: 'true'
+      SERVICE_POSTURE_ENABLED: 'true'
+      SERVICE_ALERTS_ENABLED: 'true'
+      SERVICE_CONFIG_ENABLED: 'true'
+      SERVICE_HEALTH_ENABLED: 'true'
+      SERVICE_EVENTS_ENABLED: 'true'
+      SERVICE_EVENTS_NAMESPACE: staging
+      SERVICE_TRUSTED_PROXIES: 172.16.0.0/12
+      OSQUERY_CONSOLE: 'true'
+      OSQUERY_FILE_EXPLORER: 'true'
+    depends_on:
+      osctrl-cli:
+        condition: service_completed_successfully
+      osctrl-redis:
+        condition: service_healthy
+
+  osctrl-api:
+    image: docker.io/${OSCTRL_IMAGE_NAMESPACE:-jmpsec}/osctrl-api:${OSCTRL_VERSION:?Select a published release in .env.staging}
+    restart: unless-stopped
+    environment:
+      <<: *osctrl-environment
+      SERVICE_LISTENER: 0.0.0.0
+      SERVICE_PORT: '9002'
+      SERVICE_HOST: ${STAGING_FRONTEND_HOST:-localhost:9444}
+      SERVICE_AUTH: jwt
+      SERVICE_LOGGER: db
+      SERVICE_POSTURE_ENABLED: 'true'
+      SERVICE_ALERTS_ENABLED: 'true'
+      SERVICE_CONFIG_ENABLED: 'true'
+      SERVICE_HEALTH_ENABLED: 'true'
+      SERVICE_EVENTS_ENABLED: 'true'
+      SERVICE_EVENTS_NAMESPACE: staging
+      SERVICE_TRUSTED_PROXIES: 172.16.0.0/12
+      OSQUERY_CONSOLE: 'true'
+      OSQUERY_FILE_EXPLORER: 'true'
+    depends_on:
+      osctrl-cli:
+        condition: service_completed_successfully
+      osctrl-redis:
+        condition: service_healthy
+
+  osctrl-frontend:
+    image: docker.io/${OSCTRL_IMAGE_NAMESPACE:-jmpsec}/osctrl-frontend:${OSCTRL_VERSION:?Select a published release in .env.staging}
+    restart: unless-stopped
+    # The published image runs as nginx (101); its entrypoint selects a config.
+    tmpfs:
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755
+      - /var/cache/nginx:uid=101,gid=101,mode=0755
+      - /run:uid=101,gid=101,mode=0755
+    depends_on:
+      - osctrl-api
+
+  osctrl-cli:
+    image: docker.io/${OSCTRL_IMAGE_NAMESPACE:-jmpsec}/osctrl-cli:${OSCTRL_VERSION:?Select a published release in .env.staging}
+    restart: 'no'
+    command: ['/opt/osctrl/bootstrap.sh']
+    environment:
+      <<: *osctrl-environment
+      OSCTRL_USER: ${OSCTRL_USER:-admin}
+      OSCTRL_PASS: ${OSCTRL_PASS:?Set OSCTRL_PASS in .env.staging}
+      STAGING_TLS_HOST: ${STAGING_TLS_HOST:-localhost:9443}
+    volumes:
+      - ./deploy/docker/conf/staging/bootstrap.sh:/opt/osctrl/bootstrap.sh:ro
+      - type: bind
+        source: ${STAGING_TLS_CERT:-./deploy/docker/conf/staging/tls/osctrl.crt}
+        target: /opt/osctrl/config/osctrl.crt
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      osctrl-postgres:
+        condition: service_healthy
+
+  osctrl-postgres:
+    ports:
+      - '127.0.0.1:${STAGING_POSTGRES_PORT:-15432}:5432'
+    image: postgres:${POSTGRES_VERSION:-17-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_NAME:-osctrl}
+      POSTGRES_USER: ${POSTGRES_DB_USERNAME:-osctrl}
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD:?Set POSTGRES_DB_PASSWORD in .env.staging}
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  osctrl-redis:
+    ports:
+      - '127.0.0.1:${STAGING_REDIS_PORT:-16379}:6379'
+    image: redis:${REDIS_VERSION:-7-alpine}
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres-db:
+  redis-data:
