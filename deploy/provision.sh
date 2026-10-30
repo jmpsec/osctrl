@@ -45,9 +45,12 @@
 #   -E          --enroll        Enroll the serve into itself using osquery. Default is disabled
 #   -N NAME     --env NAME      Initial environment name to be created. Default is the mode (dev or prod)
 #   -U          --upgrade       Keep osctrl upgraded with the latest code from Github
+#               --prepare       Install build/runtime dependencies and exit without deploying services
 #   -A          --admin         Create and configure an admin user with a random password. Default is disabled
 #
 # Examples:
+#   Prepare a machine without deploying services:
+#     provision.sh --prepare
 #   Provision service in development mode, code is in /code/osctrl and all components (admin, tls, api):
 #     provision.sh -m dev -s /code/osctrl -p all
 #   Provision service in production mode using my own certificate and only with TLS endpoint:
@@ -116,7 +119,10 @@ function usage() {
   printf "  -N NAME     --env NAME \tInitial environment name to be created. Default is the mode (dev or prod)\n"
   printf "  -U          --upgrade \tKeep osctrl upgraded with the latest code from Github\n"
   printf "  -A          --admin \t\tCreate and configure an admin user with a random password. Default is disabled\n"
+  printf "  --prepare \t\tInstall build/runtime dependencies and exit without deploying services\n"
   printf "\nExamples:\n"
+  printf "  Prepare a machine without deploying services:\n"
+  printf "\t%s --prepare\n" "${0}"
   printf "  Provision service in development mode, code is in /code/osctrl and all components (admin, tls, api):\n"
   printf "\t%s -m dev -s /code/osctrl -p all\n" "${0}"
   printf "  Provision service in production mode using my own certificate and only with TLS endpoint:\n"
@@ -152,6 +158,7 @@ NGINX=false
 POSTGRES=false
 REDIS=false
 UPGRADE=false
+PREPARE=false
 ADMIN=false
 BRANCH="main"
 SOURCE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -219,8 +226,30 @@ VALID_MODE=("dev" "prod")
 VALID_TYPE=("self" "own" "certbot")
 VALID_PART=("$TLS_COMPONENT" "$ADMIN_COMPONENT" "$API_COMPONENT" "all")
 
+# Install build and runtime dependencies without configuring or installing services.
+function prepare_system() {
+  local __distro=$1
+  case "$__distro" in
+    ubuntu|debian|centos) ;;
+    *) _log "Unsupported distribution: $__distro"; return 1 ;;
+  esac
+
+  log "Installing build and runtime dependencies"
+  package_repo_update
+  if [[ "$__distro" == "centos" ]]; then
+    sudo yum install -y ca-certificates curl git tar gzip xz gcc glibc-devel make
+  else
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ca-certificates curl git tar gzip xz-utils build-essential
+  fi
+  if ! command -v go >/dev/null 2>&1; then
+    install_go_27
+  fi
+  install_nvm
+}
+
 # Extract arguments
-ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nEUAc:s:S:X: -l "help,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,enroll,upgrade,admin,certfile:,source:,dest:,password:" -- "$@")
+ARGS=$(getopt -n "$0" -o hm:t:p:PRk:nEUAc:s:S:X: -l "help,prepare,mode:,type:,part:,public-tls-port:,private-tls-port:,public-admin-port:,public-api-port:,private-api-port:,all-hostname:,tls-hostname:,admin-hostname:,api-hostname:,keyfile:,nginx,postgres,redis,enroll,upgrade,admin,certfile:,source:,dest:,password:" -- "$@")
 
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -231,6 +260,10 @@ while true; do
     -h|--help)
       usage
       exit 0
+      ;;
+    --prepare)
+      PREPARE=true
+      shift
       ;;
     -m|--mode)
       GIVEN_ARG=$2
@@ -398,6 +431,13 @@ if [[ -f "/etc/debian_version" ]]; then
   fi
 elif [[ -f "/etc/centos-release" ]]; then
   DISTRO="centos"
+fi
+
+# Preparation must finish before any deployment or service configuration.
+if [[ "$PREPARE" == true ]]; then
+  prepare_system "$DISTRO"
+  log "System dependencies are ready"
+  exit 0
 fi
 
 # Prepare for provisioning
