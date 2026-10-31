@@ -109,7 +109,7 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 	// Active query and carve totals for every environment in one grouped
 	// count. If it fails, every environment is left out, as the per-env
 	// lookups it replaces skipped any environment whose count failed.
-	activeCounts, countErr := h.Queries.ActiveCountsByEnvironment()
+	activeCounts, countErr := h.Queries.Replica().ActiveCountsByEnvironment()
 	if countErr != nil {
 		log.Warn().Err(countErr).Msg("stats: failed to count active queries and carves, skipping environments")
 	}
@@ -124,7 +124,7 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		envHours := h.Settings.InactiveHours(e.ID)
-		ns, err := h.Nodes.GetStatsByEnv(e.Name, envHours)
+		ns, err := h.Nodes.Replica().GetStatsByEnv(e.Name, envHours)
 		if err != nil {
 			log.Warn().Err(err).Str("env", e.Name).Msg("stats: failed to get node stats, skipping env")
 			continue
@@ -134,7 +134,7 @@ func (h *HandlersApi) StatsHandler(w http.ResponseWriter, r *http.Request) {
 		// SPA's filter chips. We don't fail the whole env on a count error;
 		// if the GROUP BY fails the env still gets a row, just with zeros in
 		// PlatformCounts. The SPA renders the chips as "0" rather than missing.
-		platCounts, err := h.Nodes.GetPlatformCountsByEnv(e.Name)
+		platCounts, err := h.Nodes.Replica().GetPlatformCountsByEnv(e.Name)
 		if err != nil {
 			log.Warn().Err(err).Str("env", e.Name).Msg("stats: failed to get platform counts, defaulting to zeros")
 		}
@@ -297,7 +297,7 @@ func (h *HandlersApi) EnvActivityHandler(w http.ResponseWriter, r *http.Request)
 	endBucket := time.Unix((now.Unix()/int64(bucketSeconds))*int64(bucketSeconds), 0).UTC()
 	startBucket := endBucket.Add(-time.Duration(nBuckets-1) * time.Duration(bucketSeconds) * time.Second)
 
-	rows, err := h.AuditLog.GetEnvActivityBucketed(env.ID, startBucket, bucketSeconds)
+	rows, err := h.AuditLog.Replica().GetEnvActivityBucketed(env.ID, startBucket, bucketSeconds)
 	if err != nil {
 		apiErrorResponse(w, "failed to load activity", http.StatusInternalServerError, err)
 		return
@@ -721,7 +721,7 @@ func (h *HandlersApi) OsqueryVersionsHandler(w http.ResponseWriter, r *http.Requ
 		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
 		return
 	}
-	rows, err := h.Nodes.GetOsqueryVersionCounts()
+	rows, err := h.Nodes.Replica().GetOsqueryVersionCounts()
 	if err != nil {
 		apiErrorResponse(w, "failed to load osquery versions", http.StatusInternalServerError, err)
 		return

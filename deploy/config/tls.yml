@@ -134,6 +134,20 @@ db:
   connRetry: 10
   # SQLite database file path when type is sqlite.
   filePath: ./osctrl.db
+  # Optional read replica (off by default). Only staleness-tolerant reads are
+  # routed to it; osctrl-tls routes none yet.
+  # Empty fields inherit the primary's values; not supported with sqlite.
+  # Env: DB_READ_ENABLED, DB_READ_HOST, DB_READ_PORT, DB_READ_USER,
+  # DB_READ_PASS, DB_READ_SSLMODE, DB_READ_MAX_IDLE_CONNS, DB_READ_MAX_OPEN_CONNS.
+  read:
+    enabled: false
+    host: ""
+    port: 0
+    username: ""
+    password: ""
+    sslmode: ""
+    maxIdleConns: 0
+    maxOpenConns: 0
 
 # Batch writer configuration for coalescing node last-seen updates.
 batchWriter:

@@ -129,7 +129,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Get nodes — scoped to this environment (resolves audit finding U-DB-2)
 	hours := h.Settings.InactiveHours(env.ID)
-	nodeList, err := h.Nodes.GetByEnv(env.Name, nodes.ActiveNodes, hours)
+	nodeList, err := h.Nodes.Replica().GetByEnv(env.Name, nodes.ActiveNodes, hours)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
@@ -185,7 +185,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Get nodes — scoped to this environment (resolves audit finding U-DB-2)
 	hours := h.Settings.InactiveHours(env.ID)
-	nodeList, err := h.Nodes.GetByEnv(env.Name, nodes.InactiveNodes, hours)
+	nodeList, err := h.Nodes.Replica().GetByEnv(env.Name, nodes.InactiveNodes, hours)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
@@ -240,7 +240,7 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get nodes — scoped to this environment (resolves audit finding U-DB-2)
-	nodeList, err := h.Nodes.GetByEnv(env.Name, nodes.AllNodes, 0)
+	nodeList, err := h.Nodes.Replica().GetByEnv(env.Name, nodes.AllNodes, 0)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
@@ -668,7 +668,7 @@ func (h *HandlersApi) NodesPagedHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	hours := h.Settings.InactiveHours(env.ID)
-	pageData, err := h.Nodes.GetByEnvPaged(env.Name, status, hours, search, page, pageSize, sortCol, desc, platformBucket)
+	pageData, err := h.Nodes.Replica().GetByEnvPaged(env.Name, status, hours, search, page, pageSize, sortCol, desc, platformBucket)
 	if err != nil {
 		apiErrorResponse(w, "failed to query nodes", http.StatusInternalServerError, err)
 		return

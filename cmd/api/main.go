@@ -588,6 +588,13 @@ func osctrlAPIService() {
 	if err != nil {
 		log.Fatal().Msgf("Error initializing audit log manager - %v", err)
 	}
+	// Read replica: only the reads that explicitly call Replica() use it.
+	if db.Read != db.Conn {
+		nodesmgr.ReadDB = db.Read
+		queriesmgr.ReadDB = db.Read
+		auditLog.ReadDB = db.Read
+		log.Info().Msg("Read replica enabled for dashboard and node list reads")
+	}
 	// Background workers are stopped explicitly in every exit branch of the
 	// final select, not deferred: a deferred stop would be skipped by any
 	// log.Fatal in between anyway.
