@@ -593,7 +593,11 @@ func osctrlAPIService() {
 		nodesmgr.ReadDB = db.Read
 		queriesmgr.ReadDB = db.Read
 		auditLog.ReadDB = db.Read
-		log.Info().Msg("Read replica enabled for dashboard and node list reads")
+		filecarves.ReadDB = db.Read
+		if posturemgr != nil {
+			posturemgr.ReadDB = db.Read
+		}
+		log.Info().Msg("Read replica enabled for dashboard, node, audit, posture and vulnerability reads")
 	}
 	// Background workers are stopped explicitly in every exit branch of the
 	// final select, not deferred: a deferred stop would be skipped by any
@@ -622,6 +626,9 @@ func osctrlAPIService() {
 		}
 		vulnWorker = worker
 		vulnReader = vulns.NewReader(db.Conn, syncInterval)
+		if db.Read != db.Conn {
+			vulnReader.ReadDB = db.Read
+		}
 		log.Info().Msg("Vulnerability monitoring enabled")
 	} else {
 		log.Info().Msg("Vulnerability monitoring disabled (enable with --vuln-enabled)")

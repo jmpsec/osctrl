@@ -474,11 +474,11 @@ func (h *HandlersApi) projectNode(node nodes.OsqueryNode) types.NodeView {
 	var postureSummary *types.NodePostureSummary
 	if h.PostureEnabled && h.Posture != nil {
 		var err error
-		uptime, err = h.Posture.GetUptimeByNode(node.UUID)
+		uptime, err = h.Posture.Replica().GetUptimeByNode(node.UUID)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Err(err).Str("node_uuid", node.UUID).Msg("posture: failed to load node uptime")
 		}
-		postureSummary, err = h.Posture.GetSummaryByNode(node.UUID)
+		postureSummary, err = h.Posture.Replica().GetSummaryByNode(node.UUID)
 		if err != nil {
 			log.Warn().Err(err).Str("node_uuid", node.UUID).Msg("posture: failed to load node posture summary")
 			postureSummary = nil
@@ -511,12 +511,12 @@ func (h *HandlersApi) projectNodesWithGeo(in []nodes.OsqueryNode) []types.NodeVi
 			uuids = append(uuids, node.UUID)
 		}
 		var err error
-		uptimes, err = h.Posture.GetUptimeByNodes(uuids)
+		uptimes, err = h.Posture.Replica().GetUptimeByNodes(uuids)
 		if err != nil {
 			log.Warn().Err(err).Msg("posture: failed to load node uptime batch")
 			uptimes = map[string]*types.NodeUptime{}
 		}
-		postureSummaries, err = h.Posture.GetSummaryByNodes(uuids)
+		postureSummaries, err = h.Posture.Replica().GetSummaryByNodes(uuids)
 		if err != nil {
 			log.Warn().Err(err).Msg("posture: failed to load node posture summary batch")
 			postureSummaries = map[string]*types.NodePostureSummary{}
@@ -816,7 +816,7 @@ func (h *HandlersApi) NodePostureHandler(w http.ResponseWriter, r *http.Request)
 		apiErrorResponse(w, "posture not configured", http.StatusServiceUnavailable, nil)
 		return
 	}
-	records, err := h.Posture.GetByNode(node.UUID)
+	records, err := h.Posture.Replica().GetByNode(node.UUID)
 	if err != nil {
 		apiErrorResponse(w, "error getting posture", http.StatusInternalServerError, err)
 		return

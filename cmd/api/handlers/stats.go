@@ -486,11 +486,11 @@ func (h *HandlersApi) computeNodeActivityForNode(
 	if err != nil {
 		log.Warn().Err(err).Str("node", nodeUUID).Msg("node-activity: result bucketed failed")
 	}
-	queryRows, err := h.Queries.GetNodeQueryBucketed(nodeID, startBucket, bucketSeconds)
+	queryRows, err := h.Queries.Replica().GetNodeQueryBucketed(nodeID, startBucket, bucketSeconds)
 	if err != nil {
 		log.Warn().Err(err).Str("node", nodeUUID).Msg("node-activity: node-query bucketed failed")
 	}
-	carveRows, err := h.Carves.GetNodeCarveBucketed(nodeUUID, startBucket, bucketSeconds)
+	carveRows, err := h.Carves.Replica().GetNodeCarveBucketed(nodeUUID, startBucket, bucketSeconds)
 	if err != nil {
 		log.Warn().Err(err).Str("node", nodeUUID).Msg("node-activity: carve bucketed failed")
 	}

@@ -61,10 +61,21 @@ type CarveResult struct {
 
 // Carves to handle file carves from nodes
 type Carves struct {
-	DB     *gorm.DB
+	DB *gorm.DB
+	// ReadDB is the optional read-replica connection; nil means none.
+	ReadDB *gorm.DB
 	S3     *CarverS3
 	Carver string
 	Events events.Publisher
+}
+
+// Replica returns a manager that reads from the read replica, or c itself when
+// none is configured. Use it only for reads that tolerate replication lag.
+func (c *Carves) Replica() *Carves {
+	if c.ReadDB == nil {
+		return c
+	}
+	return &Carves{DB: c.ReadDB, Carver: c.Carver}
 }
 
 // CreateFileCarves to initialize the carves struct and tables

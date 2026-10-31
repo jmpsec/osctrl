@@ -95,7 +95,7 @@ func (h *HandlersApi) VulnFindingsHandler(w http.ResponseWriter, r *http.Request
 		KEV: kev, State: q.Get("state"), Package: q.Get("package"), Advisory: q.Get("advisory"),
 		Page: page, PageSize: size,
 	}
-	findings, total, err := h.Vulns.Findings(filter)
+	findings, total, err := h.Vulns.Replica().Findings(filter)
 	if errors.Is(err, vulns.ErrBadFilter) {
 		apiErrorResponse(w, "invalid filter", http.StatusBadRequest, err)
 		return
@@ -124,7 +124,7 @@ func (h *HandlersApi) VulnSummaryHandler(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	s, err := h.Vulns.Summary(env.ID)
+	s, err := h.Vulns.Replica().Summary(env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error summarizing findings", http.StatusInternalServerError, err)
 		return
@@ -148,7 +148,7 @@ func (h *HandlersApi) VulnAdvisoryHandler(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	d, err := h.Vulns.Advisory(r.PathValue("id"), env.ID)
+	d, err := h.Vulns.Replica().Advisory(r.PathValue("id"), env.ID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		apiErrorResponse(w, "advisory not found", http.StatusNotFound, nil)
 		return
@@ -185,7 +185,7 @@ func (h *HandlersApi) VulnNodeHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
 		return
 	}
-	rep, err := h.Vulns.Node(node.UUID, env.ID)
+	rep, err := h.Vulns.Replica().Node(node.UUID, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting node findings", http.StatusInternalServerError, err)
 		return
@@ -210,7 +210,7 @@ func (h *HandlersApi) VulnFeedsHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
 		return
 	}
-	fs, err := h.Vulns.Feeds()
+	fs, err := h.Vulns.Replica().Feeds()
 	if err != nil {
 		apiErrorResponse(w, "error getting feed status", http.StatusInternalServerError, err)
 		return

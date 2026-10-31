@@ -81,10 +81,22 @@ func (NodePosture) TableName() string { return "node_posture" }
 // PostureManager manages the node posture table.
 type PostureManager struct {
 	DB *gorm.DB
+	// ReadDB is the optional read-replica connection; nil means none.
+	ReadDB *gorm.DB
 	// Evidence, when set, adds scoring evidence posture queries do not
 	// collect. osctrl-api wires vulnerability findings here when both
 	// --posture-enabled and --vuln-enabled are on.
 	Evidence EvidenceSource
+}
+
+// Replica returns a manager that reads from the read replica, or pm itself
+// when none is configured. Use it only for reads that tolerate replication
+// lag. It keeps Evidence so scores match the primary's.
+func (pm *PostureManager) Replica() *PostureManager {
+	if pm.ReadDB == nil {
+		return pm
+	}
+	return &PostureManager{DB: pm.ReadDB, Evidence: pm.Evidence}
 }
 
 // NewPostureManager creates the manager and auto-migrates the table.
