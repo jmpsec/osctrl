@@ -30,6 +30,7 @@ import { cn } from '$/lib/cn';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
 import { Button } from '$/components/atoms/Button';
+import { appPath } from '$/lib/base-path'
 
 type ModalMode =
   | { kind: 'closed' }
@@ -370,7 +371,7 @@ function ProviderEditor({ mode, types, providerType, existing, onClose, onSaved 
       return updateAuthProvider(existing!.id, { name: trimmedName, type: providerType, enabled, config, info: info.trim() || undefined });
     },
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['auth-providers'] }); onSaved(); onClose(); },
-    onError: (e) => { if (e instanceof AuthError) { window.location.href = '/login'; return; } setErr(e instanceof Error ? e.message : 'Save failed'); },
+    onError: (e) => { if (e instanceof AuthError) { window.location.href = appPath('/login'); return; } setErr(e instanceof Error ? e.message : 'Save failed'); },
   });
 
   async function handleTest() {

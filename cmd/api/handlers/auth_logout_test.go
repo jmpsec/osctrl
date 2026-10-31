@@ -86,3 +86,33 @@ func TestLogoutClearsCookiesEvenWhenAnonymous(t *testing.T) {
 		}
 	}
 }
+
+// TestLogoutClearsCookiesUnderBasePath: cookies are only deleted when the
+// Set-Cookie Path matches the one used at login, so with a public prefix the
+// clears must carry the prefixed paths.
+func TestLogoutClearsCookiesUnderBasePath(t *testing.T) {
+	h := &HandlersApi{
+		DebugHTTPConfig: &config.YAMLConfigurationDebug{},
+		JWTSecret:       []byte("test-jwt-secret-must-be-at-least-32-bytes-long"),
+		BasePath:        "/osctrl",
+	}
+	w := httptest.NewRecorder()
+	h.LogoutHandler(w, httptest.NewRequest(http.MethodPost, "/api/v1/logout", nil))
+
+	want := map[string]string{
+		"osctrl_token":    "/osctrl/",
+		"osctrl_csrf":     "/osctrl/",
+		"osctrl_id_token": "/osctrl/api/v1/",
+	}
+	for _, c := range w.Result().Cookies() {
+		if p, ok := want[c.Name]; ok {
+			if c.Path != p {
+				t.Errorf("%s Path: got %q want %q", c.Name, c.Path, p)
+			}
+			delete(want, c.Name)
+		}
+	}
+	for name := range want {
+		t.Errorf("cookie %s was not cleared", name)
+	}
+}

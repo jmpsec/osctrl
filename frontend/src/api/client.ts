@@ -4,6 +4,7 @@
  */
 
 import { isMockDataEnabled, resolveMockApiRequest } from './mock-data';
+import { appPath } from '$/lib/base-path'
 
 let csrfTokenInMemory: string | null = null;
 
@@ -127,7 +128,7 @@ export async function apiFetch<T>(
     return mockResponse.data as T;
   }
 
-  const res = await fetch(path, {
+  const res = await fetch(appPath(path), {
     credentials: 'include',
     ...init,
     method,
@@ -212,7 +213,7 @@ interface MFAChallengePayload {
 }
 
 export async function login(body: LoginRequest): Promise<LoginResult> {
-  const res = await fetch('/api/v1/login', {
+  const res = await fetch(appPath('/api/v1/login'), {
     method: 'POST',
     credentials: 'include',
     headers: {
@@ -255,7 +256,7 @@ export interface LoginEnvironment {
  *     redirect loop if it ever returned 401 (it can't, but: belt-and-braces).
  */
 export async function listLoginEnvironments(): Promise<LoginEnvironment[]> {
-  const res = await fetch('/api/v1/login/environments', {
+  const res = await fetch(appPath('/api/v1/login/environments'), {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });
@@ -287,7 +288,7 @@ export type AuthMethod = {
 // listLoginEnvironments so it can't trigger the apiFetch 401-redirect
 // loop on the login page.
 export async function listAuthMethods(): Promise<AuthMethod[]> {
-  const res = await fetch('/api/v1/auth/methods', {
+  const res = await fetch(appPath('/api/v1/auth/methods'), {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });
@@ -352,7 +353,7 @@ export async function logout(): Promise<void> {
   let idpClientId = '';
   let idpIdTokenHint = '';
   try {
-    const res = await fetch('/api/v1/logout', {
+    const res = await fetch(appPath('/api/v1/logout'), {
       method: 'POST',
       credentials: 'include',
       headers: { Accept: 'application/json' },
@@ -377,7 +378,7 @@ export async function logout(): Promise<void> {
   }
 
   if (idpLogoutUrl) {
-    const postLogout = `${window.location.origin}/login`;
+    const postLogout = `${window.location.origin}${appPath('/login')}`;
     const params = new URLSearchParams();
     if (authSource === 'saml') {
       params.set('returnTo', postLogout);
@@ -401,6 +402,6 @@ export async function logout(): Promise<void> {
   // No IdP logout to do; just bounce to /login. The router will see
   // isAuthenticated() === false and render the login form.
   if (typeof window !== 'undefined') {
-    window.location.href = '/login';
+    window.location.href = appPath('/login');
   }
 }

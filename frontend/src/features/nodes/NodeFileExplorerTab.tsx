@@ -23,6 +23,7 @@ import type {
 } from '$/api/types';
 import { cn } from '$/lib/cn';
 import { useSessionResourceUpdates } from '$/lib/live-updates';
+import { appPath } from '$/lib/base-path'
 
 type EntriesByDirectory = Record<string, FileExplorerEntry[]>;
 type CarveStatus =
@@ -221,7 +222,7 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
       setCarveStatus({ kind: 'success', name: result.query_name });
     } catch (carveError) {
       if (carveError instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setCarveStatus({

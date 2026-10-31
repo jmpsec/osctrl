@@ -108,3 +108,34 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+// TestAuthMethodsUnderBasePath: the SPA uses loginUrl verbatim as an href, so
+// it must carry the public prefix.
+func TestAuthMethodsUnderBasePath(t *testing.T) {
+	h := &HandlersApi{
+		OIDCEnabled:     true,
+		SAMLEnabled:     true,
+		BasePath:        "/osctrl",
+		DebugHTTPConfig: &config.YAMLConfigurationDebug{},
+	}
+	w := httptest.NewRecorder()
+	h.AuthMethodsHandler(w, httptest.NewRequest(http.MethodGet, "/api/v1/auth/methods", nil))
+
+	var resp AuthMethodsResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	want := map[string]string{
+		"password": "/osctrl/api/v1/login",
+		"oidc":     "/osctrl/api/v1/auth/oidc/login",
+		"saml":     "/osctrl/api/v1/auth/saml/login",
+	}
+	if len(resp.Methods) != len(want) {
+		t.Fatalf("methods: got %d want %d", len(resp.Methods), len(want))
+	}
+	for _, m := range resp.Methods {
+		if m.LoginURL != want[m.Type] {
+			t.Errorf("%s loginUrl: got %q want %q", m.Type, m.LoginURL, want[m.Type])
+		}
+	}
+}

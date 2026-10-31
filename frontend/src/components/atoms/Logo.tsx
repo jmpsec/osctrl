@@ -1,4 +1,5 @@
 import { cn } from '$/lib/cn';
+import { appPath } from '$/lib/base-path';
 
 interface LogoProps {
   size?: number;
@@ -30,7 +31,7 @@ export function Logo({ size = 32, className, decorative = false }: LogoProps) {
       style={{ display: 'inline-block', width: size, height: size }}
     >
       <img
-        src="/img/osctrl-logo.png"
+        src={appPath('/img/osctrl-logo.png')}
         width={size}
         height={size}
         alt=""
@@ -38,7 +39,7 @@ export function Logo({ size = 32, className, decorative = false }: LogoProps) {
         style={{ display: 'block', width: '100%', height: '100%' }}
       />
       <img
-        src="/img/osctrl-logo-dark.png"
+        src={appPath('/img/osctrl-logo-dark.png')}
         width={size}
         height={size}
         alt=""

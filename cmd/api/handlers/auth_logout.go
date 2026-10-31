@@ -127,7 +127,7 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "osctrl_token",
 		Value:    "",
-		Path:     "/",
+		Path:     h.pub("/"),
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   true,
@@ -136,7 +136,7 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "osctrl_csrf",
 		Value:    "",
-		Path:     "/",
+		Path:     h.pub("/"),
 		MaxAge:   -1,
 		HttpOnly: false,
 		Secure:   true,
@@ -157,7 +157,7 @@ func (h *HandlersApi) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "osctrl_id_token",
 		Value:    "",
-		Path:     "/api/v1/",
+		Path:     h.pub("/api/v1/"),
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   true,

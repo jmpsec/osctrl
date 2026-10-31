@@ -30,6 +30,7 @@ import { DocsLink } from '$/components/atoms/DocsLink';
 import { AssembledConfigCard } from '$/features/enrollment/AssembledConfigCard';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { appPath } from '$/lib/base-path'
 
 type SectionKey = 'options' | 'schedule' | 'packs' | 'decorators' | 'atc' | 'flags';
 type PostureScheduleEntry = {
@@ -217,7 +218,7 @@ export function EnvConfigPage() {
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 400) {
@@ -240,7 +241,7 @@ export function EnvConfigPage() {
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 400) {
@@ -1040,7 +1041,7 @@ function IntervalsCard({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Update failed');
@@ -1221,7 +1222,7 @@ function ExpirationCard({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Action failed');

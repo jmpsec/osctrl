@@ -78,7 +78,7 @@ func (h *HandlersApi) userJWTSessionTokens(w http.ResponseWriter, user users.Adm
 	http.SetCookie(w, &http.Cookie{
 		Name:     "osctrl_token",
 		Value:    user.APIToken,
-		Path:     "/",
+		Path:     h.pub("/"),
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		Secure:   true,
@@ -87,7 +87,7 @@ func (h *HandlersApi) userJWTSessionTokens(w http.ResponseWriter, user users.Adm
 	http.SetCookie(w, &http.Cookie{
 		Name:     "osctrl_csrf",
 		Value:    csrfToken,
-		Path:     "/",
+		Path:     h.pub("/"),
 		MaxAge:   maxAge,
 		HttpOnly: false,
 		Secure:   true,

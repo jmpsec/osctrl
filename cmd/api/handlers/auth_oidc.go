@@ -150,7 +150,7 @@ func (h *HandlersApi) OIDCLoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		state.Verifier = verifier
 	}
-	if err := auth.IssueStateCookie(w, h.JWTSecret, state); err != nil {
+	if err := auth.IssueStateCookie(w, h.JWTSecret, state, h.BasePath); err != nil {
 		apiErrorResponse(w, "oidc state cookie error", http.StatusInternalServerError, err)
 		return
 	}
@@ -212,13 +212,13 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 	state, err := auth.ParseStateCookie(r, h.JWTSecret)
 	if err != nil {
 		log.Warn().Err(err).Msg("oidc: state cookie missing or invalid")
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, h.pub("/"), http.StatusFound)
 		return
 	}
 	// Single-use: clear the cookie before anything else can fail.
 	// If a later step rejects the callback, the user must restart
 	// the flow from /login — preventing state cookie replay (T9).
-	auth.ClearStateCookie(w)
+	auth.ClearStateCookie(w, h.BasePath)
 
 	identity, err := oidcProvider.HandleCallback(r.Context(), r, state)
 	if err != nil {
@@ -226,7 +226,7 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 		// may contain attacker-controlled text (audit-log poisoning
 		// T26) and stays at WARN with the raw error.
 		log.Warn().Err(err).Msg("oidc: callback rejected")
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, h.pub("/"), http.StatusFound)
 		return
 	}
 
@@ -238,7 +238,7 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		// resolveFederatedUser already wraps with ErrAuthUserRejected.
 		log.Warn().Err(err).Str("preferred_username", identity.PreferredUsername).Msg("oidc: user resolution failed")
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, h.pub("/"), http.StatusFound)
 		return
 	}
 
@@ -264,7 +264,7 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 		http.SetCookie(w, &http.Cookie{
 			Name:     "osctrl_id_token",
 			Value:    identity.IDToken,
-			Path:     "/api/v1/",
+			Path:     h.pub("/api/v1/"),
 			MaxAge:   int(8 * time.Hour / time.Second),
 			HttpOnly: true,
 			Secure:   true,
@@ -275,5 +275,5 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 	if h.AuditLog != nil {
 		h.AuditLog.NewLogin(user.Username, utils.GetIP(r))
 	}
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, h.pub("/"), http.StatusFound)
 }

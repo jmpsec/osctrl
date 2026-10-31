@@ -17,6 +17,7 @@ import { formatRelative } from '$/lib/time';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
 import { invalidateNodeStatusQueries } from '$/lib/node-status';
+import { appPath } from '$/lib/base-path'
 
 // Services are constant in the backend (pkg/settings.ValidServices = {tls, admin, api}).
 // The raw values are the strings the API accepts on /api/v1/settings/{service};
@@ -234,7 +235,7 @@ function SettingRow({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 404) {

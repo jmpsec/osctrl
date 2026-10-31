@@ -1,4 +1,5 @@
 import { apiFetch, setCsrfToken } from './client';
+import { appPath } from '$/lib/base-path'
 
 // ---------------------------------------------------------------------------
 // Multi-factor authentication.
@@ -53,7 +54,7 @@ interface ApiError {
 
 /** POST to a pre-auth MFA endpoint, throwing the server's message on failure. */
 async function postPreAuth<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(appPath(path), {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },

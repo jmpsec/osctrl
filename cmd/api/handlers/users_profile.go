@@ -375,7 +375,7 @@ func (h *HandlersApi) RefreshUserTokenHandler(w http.ResponseWriter, r *http.Req
 			http.SetCookie(w, &http.Cookie{
 				Name:     "osctrl_token",
 				Value:    token,
-				Path:     "/",
+				Path:     h.pub("/"),
 				MaxAge:   maxAge,
 				HttpOnly: true,
 				Secure:   true,
@@ -384,7 +384,7 @@ func (h *HandlersApi) RefreshUserTokenHandler(w http.ResponseWriter, r *http.Req
 			http.SetCookie(w, &http.Cookie{
 				Name:     "osctrl_csrf",
 				Value:    csrfToken,
-				Path:     "/",
+				Path:     h.pub("/"),
 				MaxAge:   maxAge,
 				HttpOnly: false,
 				Secure:   true,

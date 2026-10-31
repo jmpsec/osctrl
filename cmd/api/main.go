@@ -82,6 +82,9 @@ var (
 	buildDate    = "unknown"
 )
 
+// basePath is the normalized public URL prefix, set once at startup.
+var basePath string
+
 // Paths
 const (
 	// HTTP health path
@@ -313,6 +316,12 @@ func osctrlAPIService() {
 		utils.SetTrustedProxies(strings.Split(tp, ","))
 		log.Info().Msgf("Trusting forwarding headers from: %s", tp)
 	}
+	// Public URL prefix. The reverse proxy strips it, so routes stay unprefixed.
+	bp, err := config.NormalizeBasePath(flagParams.Service.BasePath)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Invalid --base-path")
+	}
+	basePath = bp
 	// ////////////////////////////// Backend
 	log.Info().Msg("Initializing backend...")
 	for {
@@ -735,6 +744,7 @@ func osctrlAPIService() {
 		handlers.WithOsqueryTables(osqueryTables),
 		handlers.WithOsqueryValues(*flagParams.Osquery),
 		handlers.WithJWTSecret([]byte(flagParams.JWT.JWTSecret)),
+		handlers.WithBasePath(basePath),
 		handlers.WithOIDC(flagParams.OIDC != nil && flagParams.OIDC.Enabled),
 		handlers.WithSAML(flagParams.SAML != nil && flagParams.SAML.Enabled),
 		handlers.WithDBHealth(dbHealth), // nil when DB health monitor disabled

@@ -45,7 +45,7 @@ func freshState(t *testing.T) State {
 func issueOnRecorder(t *testing.T, s State) *http.Request {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	if err := IssueStateCookie(rec, testSecret, s); err != nil {
+	if err := IssueStateCookie(rec, testSecret, s, ""); err != nil {
 		t.Fatalf("IssueStateCookie: %v", err)
 	}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/oidc/callback", nil)
@@ -277,7 +277,7 @@ func TestStateAlgNoneRejected(t *testing.T) {
 // would defeat the cross-env mismatch defense (threat T18).
 func TestIssueRejectsEmptyEnv(t *testing.T) {
 	rec := httptest.NewRecorder()
-	err := IssueStateCookie(rec, testSecret, State{Nonce: "n-1234", OAuthState: "s-1234"})
+	err := IssueStateCookie(rec, testSecret, State{Nonce: "n-1234", OAuthState: "s-1234"}, "")
 	if err == nil {
 		t.Fatal("expected error on empty EnvUUID")
 	}
@@ -288,7 +288,7 @@ func TestIssueRejectsEmptyEnv(t *testing.T) {
 // defense in the protocol.
 func TestIssueRejectsEmptyNonce(t *testing.T) {
 	rec := httptest.NewRecorder()
-	err := IssueStateCookie(rec, testSecret, State{EnvUUID: "dev-uuid-1234", OAuthState: "s-1234"})
+	err := IssueStateCookie(rec, testSecret, State{EnvUUID: "dev-uuid-1234", OAuthState: "s-1234"}, "")
 	if err == nil {
 		t.Fatal("expected error on empty Nonce")
 	}
@@ -299,7 +299,7 @@ func TestIssueRejectsEmptyNonce(t *testing.T) {
 // problem. IssueStateCookie must refuse.
 func TestIssueRejectsEmptyOAuthState(t *testing.T) {
 	rec := httptest.NewRecorder()
-	err := IssueStateCookie(rec, testSecret, State{EnvUUID: "dev-uuid-1234", Nonce: "n-1234"})
+	err := IssueStateCookie(rec, testSecret, State{EnvUUID: "dev-uuid-1234", Nonce: "n-1234"}, "")
 	if err == nil {
 		t.Fatal("expected error on empty OAuthState")
 	}
@@ -316,7 +316,7 @@ func TestIssueRejectsAliasedNonceAndOAuthState(t *testing.T) {
 		EnvUUID:    "dev-uuid-1234",
 		Nonce:      same,
 		OAuthState: same,
-	})
+	}, "")
 	if err == nil {
 		t.Fatal("expected error when OAuthState == Nonce (must be independent values)")
 	}
@@ -367,7 +367,7 @@ func TestParseLegacyCookieWithoutOAuthState(t *testing.T) {
 func TestCookieAttributes(t *testing.T) {
 	s := freshState(t)
 	rec := httptest.NewRecorder()
-	if err := IssueStateCookie(rec, testSecret, s); err != nil {
+	if err := IssueStateCookie(rec, testSecret, s, ""); err != nil {
 		t.Fatalf("IssueStateCookie: %v", err)
 	}
 	cookies := rec.Result().Cookies()
@@ -393,8 +393,8 @@ func TestCookieAttributes(t *testing.T) {
 	if c.SameSite != http.SameSiteNoneMode {
 		t.Errorf("SameSite: got %v want None", c.SameSite)
 	}
-	if c.Path != StateCookiePath {
-		t.Errorf("Path: got %q want %q", c.Path, StateCookiePath)
+	if c.Path != StateCookiePath("") {
+		t.Errorf("Path: got %q want %q", c.Path, StateCookiePath(""))
 	}
 	if c.MaxAge != int(StateCookieTTL.Seconds()) {
 		t.Errorf("MaxAge: got %d want %d", c.MaxAge, int(StateCookieTTL.Seconds()))
@@ -406,7 +406,7 @@ func TestCookieAttributes(t *testing.T) {
 // in place because path doesn't match the delete).
 func TestClearStateCookie(t *testing.T) {
 	rec := httptest.NewRecorder()
-	ClearStateCookie(rec)
+	ClearStateCookie(rec, "")
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 {
 		t.Fatalf("expected 1 cookie on clear, got %d", len(cookies))
@@ -415,8 +415,8 @@ func TestClearStateCookie(t *testing.T) {
 	if c.MaxAge != -1 {
 		t.Errorf("MaxAge: got %d want -1", c.MaxAge)
 	}
-	if c.Path != StateCookiePath {
-		t.Errorf("Path: got %q want %q (must match issue path or the delete is a no-op)", c.Path, StateCookiePath)
+	if c.Path != StateCookiePath("") {
+		t.Errorf("Path: got %q want %q (must match issue path or the delete is a no-op)", c.Path, StateCookiePath(""))
 	}
 }
 
@@ -427,5 +427,21 @@ func TestStateIsZero(t *testing.T) {
 	}
 	if (State{EnvUUID: "x"}).IsZero() {
 		t.Error("non-empty State should not be zero")
+	}
+}
+
+// With a public prefix, issue and clear must agree on the prefixed path or the
+// single-use delete silently misses the cookie.
+func TestStateCookiePathUnderBasePath(t *testing.T) {
+	rec := httptest.NewRecorder()
+	s := State{EnvUUID: "dev-uuid-1234", Nonce: "n-1234", OAuthState: "s-1234"}
+	if err := IssueStateCookie(rec, testSecret, s, "/osctrl"); err != nil {
+		t.Fatalf("IssueStateCookie: %v", err)
+	}
+	ClearStateCookie(rec, "/osctrl")
+	for _, c := range rec.Result().Cookies() {
+		if c.Path != "/osctrl/api/v1/auth/" {
+			t.Errorf("Path: got %q want /osctrl/api/v1/auth/", c.Path)
+		}
 	}
 }

@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
 
 export default defineConfig({
+  // Relative asset URLs + <base href> in index.html let one build serve any
+  // URL prefix (set by the web server at deploy time).
+  base: './',
   plugins: [
     react(),
     tailwindcss(),

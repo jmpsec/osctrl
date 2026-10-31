@@ -26,6 +26,7 @@ import { SortableHeader } from '$/components/data/SortableHeader';
 import { CodeEditor } from '$/components/forms/CodeEditor';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { Button } from '$/components/atoms/Button';
+import { appPath } from '$/lib/base-path'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
@@ -405,7 +406,7 @@ function SavedQueryFormModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Save failed');
@@ -525,7 +526,7 @@ function DeleteConfirmModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Delete failed');

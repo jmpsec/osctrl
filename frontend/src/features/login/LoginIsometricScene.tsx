@@ -1,3 +1,5 @@
+import { appPath } from '$/lib/base-path'
+
 /**
  * The login illustration is intentionally reduced to the circuit field.
  * Keeping it as SVG preserves the isometric projection and responsive fade
@@ -54,7 +56,7 @@ export function LoginIsometricScene() {
           patternTransform="matrix(.8 .46 -.8 .46 380 76)"
         >
           <image
-            href="/img/circuit.svg"
+            href={appPath('/img/circuit.svg')}
             width="304"
             height="304"
             filter="url(#login-scene-circuit-tint)"
@@ -76,7 +78,7 @@ export function LoginIsometricScene() {
 
       <image
         className="login-scene-control-tower"
-        href="/img/osquery-control-tower-simple.png"
+        href={appPath('/img/osquery-control-tower-simple.png')}
         x="40"
         y="-6"
         width="680"

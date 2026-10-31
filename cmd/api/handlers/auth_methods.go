@@ -30,7 +30,7 @@ func (h *HandlersApi) AuthMethodsHandler(w http.ResponseWriter, r *http.Request)
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	methods := []AuthMethod{
-		{Type: "password", LoginURL: "/api/v1/login"},
+		{Type: "password", LoginURL: h.pub("/api/v1/login")},
 	}
 	// If the new AuthProviderRegistry is wired, read from it.
 	// This supports multiple OIDC/SAML providers with a selector.
@@ -38,7 +38,7 @@ func (h *HandlersApi) AuthMethodsHandler(w http.ResponseWriter, r *http.Request)
 		for _, p := range h.AuthProviders.AllProviders() {
 			methods = append(methods, AuthMethod{
 				Type:     p.Type,
-				LoginURL: fmt.Sprintf("/api/v1/auth/%s/%d/login", p.Type, p.ID),
+				LoginURL: h.pub(fmt.Sprintf("/api/v1/auth/%s/%d/login", p.Type, p.ID)),
 				Name:     p.Name,
 				ID:       p.ID,
 			})
@@ -48,13 +48,13 @@ func (h *HandlersApi) AuthMethodsHandler(w http.ResponseWriter, r *http.Request)
 		if h.OIDCEnabled {
 			methods = append(methods, AuthMethod{
 				Type:     "oidc",
-				LoginURL: "/api/v1/auth/oidc/login",
+				LoginURL: h.pub("/api/v1/auth/oidc/login"),
 			})
 		}
 		if h.SAMLEnabled {
 			methods = append(methods, AuthMethod{
 				Type:     "saml",
-				LoginURL: "/api/v1/auth/saml/login",
+				LoginURL: h.pub("/api/v1/auth/saml/login"),
 			})
 		}
 	}

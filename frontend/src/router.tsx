@@ -33,6 +33,7 @@ import { alertsRoute } from './routes/_app/alerts'
 import { healthRoute } from './routes/_app/health'
 import { auditRoute } from './routes/_app/audit'
 import { devComponentsRoute } from './routes/dev.components'
+import { basePath } from '$/lib/base-path'
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -72,7 +73,7 @@ const routeTree = rootRoute.addChildren([
   ]),
 ])
 
-export const router = createRouter({ routeTree })
+export const router = createRouter({ routeTree, basepath: basePath || '/' })
 
 declare module '@tanstack/react-router' {
   interface Register {

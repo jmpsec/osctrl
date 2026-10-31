@@ -52,6 +52,7 @@ import { getNodeExtensions } from '$/api/extensions';
 import { NodeFileExplorerTab } from './NodeFileExplorerTab';
 import { NodeVulnerabilitiesTab } from '$/features/vulnerabilities/NodeVulnerabilitiesTab';
 import { recomputePostureScore, controlKey } from './postureScore';
+import { appPath } from '$/lib/base-path'
 
 // NodeHeatmapBucket is the merged per-node activity grid the heatmap renders.
 // status/result/query come from the DB-backed logging buckets (full history,
@@ -1617,7 +1618,7 @@ function RunNodeQueryModal({
     onSuccess: (res) => onStarted(res.query_name),
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Query failed');
@@ -1729,7 +1730,7 @@ function CarveNodeFileModal({
     onSuccess: (res) => onStarted(res.query_name),
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Carve failed');
@@ -1813,7 +1814,7 @@ function TagNodeModal({
     onSuccess: () => onTagged(),
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Tagging failed');
