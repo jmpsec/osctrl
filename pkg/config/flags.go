@@ -699,6 +699,55 @@ func initDBFlags(params *ServiceParameters) []cli.Flag {
 			Sources:     cli.EnvVars("DB_SQLITE_FILEPATH"),
 			Destination: &params.DB.FilePath,
 		},
+		&cli.BoolFlag{
+			Name:        "db-read-enabled",
+			Value:       false,
+			Usage:       "Open a second connection to a read replica for read-heavy, staleness-tolerant queries (dashboard, node lists). Not supported with sqlite",
+			Sources:     cli.EnvVars("DB_READ_ENABLED"),
+			Destination: &params.DB.Read.Enabled,
+		},
+		&cli.StringFlag{
+			Name:        "db-read-host",
+			Usage:       "Read replica host (defaults to the primary host)",
+			Sources:     cli.EnvVars("DB_READ_HOST"),
+			Destination: &params.DB.Read.Host,
+		},
+		&cli.IntFlag{
+			Name:        "db-read-port",
+			Usage:       "Read replica port (defaults to the primary port)",
+			Sources:     cli.EnvVars("DB_READ_PORT"),
+			Destination: &params.DB.Read.Port,
+		},
+		&cli.StringFlag{
+			Name:        "db-read-user",
+			Usage:       "Read replica username (defaults to the primary username)",
+			Sources:     cli.EnvVars("DB_READ_USER"),
+			Destination: &params.DB.Read.Username,
+		},
+		&cli.StringFlag{
+			Name:        "db-read-pass",
+			Usage:       "Read replica password (defaults to the primary password)",
+			Sources:     cli.EnvVars("DB_READ_PASS"),
+			Destination: &params.DB.Read.Password,
+		},
+		&cli.StringFlag{
+			Name:        "db-read-sslmode",
+			Usage:       "Read replica SSL mode (defaults to the primary SSL mode)",
+			Sources:     cli.EnvVars("DB_READ_SSLMODE"),
+			Destination: &params.DB.Read.SSLMode,
+		},
+		&cli.IntFlag{
+			Name:        "db-read-max-idle-conns",
+			Usage:       "Maximum idle connections in the read replica pool (defaults to the primary value)",
+			Sources:     cli.EnvVars("DB_READ_MAX_IDLE_CONNS"),
+			Destination: &params.DB.Read.MaxIdleConns,
+		},
+		&cli.IntFlag{
+			Name:        "db-read-max-open-conns",
+			Usage:       "Maximum open connections to the read replica (defaults to the primary value)",
+			Sources:     cli.EnvVars("DB_READ_MAX_OPEN_CONNS"),
+			Destination: &params.DB.Read.MaxOpenConns,
+		},
 	}
 }
 

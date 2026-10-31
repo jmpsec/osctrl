@@ -33,8 +33,20 @@ type StatsData struct {
 
 // NodeManager to handle all nodes of the system
 type NodeManager struct {
-	DB    *gorm.DB
-	Cache *NodeCache
+	DB *gorm.DB
+	// ReadDB is the optional read-replica connection; nil means none.
+	ReadDB *gorm.DB
+	Cache  *NodeCache
+}
+
+// Replica returns a manager that reads from the read replica, or n itself when
+// none is configured. Use it only for reads that tolerate replication lag
+// (dashboard stats, node lists), never for node-key lookups or in a write flow.
+func (n *NodeManager) Replica() *NodeManager {
+	if n.ReadDB == nil {
+		return n
+	}
+	return &NodeManager{DB: n.ReadDB}
 }
 
 // CreateNodes to initialize the nodes struct and its tables

@@ -198,6 +198,9 @@ func osctrlService() {
 		db, err = backend.CreateDBManager(flagParams.DB)
 		if db != nil {
 			log.Info().Msg("Connection to backend successful!")
+			if db.Read != db.Conn {
+				log.Warn().Msg("Read replica connected, but osctrl-tls routes no reads to it yet")
+			}
 			break
 		}
 		if err != nil {

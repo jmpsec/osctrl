@@ -145,9 +145,20 @@ type QueryReadQueries map[string]string
 
 // Queries to handle on-demand queries
 type Queries struct {
-	DB     *gorm.DB
+	DB *gorm.DB
+	// ReadDB is the optional read-replica connection; nil means none.
+	ReadDB *gorm.DB
 	Cache  *QueryDispatchCache
 	Events events.Publisher
+}
+
+// Replica returns a manager that reads from the read replica, or q itself when
+// none is configured. Use it only for reads that tolerate replication lag.
+func (q *Queries) Replica() *Queries {
+	if q.ReadDB == nil {
+		return q
+	}
+	return &Queries{DB: q.ReadDB}
 }
 
 // CreateQueries to initialize the queries struct

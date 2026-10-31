@@ -153,9 +153,21 @@ type AuditLog struct {
 
 // AuditLogManager for audit logs
 type AuditLogManager struct {
-	DB      *gorm.DB
+	DB *gorm.DB
+	// ReadDB is the optional read-replica connection; nil means none.
+	ReadDB  *gorm.DB
 	Service string
 	Enabled bool
+}
+
+// Replica returns a manager that reads from the read replica, or m itself when
+// none is configured. Use it only for reads that tolerate replication lag; it
+// never records entries.
+func (m *AuditLogManager) Replica() *AuditLogManager {
+	if m.ReadDB == nil {
+		return m
+	}
+	return &AuditLogManager{DB: m.ReadDB, Service: m.Service}
 }
 
 // CreateAuditLogManager to initialize the audit log struct and tables

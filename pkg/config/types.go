@@ -253,6 +253,23 @@ type YAMLConfigurationDB struct {
 	ConnMaxLifetime int    `yaml:"connMaxLifetime"`
 	ConnRetry       int    `yaml:"connRetry"`
 	FilePath        string `yaml:"filePath"` // Used for SQLite
+	// Read is an optional read replica. Off by default; only reads that are
+	// explicitly routed to it (dashboard stats, node lists) use it.
+	Read YAMLConfigurationDBRead `yaml:"read"`
+}
+
+// YAMLConfigurationDBRead configures the optional read-replica connection.
+// Empty fields inherit the primary's value, so usually only Host differs.
+// Type, database name and connection lifetime always follow the primary.
+type YAMLConfigurationDBRead struct {
+	Enabled      bool   `yaml:"enabled"`
+	Host         string `yaml:"host"`
+	Port         int    `yaml:"port"`
+	Username     string `yaml:"username"`
+	Password     string `yaml:"password"`
+	SSLMode      string `yaml:"sslmode"`
+	MaxIdleConns int    `yaml:"maxIdleConns"`
+	MaxOpenConns int    `yaml:"maxOpenConns"`
 }
 
 // YAMLConfigurationRedis to hold all redis configuration values
