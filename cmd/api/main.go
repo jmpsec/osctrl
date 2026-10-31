@@ -637,6 +637,7 @@ func osctrlAPIService() {
 	// features are on (posture.EvidenceSource).
 	if posturemgr != nil && vulnReader != nil {
 		posturemgr.Evidence = vulnReader
+		posturemgr.ReadEvidence = vulnReader.Replica()
 	}
 	vulnCtx, stopVulns := context.WithCancel(context.Background())
 	if vulnWorker != nil {

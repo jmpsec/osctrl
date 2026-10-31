@@ -21,3 +21,18 @@ func TestReplicaKeepsEvidence(t *testing.T) {
 	plain := &PostureManager{DB: primary}
 	assert.Same(t, plain, plain.Replica())
 }
+
+// When a replica-backed evidence source is set, the replica copy uses it, so
+// node-list risk levels read both posture rows and findings from the replica.
+func TestReplicaPrefersReadEvidence(t *testing.T) {
+	type tagged struct {
+		EvidenceSource
+		name string
+	}
+	pm := &PostureManager{DB: &gorm.DB{}, ReadDB: &gorm.DB{},
+		Evidence: tagged{name: "primary"}, ReadEvidence: tagged{name: "replica"}}
+	assert.Equal(t, tagged{name: "replica"}, pm.Replica().Evidence)
+	assert.Equal(t, tagged{name: "primary"}, pm.Evidence)
+	plain := &PostureManager{DB: &gorm.DB{}, ReadEvidence: tagged{name: "replica"}}
+	assert.Same(t, plain, plain.Replica())
+}

@@ -702,7 +702,7 @@ func initDBFlags(params *ServiceParameters) []cli.Flag {
 		&cli.BoolFlag{
 			Name:        "db-read-enabled",
 			Value:       false,
-			Usage:       "Open a second connection to a read replica for read-heavy, staleness-tolerant queries (dashboard, node lists, audit, posture, vulnerabilities). Not supported with sqlite",
+			Usage:       "Open a second connection to a read replica for read-heavy, staleness-tolerant queries (osctrl-api: dashboard, node lists, audit, posture, vulnerabilities; osctrl-tls: alert node scans, osctrld metrics). Not supported with sqlite",
 			Sources:     cli.EnvVars("DB_READ_ENABLED"),
 			Destination: &params.DB.Read.Enabled,
 		},

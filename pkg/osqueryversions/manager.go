@@ -27,6 +27,18 @@ var ErrInUse = errors.New("osquery version is in use by a target or pin")
 // osctrl-api and osctrl-tls through SQL.
 type Manager struct {
 	db *gorm.DB
+	// ReadDB is the optional read-replica connection; nil means none.
+	ReadDB *gorm.DB
+}
+
+// Replica returns a manager that reads from the read replica, or m itself when
+// none is configured. Use it only for reads that tolerate replication lag
+// (metrics), never for targets, pins or rollout decisions.
+func (m *Manager) Replica() *Manager {
+	if m.ReadDB == nil {
+		return m
+	}
+	return &Manager{db: m.ReadDB}
 }
 
 // NewManager migrates the library tables and returns a manager.

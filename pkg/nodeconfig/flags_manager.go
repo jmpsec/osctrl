@@ -38,6 +38,20 @@ func flagsCacheKey(nodeUUID string) string { return "osctrl:nodeflags:" + nodeUU
 // the same cache protocol as Manager in front of the overrides.
 type FlagsManager struct {
 	overrides[FlagsOverride, *FlagsOverride]
+	// ReadDB is the optional read-replica connection; nil means none.
+	ReadDB *gorm.DB
+}
+
+// Replica returns a manager that reads from the read replica, without the
+// cache, or m itself when none is configured. Use it only for reads that
+// tolerate replication lag (metrics), never on the osctrld request path.
+func (m *FlagsManager) Replica() *FlagsManager {
+	if m.ReadDB == nil {
+		return m
+	}
+	r := &FlagsManager{}
+	r.init(m.ReadDB, nil, flagsCacheKey, "node flags")
+	return r
 }
 
 // NewFlagsManager migrates the tables. client may be nil, which disables the cache.

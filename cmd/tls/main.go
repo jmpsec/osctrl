@@ -198,9 +198,6 @@ func osctrlService() {
 		db, err = backend.CreateDBManager(flagParams.DB)
 		if db != nil {
 			log.Info().Msg("Connection to backend successful!")
-			if db.Read != db.Conn {
-				log.Warn().Msg("Read replica connected, but osctrl-tls routes no reads to it yet")
-			}
 			break
 		}
 		if err != nil {
@@ -284,6 +281,17 @@ func osctrlService() {
 		if osqueryVersionsMgr, err = osqueryversions.NewManager(db.Conn); err != nil {
 			log.Fatal().Err(err).Msg("Failed to initialize osquery versions")
 		}
+	}
+	// Read replica: only the reads that explicitly call Replica() use it — the
+	// alert rule node scans and the osctrld Prometheus gauges. The osquery and
+	// osctrld request paths stay on the primary.
+	if db.Read != db.Conn {
+		nodesmgr.ReadDB = db.Read
+		nodeFlagsMgr.ReadDB = db.Read
+		if osqueryVersionsMgr != nil {
+			osqueryVersionsMgr.ReadDB = db.Read
+		}
+		log.Info().Msg("Read replica enabled for alert node scans and osctrld metrics")
 	}
 	var posturemgr *posture.PostureManager
 	if flagParams.Service.PostureEnabled {
@@ -491,10 +499,10 @@ func osctrlService() {
 		log.Info().Msg("Metrics are enabled")
 		// Register Prometheus metrics
 		handlers.RegisterMetrics(prometheus.DefaultRegisterer)
-		prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldDownCollector(nodeFlagsMgr, envs))
+		prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldDownCollector(nodeFlagsMgr.Replica(), envs))
 		if osqueryVersionsMgr != nil {
-			prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldBehindCollector(osqueryVersionsMgr, envs))
-			prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldRolloutPausedCollector(osqueryVersionsMgr, envs))
+			prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldBehindCollector(osqueryVersionsMgr.Replica(), envs))
+			prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldRolloutPausedCollector(osqueryVersionsMgr.Replica(), envs))
 		}
 		cache.RegisterMetrics(prometheus.DefaultRegisterer)
 		if alertsWorker != nil {

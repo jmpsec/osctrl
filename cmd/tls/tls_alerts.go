@@ -51,7 +51,7 @@ func (s *tlsNodeSource) snapshotsByEnv(ctx context.Context, target string) ([]al
 	var out []alerts.NodeSnapshot
 	for _, env := range all {
 		threshold := s.threshold(env.ID)
-		nds, err := s.nodes.GetByEnv(env.Name, target, threshold)
+		nds, err := s.nodes.Replica().GetByEnv(env.Name, target, threshold)
 		if err != nil {
 			continue // one env failing must not drop the others
 		}

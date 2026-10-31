@@ -87,16 +87,24 @@ type PostureManager struct {
 	// collect. osctrl-api wires vulnerability findings here when both
 	// --posture-enabled and --vuln-enabled are on.
 	Evidence EvidenceSource
+	// ReadEvidence is Evidence backed by the read replica, used by Replica().
+	// nil falls back to Evidence.
+	ReadEvidence EvidenceSource
 }
 
 // Replica returns a manager that reads from the read replica, or pm itself
 // when none is configured. Use it only for reads that tolerate replication
-// lag. It keeps Evidence so scores match the primary's.
+// lag. It keeps an evidence source (ReadEvidence when set) so scores match
+// the primary's.
 func (pm *PostureManager) Replica() *PostureManager {
 	if pm.ReadDB == nil {
 		return pm
 	}
-	return &PostureManager{DB: pm.ReadDB, Evidence: pm.Evidence}
+	ev := pm.Evidence
+	if pm.ReadEvidence != nil {
+		ev = pm.ReadEvidence
+	}
+	return &PostureManager{DB: pm.ReadDB, Evidence: ev}
 }
 
 // NewPostureManager creates the manager and auto-migrates the table.

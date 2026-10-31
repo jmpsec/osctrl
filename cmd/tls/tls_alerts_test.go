@@ -98,3 +98,25 @@ func TestTLSFindingSourceListsEscalations(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, got[0].ID, latest)
 }
+
+// Alert rule evaluation scans every node; with a replica it reads node rows
+// from there, while environments and settings stay on the primary.
+func TestTLSNodeSourceReadsNodesFromReplica(t *testing.T) {
+	primary, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	replica, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	nm := nodes.CreateNodes(primary)
+	nodes.CreateNodes(replica)
+	nm.ReadDB = replica
+	s := newTLSNodeSource(nm, settings.NewSettings(primary), environments.CreateEnvironment(primary))
+	e := s.envs.Empty("prod", "prod.example.com")
+	require.NoError(t, s.envs.Create(&e))
+	require.NoError(t, primary.Create(&nodes.OsqueryNode{UUID: "ONLY-PRIMARY", Environment: e.Name, EnvironmentID: e.ID, LastSeen: time.Now()}).Error)
+	require.NoError(t, replica.Create(&nodes.OsqueryNode{UUID: "ON-REPLICA", Environment: e.Name, EnvironmentID: e.ID, LastSeen: time.Now()}).Error)
+
+	active, err := s.ActiveNodes(context.Background())
+	require.NoError(t, err)
+	require.Len(t, active, 1)
+	require.Equal(t, "ON-REPLICA", active[0].UUID)
+}
