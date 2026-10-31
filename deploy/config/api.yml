@@ -177,7 +177,8 @@ db:
   # SQLite database file path when type is sqlite.
   filePath: ./osctrl.db
   # Optional read replica (off by default). Only staleness-tolerant reads are
-  # routed to it; in osctrl-api that is the dashboard and node lists.
+  # routed to it; in osctrl-api that is the dashboard, node lists, node
+  # activity charts, audit log, posture data and vulnerability views.
   # Empty fields inherit the primary's values; not supported with sqlite.
   # Env: DB_READ_ENABLED, DB_READ_HOST, DB_READ_PORT, DB_READ_USER,
   # DB_READ_PASS, DB_READ_SSLMODE, DB_READ_MAX_IDLE_CONNS, DB_READ_MAX_OPEN_CONNS.

@@ -32,9 +32,21 @@ var validStates = map[string]bool{"": true, StateOpen: true, StateResolved: true
 // Reader answers the API's questions. Every query is scoped by environment
 // (or node, which the handler has already checked against the environment).
 type Reader struct {
-	DB         *gorm.DB
+	DB *gorm.DB
+	// ReadDB is the optional read-replica connection; nil means none. DB
+	// stays the primary because RequestSync writes through it.
+	ReadDB     *gorm.DB
 	StaleAfter time.Duration
 	now        func() time.Time
+}
+
+// Replica returns a reader on the read replica, or r itself when none is
+// configured. Use it only for reads that tolerate replication lag.
+func (r *Reader) Replica() *Reader {
+	if r.ReadDB == nil {
+		return r
+	}
+	return &Reader{DB: r.ReadDB, StaleAfter: r.StaleAfter, now: r.now}
 }
 
 // NewReader returns a reader that reports feeds as stale after three missed

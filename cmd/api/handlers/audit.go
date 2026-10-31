@@ -136,7 +136,7 @@ func (h *HandlersApi) AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 		filter.PageSize = 500
 	}
 
-	rows, total, err := h.AuditLog.GetPaged(filter)
+	rows, total, err := h.AuditLog.Replica().GetPaged(filter)
 	if err != nil {
 		apiErrorResponse(w, "error getting audit logs", http.StatusInternalServerError, err)
 		return
