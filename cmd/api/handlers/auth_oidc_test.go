@@ -407,3 +407,19 @@ func TestAuthMethodResponseJSONShape(t *testing.T) {
 		}
 	}
 }
+
+// TestOIDCCallbackRedirectsToBasePathRoot: the failure redirect must land on
+// the prefixed SPA root, not the host root.
+func TestOIDCCallbackRedirectsToBasePathRoot(t *testing.T) {
+	idp := newFakeIdP(t)
+	initOIDCWithFake(t, idp, false)
+	h := newTestHandlers()
+	h.BasePath = "/osctrl"
+
+	w := httptest.NewRecorder()
+	h.OIDCCallbackHandler(w, httptest.NewRequest(http.MethodGet, "/api/v1/auth/oidc/callback?code=x&state=y", nil))
+
+	if got := w.Header().Get("Location"); got != "/osctrl/" {
+		t.Errorf("Location: got %q want /osctrl/", got)
+	}
+}

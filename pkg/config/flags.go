@@ -274,6 +274,13 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Service.TrustedProxies,
 		},
 		&cli.StringFlag{
+			Name:        "base-path",
+			Value:       "",
+			Usage:       "Public URL prefix the SPA and API are served under (e.g. /osctrl). The reverse proxy must strip it before forwarding; it is used for cookie paths, redirects and login URLs. Empty (default) serves at the root.",
+			Sources:     cli.EnvVars("SERVICE_BASE_PATH"),
+			Destination: &params.Service.BasePath,
+		},
+		&cli.StringFlag{
 			Name:        "geoip-db",
 			Value:       "",
 			Usage:       "Path to a MaxMind GeoLite2-Country .mmdb file. When set, node IP addresses are resolved to country codes (shown as flag emojis in the SPA). Empty (default) disables GeoIP entirely.",

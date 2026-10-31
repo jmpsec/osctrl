@@ -117,7 +117,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 				}
 				// 302 is required by http.Redirect; the legacy 403 didn't actually trigger
 				// a redirect in any browser since http.Redirect demands a 3xx status.
-				http.Redirect(w, r, forbiddenPath, http.StatusFound)
+				http.Redirect(w, r, basePath+forbiddenPath, http.StatusFound)
 				return
 			}
 			claims, valid := apiUsers.CheckToken(jwtSecret, token)
@@ -129,7 +129,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 				}
 				// 302 is required by http.Redirect; the legacy 403 didn't actually trigger
 				// a redirect in any browser since http.Redirect demands a 3xx status.
-				http.Redirect(w, r, forbiddenPath, http.StatusFound)
+				http.Redirect(w, r, basePath+forbiddenPath, http.StatusFound)
 				return
 			}
 			// Match the presented token against the user's currently-stored APIToken
@@ -146,7 +146,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 						types.ApiErrorResponse{Error: "unauthorized", Code: "unauthorized"})
 					return
 				}
-				http.Redirect(w, r, forbiddenPath, http.StatusFound)
+				http.Redirect(w, r, basePath+forbiddenPath, http.StatusFound)
 				return
 			}
 			// CSRF guard for cookie-authenticated mutating requests. CLI Bearer

@@ -1,3 +1,4 @@
+import { appPath } from '$/lib/base-path'
 /**
  * Sample / starter library client.
  *
@@ -51,7 +52,7 @@ export interface CarveSample {
  * here, but: belt-and-braces — same pattern as listLoginEnvironments).
  */
 export async function listQuerySamples(): Promise<QuerySample[]> {
-  const res = await fetch('/api/v1/queries/samples', {
+  const res = await fetch(appPath('/api/v1/queries/samples'), {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });
@@ -62,7 +63,7 @@ export async function listQuerySamples(): Promise<QuerySample[]> {
 }
 
 export async function listCarveSamples(): Promise<CarveSample[]> {
-  const res = await fetch('/api/v1/carves/samples', {
+  const res = await fetch(appPath('/api/v1/carves/samples'), {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });

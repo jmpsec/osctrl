@@ -121,6 +121,16 @@ This limitation is also recorded in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ---
 
+## Serving under a URL prefix
+
+When osctrl is served at `https://<host>/osctrl/` instead of the root, set
+`SERVICE_BASE_PATH=/osctrl` on osctrl-api (see `deploy/nginx/frontend.conf` for
+the proxy side). The OIDC redirect URL, the SAML ACS URL and the matching
+callback URLs registered at the IdP must include the prefix, for example
+`https://<host>/osctrl/api/v1/auth/oidc/callback` and
+`https://<host>/osctrl/api/v1/auth/saml/acs`. The prefix is stripped by the
+proxy, so osctrl still routes them as `/api/v1/auth/...`.
+
 ## Username rules
 
 A username may take either of two shapes:

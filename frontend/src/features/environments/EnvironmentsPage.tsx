@@ -19,6 +19,7 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 import { IconPicker, resolveEnvIcon } from '$/components/forms/IconPicker';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { Button } from '$/components/atoms/Button';
+import { appPath } from '$/lib/base-path'
 
 type ModalMode =
   | { kind: 'closed' }
@@ -456,7 +457,7 @@ function CreateEnvModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 409) {
@@ -620,7 +621,7 @@ function EditEnvModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 404) {
@@ -788,7 +789,7 @@ function DeleteEnvModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Delete failed');

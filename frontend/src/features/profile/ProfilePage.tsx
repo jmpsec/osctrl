@@ -25,6 +25,7 @@ import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
 import type { EnvAccess } from '$/api/types';
 import { MFAPanel } from './MFAPanel';
+import { appPath } from '$/lib/base-path'
 
 export function ProfilePage() {
   const { t } = useTranslation();
@@ -92,7 +93,7 @@ export function ProfilePage() {
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setProfileOK(null);
@@ -115,7 +116,7 @@ export function ProfilePage() {
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 403) {
@@ -149,7 +150,7 @@ export function ProfilePage() {
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setTokenMsg(null);
@@ -169,7 +170,7 @@ export function ProfilePage() {
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setTokenMsg(null);

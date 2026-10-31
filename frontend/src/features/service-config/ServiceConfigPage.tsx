@@ -23,6 +23,7 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 import { formatRelative } from '$/lib/time';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { appPath } from '$/lib/base-path'
 
 const SERVICES = ['api', 'tls'] as const;
 type Service = (typeof SERVICES)[number];
@@ -607,7 +608,7 @@ export function ServiceConfigPage() {
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setPersisting(false);
@@ -674,7 +675,7 @@ export function ServiceConfigPage() {
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setRestartStatus(null);
@@ -951,7 +952,7 @@ function ConfigSectionCard({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 409) {
@@ -977,7 +978,7 @@ function ConfigSectionCard({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Release failed');

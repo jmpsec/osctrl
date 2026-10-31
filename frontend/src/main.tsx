@@ -7,6 +7,7 @@ import { loader as monacoLoader } from '@monaco-editor/react'
 import { router } from './router'
 import { primeCsrfFromCookie } from './api/client'
 import './i18n/i18n'
+import { appPath } from '$/lib/base-path'
 
 // Seed the in-memory CSRF token from the osctrl_csrf cookie BEFORE the
 // router runs its beforeLoad guards. Required for the OIDC flow: the
@@ -21,7 +22,7 @@ primeCsrfFromCookie()
 // from cdn.jsdelivr.net which the CSP blocks, breaking every <CodeEditor>.
 // The bytes ship via scripts/copy-monaco.mjs (prebuild) with a SHA-256
 // integrity check against monaco-runtime.sha256.
-monacoLoader.config({ paths: { vs: '/monaco/vs' } })
+monacoLoader.config({ paths: { vs: appPath('/monaco/vs') } })
 
 const ReactQueryDevtools = import.meta.env.DEV
   ? lazy(() =>

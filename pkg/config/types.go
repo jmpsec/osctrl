@@ -223,6 +223,11 @@ type YAMLConfigurationService struct {
 	// Default empty → forwarding headers are ignored and the
 	// connection's RemoteAddr is used.
 	TrustedProxies string `yaml:"trustedProxies"`
+	// BasePath is the public URL prefix the SPA and API are served under
+	// (e.g. "/osctrl"). The reverse proxy strips it before forwarding, so
+	// routes are unchanged; the API only uses it for the paths it emits
+	// (cookie Path, redirects, auth-method login URLs). Empty = root.
+	BasePath string `yaml:"basePath"`
 	// DBHealthCheck enables a background DB liveness monitor.
 	// When true, the service pings the DB every DBHealthInterval
 	// seconds and, after DBHealthThreshold consecutive failures,

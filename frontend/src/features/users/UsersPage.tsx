@@ -27,6 +27,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
 import { Button } from '$/components/atoms/Button';
+import { appPath } from '$/lib/base-path'
 
 type ModalMode =
   | { kind: 'closed' }
@@ -532,7 +533,7 @@ function PermissionsModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 404) {
@@ -563,7 +564,7 @@ function PermissionsModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Bulk apply failed');
@@ -777,7 +778,7 @@ function TokenModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Refresh failed');
@@ -793,7 +794,7 @@ function TokenModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Delete failed');
@@ -954,7 +955,7 @@ function CreateUserModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       // ApiError surfaces the server-side message verbatim
@@ -1097,7 +1098,7 @@ function DeleteUserModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Delete failed');
@@ -1189,7 +1190,7 @@ function ResetPasswordModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Password change failed');

@@ -75,6 +75,12 @@ service:
   # when osctrl-api sits behind a trusted reverse proxy (e.g.
   # `10.0.0.0/8` or `192.0.2.1/32,2001:db8::/64`).
   trustedProxies: ""
+  # Public URL prefix the SPA and API are served under (e.g. "/osctrl"), when
+  # osctrl shares a hostname behind a reverse proxy. The proxy must strip the
+  # prefix before forwarding (see deploy/nginx/frontend.conf); osctrl uses it
+  # only for the paths it sends to the browser (cookie paths, redirects, login
+  # URLs). Empty serves at the root. Env: SERVICE_BASE_PATH.
+  basePath: ""
   # Path to a MaxMind GeoLite2-Country .mmdb file. When set, node IP
   # addresses are resolved to ISO 3166-1 alpha-2 country codes and
   # included in the node API response (shown as flag emojis in the

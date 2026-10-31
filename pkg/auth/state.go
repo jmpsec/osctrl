@@ -21,8 +21,8 @@ const StateCookieName = "osctrl_auth_state"
 // StateCookiePath restricts the cookie scope. Callers must mount the
 // auth routes at this prefix; if they don't, the cookie will not be
 // sent on the callback request and HandleCallback will reject with
-// ErrStateMissing.
-const StateCookiePath = "/api/v1/auth/"
+// ErrStateMissing. basePath is the public URL prefix ("" at the root).
+func StateCookiePath(basePath string) string { return basePath + "/api/v1/auth/" }
 
 // StateCookieTTL is how long a login attempt can be in flight before
 // the state JWT expires. Ten minutes accommodates an MFA prompt + IdP
@@ -99,7 +99,7 @@ type stateClaims struct {
 // with HTTP is not supported by this helper (use the SetSecure override
 // only via the standard library if you really need it for local testing
 // — production code paths must keep Secure=true).
-func IssueStateCookie(w http.ResponseWriter, secret []byte, state State) error {
+func IssueStateCookie(w http.ResponseWriter, secret []byte, state State, basePath string) error {
 	if state.EnvUUID == "" {
 		return fmt.Errorf("auth: IssueStateCookie: empty EnvUUID")
 	}
@@ -161,7 +161,7 @@ func IssueStateCookie(w http.ResponseWriter, secret []byte, state State) error {
 	http.SetCookie(w, &http.Cookie{
 		Name:     StateCookieName,
 		Value:    signed,
-		Path:     StateCookiePath,
+		Path:     StateCookiePath(basePath),
 		MaxAge:   int(StateCookieTTL.Seconds()),
 		HttpOnly: true,
 		Secure:   true,
@@ -250,11 +250,11 @@ func ParseStateCookie(r *http.Request, secret []byte) (State, error) {
 // the callback URL fails (threat T8 / T9 — single-use state). The
 // cookie is set with MaxAge=-1 which the browser interprets as
 // "delete now."
-func ClearStateCookie(w http.ResponseWriter) {
+func ClearStateCookie(w http.ResponseWriter, basePath string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     StateCookieName,
 		Value:    "",
-		Path:     StateCookiePath,
+		Path:     StateCookiePath(basePath),
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   true,

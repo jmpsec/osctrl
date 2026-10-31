@@ -120,6 +120,10 @@ type HandlersApi struct {
 	// bytes the Users manager signs user JWTs with; the auth
 	// state-cookie code uses audience claims to segregate uses.
 	JWTSecret []byte
+	// BasePath is the normalized public URL prefix ("" or "/osctrl"). The
+	// reverse proxy strips it, so routes are unprefixed; it is only added to
+	// paths sent to the browser (cookie Path, redirects, login URLs).
+	BasePath string
 	// OIDCEnabled is the global toggle for federated login on
 	// osctrl-api. When true, /api/v1/auth/methods advertises OIDC
 	// and the OIDC login/callback routes initiate the federated
@@ -444,6 +448,19 @@ func WithJWTSecret(secret []byte) HandlersOption {
 	return func(h *HandlersApi) {
 		h.JWTSecret = secret
 	}
+}
+
+// WithBasePath sets the public URL prefix (already normalized with
+// config.NormalizeBasePath).
+func WithBasePath(p string) HandlersOption {
+	return func(h *HandlersApi) {
+		h.BasePath = p
+	}
+}
+
+// pub prefixes an absolute in-app path with the public base path.
+func (h *HandlersApi) pub(p string) string {
+	return h.BasePath + p
 }
 
 // WithOIDC toggles the global OIDC routes and the

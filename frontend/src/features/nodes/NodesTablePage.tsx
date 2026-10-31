@@ -25,6 +25,7 @@ import { SearchInput } from '$/components/data/SearchInput';
 import { SortableHeader } from '$/components/data/SortableHeader';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { HealthBadge, TagChips } from './nodeSignals';
+import { appPath } from '$/lib/base-path'
 
 const TAG_TYPE_REGULAR = 6; // mirrors pkg/tags.TagTypeTag
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
@@ -1133,7 +1134,7 @@ function TagSelectedNodesModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Tagging failed');

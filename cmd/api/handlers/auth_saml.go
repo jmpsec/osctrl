@@ -140,7 +140,7 @@ func (h *HandlersApi) SAMLLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state.SAMLRequestID = requestID
-	if err := auth.IssueStateCookie(w, h.JWTSecret, state); err != nil {
+	if err := auth.IssueStateCookie(w, h.JWTSecret, state, h.BasePath); err != nil {
 		apiErrorResponse(w, "saml state cookie error", http.StatusInternalServerError, err)
 		return
 	}
@@ -197,10 +197,10 @@ func (h *HandlersApi) SAMLACSHandler(w http.ResponseWriter, r *http.Request) {
 	state, err := auth.ParseStateCookie(r, h.JWTSecret)
 	if err != nil {
 		log.Warn().Err(err).Msg("saml: state cookie missing or invalid")
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, h.pub("/"), http.StatusFound)
 		return
 	}
-	auth.ClearStateCookie(w)
+	auth.ClearStateCookie(w, h.BasePath)
 
 	identity, err := samlProvider.HandleCallback(r.Context(), r, state)
 	if err != nil {
@@ -208,7 +208,7 @@ func (h *HandlersApi) SAMLACSHandler(w http.ResponseWriter, r *http.Request) {
 		// text from the assertion (audit-log poisoning); keep them
 		// at WARN level and never echo to the client.
 		log.Warn().Err(err).Msg("saml: ACS callback rejected")
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, h.pub("/"), http.StatusFound)
 		return
 	}
 
@@ -219,7 +219,7 @@ func (h *HandlersApi) SAMLACSHandler(w http.ResponseWriter, r *http.Request) {
 	}, utils.GetIP(r))
 	if err != nil {
 		log.Warn().Err(err).Str("preferred_username", identity.PreferredUsername).Msg("saml: user resolution failed")
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, h.pub("/"), http.StatusFound)
 		return
 	}
 
@@ -231,7 +231,7 @@ func (h *HandlersApi) SAMLACSHandler(w http.ResponseWriter, r *http.Request) {
 	if h.AuditLog != nil {
 		h.AuditLog.NewLogin(user.Username, utils.GetIP(r))
 	}
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, h.pub("/"), http.StatusFound)
 }
 
 // SAMLMetadataHandler — GET /api/v1/auth/saml/metadata.

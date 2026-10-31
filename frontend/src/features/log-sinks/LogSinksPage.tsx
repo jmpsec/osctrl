@@ -30,6 +30,7 @@ import { Button } from '$/components/atoms/Button';
 import { cn } from '$/lib/cn';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
+import { appPath } from '$/lib/base-path'
 
 const GLOBAL_ENV_ID = 0;
 
@@ -906,7 +907,7 @@ function SinkEditor({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Save failed');

@@ -6,6 +6,7 @@ import { resetEnvironmentInactiveHours, setEnvironmentInactiveHours } from '$/ap
 import { getMe } from '$/api/users';
 import { useInactiveHours, invalidateNodeStatusQueries } from '$/lib/node-status';
 import { buttonClasses } from '$/components/atoms/Button';
+import { appPath } from '$/lib/base-path'
 
 export function InactiveHoursSetting({ env, envUuid }: { env: string; envUuid: string }) {
   const qc = useQueryClient();
@@ -32,7 +33,7 @@ export function InactiveHoursSetting({ env, envUuid }: { env: string; envUuid: s
       await invalidateNodeStatusQueries(qc);
     },
     onError: (error) => {
-      if (error instanceof AuthError) window.location.href = '/login';
+      if (error instanceof AuthError) window.location.href = appPath('/login');
     },
   });
   const error = mutation.error ?? query.error;

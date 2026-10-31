@@ -14,6 +14,7 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 import { IconPicker, resolveTagIcon } from '$/components/forms/IconPicker';
 import { TagChip } from '$/components/data/TagChip';
 import { Button } from '$/components/atoms/Button';
+import { appPath } from '$/lib/base-path'
 
 type ModalMode =
   | { kind: 'closed' }
@@ -450,7 +451,7 @@ function TagFormModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       if (e instanceof ApiError && e.status === 409) {
@@ -601,7 +602,7 @@ function DeleteTagModal({
     },
     onError: (e) => {
       if (e instanceof AuthError) {
-        window.location.href = '/login';
+        window.location.href = appPath('/login');
         return;
       }
       setErr(e instanceof Error ? e.message : 'Delete failed');
