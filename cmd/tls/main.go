@@ -231,15 +231,10 @@ func osctrlService() {
 	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
 
-	// Build EnvCache with Redis-backed cross-process invalidation.
-	// osctrl-api now invalidates the same Redis-backed EnvCache directly
-	// after env mutations so osctrl-tls picks up changes on the next
+	// Shared Redis-backed EnvCache. osctrl-api writes the new row into it
+	// after env mutations, so osctrl-tls picks up changes on the next
 	// request instead of serving stale data for the full TTL.
 	envCache := environments.NewRedisEnvCache(*envs, redis.Client)
-	envCache.SetInvalidationCheck(func(ctx context.Context, uuid string) bool {
-		n, err := redis.Client.Exists(ctx, environments.RedisEnvInvalidatePrefix+uuid).Result()
-		return err == nil && n > 0
-	})
 	log.Info().Msg("Environment cache wired to Redis")
 	// DB health monitor: when enabled, pings the DB on a fixed
 	// interval and switches EnvCache + SettingsCache into stale-serve

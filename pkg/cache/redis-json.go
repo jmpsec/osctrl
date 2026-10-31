@@ -51,6 +51,16 @@ func (c *RedisJSONCache[T]) Set(ctx context.Context, key string, value T, ttl ti
 	return c.client.Set(ctx, c.cacheKey(key), data, ttl).Err()
 }
 
+// SetNX stores a value only if the key does not exist yet, so a cache
+// refill never overwrites a newer write.
+func (c *RedisJSONCache[T]) SetNX(ctx context.Context, key string, value T, ttl time.Duration) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return c.client.SetNX(ctx, c.cacheKey(key), data, ttl).Err()
+}
+
 // GetStale retrieves the cached value ignoring whether it has
 // technically expired. Redis only returns a value if the key still
 // exists; expired keys are deleted by Redis on read or by the
