@@ -10,21 +10,20 @@ import (
 )
 
 const (
-	cacheName                = "environments"
-	redisEnvCacheName        = "osctrl:tls:environment"
-	RedisEnvInvalidatePrefix = "envcache:invalidate:"
+	cacheName         = "environments"
+	redisEnvCacheName = "osctrl:tls:environment"
 	// envCacheTTL is the maximum time a TLSEnvironment can sit in the
 	// EnvCache before the next request refetches from the database.
 	//
 	// osctrl-tls and osctrl-api share this Redis-backed cache across
 	// processes. The TTL bounds the window during which enroll-secret
 	// rotations, env deletions, or config-PATCH changes can be served
-	// stale if Redis invalidation is unavailable.
+	// stale if the writer cannot reach Redis (e.g. osctrl-cli --db).
 	//
-	// 5 minutes: the fallback window if no invalidation signal is
-	// received. With Redis-backed EnvCache invalidation wired in, config
-	// PATCHes are picked up immediately; this TTL only bounds the worst
-	// case. 5m keeps DB load low while limiting staleness.
+	// osctrl-api writes the new row into the cache after each env
+	// mutation (RefreshEnv), so changes are picked up immediately; this
+	// TTL only bounds the worst case. 5m keeps DB load low while
+	// limiting staleness.
 	envCacheTTL = 5 * time.Minute
 	// envCacheDegradedTTL is the TTL used when the DB health monitor
 	// reports the database as degraded. Extending the TTL during a DB
@@ -39,18 +38,11 @@ const (
 // EnvCache provides cached access to TLS environments
 type EnvCache struct {
 	// The cache itself, storing Environment objects
-	cache       *cache.MemoryCache[TLSEnvironment]
-	redisCache  *cache.RedisJSONCache[TLSEnvironment]
-	redisClient *redis.Client
+	cache      *cache.MemoryCache[TLSEnvironment]
+	redisCache *cache.RedisJSONCache[TLSEnvironment]
 
 	// Reference to the environment manager for cache misses
 	envs EnvManager
-
-	// invalidationCheck is called on each GetByUUID. If it returns
-	// true, the cached entry is stale and the env is refetched from
-	// the DB. Set via SetInvalidationCheck for compatibility with
-	// external invalidation signals.
-	invalidationCheck func(ctx context.Context, uuid string) bool
 
 	// dbHealth, when non-nil, gates stale-serve and TTL extension
 	// during DB outages. nil means "no monitor" and the cache behaves
@@ -74,17 +66,9 @@ func NewEnvCache(envs EnvManager) *EnvCache {
 // NewRedisEnvCache creates a Redis-backed environment cache.
 func NewRedisEnvCache(envs EnvManager, client *redis.Client) *EnvCache {
 	return &EnvCache{
-		redisCache:  cache.NewRedisJSONCache[TLSEnvironment](client, redisEnvCacheName),
-		redisClient: client,
-		envs:        envs,
+		redisCache: cache.NewRedisJSONCache[TLSEnvironment](client, redisEnvCacheName),
+		envs:       envs,
 	}
-}
-
-// SetInvalidationCheck wires a callback that is called on each
-// GetByUUID. If the callback returns true, the cached entry is
-// considered stale and the env is refetched from the DB.
-func (ec *EnvCache) SetInvalidationCheck(fn func(ctx context.Context, uuid string) bool) {
-	ec.invalidationCheck = fn
 }
 
 // SetDBHealth wires a DB health monitor. When the monitor reports
@@ -104,16 +88,10 @@ func (ec *EnvCache) SetDBHealth(h backend.DegradedReader) {
 // that already have a cached env row serving requests (config, log,
 // query) for the duration of the outage, bounded by envCacheStaleMaxAge
 // so rotated enroll secrets are not accepted indefinitely.
+//
+// A miss is refilled with SetNX so a reader holding a row it fetched
+// before a concurrent save cannot overwrite the row RefreshEnv wrote.
 func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment, error) {
-	// Check if a cross-process invalidation signal has been received
-	// (e.g., osctrl-api patched the config and set a Redis key).
-	if ec.invalidationCheck != nil && ec.invalidationCheck(ctx, uuid) {
-		ec.InvalidateEnv(ctx, uuid)
-		if ec.redisClient != nil {
-			_ = ec.redisClient.Del(ctx, RedisEnvInvalidatePrefix+uuid).Err()
-		}
-	}
-
 	if ec.redisCache != nil {
 		if env, found, err := ec.redisCache.Get(ctx, uuid); err == nil && found {
 			return env, nil
@@ -134,7 +112,7 @@ func (ec *EnvCache) GetByUUID(ctx context.Context, uuid string) (TLSEnvironment,
 		if ec.dbHealth != nil && ec.dbHealth.IsDegraded() {
 			ttl = envCacheDegradedTTL
 		}
-		_ = ec.redisCache.Set(ctx, uuid, env, ttl)
+		_ = ec.redisCache.SetNX(ctx, uuid, env, ttl)
 		return env, nil
 	}
 
@@ -172,6 +150,22 @@ func (ec *EnvCache) InvalidateEnv(ctx context.Context, uuid string) {
 		return
 	}
 	ec.cache.Delete(ctx, uuid)
+}
+
+// RefreshEnv writes the current DB row into the cache, or drops the
+// entry if the env no longer exists. Callers that mutate env rows
+// SHOULD invoke this after the DB commit. Writing (rather than
+// deleting) the key closes the race where a concurrent GetByUUID
+// fetched the old row before the save and caches it after.
+func (ec *EnvCache) RefreshEnv(ctx context.Context, uuid string) {
+	env, err := ec.envs.GetByUUID(uuid)
+	if err != nil {
+		// ponytail: deletes still just drop the key, so a racing reader can
+		// re-cache a deleted env for one TTL; add a tombstone if that matters.
+		ec.InvalidateEnv(ctx, uuid)
+		return
+	}
+	ec.UpdateEnvInCache(ctx, env)
 }
 
 // InvalidateAll clears the entire cache. Used on bulk operations or

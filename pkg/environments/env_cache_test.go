@@ -104,3 +104,29 @@ func TestEnvCache_SetDBHealthNilIsNoOp(t *testing.T) {
 
 // Compile-time check that *fakeDegradedReader satisfies the interface.
 var _ backend.DegradedReader = (*fakeDegradedReader)(nil)
+
+// TestEnvCache_RefreshEnv verifies that RefreshEnv writes the saved row
+// into the cache, and drops the entry once the env is deleted.
+func TestEnvCache_RefreshEnv(t *testing.T) {
+	db := setupTestDB(t)
+	env := TLSEnvironment{UUID: "uuid-refresh", Name: "old", Hostname: "h.example.com"}
+	require.NoError(t, db.Create(&env).Error)
+
+	ec := NewEnvCache(*CreateEnvironment(db))
+	defer ec.Close()
+	ctx := context.Background()
+
+	_, err := ec.GetByUUID(ctx, "uuid-refresh")
+	require.NoError(t, err)
+
+	require.NoError(t, db.Model(&env).Update("name", "new").Error)
+	ec.RefreshEnv(ctx, "uuid-refresh")
+	cached, found := ec.cache.Get(ctx, "uuid-refresh")
+	require.True(t, found)
+	assert.Equal(t, "new", cached.Name)
+
+	require.NoError(t, db.Delete(&env).Error)
+	ec.RefreshEnv(ctx, "uuid-refresh")
+	_, found = ec.cache.Get(ctx, "uuid-refresh")
+	assert.False(t, found)
+}
