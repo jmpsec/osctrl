@@ -68,17 +68,51 @@ type federatedPolicy struct {
 // whoever controls the IdP's username namespace can claim any same-named
 // local account, admin rows included. Rows already stamped with an
 // AuthSource were created by federated login in the first place, so
-// cross-protocol re-matching (oidc↔saml, same IdP) stays unconditional.
+// cross-protocol re-matching (oidc↔saml, same IdP) is allowed.
+//
+// Threat (federated username reuse): a username is display data the IdP may
+// reassign. Each row is bound per protocol to "<issuer>#<subject>". Login
+// first looks the binding up, so a rename at the IdP keeps the account. A
+// username match only resolves when the row holds this identity's binding or
+// none yet for this protocol; an unbound row is bound on that login (trust on
+// first use, the accepted migration path for rows that predate binding). A
+// row bound to another identity is never handed over.
 func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, policy federatedPolicy, clientIP string) (users.AdminUser, error) {
 	if identity.PreferredUsername == "" {
 		// Defensive — sanitizeUsername in pkg/auth/oidc already
 		// catches empty values, but never trust upstream.
 		return users.AdminUser{}, fmt.Errorf("%w: empty username", ErrAuthUserRejected)
 	}
+	if identity.Subject == "" {
+		return users.AdminUser{}, fmt.Errorf("%w: empty subject", ErrAuthUserRejected)
+	}
+	binding := identity.Issuer + "#" + identity.Subject
+	if bound, err := h.Users.GetByFederatedSubject(policy.authSource, binding); err == nil {
+		return bound, nil
+	}
 	if exists, existing := h.Users.ExistsGet(identity.PreferredUsername); exists {
+		if stored := existing.FederatedSubject(policy.authSource); stored != "" {
+			// Bound to a different identity (the binding lookup above missed).
+			return users.AdminUser{}, fmt.Errorf("%w: username %q is bound to another %s identity",
+				ErrAuthUserRejected, identity.PreferredUsername, policy.authSource)
+		}
 		if existing.AuthSource == "" && !policy.linkLocalAccounts {
 			return users.AdminUser{}, fmt.Errorf("%w: username %q is a local password account; set linkLocalAccounts on the %s provider to let federated login claim it",
 				ErrAuthUserRejected, identity.PreferredUsername, policy.authSource)
+		}
+		ok, err := h.Users.BindFederatedSubject(existing.Username, policy.authSource, binding)
+		if err != nil {
+			return users.AdminUser{}, fmt.Errorf("%w: binding subject: %w", ErrAuthUserRejected, err)
+		}
+		if !ok {
+			return users.AdminUser{}, fmt.Errorf("%w: username %q was bound to another %s identity concurrently",
+				ErrAuthUserRejected, identity.PreferredUsername, policy.authSource)
+		}
+		log.Info().Str("username", existing.Username).Str("auth_source", policy.authSource).
+			Msg("federated login bound an existing account to its IdP subject")
+		if h.AuditLog != nil {
+			h.AuditLog.SettingsAction(existing.Username,
+				fmt.Sprintf("account bound to %s subject on first federated login", policy.authSource), clientIP)
 		}
 		// Two cases reach here and both end with the row stamped for the
 		// protocol that just authenticated:
@@ -141,6 +175,11 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, polic
 	// page can display the right badge. Purely informational; the auth
 	// flow itself doesn't gate on this field.
 	u.AuthSource = policy.authSource
+	if policy.authSource == auth.TypeSAML {
+		u.SAMLSubject = binding
+	} else {
+		u.OIDCSubject = binding
+	}
 	if err := h.Users.Create(u); err != nil {
 		return users.AdminUser{}, fmt.Errorf("%w: create user: %w", ErrAuthUserRejected, err)
 	}

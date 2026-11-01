@@ -72,6 +72,14 @@ func readBody(w http.ResponseWriter, r *http.Request, max int64) ([]byte, error)
 	return body, err
 }
 
+// logTypeLabel bounds the log_type metric label; the node chooses the value.
+func logTypeLabel(logType string) string {
+	if logType == types.ResultLog || logType == types.StatusLog {
+		return logType
+	}
+	return "other"
+}
+
 // isMaxBytesError reports whether err is a body-size cap rejection.
 // Callers that already had their own status-write boilerplate use this
 // to skip the 500 fallthrough when readBody has already written 413.
@@ -140,12 +148,14 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
 		newNode = nodeFromEnroll(t, env, utils.GetIP(r), nodeKey, len(body))
 		// Check if UUID exists already, if so archive node and enroll new node
-		if h.Nodes.CheckByUUIDEnv(t.HostIdentifier, env.Name) {
-			if err := h.Nodes.Archive(t.HostIdentifier, "exists"); err != nil {
+		// Scoped to this environment: the same UUID may be enrolled elsewhere,
+		// and that row must not be touched with this environment's secret.
+		if existing, err := h.Nodes.GetByUUIDEnv(t.HostIdentifier, env.ID); err == nil {
+			if err := h.Nodes.Archive(existing, "exists"); err != nil {
 				log.Err(err).Msg("error archiving node")
 			}
 			// Update existing with new enroll data
-			if err := h.Nodes.UpdateByUUID(newNode, t.HostIdentifier); err != nil {
+			if err := h.Nodes.Update(existing, newNode); err != nil {
 				log.Err(err).Msg("error updating existing node")
 			} else {
 				nodeInvalid = false
@@ -381,7 +391,7 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			results := h.Logs.ProcessLogs(node, t.Data, t.LogType, env.ID, env.Name, utils.GetIP(r), len(body), env.DebugHTTP)
 			duration := time.Since(start).Seconds()
-			logProcessDuration.WithLabelValues(string(env.UUID), t.LogType).Observe(duration)
+			logProcessDuration.WithLabelValues(string(env.UUID), logTypeLabel(t.LogType)).Observe(duration)
 			// Count ERROR-severity status logs into the activity rollup.
 			// Done here rather than at the sink so the counter is identical
 			// whatever logger.type is configured — with an external sink
@@ -828,7 +838,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		initCarve = true
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
-		if err := h.ProcessCarveInit(t, carveSessionID, env.Name); err != nil {
+		if err := h.ProcessCarveInit(t, carveSessionID, env.Name, node); err != nil {
 			log.Err(err).Msg("error procesing carve init")
 			initCarve = false
 		}

@@ -51,6 +51,12 @@ type AdminUser struct {
 	// (an OIDC user with a password set later can log in either
 	// way, by design).
 	AuthSource string
+	// OIDCSubject and SAMLSubject bind the row to one IdP identity per
+	// protocol, as "<issuer>#<subject>". Federated login matches on them, not
+	// on the username, which the IdP may reassign. Empty means not bound yet:
+	// the next login over that protocol binds it.
+	OIDCSubject string `gorm:"column:oidc_subject" json:"-"`
+	SAMLSubject string `gorm:"column:saml_subject" json:"-"`
 	// PreferredLanguage is the UI language the operator picked in
 	// the SPA (BCP-47 base tag, e.g. "en", "es", "pt"). It is
 	// cross-device state: the frontend reconciles its local
@@ -431,6 +437,58 @@ func (m *UserManager) ChangeService(username string, service bool) error {
 		}
 	}
 	return nil
+}
+
+// federatedSubjectColumn maps an auth source to its binding column.
+func federatedSubjectColumn(authSource string) (string, error) {
+	switch authSource {
+	case "oidc":
+		return "oidc_subject", nil
+	case "saml":
+		return "saml_subject", nil
+	}
+	return "", fmt.Errorf("unknown auth source %q", authSource)
+}
+
+// FederatedSubject returns the binding stored for authSource.
+func (u AdminUser) FederatedSubject(authSource string) string {
+	switch authSource {
+	case "oidc":
+		return u.OIDCSubject
+	case "saml":
+		return u.SAMLSubject
+	}
+	return ""
+}
+
+// GetByFederatedSubject returns the user bound to binding for authSource.
+func (m *UserManager) GetByFederatedSubject(authSource, binding string) (AdminUser, error) {
+	var user AdminUser
+	col, err := federatedSubjectColumn(authSource)
+	if err != nil {
+		return user, err
+	}
+	err = m.DB.Where(col+" = ?", binding).First(&user).Error
+	return user, err
+}
+
+// BindFederatedSubject binds username to binding for authSource if the row is
+// not bound yet. It reports whether the row now holds binding, so of two
+// concurrent first logins only one identity wins.
+func (m *UserManager) BindFederatedSubject(username, authSource, binding string) (bool, error) {
+	col, err := federatedSubjectColumn(authSource)
+	if err != nil {
+		return false, err
+	}
+	if err := m.DB.Model(&AdminUser{}).Where("username = ? AND "+col+" = ?", username, "").
+		Update(col, binding).Error; err != nil {
+		return false, err
+	}
+	user, err := m.Get(username)
+	if err != nil {
+		return false, err
+	}
+	return user.FederatedSubject(authSource) == binding, nil
 }
 
 // ChangeAuthSource to modify the auth_source for a user

@@ -307,37 +307,43 @@ func (h *HandlersApi) DeleteNodeHandler(w http.ResponseWriter, r *http.Request) 
 		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
 		return
 	}
-	if err := h.Nodes.ArchiveDeleteByUUID(n.UUID); err != nil {
-		if err.Error() == "record not found" {
-			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
-		} else {
-			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
-		}
+	if err := h.Nodes.ArchiveDelete(node); err != nil {
+		apiErrorResponse(w, "error deleting node", http.StatusInternalServerError, err)
 		return
 	}
-	// The node is gone either way; a leftover override is logged, not fatal.
-	if err := h.NodeConfig.Delete(context.WithoutCancel(r.Context()), node.UUID); err != nil {
-		log.Err(err).Msgf("error removing config override of deleted node %s", node.UUID)
-	}
-	if h.FlagsOverrides != nil {
-		if err := errors.Join(h.FlagsOverrides.Delete(context.WithoutCancel(r.Context()), node.UUID), h.FlagsOverrides.DeleteStatus(node.UUID)); err != nil {
-			log.Err(err).Msgf("error removing flags override of deleted node %s", node.UUID)
-		}
-	}
-	if h.Extensions != nil {
-		if err := h.Extensions.DeleteNode(node.UUID); err != nil {
-			log.Err(err).Msgf("error removing extensions of deleted node %s", node.UUID)
-		}
-	}
-	if h.OsqueryVersions != nil {
-		if err := h.OsqueryVersions.DeleteNodeRecords(node.UUID); err != nil {
-			log.Err(err).Msgf("error removing osquery pin of deleted node %s", node.UUID)
-		}
+	// Overrides, extensions and pins are keyed by UUID alone. If the same UUID
+	// is still enrolled in another environment they may be that node's, so
+	// leave them; the ones that belonged to this node are inert without it.
+	if !h.Nodes.CheckByUUID(node.UUID) {
+		h.deleteNodeRows(context.WithoutCancel(r.Context()), node.UUID)
 	}
 	log.Debug().Msgf("Deleted node %s", n.UUID)
 	h.AuditLog.NodeAction(ctx[ctxUser], "deleted node "+n.UUID, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	// Serialize and serve JSON
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiGenericResponse{Message: "node deleted"})
+}
+
+// deleteNodeRows removes the per-UUID rows of a deleted node. The node is gone
+// either way; a leftover row is logged, not fatal.
+func (h *HandlersApi) deleteNodeRows(ctx context.Context, uuid string) {
+	if err := h.NodeConfig.Delete(ctx, uuid); err != nil {
+		log.Err(err).Msgf("error removing config override of deleted node %s", uuid)
+	}
+	if h.FlagsOverrides != nil {
+		if err := errors.Join(h.FlagsOverrides.Delete(ctx, uuid), h.FlagsOverrides.DeleteStatus(uuid)); err != nil {
+			log.Err(err).Msgf("error removing flags override of deleted node %s", uuid)
+		}
+	}
+	if h.Extensions != nil {
+		if err := h.Extensions.DeleteNode(uuid); err != nil {
+			log.Err(err).Msgf("error removing extensions of deleted node %s", uuid)
+		}
+	}
+	if h.OsqueryVersions != nil {
+		if err := h.OsqueryVersions.DeleteNodeRecords(uuid); err != nil {
+			log.Err(err).Msgf("error removing osquery pin of deleted node %s", uuid)
+		}
+	}
 }
 
 // TagNodeHandler - POST Handler to tag a node

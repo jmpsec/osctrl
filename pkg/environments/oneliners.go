@@ -2,6 +2,12 @@ package environments
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"strings"
 	"text/template"
@@ -52,15 +58,57 @@ var validScript = map[string]bool{
 	RemovePowershell: true,
 }
 
-// PrepareOneLiner generic to generate  one-liners
+// pinnedTLS returns the one-liner fragment that trusts only the certificates
+// stored in the environment: the server's leaf must be one of them. It is used
+// instead of disabling verification, since the script it fetches is executed.
+// curl checks --pinnedpubkey even with -k; the PowerShell callback compares the
+// SHA-256 of the presented certificate.
+func pinnedTLS(certPEM, target string) (string, error) {
+	var spki, raw []string
+	rest := []byte(certPEM)
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" {
+			continue
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("parsing environment certificate: %w", err)
+		}
+		k := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
+		spki = append(spki, "sha256//"+base64.StdEncoding.EncodeToString(k[:]))
+		c := sha256.Sum256(cert.Raw)
+		raw = append(raw, "'"+strings.ToUpper(hex.EncodeToString(c[:]))+"'")
+	}
+	if len(spki) == 0 {
+		return "", errors.New("environment certificate has no PEM certificate")
+	}
+	if strings.HasSuffix(target, ShellTarget) {
+		return InsecureShellTLS + " --pinnedpubkey '" + strings.Join(spki, ";") + "'", nil
+	}
+	return "[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {param($s,$c) @(" + strings.Join(raw, ",") +
+		") -contains ([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($c.GetRawCertData())) -replace '-','')};", nil
+}
+
+// PrepareOneLiner generic to generate  one-liners. insecure disables server
+// verification and must only come from an explicit operator opt-in; an
+// environment certificate is pinned instead.
 func PrepareOneLiner(oneliner string, insecure bool, environment TLSEnvironment, target string) (string, error) {
-	// Determine if insecure TLS is on
 	insecureTLS := ""
 	if insecure {
 		if strings.HasSuffix(target, ShellTarget) {
 			insecureTLS = InsecureShellTLS
 		} else if strings.HasSuffix(target, PowershellTarget) {
 			insecureTLS = InsecurePowershellTLS
+		}
+	} else if environment.Certificate != "" && (strings.HasSuffix(target, ShellTarget) || strings.HasSuffix(target, PowershellTarget)) {
+		var err error
+		if insecureTLS, err = pinnedTLS(environment.Certificate, target); err != nil {
+			return "", err
 		}
 	}
 	// Determine if this is to enroll or remove

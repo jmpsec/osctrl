@@ -86,6 +86,10 @@ type ResolvedIdentity struct {
 	// preserve identity across renames MUST use Subject.
 	Subject string
 
+	// Issuer identifies the IdP that issued Subject (OIDC `iss`, SAML
+	// assertion Issuer). Subject is only unique within its issuer.
+	Issuer string
+
 	// PreferredUsername is what the user sees and types. Defaults to
 	// the OIDC `preferred_username` claim; configurable per-provider
 	// to fall back to email or sub. Used as the AdminUser.Username

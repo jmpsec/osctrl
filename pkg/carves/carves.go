@@ -129,24 +129,27 @@ func (c *Carves) CreateCarve(carve CarvedFile) error {
 	return c.DB.Create(&carve).Error // can be nil or err
 }
 
-// InitCarve to initialize an scheduled carve
-func (c *Carves) InitCarve(req types.CarveInitRequest, sessionid string) error {
-	carves, err := c.GetByRequest(req.RequestID)
-	if err != nil {
-		return fmt.Errorf("getCarveByRequest %w", err)
-	}
-	for _, carve := range carves {
-		toUpdate := map[string]interface{}{
+// InitCarve initializes the one scheduled carve that the requesting node owns:
+// matched by carve_id and request_id, scoped to the node and its environment,
+// and only while still scheduled. A request_id alone is shared by every node
+// the carve query targeted, so it must never select the row by itself.
+func (c *Carves) InitCarve(req types.CarveInitRequest, sessionid string, nodeID, envID uint) error {
+	res := c.DB.Model(&CarvedFile{}).
+		Where("carve_id = ? AND request_id = ? AND node_id = ? AND environment_id = ? AND status = ?",
+			req.CarveID, req.RequestID, nodeID, envID, StatusScheduled).
+		Updates(map[string]interface{}{
 			"carve_size":   req.CarveSize,
 			"total_blocks": req.BlockCount,
 			"block_size":   req.BlockSize,
 			"session_id":   sessionid,
 			"status":       StatusInProgress,
 			"carver":       c.Carver,
-		}
-		if err := c.DB.Model(&carve).Updates(toUpdate).Error; err != nil {
-			return err
-		}
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return fmt.Errorf("no scheduled carve %s for request %s on this node", req.CarveID, req.RequestID)
 	}
 	return nil
 }
@@ -252,15 +255,6 @@ func (c *Carves) GetBySession(sessionid string) (CarvedFile, error) {
 		return carve, err
 	}
 	return carve, nil
-}
-
-// GetByRequest to get a carve by request_id
-func (c *Carves) GetByRequest(requestid string) ([]CarvedFile, error) {
-	var carves []CarvedFile
-	if err := c.DB.Where("request_id = ?", requestid).Find(&carves).Error; err != nil {
-		return carves, err
-	}
-	return carves, nil
 }
 
 // GetBlocks to get a carve by session_id and ordered by block_id
