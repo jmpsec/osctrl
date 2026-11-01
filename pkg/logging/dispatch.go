@@ -16,7 +16,7 @@ import (
 //
 // node is the authenticated sender: its metadata is updated and its UUID is
 // what the exporters file the batch under.
-func (l *LoggerTLS) DispatchLogs(data []byte, node nodes.OsqueryNode, logType string, envID uint, environment string, metadata nodes.NodeMetadata, debug bool) {
+func (l *LoggerTLS) DispatchLogs(data []byte, node nodes.OsqueryNode, logType string, envID uint, environment string, metadata nodes.NodeMetadata, debug bool) error {
 	// Use metadata to update record
 	if err := l.Nodes.UpdateMetadata(node.ID, metadata); err != nil {
 		log.Err(err).Msg("error updating metadata")
@@ -24,7 +24,7 @@ func (l *LoggerTLS) DispatchLogs(data []byte, node nodes.OsqueryNode, logType st
 	if debug {
 		log.Debug().Msgf("dispatching logs to %s", l.Logging)
 	}
-	l.LogWithEnv(logType, data, envID, environment, node.UUID, debug)
+	return l.LogWithEnv(logType, data, envID, environment, node.UUID, debug)
 }
 
 // DispatchQueries - Helper to dispatch queries. Uses the node's

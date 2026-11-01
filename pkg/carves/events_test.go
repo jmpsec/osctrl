@@ -22,6 +22,7 @@ func TestCarveNotificationsFollowSuccessfulPersistence(t *testing.T) {
 	c.Events = recorder
 	file := CarvedFile{EnvironmentID: 1, QueryName: "carve-query", SessionID: "session"}
 	require.NoError(t, c.CreateCarve(file))
+	require.NoError(t, db.Create(&CarvedBlock{SessionID: file.SessionID, BlockID: 0}).Error)
 	require.NoError(t, c.CompleteBlock(file.SessionID))
 	require.NoError(t, c.ChangeStatus(StatusCompleted, file.SessionID))
 	stored, err := c.GetBySession(file.SessionID)

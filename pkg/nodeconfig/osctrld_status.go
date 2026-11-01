@@ -96,6 +96,21 @@ type OsctrldStatus struct {
 // TableName keeps the table name stable.
 func (OsctrldStatus) TableName() string { return "node_osctrld_status" }
 
+// OsctrldEvent records each rollback event id the first time a node reports
+// it. The status row keeps only the latest id per kind, so without this an
+// older event replayed after a newer one would look new again and get a
+// fresh server time.
+type OsctrldEvent struct {
+	ID          uint   `gorm:"primarykey"`
+	NodeUUID    string `gorm:"uniqueIndex:idx_osctrld_event;size:255"`
+	Kind        string `gorm:"uniqueIndex:idx_osctrld_event;size:16"`
+	EventID     string `gorm:"uniqueIndex:idx_osctrld_event;size:64"`
+	FirstSeenAt time.Time
+}
+
+// TableName keeps the table name stable.
+func (OsctrldEvent) TableName() string { return "node_osctrld_events" }
+
 // RecordFetch upserts the node's osctrld status. A nil apply keeps the
 // previously reported apply fields.
 func (m *FlagsManager) RecordFetch(nodeUUID string, envID uint, at time.Time, apply *types.OsctrldApplyStatus) error {
@@ -135,14 +150,17 @@ func (m *FlagsManager) Status(nodeUUID string) (*OsctrldStatus, error) {
 
 // DeleteStatus hard-deletes the node's osctrld status.
 func (m *FlagsManager) DeleteStatus(nodeUUID string) error {
-	return m.db.Unscoped().Where("node_uuid = ?", nodeUUID).Delete(&OsctrldStatus{}).Error
+	return errors.Join(
+		m.db.Unscoped().Where("node_uuid = ?", nodeUUID).Delete(&OsctrldStatus{}).Error,
+		m.db.Where("node_uuid = ?", nodeUUID).Delete(&OsctrldEvent{}).Error)
 }
 
 // RecordReport stores an osctrld health report. A kind (flags/extensions) with
 // an invalid stage or event id is dropped, keeping its stored values; so is an
 // invalid upgrade result. A rejected upgrade reports the kind "upgrade". It
-// returns the kinds whose non-none event id was not seen before; the
-// compare-and-set on the event id column counts an event once across replicas.
+// returns the kinds whose non-none event id was not seen before for the node;
+// each event is counted once across replicas, and a replayed older event
+// neither counts again nor becomes the node's latest event.
 func (m *FlagsManager) RecordReport(nodeUUID string, envID uint, r types.OsctrldStatusRequest, at time.Time) ([]string, error) {
 	running := r.OsqueryRunning
 	row := OsctrldStatus{NodeUUID: nodeUUID, EnvironmentID: envID, OsqueryRunning: &running, ReportedAt: &at}
@@ -195,13 +213,28 @@ func (m *FlagsManager) RecordReport(nodeUUID string, envID uint, r types.Osctrld
 	var newEvents []string
 	for _, kind := range fresh {
 		id := eventIDs[kind]
-		res := m.db.Model(&OsctrldStatus{}).
-			Where("node_uuid = ? AND ("+kind+"_event_id IS NULL OR "+kind+"_event_id <> ?)", nodeUUID, id).
-			Updates(eventUpdate(kind, id, at))
-		if res.Error != nil {
-			return newEvents, res.Error
+		// The insert is the compare-and-set: it succeeds once per node, kind
+		// and event id across replicas, and a replay keeps the first-seen time.
+		// It commits with the status update, so a failed update is retried.
+		isNew := false
+		err := m.db.Transaction(func(tx *gorm.DB) error {
+			res := tx.Clauses(clause.OnConflict{DoNothing: true}).
+				Create(&OsctrldEvent{NodeUUID: nodeUUID, Kind: kind, EventID: id, FirstSeenAt: at})
+			if res.Error != nil || res.RowsAffected == 0 {
+				return res.Error
+			}
+			// The column check also covers events stored before this table
+			// existed: the node's latest event is already in the status row.
+			upd := tx.Model(&OsctrldStatus{}).
+				Where("node_uuid = ? AND ("+kind+"_event_id IS NULL OR "+kind+"_event_id <> ?)", nodeUUID, id).
+				Updates(eventUpdate(kind, id, at))
+			isNew = upd.RowsAffected == 1
+			return upd.Error
+		})
+		if err != nil {
+			return newEvents, err
 		}
-		if res.RowsAffected == 1 {
+		if isNew {
 			newEvents = append(newEvents, kind)
 		}
 	}

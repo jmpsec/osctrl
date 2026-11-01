@@ -121,7 +121,7 @@ func (h *HandlersApi) LoginMFAHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req MFALoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&req); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}
@@ -180,7 +180,7 @@ func (h *HandlersApi) LoginMFAWebAuthnBeginHandler(w http.ResponseWriter, r *htt
 		return
 	}
 	var req MFAWebAuthnRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&req); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}
@@ -230,7 +230,7 @@ func (h *HandlersApi) LoginMFAWebAuthnFinishHandler(w http.ResponseWriter, r *ht
 		return
 	}
 	var req MFAWebAuthnRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&req); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}
@@ -281,7 +281,7 @@ func (h *HandlersApi) LoginMFAEnrollBeginHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	var req MFAEnrollRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&req); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}
@@ -335,7 +335,7 @@ func (h *HandlersApi) LoginMFAEnrollFinishHandler(w http.ResponseWriter, r *http
 		return
 	}
 	var req MFAEnrollRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&req); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}

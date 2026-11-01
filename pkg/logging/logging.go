@@ -161,20 +161,22 @@ func (logTLS *LoggerTLS) QueryLog(logType string, data []byte, environment, uuid
 // resolves the exporter set for the given environment and forwards the
 // payload. envID is the numeric environment ID (env.ID); the string
 // environment name is carried alongside for exporter metadata.
-func (logTLS *LoggerTLS) LogWithEnv(logType string, data []byte, envID uint, environment, uuid string, debug bool) {
-	logTLS.logWithEnv(logType, data, environment, uuid, "", 0, debug, false, envID)
+func (logTLS *LoggerTLS) LogWithEnv(logType string, data []byte, envID uint, environment, uuid string, debug bool) error {
+	return logTLS.logWithEnv(logType, data, environment, uuid, "", 0, debug, false, envID)
 }
 
 // QueryLogWithEnv is the env-scoped dispatch for on-demand query
 // results. See LogWithEnv for the envID semantics.
-func (logTLS *LoggerTLS) QueryLogWithEnv(logType string, data []byte, envID uint, environment, uuid, name string, status int, debug bool) {
-	logTLS.logWithEnv(logType, data, environment, uuid, name, status, debug, true, envID)
+func (logTLS *LoggerTLS) QueryLogWithEnv(logType string, data []byte, envID uint, environment, uuid, name string, status int, debug bool) error {
+	return logTLS.logWithEnv(logType, data, environment, uuid, name, status, debug, true, envID)
 }
 
-func (logTLS *LoggerTLS) logWithEnv(logType string, data []byte, environment, uuid, name string, status int, debug, isQuery bool, envIDs ...uint) {
+// logWithEnv returns the joined errors of the exporters that failed; an
+// exporter that only forwards (Splunk, Kafka, ...) reports none.
+func (logTLS *LoggerTLS) logWithEnv(logType string, data []byte, environment, uuid, name string, status int, debug, isQuery bool, envIDs ...uint) error {
 	if logTLS == nil {
 		log.Warn().Str("type", logType).Msg("no osquery data exporters configured (LoggerTLS is nil)")
-		return
+		return nil
 	}
 	var envID uint
 	if len(envIDs) > 0 {
@@ -183,7 +185,7 @@ func (logTLS *LoggerTLS) logWithEnv(logType string, data []byte, environment, uu
 	exporters := logTLS.ExportersFor(envID)
 	if exporters == nil {
 		log.Warn().Str("type", logType).Uint("env_id", envID).Msg("no osquery data exporters configured for environment")
-		return
+		return nil
 	}
 	params := ExportParams{
 		Environment: environment,
@@ -198,5 +200,7 @@ func (logTLS *LoggerTLS) logWithEnv(logType string, data []byte, environment, uu
 		} else {
 			log.Err(err).Str("type", logType).Msg("one or more osquery data exporters failed")
 		}
+		return err
 	}
+	return nil
 }

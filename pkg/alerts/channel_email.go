@@ -123,6 +123,11 @@ func smtpSend(addr string, auth smtp.Auth, from string, to []string, msg []byte)
 		return err
 	}
 	defer func() { _ = conn.Close() }()
+	// One deadline for the whole exchange, deferred QUIT included: a relay
+	// that stops answering must not hold an alert worker forever.
+	if err := conn.SetDeadline(time.Now().Add(smtpTimeout)); err != nil {
+		return fmt.Errorf("smtp deadline: %w", err)
+	}
 	client, err := smtp.NewClient(conn, host)
 	if err != nil {
 		return fmt.Errorf("smtp client: %w", err)
@@ -170,7 +175,10 @@ func tlsOrPlainDial(addr string, implicitTLS bool) (net.Conn, error) {
 		if err != nil {
 			return nil, err
 		}
-		return tls.Dial("tcp", addr, &tls.Config{ServerName: host})
+		return tls.DialWithDialer(&net.Dialer{Timeout: smtpTimeout}, "tcp", addr, &tls.Config{ServerName: host})
 	}
-	return net.Dial("tcp", addr)
+	return net.DialTimeout("tcp", addr, smtpTimeout)
 }
+
+// smtpTimeout bounds dialing and, separately, the whole SMTP exchange.
+var smtpTimeout = 60 * time.Second

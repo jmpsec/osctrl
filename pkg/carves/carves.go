@@ -2,6 +2,7 @@ package carves
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Support for undocumented file carving API
@@ -203,10 +205,11 @@ func (c *Carves) CreateBlock(block CarvedBlock, uuid, data string) error {
 		return c.DB.Create(&block).Error // can be nil or err
 	case config.CarverS3:
 		if c.S3 != nil {
-			if err := c.DB.Create(&block).Error; err != nil {
+			// Upload first: the row is what marks the block as received.
+			if err := c.S3.Upload(block, uuid, data); err != nil {
 				return err
 			}
-			return c.S3.Upload(block, uuid, data)
+			return c.DB.Create(&block).Error
 		}
 		return fmt.Errorf("s3 carver not initialized")
 	}
@@ -251,7 +254,12 @@ func (c *Carves) GetByCarve(carveid string) (CarvedFile, error) {
 // GetBySession to get a carve by session_id
 func (c *Carves) GetBySession(sessionid string) (CarvedFile, error) {
 	var carve CarvedFile
-	if err := c.DB.Where("session_id = ?", sessionid).Find(&carve).Error; err != nil {
+	// Scheduled carves have no session yet; an empty session_id would
+	// otherwise select one of them and skip the init capability.
+	if sessionid == "" {
+		return carve, errors.New("empty session_id")
+	}
+	if err := c.DB.Where("session_id = ?", sessionid).First(&carve).Error; err != nil {
 		return carve, err
 	}
 	return carve, nil
@@ -260,10 +268,18 @@ func (c *Carves) GetBySession(sessionid string) (CarvedFile, error) {
 // GetBlocks to get a carve by session_id and ordered by block_id
 func (c *Carves) GetBlocks(sessionid string) ([]CarvedBlock, error) {
 	var blocks []CarvedBlock
-	if err := c.DB.Where("session_id = ?", sessionid).Order("block_id").Find(&blocks).Error; err != nil {
+	if err := c.DB.Where("session_id = ?", sessionid).Order("block_id, id").Find(&blocks).Error; err != nil {
 		return blocks, err
 	}
-	return blocks, nil
+	// Keep the first copy of each block: rows stored before duplicate
+	// blocks were rejected must not be written twice into the file.
+	out := blocks[:0]
+	for i, b := range blocks {
+		if i == 0 || b.BlockID != blocks[i-1].BlockID {
+			out = append(out, b)
+		}
+	}
+	return out, nil
 }
 
 // GetByQuery to get a carve by query name
@@ -336,17 +352,78 @@ func (c *Carves) ChangeStatus(status, sessionid string) error {
 	return nil
 }
 
-// CompleteBlock to increase one block for a carve
+// StoreBlock validates one block against its in-progress carve and persists
+// it. A block already stored for the session is acknowledged without storing
+// it again, so a retried upload is idempotent.
+func (c *Carves) StoreBlock(carve CarvedFile, env, uuid string, req types.CarveBlockRequest) error {
+	if carve.Status != StatusInProgress {
+		return fmt.Errorf("%w: carve %s is %s", ErrBlockRejected, carve.SessionID, carve.Status)
+	}
+	if req.BlockID < 0 || req.BlockID >= carve.TotalBlocks {
+		return fmt.Errorf("%w: block %d outside 0..%d", ErrBlockRejected, req.BlockID, carve.TotalBlocks-1)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(req.Data)
+	if err != nil {
+		return fmt.Errorf("%w: block %d is not base64: %w", ErrBlockRejected, req.BlockID, err)
+	}
+	if len(decoded) > carve.BlockSize {
+		return fmt.Errorf("%w: block %d is %d bytes, block size is %d", ErrBlockRejected, req.BlockID, len(decoded), carve.BlockSize)
+	}
+	var stored int64
+	if err := c.DB.Model(&CarvedBlock{}).Where("session_id = ? AND block_id = ?", carve.SessionID, req.BlockID).Count(&stored).Error; err != nil {
+		return err
+	}
+	if stored > 0 {
+		return nil
+	}
+	// ponytail: two concurrent copies of one block can both pass the check;
+	// GetBlocks and the distinct count ignore the extra row. A unique
+	// (session_id, block_id) index would close it but fails to build on
+	// tables that already hold duplicates.
+	return c.CreateBlock(c.InitateBlock(env, uuid, req.RequestID, carve.SessionID, req.Data, req.BlockID, carve.EnvironmentID), uuid, req.Data)
+}
+
+// ErrBlockRejected means a carve block failed validation; the caller must
+// not acknowledge it.
+var ErrBlockRejected = errors.New("carve block rejected")
+
+// distinctBlocks counts the distinct blocks stored for a session.
+func distinctBlocks(sessionid string) clause.Expr {
+	return gorm.Expr("(SELECT COUNT(DISTINCT block_id) FROM carved_blocks WHERE session_id = ? AND deleted_at IS NULL)", sessionid)
+}
+
+// CompleteBlock refreshes the carve's completed_blocks from the distinct
+// blocks stored, rather than incrementing it: concurrent workers and
+// duplicate blocks cannot skew it.
 func (c *Carves) CompleteBlock(sessionid string) error {
 	carve, err := c.GetBySession(sessionid)
 	if err != nil {
 		return fmt.Errorf("getCarveBySessionID %w", err)
 	}
-	if err := c.DB.Model(&carve).Update("completed_blocks", carve.CompletedBlocks+1).Error; err != nil {
+	if err := c.DB.Model(&carve).Update("completed_blocks", distinctBlocks(sessionid)).Error; err != nil {
 		return fmt.Errorf("update %w", err)
 	}
 	c.notifyChange(carve)
 	return nil
+}
+
+// ClaimCompletion marks an in-progress carve completed once every declared
+// block is stored. It reports true to exactly one caller, which then owns
+// finalization (archive, query sync, events).
+func (c *Carves) ClaimCompletion(sessionid string) (bool, error) {
+	res := c.DB.Model(&CarvedFile{}).
+		Where("session_id = ? AND status = ? AND total_blocks = ?", sessionid, StatusInProgress, distinctBlocks(sessionid)).
+		Updates(map[string]interface{}{"status": StatusCompleted, "completed_at": time.Now(), "completed_blocks": gorm.Expr("total_blocks")})
+	if res.Error != nil {
+		return false, res.Error
+	}
+	if res.RowsAffected == 0 {
+		return false, nil
+	}
+	if carve, err := c.GetBySession(sessionid); err == nil {
+		c.notifyChange(carve)
+	}
+	return true, nil
 }
 
 // ArchiveCarve to mark one carve as archived and set the received file
@@ -363,16 +440,6 @@ func (c *Carves) ArchiveCarve(sessionid, archive string) error {
 		return fmt.Errorf("update %w", err)
 	}
 	return nil
-}
-
-// Completed to check if a carve is completed
-// FIXME return error maybe?
-func (c *Carves) Completed(sessionid string) bool {
-	carve, err := c.GetBySession(sessionid)
-	if err != nil {
-		return false
-	}
-	return (carve.TotalBlocks == carve.CompletedBlocks)
 }
 
 // Archive to convert finalize a completed carve and create a file ready to download

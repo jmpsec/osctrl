@@ -14,6 +14,15 @@ import (
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
+const (
+	// authMaxBody caps login and MFA request bodies, which are anonymous or
+	// pre-session; WebAuthn payloads are the largest at a few KiB.
+	authMaxBody = 64 << 10
+	// maxLoginUsername and maxLoginPassword bound login fields.
+	maxLoginUsername = 256
+	maxLoginPassword = 1024
+)
+
 // LoginHandler - POST Handler for API login request
 //
 // Registered on both POST /api/v1/login and POST /api/v1/login/{env}.
@@ -48,8 +57,14 @@ func (h *HandlersApi) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var l types.ApiLoginRequest
 	// Parse request JSON body
-	if err := json.NewDecoder(r.Body).Decode(&l); err != nil {
-		apiErrorResponse(w, "error parsing POST body", http.StatusInternalServerError, err)
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&l); err != nil {
+		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
+		return
+	}
+	// Anonymous input: bound it before the credential lookup, bcrypt and
+	// the failed-login audit row.
+	if len(l.Username) > maxLoginUsername || len(l.Password) > maxLoginPassword {
+		apiErrorResponse(w, "invalid credentials", http.StatusForbidden, nil)
 		return
 	}
 	// Check credentials. Audit-log every credential failure so SoC tooling

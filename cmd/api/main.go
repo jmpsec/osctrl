@@ -465,6 +465,9 @@ func osctrlAPIService() {
 	settingsmgr = settings.NewSettings(db.Conn)
 	log.Info().Msg("Initialize nodes")
 	nodesmgr = nodes.CreateNodes(db.Conn)
+	// Shared node_key cache: deletes and re-enrollments revoke a key in
+	// every osctrl-api and osctrl-tls process at once.
+	nodesmgr.UseRedisCache(redis.Client)
 	nodeConfigMgr, err := nodeconfig.NewManager(db.Conn, redis.Client)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize node configuration overrides")

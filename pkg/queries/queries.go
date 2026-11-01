@@ -3,6 +3,7 @@ package queries
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -624,7 +625,24 @@ func (q *Queries) SetExpected(name string, expected int, envid uint) error {
 	return nil
 }
 
-// UpdateQueryStatus to update the status of each query
+// HasPendingAssignment reports whether the node has a pending assignment for
+// the query named queryName in environment envID.
+func (q *Queries) HasPendingAssignment(queryName string, nodeID, envID uint) (bool, error) {
+	var n int64
+	err := q.DB.Table("node_queries nq").
+		Joins("JOIN distributed_queries dq ON dq.id = nq.query_id").
+		Where("dq.name = ? AND dq.environment_id = ? AND nq.node_id = ? AND nq.status = ? AND nq.deleted_at IS NULL",
+			queryName, envID, nodeID, DistributedQueryStatusPending).
+		Count(&n).Error
+	return n > 0, err
+}
+
+// ErrNotPending means a node reported a query it has no pending assignment for.
+var ErrNotPending = errors.New("no pending node query")
+
+// UpdateQueryStatus moves the node's pending assignment for queryName to its
+// terminal status, completing the query when no target is left pending. It
+// returns ErrNotPending when there is no pending assignment.
 func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode int) error {
 
 	var result string
@@ -642,17 +660,18 @@ func (q *Queries) UpdateQueryStatus(queryName string, nodeID uint, statusCode in
 		return fmt.Errorf("error getting query id: %w", err)
 	}
 
-	// One UPDATE rather than SELECT-then-UPDATE. No matching row means the
-	// node was never targeted by this query, which stays an error, as it was
-	// when the empty SELECT left nothing to update.
+	// One conditional UPDATE claims the node's pending assignment. No
+	// matching row means the node was never targeted, or already reported:
+	// either way the caller must apply no result side effects, so a retried
+	// or unassigned response cannot export, alert or count twice.
 	updated := q.DB.Model(&NodeQuery{}).
-		Where("node_id = ? AND query_id = ?", nodeID, query.ID).
+		Where("node_id = ? AND query_id = ? AND status = ?", nodeID, query.ID, DistributedQueryStatusPending).
 		Updates(map[string]interface{}{"status": result})
 	if updated.Error != nil {
 		return updated.Error
 	}
 	if updated.RowsAffected == 0 {
-		return fmt.Errorf("no node query for node %d and query %s", nodeID, queryName)
+		return fmt.Errorf("%w: node %d, query %s", ErrNotPending, nodeID, queryName)
 	}
 
 	// Completion only needs to know whether any target is still pending, so

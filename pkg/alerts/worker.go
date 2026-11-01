@@ -221,8 +221,21 @@ func (w *Worker) drain() {
 	}
 }
 
-// dispatch runs the claim → sink → history pipeline for one hit.
-func (w *Worker) dispatch(ctx context.Context, h Hit) {
+// Deliver runs one hit through the pipeline inline, bypassing the lossy
+// queue, and reports whether it was dispatched or deliberately collapsed
+// by the cooldown. Callers that must not lose a hit (the inactivity sweep)
+// use it and retry on false.
+func (w *Worker) Deliver(ctx context.Context, h Hit) bool {
+	if w == nil {
+		return false
+	}
+	w.metrics.Matched.Add(1)
+	return w.dispatch(ctx, h)
+}
+
+// dispatch runs the claim → sink → history pipeline for one hit. It returns
+// false only when the sink failed.
+func (w *Worker) dispatch(ctx context.Context, h Hit) bool {
 	// Cooldown gate. A nil state (no Redis configured) fails open.
 	if w.state != nil {
 		ok, err := w.state.Claim(ctx, h)
@@ -231,7 +244,7 @@ func (w *Worker) dispatch(ctx context.Context, h Hit) {
 		}
 		if !ok {
 			w.metrics.Collapsed.Add(1)
-			return
+			return true
 		}
 	}
 	if w.sink != nil {
@@ -246,7 +259,7 @@ func (w *Worker) dispatch(ctx context.Context, h Hit) {
 			if w.state != nil {
 				w.state.Release(ctx, h)
 			}
-			return
+			return false
 		}
 	}
 	w.metrics.Dispatched.Add(1)
@@ -267,4 +280,5 @@ func (w *Worker) dispatch(ctx context.Context, h Hit) {
 			log.Err(err).Msg("recording alert history failed")
 		}
 	}
+	return true
 }

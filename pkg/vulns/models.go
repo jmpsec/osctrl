@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // QueryPrefix names the scheduled queries whose results are inventory.
@@ -204,6 +205,10 @@ type WorkerState struct {
 	LastSyncAt      *time.Time `json:"last_sync_at"`
 	LastSyncFailed  bool       `json:"last_sync_failed"`
 	LastHousekeepAt *time.Time `json:"-"`
+	// AdvisoriesAt is when advisory data last changed: a node matched before
+	// it is due again. It replaces clearing every node's matched_at, which
+	// restarted the whole fleet's queue on each change.
+	AdvisoriesAt *time.Time `json:"advisories_at"`
 	// NVDActiveAt is the last tick of a replica with --vuln-nvd-enabled.
 	// Replicas with NVD off keep NVD data while it is recent.
 	NVDActiveAt *time.Time `json:"-"`
@@ -233,9 +238,33 @@ func Migrate(db *gorm.DB) error {
 		return err
 	}
 	if rematch {
-		return db.Model(&NodeState{}).Where("1 = 1").Update("matched_at", nil).Error
+		return markAdvisoriesChanged(db, time.Now())
 	}
 	return nil
+}
+
+// markAdvisoriesChanged makes every node due for re-matching, keeping each
+// node's matched_at so the queue serves the oldest assessments first.
+func markAdvisoriesChanged(db *gorm.DB, at time.Time) error {
+	return db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "name"}},
+		DoUpdates: clause.AssignmentColumns([]string{"advisories_at"}),
+	}).Create(&WorkerState{Name: workerName, AdvisoriesAt: &at}).Error
+}
+
+// dueForMatch selects the nodes the worker must (re-)match: never matched,
+// matched before their inventory or the advisory data changed, and not
+// silent for staleNodeAge.
+func dueForMatch(db *gorm.DB, now time.Time) (*gorm.DB, error) {
+	var ws WorkerState
+	if err := db.Where("name = ?", workerName).Limit(1).Find(&ws).Error; err != nil {
+		return nil, err
+	}
+	q := db.Model(&NodeState{}).Where("inventory_at > ?", now.Add(-staleNodeAge))
+	if ws.AdvisoriesAt != nil {
+		return q.Where("matched_at IS NULL OR matched_at < inventory_at OR matched_at < ?", *ws.AdvisoriesAt), nil
+	}
+	return q.Where("matched_at IS NULL OR matched_at < inventory_at"), nil
 }
 
 // hasColumn checks a column by exact name. GORM's SQLite HasColumn matches

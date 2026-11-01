@@ -70,8 +70,8 @@ var confirmedCategories = []string{CategoryDeb, CategoryRPM, CategoryPython, Cat
 // against an exact ecosystem feed. Anything less would let an
 // unassessed node pass (Amazon Linux, an OS-only Windows node, an ecosystem
 // whose feed never synced, a node only NVD names cover). An evaluated node
-// stays evaluated while an advisory sync has cleared its matched_at, so its
-// score does not flicker after every sync.
+// stays evaluated while it waits to be re-matched after an advisory sync, so
+// its score does not flicker after every sync.
 func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePosture, error) {
 	out := map[string][]posture.NodePosture{}
 	loaded, _, err := r.freshness()
@@ -135,9 +135,9 @@ func (r *Reader) ScoreEvidence(nodeUUIDs []string) (map[string][]posture.NodePos
 	}
 	for _, uuid := range nodeUUIDs {
 		c, hasFindings := counts[uuid]
-		// Assessed is set by matching and survives the fleet-wide reset of
-		// matched_at after each advisory sync, so a clean node keeps its
-		// last assessment until it is re-matched.
+		// Assessed is set by matching and kept while the node waits to be
+		// re-matched after an advisory sync, so a clean node keeps its last
+		// assessment until it is re-matched.
 		if !hasFindings && assessed[uuid] == 0 {
 			continue
 		}

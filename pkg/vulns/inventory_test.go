@@ -198,13 +198,16 @@ func TestMigrateRematchesNodesFromBeforeAssessed(t *testing.T) {
 	require.NoError(t, db.Exec(`INSERT INTO vuln_node_state (node_uuid, inventory_at, matched_at) VALUES ('N1', '2026-10-01 00:00:00', '2026-10-01 00:00:00')`).Error)
 
 	require.NoError(t, Migrate(db))
-	var s NodeState
-	require.NoError(t, db.First(&s, "node_uuid = ?", "N1").Error)
-	assert.Nil(t, s.MatchedAt, "re-matched once the column exists")
+	due := func() int64 {
+		q, err := dueForMatch(db, time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC))
+		require.NoError(t, err)
+		var n int64
+		require.NoError(t, q.Count(&n).Error)
+		return n
+	}
+	assert.EqualValues(t, 1, due(), "re-matched once the column exists")
 
-	now := time.Now()
-	require.NoError(t, db.Model(&NodeState{}).Where("node_uuid = ?", "N1").Update("matched_at", now).Error)
+	require.NoError(t, db.Model(&NodeState{}).Where("node_uuid = ?", "N1").Update("matched_at", time.Now().Add(time.Minute)).Error)
 	require.NoError(t, Migrate(db))
-	require.NoError(t, db.First(&s, "node_uuid = ?", "N1").Error)
-	assert.NotNil(t, s.MatchedAt, "later migrations leave matching alone")
+	assert.Zero(t, due(), "later migrations leave matching alone")
 }

@@ -132,22 +132,23 @@ func (logDB *LoggerDB) Close() error {
 }
 
 // Log - Function that sends JSON result/status/query logs to the configured DB
-func (logDB *LoggerDB) Log(logType string, data []byte, environment, uuid string, debug bool) {
+func (logDB *LoggerDB) Log(logType string, data []byte, environment, uuid string, debug bool) error {
 	if debug {
 		log.Debug().Msgf("Sending %d bytes to DB for %s - %s", len(data), environment, uuid)
 	}
 	switch logType {
 	case types.StatusLog:
-		logDB.Status(data, environment, uuid, debug)
+		return logDB.Status(data, environment, uuid, debug)
 	case types.ResultLog:
-		logDB.Result(data, environment, uuid, debug)
+		return logDB.Result(data, environment, uuid, debug)
 	}
+	return nil
 }
 
 // Status - Function that sends JSON status logs to the configured DB. Rows are
 // filed under uuid, the node the batch was authenticated as, not under each
 // entry's sender-controlled hostIdentifier.
-func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool) {
+func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool) error {
 	// Parse JSON
 	var logs []types.LogStatusData
 	if err := json.Unmarshal(data, &logs); err != nil {
@@ -167,12 +168,12 @@ func (logDB *LoggerDB) Status(data []byte, environment, uuid string, debug bool)
 			Severity:    strconv.Itoa(int(l.Severity)),
 		})
 	}
-	insertLogRows(logDB.Database.Conn, entries, "status")
+	return insertLogRows(logDB.Database.Conn, entries, "status")
 }
 
 // Result - Function that sends JSON result logs to the configured DB, filed
 // under uuid as for Status.
-func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool) {
+func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool) error {
 	// Parse JSON
 	logs, err := parseResultLogs(data)
 	if err != nil {
@@ -192,7 +193,7 @@ func (logDB *LoggerDB) Result(data []byte, environment, uuid string, debug bool)
 			Counter:     l.Counter,
 		})
 	}
-	insertLogRows(logDB.Database.Conn, entries, "result")
+	return insertLogRows(logDB.Database.Conn, entries, "result")
 }
 
 // logInsertBatchSize caps rows per multi-row INSERT. Both log models bind 10
@@ -213,9 +214,9 @@ const logInsertBatchSize = 50
 // So on failure the rolled-back batch is retried row by row from a pristine
 // copy, keeping the old partial-success behaviour without duplicating
 // anything — the transaction guarantees none of the batch was kept.
-func insertLogRows[T any](db *gorm.DB, entries []T, kind string) {
+func insertLogRows[T any](db *gorm.DB, entries []T, kind string) error {
 	if len(entries) == 0 {
-		return
+		return nil
 	}
 	// CreateInBatches writes generated IDs back into the rows it inserted,
 	// even in a batch that is later rolled back. Retrying those rows would
@@ -225,14 +226,26 @@ func insertLogRows[T any](db *gorm.DB, entries []T, kind string) {
 		return tx.CreateInBatches(entries, logInsertBatchSize).Error
 	})
 	if err == nil {
-		return
+		return nil
 	}
 	log.Warn().Err(err).Int("rows", len(entries)).Msgf("batched %s log insert failed, retrying row by row", kind)
+	stored := 0
+	var lastErr error
 	for i := range pristine {
 		if err := db.Create(&pristine[i]).Error; err != nil {
 			log.Err(err).Msgf("Error creating %s log entry", kind)
+			lastErr = err
+			continue
 		}
+		stored++
 	}
+	// Nothing stored means the database, not the data, failed: report it so
+	// the node keeps the batch and retries. A row rejected for its content
+	// is dropped, or the node would resend the batch forever.
+	if stored == 0 {
+		return fmt.Errorf("storing %s logs: %w", kind, lastErr)
+	}
+	return nil
 }
 
 // rowStamper returns a function handing out strictly increasing timestamps,
@@ -258,7 +271,7 @@ func (logDB *LoggerDB) rowStamper() func() gorm.Model {
 }
 
 // Query - Function that sends JSON query logs to the configured DB
-func (logDB *LoggerDB) Query(data []byte, environment, uuid, name string, status int, debug bool) {
+func (logDB *LoggerDB) Query(data []byte, environment, uuid, name string, status int, debug bool) error {
 	// Prepare data
 	entry := OsqueryQueryData{
 		UUID:        strings.ToUpper(uuid),
@@ -270,7 +283,9 @@ func (logDB *LoggerDB) Query(data []byte, environment, uuid, name string, status
 	// Insert in DB
 	if err := logDB.Database.Conn.Create(&entry).Error; err != nil {
 		log.Err(err).Msg("Error creating query log")
+		return err
 	}
+	return nil
 }
 
 // QueryLogs will retrieve all query logs

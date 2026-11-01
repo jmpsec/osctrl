@@ -28,6 +28,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/semaphore"
 )
 
 // Per-endpoint request-body caps. Anonymous (pre-enroll) endpoints get a
@@ -71,6 +72,14 @@ func readBody(w http.ResponseWriter, r *http.Request, max int64) ([]byte, error)
 	}
 	return body, err
 }
+
+// logIngestBudget caps the bytes of log batches being processed at once. A
+// slow sink then turns into 503s that osquery retries, instead of a backlog
+// of batches held in memory.
+// ponytail: fixed budget, make it a flag if a fleet needs more parallelism.
+const logIngestBudget = 256 << 20
+
+var logIngest = semaphore.NewWeighted(logIngestBudget)
 
 // logTypeLabel bounds the log_type metric label; the node chooses the value.
 func logTypeLabel(logType string) string {
@@ -386,29 +395,39 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		if typ, ok := logActivityType(t.LogType); ok {
 			h.recordActivity(env.UUID, node.UUID, typ)
 		}
-		// Process logs and update metadata
-		go func() {
-			start := time.Now()
-			results := h.Logs.ProcessLogs(node, t.Data, t.LogType, env.ID, env.Name, utils.GetIP(r), len(body), env.DebugHTTP)
-			duration := time.Since(start).Seconds()
-			logProcessDuration.WithLabelValues(string(env.UUID), logTypeLabel(t.LogType)).Observe(duration)
-			// Count ERROR-severity status logs into the activity rollup.
-			// Done here rather than at the sink so the counter is identical
-			// whatever logger.type is configured — with an external sink
-			// (S3, Splunk, Kafka) nothing lands in the database to count
-			// later. Inside this goroutine so it stays off the hot path.
-			if t.LogType == types.StatusLog {
-				h.recordActivityCount(env.UUID, node.UUID, activity.EventStatusError, countStatusErrors(t.Data))
-			}
-			// Ingest posture data from result logs (if enabled)
-			if h.Posture != nil && t.LogType == "result" {
-				h.ingestPosture(results, node.UUID, env.Name)
-			}
-			// Store vulnerability inventory (if enabled)
-			if h.Vulns != nil && t.LogType == "result" {
-				h.Vulns.Ingest(node.UUID, env.ID, results)
-			}
-		}()
+		// Process the batch inside the request, within the ingestion byte
+		// budget, and acknowledge it only once stored: on 503 or 500 osquery
+		// keeps the batch and sends it again.
+		if !logIngest.TryAcquire(int64(len(body))) {
+			logBackpressure.Inc()
+			utils.HTTPResponse(w, "", http.StatusServiceUnavailable, []byte(""))
+			return
+		}
+		defer logIngest.Release(int64(len(body)))
+		start := time.Now()
+		results, err := h.Logs.ProcessLogs(node, t.Data, t.LogType, env.ID, env.Name, utils.GetIP(r), len(body), env.DebugHTTP)
+		logProcessDuration.WithLabelValues(string(env.UUID), logTypeLabel(t.LogType)).Observe(time.Since(start).Seconds())
+		if err != nil {
+			log.Err(err).Msgf("node UUID: %s in %s environment: logs not stored, asking node to retry", node.UUID, env.Name)
+			utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
+			return
+		}
+		// Count ERROR-severity status logs into the activity rollup.
+		// Done here rather than at the sink so the counter is identical
+		// whatever logger.type is configured — with an external sink
+		// (S3, Splunk, Kafka) nothing lands in the database to count
+		// later.
+		if t.LogType == types.StatusLog {
+			h.recordActivityCount(env.UUID, node.UUID, activity.EventStatusError, countStatusErrors(t.Data))
+		}
+		// Ingest posture data from result logs (if enabled)
+		if h.Posture != nil && t.LogType == "result" {
+			h.ingestPosture(results, node.UUID, env.Name)
+		}
+		// Store vulnerability inventory (if enabled)
+		if h.Vulns != nil && t.LogType == "result" {
+			h.Vulns.Ingest(node.UUID, env.ID, results)
+		}
 	} else {
 		nodeInvalid = true
 	}
@@ -906,9 +925,13 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		// Record ingested data
 		requestSize.WithLabelValues(string(env.UUID), "CarveBlock").Observe(float64(len(body)))
 		log.Info().Msgf("node %d in %s environment ingested %d bytes for CarveBlockHandler endpoint", carve.NodeID, env.Name, len(body))
-		blockCarve = true
-		// Process received block
-		go h.ProcessCarveBlock(t, env.Name, carve.UUID, env.ID)
+		// Acknowledge only a block that is stored; the node retries otherwise.
+		if err := h.ProcessCarveBlock(t, carve, env.Name); err != nil {
+			log.Err(err).Msg("error storing carve block")
+		} else {
+			blockCarve = true
+			go h.finishCarveBlock(t, carve, env.Name)
+		}
 		// Refresh last seen
 		ip := utils.GetIP(r)
 		h.WriteHandler.addEvent(lastSeenUpdate{NodeID: carve.NodeID, IP: ip, SeenAt: time.Now()})

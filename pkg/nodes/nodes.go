@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	redis "github.com/go-redis/redis/v8"
 	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
@@ -65,6 +66,28 @@ func CreateNodes(backend *gorm.DB) *NodeManager {
 	// Create and initialize the cache
 	n.Cache = NewNodeCache(n)
 	return n
+}
+
+// UseRedisCache replaces the in-process node_key cache with one shared
+// through Redis, so key revocations reach every osctrl-api and osctrl-tls
+// process.
+func (n *NodeManager) UseRedisCache(client *redis.Client) {
+	if n.Cache != nil {
+		n.Cache.Close()
+	}
+	n.Cache = NewRedisNodeCache(n, client)
+}
+
+// revokeKey drops a node_key from the cache after its row changed or was
+// deleted. The row is already committed, so a failure is logged: the stale
+// key then lives until the cache TTL.
+func (n *NodeManager) revokeKey(nodeKey string) {
+	if n.Cache == nil || nodeKey == "" {
+		return
+	}
+	if err := n.Cache.InvalidateNode(context.Background(), strings.ToLower(nodeKey)); err != nil {
+		log.Err(err).Msg("error revoking cached node key; it stays valid until the cache TTL")
+	}
 }
 
 // CheckByUUID to check if node exists by UUID
@@ -488,15 +511,20 @@ func (n *NodeManager) Archive(node OsqueryNode, trigger string) error {
 	return nil
 }
 
-// Update applies data to the exact node row.
+// Update applies data to the exact node row and revokes its old node_key.
 func (n *NodeManager) Update(node OsqueryNode, data OsqueryNode) error {
+	// Updates writes data back into node, so keep the key it had.
+	oldKey := node.NodeKey
 	if err := n.DB.Model(&node).Updates(data).Error; err != nil {
 		return fmt.Errorf("in Update %w", err)
 	}
+	// Re-enrollment issues a new node_key; the old one must stop working.
+	n.revokeKey(oldKey)
 	return nil
 }
 
-// ArchiveDelete archives and hard-deletes the exact node row.
+// ArchiveDelete archives and hard-deletes the exact node row and revokes its
+// node_key.
 func (n *NodeManager) ArchiveDelete(node OsqueryNode) error {
 	if err := n.Archive(node, "delete"); err != nil {
 		return err
@@ -504,6 +532,7 @@ func (n *NodeManager) ArchiveDelete(node OsqueryNode) error {
 	if err := n.DB.Unscoped().Delete(&node).Error; err != nil {
 		return fmt.Errorf("delete %w", err)
 	}
+	n.revokeKey(node.NodeKey)
 	return nil
 }
 

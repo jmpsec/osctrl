@@ -30,7 +30,9 @@ const (
 	failureRetry  = 15 * time.Minute
 	housekeepEach = time.Hour
 	matchBatch    = 500
-	staleNodeAge  = 30 * 24 * time.Hour
+	// matchBudget bounds matching per tick, well inside leaseTTL.
+	matchBudget  = 40 * time.Second
+	staleNodeAge = 30 * 24 * time.Hour
 	// escalationRetention keeps escalations long enough for any watcher
 	// that is running to read them.
 	escalationRetention = 30 * 24 * time.Hour
@@ -332,7 +334,7 @@ func (w *Worker) syncAll(ctx context.Context, dirs []string) {
 		// ponytail: any advisory change re-matches the whole fleet (one
 		// indexed lookup per node and category). Target only nodes holding
 		// the touched (ecosystem, package) pairs if this gets slow.
-		if err := w.db.Model(&NodeState{}).Where("1 = 1").Update("matched_at", nil).Error; err != nil {
+		if err := markAdvisoriesChanged(w.db, w.now()); err != nil {
 			log.Warn().Err(err).Msg("vulns: marking nodes for re-matching failed")
 		}
 	}
@@ -367,18 +369,34 @@ func (w *Worker) dropUnusedFeeds() {
 	}
 }
 
-// matchDirty re-matches nodes whose inventory changed (or whose advisories
-// did) since they were last matched. Nodes silent for 30 days are skipped.
+// matchDirty re-matches the nodes due for it, oldest assessment first, in
+// batches until matchBudget runs out. Serving the oldest first means a new
+// advisory generation continues where the last one stopped instead of
+// starting over, so no node is postponed indefinitely.
 func (w *Worker) matchDirty() error {
-	var uuids []string
-	if err := w.db.Model(&NodeState{}).
-		Where("(matched_at IS NULL OR matched_at < inventory_at) AND inventory_at > ?", w.now().Add(-staleNodeAge)).
-		Order("inventory_at").Limit(matchBatch).Pluck("node_uuid", &uuids).Error; err != nil {
-		return err
-	}
-	for _, uuid := range uuids {
-		if err := w.matcher.MatchNode(uuid); err != nil {
-			log.Warn().Err(err).Str("node", uuid).Msg("vulns: matching failed")
+	start := time.Now()
+	for time.Since(start) < matchBudget {
+		q, err := dueForMatch(w.db, w.now())
+		if err != nil {
+			return err
+		}
+		var uuids []string
+		if err := q.Order("matched_at IS NOT NULL, matched_at, inventory_at").
+			Limit(matchBatch).Pluck("node_uuid", &uuids).Error; err != nil {
+			return err
+		}
+		matched := 0
+		for _, uuid := range uuids {
+			if err := w.matcher.MatchNode(uuid); err != nil {
+				log.Warn().Err(err).Str("node", uuid).Msg("vulns: matching failed")
+				continue
+			}
+			matched++
+		}
+		// A short batch drained the queue; one with no success would only
+		// pick the same failing nodes again.
+		if len(uuids) < matchBatch || matched == 0 {
+			return nil
 		}
 	}
 	return nil

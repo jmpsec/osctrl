@@ -123,7 +123,7 @@ func benchmarkProcessLogs(b *testing.B, matcher AlertMatcher) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = logger.ProcessLogs(hookNode, data, "result", 1, "prod", "10.0.0.1", len(data), false)
+		_, _ = logger.ProcessLogs(hookNode, data, "result", 1, "prod", "10.0.0.1", len(data), false)
 	}
 }
 
@@ -156,7 +156,7 @@ func BenchmarkProcessLogsStatusBaseline(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = logger.ProcessLogs(hookNode, data, "status", 1, "prod", "10.0.0.1", len(data), false)
+		_, _ = logger.ProcessLogs(hookNode, data, "status", 1, "prod", "10.0.0.1", len(data), false)
 	}
 }
 
@@ -177,6 +177,6 @@ func BenchmarkProcessLogsStatusMatcher(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = logger.ProcessLogs(hookNode, data, "status", 1, "prod", "10.0.0.1", len(data), false)
+		_, _ = logger.ProcessLogs(hookNode, data, "status", 1, "prod", "10.0.0.1", len(data), false)
 	}
 }

@@ -2,6 +2,7 @@ package vulns
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
@@ -440,4 +441,43 @@ func TestSyncKeepsFeedsTheFleetStillReports(t *testing.T) {
 		require.NoError(t, empty.Model(&SyncState{}).Where("source = ?", "osv:Debian").Count(&n).Error)
 		assert.Equal(t, int64(1), n, "an empty fleet drops nothing")
 	})
+}
+
+// One tick drains more than a single batch, and an advisory change does not
+// restart the queue: nodes the last generation never reached go first.
+func TestMatchDirtyDrainsAndKeepsProgressAcrossAdvisoryChanges(t *testing.T) {
+	db := newTestDB(t)
+	clock := newClock()
+	w := newTestWorker(t, db, "http://unused", clock)
+	n := matchBatch*2 + 7
+	rows := make([]NodeState, n)
+	for i := range rows {
+		rows[i] = NodeState{NodeUUID: fmt.Sprintf("N%04d", i), InventoryAt: clock.now().Add(-time.Hour)}
+	}
+	require.NoError(t, db.CreateInBatches(rows, 200).Error)
+	countDue := func() int64 {
+		q, err := dueForMatch(db, clock.now())
+		require.NoError(t, err)
+		var c int64
+		require.NoError(t, q.Count(&c).Error)
+		return c
+	}
+
+	require.NoError(t, w.matchDirty())
+	assert.Zero(t, countDue(), "one tick drains every batch")
+
+	// Generation 1 reaches only part of the fleet (N0000 is left behind),
+	// then generation 2 arrives.
+	clock.advance(time.Hour)
+	require.NoError(t, markAdvisoriesChanged(db, clock.now()))
+	clock.advance(time.Minute)
+	require.NoError(t, db.Model(&NodeState{}).Where("node_uuid <> ?", "N0000").Update("matched_at", clock.now()).Error)
+	clock.advance(time.Hour)
+	require.NoError(t, markAdvisoriesChanged(db, clock.now()))
+
+	q, err := dueForMatch(db, clock.now())
+	require.NoError(t, err)
+	var first []string
+	require.NoError(t, q.Order("matched_at IS NOT NULL, matched_at, inventory_at").Limit(1).Pluck("node_uuid", &first).Error)
+	assert.Equal(t, []string{"N0000"}, first, "the oldest assessment is served first")
 }

@@ -17,11 +17,9 @@ func (logDB *LoggerDB) IsEnabled() bool {
 
 func (logDB *LoggerDB) Export(logType string, data []byte, params ExportParams) error {
 	if logType == types.QueryLog {
-		logDB.Query(data, params.Environment, params.UUID, params.QueryName, params.Status, params.Debug)
-		return nil
+		return logDB.Query(data, params.Environment, params.UUID, params.QueryName, params.Status, params.Debug)
 	}
-	logDB.Log(logType, data, params.Environment, params.UUID, params.Debug)
-	return nil
+	return logDB.Log(logType, data, params.Environment, params.UUID, params.Debug)
 }
 
 func (logStdout *LoggerStdout) Name() string {
@@ -148,8 +146,7 @@ func (logS3 *LoggerS3) IsEnabled() bool {
 }
 
 func (logS3 *LoggerS3) Export(logType string, data []byte, params ExportParams) error {
-	logS3.Send(logType, data, params.Environment, params.UUID, params.Debug)
-	return nil
+	return logS3.Send(logType, data, params.Environment, params.UUID, params.Debug)
 }
 
 func (l *LoggerKafka) Name() string {

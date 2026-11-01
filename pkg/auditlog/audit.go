@@ -2,6 +2,7 @@ package auditlog
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/dbutil"
@@ -37,8 +38,13 @@ var LogTypes = map[uint]struct{}{
 // means "no type filter". Since / Until are RFC3339 timestamps; either may
 // be the zero value to mean unset.
 type PageFilter struct {
-	Service  string
+	Service string
+	// Username is a case-insensitive partial-match search.
 	Username string
+	// Actor, when set, restricts rows to exactly this username. It is the
+	// ownership predicate for non-admin reads; Username must not be used
+	// for that, since a partial match also returns other actors' rows.
+	Actor    string
 	LogType  uint
 	EnvID    uint
 	Since    time.Time
@@ -66,6 +72,9 @@ func (m *AuditLogManager) GetPaged(f PageFilter) ([]AuditLog, int64, error) {
 	q := m.DB.Model(&AuditLog{})
 	if f.Service != "" {
 		q = q.Where("service = ?", f.Service)
+	}
+	if f.Actor != "" {
+		q = q.Where("username = ?", f.Actor)
 	}
 	if f.Username != "" {
 		// case-insensitive partial match via LOWER(username) LIKE ...
@@ -238,6 +247,9 @@ func (m *AuditLogManager) NewLogin(username, ip string) {
 	}
 }
 
+// maxFailedLoginUsername bounds the untrusted username stored by FailedLogin.
+const maxFailedLoginUsername = 256
+
 // FailedLogin records a failed login attempt — invalid credentials, missing
 // permission, or any other reason the login flow refused to mint a token.
 // `reason` is a short free-text string suitable for SoC alerting and MUST
@@ -246,6 +258,11 @@ func (m *AuditLogManager) NewLogin(username, ip string) {
 func (m *AuditLogManager) FailedLogin(username, ip, reason string) {
 	if !m.Enabled {
 		return
+	}
+	// The username is whatever an anonymous client sent; bound what it can
+	// write into the audit table.
+	if len(username) > maxFailedLoginUsername {
+		username = strings.ToValidUTF8(username[:maxFailedLoginUsername], "") + "…"
 	}
 	line := fmt.Sprintf("failed login for user %s: %s", username, reason)
 	if err := m.CreateNew(username, line, ip, LogTypeLogin, SeverityWarning, NoEnvironment); err != nil {
