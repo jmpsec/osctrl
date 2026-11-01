@@ -236,3 +236,27 @@ func TestCreateCarverS3UsesStaticKeysOnlyWhenConfigured(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ENVKEY", creds.AccessKeyID)
 }
+
+// A failed S3 upload must leave no block row behind: the row is what marks
+// the block as received and counts toward completion.
+func TestCarverS3FailedUploadStoresNoBlock(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+	client := s3.NewFromConfig(aws.Config{
+		Region:           "us-east-1",
+		Credentials:      credentials.NewStaticCredentialsProvider("AKID", "SECRET", ""),
+		RetryMaxAttempts: 1,
+	}, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(srv.URL)
+		o.UsePathStyle = true
+	})
+	db := testCarvesDB(t)
+	c := CreateFileCarves(db, config.CarverS3, &CarverS3{S3Config: config.S3Carver{Bucket: "carves"}, Client: client})
+	data := base64.StdEncoding.EncodeToString([]byte("hi"))
+	require.Error(t, c.CreateBlock(c.InitateBlock("dev", "NODE-1", "req-1", "sess-1", data, 0, 1), "NODE-1", data))
+	var n int64
+	require.NoError(t, db.Model(&CarvedBlock{}).Count(&n).Error)
+	require.Zero(t, n)
+}

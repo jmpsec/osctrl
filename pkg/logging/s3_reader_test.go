@@ -13,14 +13,14 @@ import (
 
 func TestS3LogKeyLayout(t *testing.T) {
 	ts := time.UnixMilli(1700000000000)
-	key := s3LogKey("env-uuid", "status", "NODE-UUID", ts)
-	require.Equal(t, "env-uuid/status/NODE-UUID/1700000000000.json", key)
+	key := s3LogKey("env-uuid", "status", "NODE-UUID", ts, "ab12")
+	require.Equal(t, "env-uuid/status/NODE-UUID/2023-11-14/1700000000000-ab12.json", key)
 }
 
 func TestS3QueryKeyLayout(t *testing.T) {
 	ts := time.UnixMilli(1700000000000)
-	key := s3QueryKey("env-uuid", "q-123", "NODE-UUID", ts)
-	require.Equal(t, "env-uuid/query/q-123/NODE-UUID/1700000000000.json", key)
+	key := s3QueryKey("env-uuid", "q-123", "NODE-UUID", ts, "ab12")
+	require.Equal(t, "env-uuid/query/q-123/NODE-UUID/1700000000000-ab12.json", key)
 }
 
 func TestSplitQueryKey(t *testing.T) {
@@ -73,8 +73,10 @@ func TestDecodeNodeLogBodyStatus(t *testing.T) {
 	body, err := json.Marshal(logs)
 	require.NoError(t, err)
 	created := time.UnixMilli(1700000000000)
-	row, err := decodeNodeLogBody(body, types.StatusLog, "env-uuid", "NODE-UUID", created)
+	rows, err := decodeNodeLogBody(body, types.StatusLog, "env-uuid", "NODE-UUID", created)
 	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	row := rows[0]
 	require.Equal(t, "NODE-UUID", row["uuid"])
 	require.Equal(t, "env-uuid", row["environment"])
 	require.Equal(t, created, row["created_at"])
@@ -87,8 +89,10 @@ func TestDecodeNodeLogBodyResult(t *testing.T) {
 	logs := []types.LogResultData{{HostIdentifier: "node-uuid", Name: "time", Action: "added", Columns: json.RawMessage(`{"foo":"bar"}`), Epoch: 0, Counter: 0}}
 	body, err := json.Marshal(logs)
 	require.NoError(t, err)
-	row, err := decodeNodeLogBody(body, types.ResultLog, "env-uuid", "NODE-UUID", time.UnixMilli(1700000000000))
+	rows, err := decodeNodeLogBody(body, types.ResultLog, "env-uuid", "NODE-UUID", time.UnixMilli(1700000000000))
 	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	row := rows[0]
 	require.Equal(t, "time", row["name"])
 	require.Equal(t, "added", row["action"])
 	require.Contains(t, row["columns"].(string), "foo")
@@ -169,4 +173,32 @@ func TestS3StatusKeyLexicalOrder(t *testing.T) {
 	}
 	require.True(t, strings.Compare(keys[0], keys[1]) < 0, "ts 0 < ts 1 should sort first")
 	require.True(t, strings.Compare(keys[2], keys[0]) < 0, "ts -1 < ts 0 should sort first")
+}
+
+// Two batches from one node in the same millisecond get distinct keys, and
+// both the new and the legacy key names parse to that millisecond.
+func TestS3KeysDoNotCollideWithinAMillisecond(t *testing.T) {
+	ts := time.UnixMilli(1700000000000)
+	a := s3LogKey("env", "status", "NODE", ts, newBatchID())
+	b := s3LogKey("env", "status", "NODE", ts, newBatchID())
+	require.NotEqual(t, a, b)
+	require.NotEqual(t, s3QueryKey("env", "q", "NODE", ts, newBatchID()), s3QueryKey("env", "q", "NODE", ts, newBatchID()))
+	for _, key := range []string{a, "env/status/NODE/1700000000000.json"} {
+		entry, ok := decodeNodeLogKey(key, "NODE")
+		require.True(t, ok, key)
+		require.Equal(t, ts, entry.CreatedAt)
+	}
+}
+
+// Every entry of a stored batch is a row, so a later error in the batch is
+// visible and searchable.
+func TestDecodeNodeLogBodyReturnsEveryBatchEntry(t *testing.T) {
+	logs := []types.LogStatusData{{Message: "starting", Severity: 0}, {Message: "disk failure", Severity: 2}}
+	body, err := json.Marshal(logs)
+	require.NoError(t, err)
+	rows, err := decodeNodeLogBody(body, types.StatusLog, "env", "NODE", time.UnixMilli(1700000000000))
+	require.NoError(t, err)
+	require.Len(t, rows, 2)
+	require.True(t, nodeLogMatchesSearch(rows[1], types.StatusLog, "disk"))
+	require.Equal(t, "2", rows[1]["severity"])
 }

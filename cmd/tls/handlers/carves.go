@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
@@ -48,6 +49,14 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 	if err != nil {
 		log.Err(err).Msg("error retrieving node")
 		return err
+	}
+	// Only a carve this node was asked for, in its own environment.
+	assigned, err := h.Queries.HasPendingAssignment(queryName, node.ID, node.EnvironmentID)
+	if err != nil {
+		return err
+	}
+	if !assigned {
+		return fmt.Errorf("node %s has no pending assignment for %s", node.UUID, queryName)
 	}
 	// Prepare carve to be scheduled
 	carve := carves.CarvedFile{
@@ -116,73 +125,66 @@ func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, en
 	return nil
 }
 
-// ProcessCarveBlock - Function to process one block from a file carve
-// FIXME it can be more efficient on db access
-func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, environment, uuid string, envid uint) {
-	// Initiate carve block
-	block := h.Carves.InitateBlock(environment, uuid, req.RequestID, req.SessionID, req.Data, req.BlockID, envid)
-	// Create Block
-	if err := h.Carves.CreateBlock(block, uuid, req.Data); err != nil {
-		log.Err(err).Msg("error creating CarvedBlock")
+// ProcessCarveBlock validates and stores one block of an in-progress carve.
+func (h *HandlersTLS) ProcessCarveBlock(req types.CarveBlockRequest, carve carves.CarvedFile, environment string) error {
+	if err := h.Carves.StoreBlock(carve, environment, carve.UUID, req); err != nil {
+		return err
 	}
 	// Emit carve.data event with block metadata (not the block payload).
-	h.emitCarveDataEvent(envid, environment, uuid, map[string]any{
+	h.emitCarveDataEvent(carve.EnvironmentID, environment, carve.UUID, map[string]any{
 		"event":       "block",
 		"session_id":  req.SessionID,
 		"request_id":  req.RequestID,
 		"block_id":    req.BlockID,
 		"block_size":  len(req.Data),
-		"node_uuid":   uuid,
+		"node_uuid":   carve.UUID,
 		"environment": environment,
 		"carver":      h.Carves.Carver,
 	})
-	// Bump block completion
+	return nil
+}
+
+// finishCarveBlock updates progress after a stored block and, for the one
+// worker that claims completion, finalizes the carve.
+func (h *HandlersTLS) finishCarveBlock(req types.CarveBlockRequest, carve carves.CarvedFile, environment string) {
 	if err := h.Carves.CompleteBlock(req.SessionID); err != nil {
 		log.Err(err).Msg("error completing block")
 	}
-	// If it is completed, set status
-	if h.Carves.Completed(req.SessionID) {
-		// Archive carve if the carver is s3
-		if h.Carves.Carver == config.CarverS3 {
-			archived, err := h.Carves.Archive(req.SessionID, "")
-			if err != nil {
-				log.Err(err).Msg("error archiving results")
-				return
-			}
-			if archived == nil {
-				log.Error().Msg("empty archive")
-				return
-			}
-			if err := h.Carves.ArchiveCarve(req.SessionID, archived.File); err != nil {
-				log.Err(err).Msg("error archiving carve")
-			}
-		}
-		if err := h.Carves.ChangeStatus(carves.StatusCompleted, req.SessionID); err != nil {
-			log.Err(err).Msg("error completing carve")
-		} else if err := h.syncCompletedCarveQuery(req.SessionID); err != nil {
-			log.Err(err).Msg("error syncing completed carve query")
-		}
-		// Emit carve.meta completion event.
-		if carve, err := h.Carves.GetBySession(req.SessionID); err == nil {
-			h.emitCarveMetaEvent(carve.EnvironmentID, environment, uuid, map[string]any{
-				"event":            "completed",
-				"carve_id":         carve.CarveID,
-				"request_id":       req.RequestID,
-				"session_id":       req.SessionID,
-				"node_uuid":        uuid,
-				"environment":      environment,
-				"status":           carves.StatusCompleted,
-				"carver":           h.Carves.Carver,
-				"total_blocks":     carve.TotalBlocks,
-				"completed_blocks": carve.CompletedBlocks,
-				"carve_size":       carve.CarveSize,
-			})
-		}
-	} else {
-		if err := h.Carves.ChangeStatus(carves.StatusInProgress, req.SessionID); err != nil {
-			log.Err(err).Msg("error progressing carve")
+	claimed, err := h.Carves.ClaimCompletion(req.SessionID)
+	if err != nil {
+		log.Err(err).Msg("error completing carve")
+		return
+	}
+	if !claimed {
+		return
+	}
+	// Archive carve if the carver is s3. A failure leaves it unarchived;
+	// the API archives on download.
+	if h.Carves.Carver == config.CarverS3 {
+		if archived, err := h.Carves.Archive(req.SessionID, ""); err != nil {
+			log.Err(err).Msg("error archiving results")
+		} else if archived == nil {
+			log.Error().Msg("empty archive")
+		} else if err := h.Carves.ArchiveCarve(req.SessionID, archived.File); err != nil {
+			log.Err(err).Msg("error archiving carve")
 		}
 	}
+	if err := h.syncCompletedCarveQuery(req.SessionID); err != nil {
+		log.Err(err).Msg("error syncing completed carve query")
+	}
+	h.emitCarveMetaEvent(carve.EnvironmentID, environment, carve.UUID, map[string]any{
+		"event":            "completed",
+		"carve_id":         carve.CarveID,
+		"request_id":       req.RequestID,
+		"session_id":       req.SessionID,
+		"node_uuid":        carve.UUID,
+		"environment":      environment,
+		"status":           carves.StatusCompleted,
+		"carver":           h.Carves.Carver,
+		"total_blocks":     carve.TotalBlocks,
+		"completed_blocks": carve.TotalBlocks,
+		"carve_size":       carve.CarveSize,
+	})
 }
 
 // emitCarveMetaEvent dispatches a carve.meta lifecycle event through the

@@ -529,8 +529,12 @@ else
     provision_redis "$DISTRO" "$SOURCE_PATH" "$_CACHE_PASS"
   fi
 
-  # Prepare destination and configuration folders
-  sudo mkdir -p "$DEST_PATH/config"
+  # Prepare destination and configuration folders. The configuration holds
+  # SQL, Redis and JWT secrets: root:osctrl 0750 / 0640, as the packages do.
+  if ! id osctrl >/dev/null 2>&1; then
+    sudo useradd osctrl -s /sbin/nologin -M
+  fi
+  sudo install -d -o root -g osctrl -m 0750 "$DEST_PATH/config"
   sudo mkdir -p "$DEST_PATH/bin"
 
   # Build code
@@ -560,7 +564,10 @@ else
     configuration_service "$DEST_PATH/config/$TLS_CONF" "$_T_HOST|$_T_INT_PORT" "$_T_AUTH" "console" "$_T_LOGGING" "$_T_CARVER"
 
     # Verify TLS configuration
-    ./bin/osctrl-tls config-verify -f "$DEST_PATH/config/$TLS_CONF"
+    sudo chown root:osctrl "$DEST_PATH/config/$TLS_CONF"
+    sudo chmod 0640 "$DEST_PATH/config/$TLS_CONF"
+
+    sudo ./bin/osctrl-tls config-verify -f "$DEST_PATH/config/$TLS_CONF"
 
     # Systemd configuration for TLS service
     _systemd "osctrl" "osctrl" "osctrl-tls" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$TLS_CONF"
@@ -593,7 +600,10 @@ else
     configuration_jwt "$DEST_PATH/config/$API_CONF" "$_JWT_SECRET"
 
     # Verify API configuration
-    ./bin/osctrl-api config-verify -f "$DEST_PATH/config/$API_CONF"
+    sudo chown root:osctrl "$DEST_PATH/config/$API_CONF"
+    sudo chmod 0640 "$DEST_PATH/config/$API_CONF"
+
+    sudo ./bin/osctrl-api config-verify -f "$DEST_PATH/config/$API_CONF"
 
     # Systemd configuration for API service
     _systemd "osctrl" "osctrl" "osctrl-api" "$SOURCE_PATH" "$DEST_PATH" "--config -C $DEST_PATH/config/$API_CONF"
@@ -696,12 +706,12 @@ else
 
   # Create admin user
   if [[ -n "$_ADMIN_PASS" ]]; then
-    if "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user show -u "$_ADMIN_USER" >/dev/null 2>&1; then
+    if sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user show -u "$_ADMIN_USER" >/dev/null 2>&1; then
       log "Updating admin password"
-      "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user edit -u "$_ADMIN_USER" -p "$_ADMIN_PASS"
+      sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user edit -u "$_ADMIN_USER" -p "$_ADMIN_PASS"
     else
       log "Creating admin user"
-      "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
+      sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" user add -u "$_ADMIN_USER" -p "$_ADMIN_PASS" -a -e "$ENVIRONMENT" -n "Admin"
     fi
   fi
 
@@ -709,17 +719,17 @@ else
   if [[ "$MODE" == "dev" ]]; then
     # Create initial environment to enroll machines
     log "Creating environment $ENVIRONMENT"
-    "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
+    sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add -n "$ENVIRONMENT" -host "$_T_HOST" -crt "$__osctrl_crt"
 
     # Continue the configuration of the environment for development purposes, which means lower intervals. Not recommended for production.
     log "Decrease intervals for environment $ENVIRONMENT"
-    "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env update -n "$ENVIRONMENT" -l "75" -c "45" -q "60"
+    sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env update -n "$ENVIRONMENT" -l "75" -c "45" -q "60"
     log "Enable verbose mode"
-    "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add-osquery-option -n "$ENVIRONMENT" -o "verbose" -t bool -b true
+    sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add-osquery-option -n "$ENVIRONMENT" -o "verbose" -t bool -b true
     log "Disable splay for schedule"
-    "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add-osquery-option -n "$ENVIRONMENT" -o "schedule_splay_percent" -t int -i 0
+    sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add-osquery-option -n "$ENVIRONMENT" -o "schedule_splay_percent" -t int -i 0
     log "Add uptime query to schedule"
-    "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add-scheduled-query -n "$ENVIRONMENT" -q "SELECT * FROM uptime;" -Q "uptime" -i 60
+    sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env add-scheduled-query -n "$ENVIRONMENT" -q "SELECT * FROM uptime;" -Q "uptime" -i 60
   fi
 
   log "Checking if service is ready"
@@ -739,7 +749,7 @@ else
     log "Adding host in environment $ENVIRONMENT"
     # Run the one-liner only if osctrl-cli produced it. A failure prints its
     # error instead of the one-liner, and that must never reach eval.
-    if ! __quick_add=$("$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env node-actions -n "$ENVIRONMENT" quick-add 2>&1); then
+    if ! __quick_add=$(sudo "$DEST_PATH"/bin/osctrl-cli --db -D "$__db_conf" env node-actions -n "$ENVIRONMENT" quick-add 2>&1); then
       log "Could not generate the quick-add one-liner for environment $ENVIRONMENT:"
       echo "$__quick_add"
       exit 1

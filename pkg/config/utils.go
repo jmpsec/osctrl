@@ -73,7 +73,7 @@ func GenerateGenericConfigFile(path string, cfg any, overwrite bool) error {
 	}
 	dir := filepath.Dir(path)
 	if dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
@@ -84,8 +84,13 @@ func GenerateGenericConfigFile(path string, cfg any, overwrite bool) error {
 			return fmt.Errorf("failed to check if %s exists: %w", path, err)
 		}
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	// The file holds or will hold secrets (DB, Redis, JWT). WriteFile keeps
+	// the mode of an existing file, so tighten it explicitly too.
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write configuration to %s: %w", path, err)
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		return fmt.Errorf("failed to restrict permissions of %s: %w", path, err)
 	}
 	return nil
 }

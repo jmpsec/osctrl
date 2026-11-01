@@ -55,6 +55,12 @@ var (
 	}, []string{"environment"})
 	// osctrldRateLimited counts osctrld requests rejected with 429, by
 	// route pattern and rate limit (osctrldAuth, osctrld, osctrldDownload).
+	// logBackpressure counts log batches answered 503 because the ingestion
+	// budget was full; osquery retries them.
+	logBackpressure = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "osctrl_tls_log_backpressure_total",
+		Help: "Log batches rejected with 503 because the ingestion budget was full",
+	})
 	osctrldRateLimited = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "osctrld_rate_limited_total",
 		Help: "osctrld requests rejected by a rate limit",
@@ -95,6 +101,7 @@ func RegisterMetrics(reg prometheus.Registerer) {
 	reg.MustRegister(requestDuration)
 	reg.MustRegister(requestSize)
 	reg.MustRegister(logProcessDuration)
+	reg.MustRegister(logBackpressure)
 	reg.MustRegister(distributedQueryProcessingDuration)
 	reg.MustRegister(batchFlushDuration)
 	reg.MustRegister(dbDegraded)

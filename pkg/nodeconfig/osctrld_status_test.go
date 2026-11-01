@@ -322,3 +322,26 @@ func TestValidUpgradeAcceptsRollbackUnavailable(t *testing.T) {
 	assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "rejected", Version: "5.13.0", Reason: "rollback_unavailable", RequestID: strings.Repeat("a", 32), EventID: evID(3, "c")}))
 	assert.True(t, ValidUpgrade(types.OsctrldUpgrade{Result: "skipped", Reason: "rollback_unavailable"}))
 }
+
+// A replayed older rollback is not new: it is neither recounted nor made the
+// latest event, and its first-seen time is not refreshed.
+func TestRecordReportReplayedOlderEventIsNotNew(t *testing.T) {
+	m, _, _, _ := newTestFlagsManager(t)
+	a, b := rejectedUp, rejectedUp
+	b.EventID = evID(4, "b")
+	n, err := m.RecordReport("n1", 1, upReport(a), reportAt)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"upgrade"}, n)
+	n, err = m.RecordReport("n1", 1, upReport(b), reportAt.Add(time.Minute))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"upgrade"}, n)
+
+	n, err = m.RecordReport("n1", 1, upReport(a), reportAt.Add(time.Hour))
+	require.NoError(t, err)
+	assert.Empty(t, n)
+	st, err := m.Status("n1")
+	require.NoError(t, err)
+	assert.Equal(t, b.EventID, st.UpgradeEventID)
+	require.NotNil(t, st.UpgradeEventAt)
+	assert.True(t, st.UpgradeEventAt.Equal(reportAt.Add(time.Minute)))
+}

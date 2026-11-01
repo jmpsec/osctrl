@@ -119,7 +119,9 @@ func TestStatusLogsBadRowDoesNotDropTheBatch(t *testing.T) {
 	msgs := numbered("line", logInsertBatchSize+10)
 	msgs[logInsertBatchSize+3] = "poison"
 
-	logDB.Status(statusBatch(t, msgs), "prod", "node-a", false)
+	if err := logDB.Status(statusBatch(t, msgs), "prod", "node-a", false); err != nil {
+		t.Fatalf("a batch with one bad row must still be acknowledged: %v", err)
+	}
 
 	var rows []OsqueryStatusData
 	logDB.Database.Conn.Order("created_at").Find(&rows)
@@ -182,5 +184,21 @@ func TestEmptyLogBatchIsANoop(t *testing.T) {
 	logDB.Database.Conn.Model(&OsqueryResultData{}).Count(&result)
 	if status != 0 || result != 0 {
 		t.Fatalf("empty batches stored %d status / %d result rows", status, result)
+	}
+}
+
+// A batch the database stores none of is reported, so the node keeps it and
+// retries instead of the logs being acknowledged and lost.
+func TestStatusLogsDatabaseFailureIsReported(t *testing.T) {
+	logDB := newTestLoggerDB(t)
+	if err := logDB.Database.Conn.Migrator().DropTable(&OsqueryStatusData{}); err != nil {
+		t.Fatalf("drop table: %v", err)
+	}
+	if err := logDB.Log("status", statusBatch(t, numbered("line", 3)), "prod", "node-a", false); err == nil {
+		t.Fatal("a failed insert must be reported")
+	}
+	logger := &LoggerTLS{exporters: map[uint]*MultiExporter{0: NewMultiExporter(logDB)}}
+	if err := logger.LogWithEnv("status", statusBatch(t, numbered("line", 3)), 0, "prod", "node-a", false); err == nil {
+		t.Fatal("the exporter error must reach the caller")
 	}
 }

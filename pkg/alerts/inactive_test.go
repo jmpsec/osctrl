@@ -2,10 +2,13 @@ package alerts
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // fakeNodeSource serves scripted snapshots per sweep.
@@ -308,4 +311,57 @@ func TestHumanSince(t *testing.T) {
 			t.Errorf("humanSince(%v) = %q, want %q", c.last, got, c.want)
 		}
 	}
+}
+
+// flakySink fails while down is set, and records deliveries otherwise.
+type flakySink struct {
+	recordingSinkRef
+	down bool
+}
+
+func (s *flakySink) Dispatch(ctx context.Context, h Hit) error {
+	if s.down {
+		return errors.New("channel down")
+	}
+	return s.recordingSinkRef.Dispatch(ctx, h)
+}
+
+// A transition whose alert could not be delivered is retried by the next
+// sweep, and delivered exactly once; the async queue is not involved.
+func TestInactiveWatcherRetriesUndeliveredTransitions(t *testing.T) {
+	source := &fakeNodeSource{}
+	store, _, _ := nodeStateRules(t)
+	sink := &flakySink{down: true}
+	// A real (async) worker with a one-slot queue: transitions must not
+	// depend on queue capacity.
+	worker := NewWorker(store, nil, nil, sink, 1, 1)
+	t.Cleanup(worker.Close)
+	w := newInactiveWatcherWithState(source, store, worker, &memInactiveState{})
+	now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
+	w.now = func() time.Time { return now }
+	var offline []NodeSnapshot
+	for i := range 5 {
+		offline = append(offline, NodeSnapshot{UUID: fmt.Sprintf("U-%d", i), EnvironmentID: 7, Environment: "prod", LastSeen: now.Add(-96 * time.Hour)})
+	}
+	source.setInactive(offline...)
+
+	w.Sweep(context.Background())
+	require.Empty(t, sink.snapshot())
+	sink.down = false
+	w.Sweep(context.Background())
+	require.Len(t, sink.snapshot(), 5, "every undelivered transition is retried")
+	w.Sweep(context.Background())
+	require.Len(t, sink.snapshot(), 5, "and delivered once")
+
+	// A failed recovery alert keeps the node flagged until it is delivered.
+	source.setInactive()
+	source.setActive(NodeSnapshot{UUID: "U-0", EnvironmentID: 7, Environment: "prod", Active: true, LastSeen: now})
+	sink.reset()
+	sink.down = true
+	w.Sweep(context.Background())
+	sink.down = false
+	w.Sweep(context.Background())
+	hits := sink.snapshot()
+	require.Len(t, hits, 1)
+	require.Equal(t, "back", hits[0].RuleName)
 }

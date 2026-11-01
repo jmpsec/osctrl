@@ -86,7 +86,7 @@ func (h *HandlersApi) confirmPassword(w http.ResponseWriter, r *http.Request, us
 	}
 	var req MFAPasswordRequest
 	// A malformed or absent body is treated as a missing password below.
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&req)
 	ok, _ := h.Users.CheckLoginCredentials(username, req.Password)
 	if !ok {
 		h.AuditLog.FailedLogin(username, utils.GetIP(r), "wrong password confirming an MFA change")
@@ -203,7 +203,7 @@ func (h *HandlersApi) MFATOTPVerifyHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	var req MFACodeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&req); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}
@@ -376,7 +376,7 @@ func (h *HandlersApi) MFAWebAuthnFinishHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	var req MFAWebAuthnRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, authMaxBody)).Decode(&req); err != nil {
 		apiErrorResponse(w, "error parsing POST body", http.StatusBadRequest, err)
 		return
 	}

@@ -3,6 +3,8 @@ package logging
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strconv"
@@ -64,7 +66,7 @@ func (logS3 *LoggerS3) Settings(mgr *settings.Settings) {
 func (logS3 *LoggerS3) Close() error { return nil }
 
 // Send - Function that sends JSON logs to S3
-func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid string, debug bool) {
+func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid string, debug bool) error {
 	ctx := context.Background()
 	if debug {
 		log.Debug().Msgf("Sending %d bytes to S3 for %s - %s", len(data), environment, uuid)
@@ -72,17 +74,19 @@ func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid strin
 	ptrContentLength := int64(len(data))
 	result, err := logS3.Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(logS3.S3Config.Bucket),
-		Key:           aws.String(s3LogKey(environment, logType, uuid, time.Now())),
+		Key:           aws.String(s3LogKey(environment, logType, uuid, time.Now(), newBatchID())),
 		Body:          bytes.NewReader(data),
 		ContentLength: &ptrContentLength,
 		ContentType:   aws.String(http.DetectContentType(data)),
 	})
 	if err != nil {
 		log.Err(err).Msg("Error sending data to s3")
+		return err
 	}
 	if debug {
 		log.Debug().Msgf("S3 Upload %+v", result)
 	}
+	return nil
 }
 
 // s3LogKey returns the S3 object key for a status/result log. The UUID is
@@ -90,9 +94,29 @@ func (logS3 *LoggerS3) Send(logType string, data []byte, environment, uuid strin
 // single node's objects with a prefix filter. Exported so the reader and
 // writer share the exact same layout.
 //
-// Key layout: {env}/{logType}/{uuid}/{ts}.json
-func s3LogKey(environment, logType, uuid string, ts time.Time) string {
-	return environment + "/" + logType + "/" + uuid + "/" + strconv.FormatInt(ts.UnixMilli(), 10) + ".json"
+// Key layout: {env}/{logType}/{uuid}/{YYYY-MM-DD}/{ts}-{batch}.json
+//
+// The UTC day folder lets the reader list only the days a page needs
+// instead of the node's whole history.
+func s3LogKey(environment, logType, uuid string, ts time.Time, batch string) string {
+	return environment + "/" + logType + "/" + uuid + "/" + ts.UTC().Format(s3DayLayout) + "/" + s3KeyName(ts, batch)
+}
+
+// s3DayLayout names the day folders of node log keys.
+const s3DayLayout = "2006-01-02"
+
+// s3KeyName is the object name: the millisecond timestamp keeps keys in
+// chronological order, and the random batch ID keeps two uploads in the same
+// millisecond from overwriting each other.
+func s3KeyName(ts time.Time, batch string) string {
+	return strconv.FormatInt(ts.UnixMilli(), 10) + "-" + batch + ".json"
+}
+
+// newBatchID returns a random hex batch ID for an S3 log key.
+func newBatchID() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b) // crypto/rand.Read never returns an error
+	return hex.EncodeToString(b)
 }
 
 // Query - Function that sends JSON on-demand query result logs to S3.
@@ -103,7 +127,7 @@ func s3LogKey(environment, logType, uuid string, ts time.Time) string {
 // to find the ones matching `name`, which is catastrophically slow on a
 // busy bucket.
 //
-// Key layout: {env}/query/{name}/{uuid}/{ts}.json
+// Key layout: {env}/query/{name}/{uuid}/{ts}-{batch}.json
 //
 // The body is the same QueryWriteData JSON the DB logger would have
 // stored, so the reader can decode it back into OsqueryQueryData rows.
@@ -115,7 +139,7 @@ func (logS3 *LoggerS3) Query(data []byte, environment, uuid, name string, status
 	ptrContentLength := int64(len(data))
 	result, err := logS3.Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(logS3.S3Config.Bucket),
-		Key:           aws.String(s3QueryKey(environment, name, uuid, time.Now())),
+		Key:           aws.String(s3QueryKey(environment, name, uuid, time.Now(), newBatchID())),
 		Body:          bytes.NewReader(data),
 		ContentLength: &ptrContentLength,
 		ContentType:   aws.String(http.DetectContentType(data)),
@@ -131,7 +155,7 @@ func (logS3 *LoggerS3) Query(data []byte, environment, uuid, name string, status
 // s3QueryKey returns the S3 object key for a query result log. Exported
 // so the reader and writer share the exact same layout.
 //
-// Key layout: {env}/query/{name}/{uuid}/{ts}.json
-func s3QueryKey(environment, name, uuid string, ts time.Time) string {
-	return environment + "/query/" + name + "/" + uuid + "/" + strconv.FormatInt(ts.UnixMilli(), 10) + ".json"
+// Key layout: {env}/query/{name}/{uuid}/{ts}-{batch}.json
+func s3QueryKey(environment, name, uuid string, ts time.Time, batch string) string {
+	return environment + "/query/" + name + "/" + uuid + "/" + s3KeyName(ts, batch)
 }

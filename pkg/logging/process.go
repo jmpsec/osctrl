@@ -2,9 +2,11 @@ package logging
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/osqueryversions"
+	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 )
@@ -32,7 +34,7 @@ func parseResultLogs(data json.RawMessage) ([]types.LogResultData, error) {
 // sender writes it, so trusting it let any enrolled node overwrite another
 // node's metadata, plant log rows under another node, or fire and dodge
 // node-scoped alerts.
-func (l *LoggerTLS) ProcessLogs(node nodes.OsqueryNode, data json.RawMessage, logType string, envID uint, environment, ipaddress string, dataLen int, debug bool) []types.LogResultData {
+func (l *LoggerTLS) ProcessLogs(node nodes.OsqueryNode, data json.RawMessage, logType string, envID uint, environment, ipaddress string, dataLen int, debug bool) ([]types.LogResultData, error) {
 	// Parse log to extract metadata
 	var logs []types.LogGenericData
 	var resultLogs []types.LogResultData
@@ -124,9 +126,9 @@ func (l *LoggerTLS) ProcessLogs(node nodes.OsqueryNode, data json.RawMessage, lo
 		OsqueryVersion: osqueryversion,
 		BytesReceived:  dataLen,
 	}
-	// Dispatch logs and update metadata
-	l.DispatchLogs(data, node, logType, envID, environment, metadata, debug)
-	return resultLogs
+	// Dispatch logs and update metadata. An error means a storing exporter
+	// failed: the caller must not acknowledge the batch.
+	return resultLogs, l.DispatchLogs(data, node, logType, envID, environment, metadata, debug)
 }
 
 // decodeStatusLogs decodes a status-log batch with the full schema.
@@ -165,6 +167,17 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 	}
 	for q := range queryNames {
 		status := queriesWrite.Statuses[q]
+		// Claim the node's pending assignment before any side effect: a
+		// query this node was not assigned, or already answered, must not
+		// export results, raise alerts or move counters.
+		if err := l.Queries.UpdateQueryStatus(q, node.ID, status); err != nil {
+			if errors.Is(err, queries.ErrNotPending) {
+				log.Warn().Str("node", node.UUID).Str("query", q).Msg("dropping result for a query with no pending assignment")
+			} else {
+				log.Err(err).Msg("error updating query status")
+			}
+			continue
+		}
 		if r, ok := queriesWrite.Queries[q]; ok {
 			// Alert evaluation for distributed query results. Nil
 			// matcher (feature off) costs one comparison.
@@ -180,8 +193,6 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 			}
 			go l.DispatchQueries(d, node, debug)
 		}
-		// TODO: need be refactored
-		// Update internal metrics per query
 		var err error
 		if status != 0 {
 			err = l.Queries.IncError(q, envid)
@@ -190,10 +201,6 @@ func (l *LoggerTLS) ProcessLogQueryResult(queriesWrite types.QueryWriteRequest, 
 		}
 		if err != nil {
 			log.Err(err).Msg("error updating query")
-		}
-		// Update query status
-		if err := l.Queries.UpdateQueryStatus(q, node.ID, status); err != nil {
-			log.Err(err).Msg("error updating query status")
 		}
 	}
 }

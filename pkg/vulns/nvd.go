@@ -453,5 +453,5 @@ func dropNVD(db *gorm.DB, now time.Time) error {
 	if err := refreshFlags(db, now); err != nil {
 		return err
 	}
-	return db.Model(&NodeState{}).Where("1 = 1").Update("matched_at", nil).Error
+	return markAdvisoriesChanged(db, now)
 }

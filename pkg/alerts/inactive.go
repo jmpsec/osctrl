@@ -3,6 +3,7 @@ package alerts
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	redis "github.com/go-redis/redis/v8"
@@ -164,6 +165,9 @@ func (w *InactiveWatcher) Sweep(ctx context.Context) {
 
 	now := w.now()
 	var hits []Hit
+	// recoveredHit marks hits for inactive → active transitions, so a
+	// failed delivery keeps the node flagged and the recovery is retried.
+	var recoveredHit []bool
 	newlyInactive := map[string]bool{}
 
 	// active → inactive transitions
@@ -192,6 +196,7 @@ func (w *InactiveWatcher) Sweep(ctx context.Context) {
 				CooldownMinutes: r.cooldownMinutes,
 				Channels:        r.channels,
 			})
+			recoveredHit = append(recoveredHit, false)
 		}
 	}
 
@@ -221,7 +226,24 @@ func (w *InactiveWatcher) Sweep(ctx context.Context) {
 					CooldownMinutes: r.cooldownMinutes,
 					Channels:        r.channels,
 				})
+				recoveredHit = append(recoveredHit, true)
 			}
+		}
+	}
+
+	// Transitions fire once, so they are delivered inline rather than
+	// through the lossy queue, and the state records only what was
+	// delivered: a node whose inactive alert failed stays unflagged and a
+	// node whose recovery alert failed stays flagged, so the next sweep
+	// sees the same transition and retries it.
+	for i, ok := range w.deliver(ctx, hits) {
+		if ok {
+			continue
+		}
+		if recoveredHit[i] {
+			newlyInactive[hits[i].NodeUUID] = true
+		} else {
+			delete(newlyInactive, hits[i].NodeUUID)
 		}
 	}
 
@@ -230,10 +252,28 @@ func (w *InactiveWatcher) Sweep(ctx context.Context) {
 	if err := w.saveState(ctx, newlyInactive); err != nil {
 		log.Err(err).Msg("alert inactive sweep: error persisting state")
 	}
+}
 
-	if len(hits) > 0 {
-		w.worker.Enqueue(hits)
+// sweepDeliveryParallelism bounds concurrent deliveries in one sweep; a mass
+// outage can produce thousands of transitions.
+const sweepDeliveryParallelism = 8
+
+// deliver dispatches hits inline with bounded parallelism and reports which
+// were delivered (or collapsed by the cooldown).
+func (w *InactiveWatcher) deliver(ctx context.Context, hits []Hit) []bool {
+	ok := make([]bool, len(hits))
+	sem := make(chan struct{}, sweepDeliveryParallelism)
+	var wg sync.WaitGroup
+	for i := range hits {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int) {
+			defer func() { <-sem; wg.Done() }()
+			ok[i] = w.worker.Deliver(ctx, hits[i])
+		}(i)
 	}
+	wg.Wait()
+	return ok
 }
 
 // loadState reads the flagged-inactive UUID set.

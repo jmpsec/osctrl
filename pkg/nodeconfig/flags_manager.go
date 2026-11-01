@@ -60,7 +60,7 @@ func NewFlagsManager(db *gorm.DB, client *redis.Client) (*FlagsManager, error) {
 }
 
 func newFlagsManagerWithStore(db *gorm.DB, s store) (*FlagsManager, error) {
-	if err := db.AutoMigrate(&FlagsOverride{}, &OsctrldStatus{}); err != nil {
+	if err := db.AutoMigrate(&FlagsOverride{}, &OsctrldStatus{}, &OsctrldEvent{}); err != nil {
 		return nil, fmt.Errorf("migrating node flags overrides: %w", err)
 	}
 	m := &FlagsManager{}

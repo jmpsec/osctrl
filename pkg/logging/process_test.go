@@ -143,3 +143,66 @@ func TestGetNodeLogsSeverityFilter(t *testing.T) {
 		t.Fatalf("expected 1 info row, got %d", len(infoOnly))
 	}
 }
+
+// Only a pending assignment accepts a result, exactly once: an unassigned node
+// and a retried or conflicting response must not move counters or status.
+func TestProcessLogQueryResultAppliesOnlyPendingAssignmentOnce(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	nodeMgr := nodes.CreateNodes(db)
+	queryMgr := queries.CreateQueries(db)
+	logger := &LoggerTLS{
+		Logging:   config.LoggingNone,
+		exporters: map[uint]*MultiExporter{0: NewMultiExporter(&LoggerNone{Enabled: false})},
+		Nodes:     nodeMgr,
+		Queries:   queryMgr,
+	}
+	assigned := nodes.OsqueryNode{NodeKey: "key-a", UUID: "NODE-A", EnvironmentID: 1, Environment: "env"}
+	other := nodes.OsqueryNode{NodeKey: "key-b", UUID: "NODE-B", EnvironmentID: 1, Environment: "env"}
+	for _, n := range []*nodes.OsqueryNode{&assigned, &other} {
+		if err := db.Create(n).Error; err != nil {
+			t.Fatalf("create node: %v", err)
+		}
+	}
+	query := queries.DistributedQuery{Name: "q1", Query: "select 1", Active: true, EnvironmentID: 1}
+	if err := queryMgr.Create(&query); err != nil {
+		t.Fatalf("create query: %v", err)
+	}
+	if err := queryMgr.CreateNodeQueries([]uint{assigned.ID}, query.ID); err != nil {
+		t.Fatalf("create node query: %v", err)
+	}
+	report := func(key string, status int) {
+		logger.ProcessLogQueryResult(types.QueryWriteRequest{
+			NodeKey:  key,
+			Queries:  types.QueryWriteQueries{"q1": json.RawMessage(`[]`)},
+			Statuses: types.QueryWriteStatuses{"q1": status},
+		}, 1, false)
+	}
+	counts := func() (int, int) {
+		var q queries.DistributedQuery
+		if err := db.First(&q, query.ID).Error; err != nil {
+			t.Fatalf("load query: %v", err)
+		}
+		return q.Executions, q.Errors
+	}
+
+	report("key-b", 0)
+	if e, f := counts(); e != 0 || f != 0 {
+		t.Fatalf("unassigned node moved counters: executions=%d errors=%d", e, f)
+	}
+	report("key-a", 0)
+	report("key-a", 0)
+	report("key-a", 1)
+	if e, f := counts(); e != 1 || f != 0 {
+		t.Fatalf("want one execution and no errors, got executions=%d errors=%d", e, f)
+	}
+	var nq queries.NodeQuery
+	if err := db.Where("node_id = ? AND query_id = ?", assigned.ID, query.ID).First(&nq).Error; err != nil {
+		t.Fatalf("find node query: %v", err)
+	}
+	if nq.Status != queries.DistributedQueryStatusCompleted {
+		t.Fatalf("terminal status overwritten: %q", nq.Status)
+	}
+}

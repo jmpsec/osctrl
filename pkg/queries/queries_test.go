@@ -604,3 +604,29 @@ func TestActiveCountsByEnvironmentMatchesTargetActive(t *testing.T) {
 	_, hasEnv3 := got[3]
 	assert.False(t, hasEnv3, "an environment with nothing active has no entry")
 }
+
+// A result only counts once, and only from a node with a pending assignment in
+// the query's environment.
+func TestPendingAssignmentIsClaimedOnce(t *testing.T) {
+	db := testDB(t)
+	q, nodes, query := setupTestData(t, db)
+	require.NoError(t, db.Create(&queries.NodeQuery{NodeID: nodes[0].ID, QueryID: query.ID, Status: queries.DistributedQueryStatusPending}).Error)
+
+	ok, err := q.HasPendingAssignment(query.Name, nodes[0].ID, 1)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	for _, c := range []struct{ node, env uint }{{nodes[1].ID, 1}, {nodes[0].ID, 2}} {
+		ok, err = q.HasPendingAssignment(query.Name, c.node, c.env)
+		require.NoError(t, err)
+		assert.False(t, ok)
+	}
+
+	require.NoError(t, q.UpdateQueryStatus(query.Name, nodes[0].ID, 0))
+	require.ErrorIs(t, q.UpdateQueryStatus(query.Name, nodes[0].ID, 1), queries.ErrNotPending)
+	var nq queries.NodeQuery
+	require.NoError(t, db.Where("node_id = ? AND query_id = ?", nodes[0].ID, query.ID).First(&nq).Error)
+	assert.Equal(t, queries.DistributedQueryStatusCompleted, nq.Status)
+	ok, err = q.HasPendingAssignment(query.Name, nodes[0].ID, 1)
+	require.NoError(t, err)
+	assert.False(t, ok)
+}

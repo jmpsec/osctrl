@@ -54,8 +54,8 @@ func (h *HandlersApi) AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
 	requester := ctx[ctxUser]
 	// Super-admins see all operator activity. Non-admins see only
-	// their OWN activity — the username filter is force-clamped to
-	// the requester regardless of what the client sends. Without
+	// their OWN activity — the actor filter is pinned to the requester
+	// regardless of what the client sends. Without
 	// this clamp, a non-admin could iterate usernames manually and
 	// effectively page through other operators' activity. Defense-
 	// in-depth at the handler layer; the SPA also hides the
@@ -69,7 +69,10 @@ func (h *HandlersApi) AuditLogsHandler(w http.ResponseWriter, r *http.Request) {
 		Username: strings.TrimSpace(q.Get("username")),
 	}
 	if !isSuperAdmin {
-		filter.Username = requester
+		// Exact match: the partial-match search would also return rows of
+		// users whose names contain the requester's (or match "_").
+		filter.Username = ""
+		filter.Actor = requester
 	}
 	if v := q.Get("type"); v != "" {
 		n, err := strconv.ParseUint(v, 10, 32)

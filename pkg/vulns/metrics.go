@@ -130,9 +130,11 @@ func (c *metricsCollector) query(ctx context.Context, now time.Time) (*metricsRe
 		return nil, err
 	}
 	// The worker's queue: the nodes matchDirty would pick.
-	if err := db.Model(&NodeState{}).
-		Where("(matched_at IS NULL OR matched_at < inventory_at) AND inventory_at > ?", now.Add(-staleNodeAge)).
-		Count(&r.pending).Error; err != nil {
+	due, err := dueForMatch(db, now)
+	if err != nil {
+		return nil, err
+	}
+	if err := due.Count(&r.pending).Error; err != nil {
 		return nil, err
 	}
 	if err := db.Model(&NodeState{}).Select("COALESCE(SUM(not_assessed), 0)").Scan(&r.notAssessed).Error; err != nil {

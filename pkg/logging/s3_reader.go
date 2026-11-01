@@ -20,8 +20,11 @@ import (
 //
 // Key layouts (must match the write path in s3.go):
 //
-//	status/result: {env}/{logType}/{uuid}/{ts}.json
-//	query:        {env}/query/{name}/{uuid}/{ts}.json
+//	status/result: {env}/{logType}/{uuid}/{YYYY-MM-DD}/{ts}-{batch}.json
+//	query:        {env}/query/{name}/{uuid}/{ts}-{batch}.json
+//
+// Older status/result objects sit directly under {uuid}/ as {ts}.json or
+// {ts}-{batch}.json; they are still read, after the dated ones.
 //
 // The UUID is a path segment (not jammed into the filename) so the
 // reader can list a single node's objects with a prefix filter — listing
@@ -65,52 +68,78 @@ func (r *s3LogReader) NodeLogs(logType, env, uuid string, since time.Time, limit
 	}
 	wantUUID := upperUUID(uuid)
 	// The status/result key layout nests the UUID as a path segment
-	// ({env}/{logType}/{uuid}/{ts}.json), so this prefix lists only this
+	// ({env}/{logType}/{uuid}/{ts}-{batch}.json), so this prefix lists only this
 	// node's objects — not every node's logs in the environment. Without
 	// the per-node nesting the reader would list the whole env prefix
 	// and filter client-side, a DoS vector on busy environments.
 	prefix := env + "/" + logTypePrefix + "/" + wantUUID + "/"
 
-	keys, err := r.listKeys(prefix)
+	rows := make([]map[string]any, 0, limit)
+	// consume reads keys newest-first into rows and reports whether the
+	// page is full.
+	consume := func(keys []string) bool {
+		sortKeysDesc(keys)
+		for _, key := range keys {
+			if len(rows) >= limit {
+				return true
+			}
+			entry, ok := decodeNodeLogKey(key, wantUUID)
+			if !ok {
+				continue
+			}
+			if !since.IsZero() && !entry.CreatedAt.After(since) {
+				continue
+			}
+			body, err := r.getObject(key)
+			if err != nil {
+				log.Debug().Err(err).Str("key", key).Msg("s3 reader: skipping unreadable object")
+				continue
+			}
+			decoded, err := decodeNodeLogBody(body, logType, env, wantUUID, entry.CreatedAt)
+			if err != nil {
+				continue
+			}
+			// One object holds a whole batch; walk it newest-first like the keys.
+			for i := len(decoded) - 1; i >= 0 && len(rows) < limit; i-- {
+				row := decoded[i]
+				if search != "" && !nodeLogMatchesSearch(row, logType, search) {
+					continue
+				}
+				if severity != "" && logType == types.StatusLog && fmt.Sprintf("%v", row["severity"]) != severity {
+					continue
+				}
+				rows = append(rows, row)
+			}
+		}
+		return len(rows) >= limit
+	}
+
+	// Day folders sort after the undated keys (which start with a
+	// millisecond timestamp, "1..."), so StartAfter skips those.
+	_, days, err := r.listDir(prefix, prefix+"1~")
 	if err != nil {
 		return nil, err
 	}
-	// Keys are returned lexically (oldest first). We want newest first.
-	sortKeysDesc(keys)
-
-	rows := make([]map[string]any, 0, limit)
-	for _, key := range keys {
-		if len(rows) >= limit {
+	sortKeysDesc(days)
+	for _, day := range days {
+		if d, err := time.Parse(s3DayLayout, strings.TrimSuffix(strings.TrimPrefix(day, prefix), "/")); err == nil &&
+			!since.IsZero() && d.Add(24*time.Hour).Before(since) {
 			break
 		}
-		entry, ok := decodeNodeLogKey(key, wantUUID)
-		if !ok {
-			continue
-		}
-		if !since.IsZero() && !entry.CreatedAt.After(since) {
-			continue
-		}
-		body, err := r.getObject(key)
+		keys, err := r.listKeys(day)
 		if err != nil {
-			log.Debug().Err(err).Str("key", key).Msg("s3 reader: skipping unreadable object")
-			continue
+			return nil, err
 		}
-		decoded, err := decodeNodeLogBody(body, logType, env, wantUUID, entry.CreatedAt)
-		if err != nil {
-			continue
+		if consume(keys) {
+			return rows, nil
 		}
-		if search != "" && !nodeLogMatchesSearch(decoded, logType, search) {
-			continue
-		}
-		if severity != "" && logType == types.StatusLog {
-			if s, ok := decoded["severity"]; ok {
-				if fmt.Sprintf("%v", s) != severity {
-					continue
-				}
-			}
-		}
-		rows = append(rows, decoded)
 	}
+	// Undated keys written before the day folders, newest-first after them.
+	legacy, _, err := r.listDir(prefix, "")
+	if err != nil {
+		return nil, err
+	}
+	consume(legacy)
 	return rows, nil
 }
 
@@ -223,6 +252,37 @@ func (r *s3LogReader) listKeys(prefix string) ([]string, error) {
 	return keys, nil
 }
 
+// listDir lists one level under prefix: the objects directly in it and its
+// sub-"folders", each in lexical order, starting after startAfter.
+func (r *s3LogReader) listDir(prefix, startAfter string) (files, dirs []string, err error) {
+	in := &s3.ListObjectsV2Input{
+		Bucket:    aws.String(r.bucket),
+		Prefix:    aws.String(prefix),
+		Delimiter: aws.String("/"),
+	}
+	if startAfter != "" {
+		in.StartAfter = aws.String(startAfter)
+	}
+	paginator := s3.NewListObjectsV2Paginator(r.client, in)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.Background())
+		if err != nil {
+			return nil, nil, fmt.Errorf("s3 list prefix %q: %w", prefix, err)
+		}
+		for _, obj := range page.Contents {
+			if obj.Key != nil {
+				files = append(files, *obj.Key)
+			}
+		}
+		for _, p := range page.CommonPrefixes {
+			if p.Prefix != nil {
+				dirs = append(dirs, *p.Prefix)
+			}
+		}
+	}
+	return files, dirs, nil
+}
+
 // getObject downloads and returns the full body of an object.
 func (r *s3LogReader) getObject(key string) ([]byte, error) {
 	ctx := context.Background()
@@ -243,78 +303,73 @@ type nodeLogEntry struct {
 	CreatedAt time.Time
 }
 
-// decodeNodeLogKey parses {env}/{logType}/{uuid}/{ts}.json. Because the
+// decodeNodeLogKey parses {env}/{logType}/{uuid}/{ts}-{batch}.json. Because the
 // reader lists a per-node prefix, every key already belongs to wantUUID;
 // the UUID check is a defensive guard against mislaid objects.
 func decodeNodeLogKey(key, wantUUID string) (nodeLogEntry, bool) {
 	parts := strings.Split(key, "/")
-	// {env}/{logType}/{uuid}/{ts}.json -> 4 segments
-	if len(parts) != 4 {
+	// {env}/{logType}/{uuid}/[{day}/]{ts}-{batch}.json -> 4 or 5 segments
+	if len(parts) != 4 && len(parts) != 5 {
 		return nodeLogEntry{}, false
 	}
 	uuidPart := parts[2]
 	if !strings.EqualFold(uuidPart, wantUUID) {
 		return nodeLogEntry{}, false
 	}
-	tsStr := strings.TrimSuffix(parts[3], ".json")
-	tsMs, err := strconv.ParseInt(tsStr, 10, 64)
-	if err != nil {
+	ts, ok := tsFromKey(key)
+	if !ok {
 		return nodeLogEntry{}, false
 	}
-	return nodeLogEntry{UUID: wantUUID, CreatedAt: time.UnixMilli(tsMs)}, true
+	return nodeLogEntry{UUID: wantUUID, CreatedAt: ts}, true
 }
 
-// decodeNodeLogBody decodes a status or result log object body into the
-// same map[string]any shape the DB reader returns, so the API handler
-// and frontend need no changes.
-func decodeNodeLogBody(body []byte, logType, env, uuid string, createdAt time.Time) (map[string]any, error) {
+// decodeNodeLogBody decodes a status or result log object body into one row
+// per batch entry, in batch order, in the same map[string]any shape the DB
+// reader returns, so the API handler and frontend need no changes.
+func decodeNodeLogBody(body []byte, logType, env, uuid string, createdAt time.Time) ([]map[string]any, error) {
+	var rows []map[string]any
 	switch logType {
 	case types.StatusLog:
 		var logs []types.LogStatusData
 		if err := json.Unmarshal(body, &logs); err != nil {
 			return nil, err
 		}
-		// The DB reader produces one row per status line; mirror that.
-		// We only return the first entry's map because the S3 write path
-		// stores one batch per object — but the historical DB row shape
-		// is per-line, so we emit the first line here. Callers that need
-		// every line get them across multiple objects.
-		if len(logs) == 0 {
-			return nil, fmt.Errorf("empty status log")
+		for _, l := range logs {
+			rows = append(rows, map[string]any{
+				"created_at":  createdAt,
+				"uuid":        uuid,
+				"environment": env,
+				"line":        strconv.Itoa(int(l.Line)),
+				"message":     l.Message,
+				"version":     l.Version,
+				"filename":    l.Filename,
+				"severity":    strconv.Itoa(int(l.Severity)),
+			})
 		}
-		l := logs[0]
-		return map[string]any{
-			"created_at":  createdAt,
-			"uuid":        uuid,
-			"environment": env,
-			"line":        strconv.Itoa(int(l.Line)),
-			"message":     l.Message,
-			"version":     l.Version,
-			"filename":    l.Filename,
-			"severity":    strconv.Itoa(int(l.Severity)),
-		}, nil
 	case types.ResultLog:
 		var logs []types.LogResultData
 		if err := json.Unmarshal(body, &logs); err != nil {
 			return nil, err
 		}
-		if len(logs) == 0 {
-			return nil, fmt.Errorf("empty result log")
+		for _, l := range logs {
+			rows = append(rows, map[string]any{
+				"created_at":  createdAt,
+				"uuid":        uuid,
+				"environment": env,
+				"name":        l.Name,
+				"action":      l.Action,
+				"epoch":       l.Epoch,
+				"columns":     string(l.Columns),
+				"counter":     l.Counter,
+			})
 		}
-		l := logs[0]
-		return map[string]any{
-			"created_at":  createdAt,
-			"uuid":        uuid,
-			"environment": env,
-			"name":        l.Name,
-			"action":      l.Action,
-			"epoch":       l.Epoch,
-			"columns":     string(l.Columns),
-			"counter":     l.Counter,
-		}, nil
 	default:
 		return nil, fmt.Errorf("invalid log type: %s", logType)
 	}
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("empty %s log", logType)
+	}
+	return rows, nil
 }
 
 // nodeLogMatchesSearch applies the same substring filter the DB reader
@@ -373,11 +428,11 @@ func decodeQueryLogRow(body []byte, key string) (OsqueryQueryData, error) {
 	}, nil
 }
 
-// splitQueryKey parses {env}/query/{name}/{uuid}/{ts}.json and returns
+// splitQueryKey parses {env}/query/{name}/{uuid}/{ts}-{batch}.json and returns
 // env, uuid, name, ok.
 func splitQueryKey(key string) (env, uuid, name string, ok bool) {
 	parts := strings.Split(key, "/")
-	// {env}/query/{name}/{uuid}/{ts}.json -> 5 segments
+	// {env}/query/{name}/{uuid}/{ts}-{batch}.json -> 5 segments
 	if len(parts) != 5 {
 		return "", "", "", false
 	}
@@ -389,14 +444,13 @@ func splitQueryKey(key string) (env, uuid, name string, ok bool) {
 }
 
 // tsFromKey extracts the millisecond timestamp from the trailing
-// "{ts}.json" segment of any S3 log key. Both layouts end with a bare
-// "{ts}.json" filename (no colon) since the UUID is now a path segment.
+// "{ts}-{batch}.json" (or legacy "{ts}.json") segment of any S3 log key.
 func tsFromKey(key string) (time.Time, bool) {
 	base := key
 	if i := strings.LastIndex(base, "/"); i >= 0 {
 		base = base[i+1:]
 	}
-	tsStr := strings.TrimSuffix(base, ".json")
+	tsStr, _, _ := strings.Cut(strings.TrimSuffix(base, ".json"), "-")
 	tsMs, err := strconv.ParseInt(tsStr, 10, 64)
 	if err != nil {
 		return time.Time{}, false

@@ -54,7 +54,7 @@ func TestProcessLogsAlertHookResult(t *testing.T) {
 	logger := testLoggerWithMatcher(t, &recordingMatcher{})
 	data := json.RawMessage(`[{"name":"file_events","columns":{"path":"/etc/shadow"},"hostIdentifier":"NODE-A"}]`)
 
-	returned := logger.ProcessLogs(hookNode, data, types.ResultLog, 3, "prod", "10.0.0.1", len(data), false)
+	returned, _ := logger.ProcessLogs(hookNode, data, types.ResultLog, 3, "prod", "10.0.0.1", len(data), false)
 
 	if len(returned) != 1 {
 		t.Fatalf("ProcessLogs must still return decoded results: %d", len(returned))
@@ -100,7 +100,7 @@ func TestProcessLogsNoMatcherIsNoop(t *testing.T) {
 	logger := testLoggerWithMatcher(t, nil)
 	data := json.RawMessage(`[{"name":"x","columns":{"a":"b"},"hostIdentifier":"U"}]`)
 
-	returned := logger.ProcessLogs(hookNode, data, types.ResultLog, 1, "dev", "10.0.0.1", len(data), false)
+	returned, _ := logger.ProcessLogs(hookNode, data, types.ResultLog, 1, "dev", "10.0.0.1", len(data), false)
 	if len(returned) != 1 {
 		t.Fatalf("no-matcher path must not change behavior: %d", len(returned))
 	}
