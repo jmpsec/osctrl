@@ -331,6 +331,7 @@ func (p *Provider) HandleCallback(parentCtx context.Context, r *http.Request, st
 	// validation has passed.
 	return auth.ResolvedIdentity{
 		Subject:           claims.Subject,
+		Issuer:            idToken.Issuer,
 		PreferredUsername: clean,
 		Email:             claims.Email,
 		Name:              fullname,

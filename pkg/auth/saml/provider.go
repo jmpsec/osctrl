@@ -409,6 +409,7 @@ func (p *Provider) HandleCallback(_ context.Context, r *http.Request, state auth
 
 	return auth.ResolvedIdentity{
 		Subject:           nameIDValue, // SAML's stable identity field
+		Issuer:            samlIssuer(assertion),
 		PreferredUsername: clean,
 		Email:             email,
 		Name:              displayName,
@@ -417,6 +418,15 @@ func (p *Provider) HandleCallback(_ context.Context, r *http.Request, state auth
 		// IDToken is unset — SAML doesn't have one. RP-initiated
 		// logout (SLO) is deferred to v2 (decision D3).
 	}, nil
+}
+
+// samlIssuer returns the assertion's Issuer, which crewjam has already
+// checked against the IdP metadata.
+func samlIssuer(a *crewjam.Assertion) string {
+	if a == nil {
+		return ""
+	}
+	return a.Issuer.Value
 }
 
 // parseMetadataXML deserializes the operator-provided metadata XML.

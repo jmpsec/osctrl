@@ -316,13 +316,13 @@ func (h *HandlersApi) EnvEnrollHandler(w http.ResponseWriter, r *http.Request) {
 	case settings.DownloadFlagsFreeBSD:
 		returnData = substitutePlatformPaths(env.Flags, env.Name, "/usr/local/etc", "/")
 	case environments.EnrollShell:
-		returnData, err = environments.QuickAddOneLinerShell((env.Certificate != ""), env)
+		returnData, err = environments.QuickAddOneLinerShell(false, env)
 		if err != nil {
 			apiErrorResponse(w, "error generating sh one-liner", http.StatusInternalServerError, err)
 			return
 		}
 	case environments.EnrollPowershell:
-		returnData, err = environments.QuickAddOneLinerPowershell((env.Certificate != ""), env)
+		returnData, err = environments.QuickAddOneLinerPowershell(false, env)
 		if err != nil {
 			apiErrorResponse(w, "error generating ps1 one-liner", http.StatusInternalServerError, err)
 			return
@@ -393,13 +393,13 @@ func (h *HandlersApi) EnvRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	var returnData string
 	switch targetVar {
 	case environments.RemoveShell:
-		returnData, err = environments.QuickRemoveOneLinerShell((env.Certificate != ""), env)
+		returnData, err = environments.QuickRemoveOneLinerShell(false, env)
 		if err != nil {
 			apiErrorResponse(w, "error generating sh one-liner", http.StatusInternalServerError, err)
 			return
 		}
 	case environments.RemovePowershell:
-		returnData, err = environments.QuickRemoveOneLinerPowershell((env.Certificate != ""), env)
+		returnData, err = environments.QuickRemoveOneLinerPowershell(false, env)
 		if err != nil {
 			apiErrorResponse(w, "error generating ps1 one-liner", http.StatusInternalServerError, err)
 			return

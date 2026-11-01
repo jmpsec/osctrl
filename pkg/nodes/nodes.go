@@ -477,12 +477,10 @@ func (n *NodeManager) NewHistoryEntry(entry interface{}) error {
 	return nil
 }
 
-// Archive to archive osquery node by UUID
-func (n *NodeManager) Archive(uuid, trigger string) error {
-	node, err := n.GetByUUID(uuid)
-	if err != nil {
-		return fmt.Errorf("getNodeByUUID %w", err)
-	}
+// Archive stores a copy of node in the archive table. The caller passes the
+// exact row (looked up scoped to its environment), never a bare UUID: the
+// same UUID may be enrolled in more than one environment.
+func (n *NodeManager) Archive(node OsqueryNode, trigger string) error {
 	archivedNode := nodeArchiveFromNode(node, trigger)
 	if err := n.DB.Create(&archivedNode).Error; err != nil {
 		return fmt.Errorf("in Create %w", err)
@@ -490,32 +488,33 @@ func (n *NodeManager) Archive(uuid, trigger string) error {
 	return nil
 }
 
-// UpdateByUUID to update an existing node record by UUID
-func (n *NodeManager) UpdateByUUID(data OsqueryNode, uuid string) error {
-	node, err := n.GetByUUID(uuid)
-	if err != nil {
-		return fmt.Errorf("getNodeByUUID %w", err)
-	}
+// Update applies data to the exact node row.
+func (n *NodeManager) Update(node OsqueryNode, data OsqueryNode) error {
 	if err := n.DB.Model(&node).Updates(data).Error; err != nil {
-		return fmt.Errorf("in UpdateByUUID %w", err)
+		return fmt.Errorf("in Update %w", err)
 	}
 	return nil
 }
 
-// ArchiveDeleteByUUID to archive and delete an existing node record by UUID
-func (n *NodeManager) ArchiveDeleteByUUID(uuid string) error {
-	node, err := n.GetByUUID(uuid)
-	if err != nil {
-		return fmt.Errorf("getNodeByUUID %w", err)
-	}
-	archivedNode := nodeArchiveFromNode(node, "delete")
-	if err := n.DB.Create(&archivedNode).Error; err != nil {
-		return fmt.Errorf("create %w", err)
+// ArchiveDelete archives and hard-deletes the exact node row.
+func (n *NodeManager) ArchiveDelete(node OsqueryNode) error {
+	if err := n.Archive(node, "delete"); err != nil {
+		return err
 	}
 	if err := n.DB.Unscoped().Delete(&node).Error; err != nil {
 		return fmt.Errorf("delete %w", err)
 	}
 	return nil
+}
+
+// ArchiveDeleteByUUIDEnv archives and hard-deletes the node with uuid in the
+// environment named environment.
+func (n *NodeManager) ArchiveDeleteByUUIDEnv(uuid, environment string) error {
+	var node OsqueryNode
+	if err := n.DB.Where("uuid = ? AND environment = ?", strings.ToUpper(uuid), environment).First(&node).Error; err != nil {
+		return fmt.Errorf("getNodeByUUIDEnv %w", err)
+	}
+	return n.ArchiveDelete(node)
 }
 
 // Helper to convert an enrolled osquery node into an archived osquery node

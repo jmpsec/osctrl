@@ -28,6 +28,11 @@ import (
 // to the cache TTL; it only applies if the same UUID re-enrolls in that window.
 func deleteNodeOverride(uuid string) {
 	uuid = strings.ToUpper(uuid)
+	// These rows are keyed by UUID alone; if the UUID is still enrolled in
+	// another environment they may belong to that node.
+	if nodesmgr.CheckByUUID(uuid) {
+		return
+	}
 	m, err := nodeconfig.NewManager(nodesmgr.DB, nil)
 	if err == nil {
 		err = m.Delete(context.Background(), uuid)
@@ -177,7 +182,7 @@ func deleteNode(ctx context.Context, cmd *cli.Command) error {
 		os.Exit(1)
 	}
 	if dbFlag {
-		if err := nodesmgr.ArchiveDeleteByUUID(uuid); err != nil {
+		if err := nodesmgr.ArchiveDeleteByUUIDEnv(uuid, env); err != nil {
 			return fmt.Errorf("error deleting - %w", err)
 		}
 		deleteNodeOverride(uuid)

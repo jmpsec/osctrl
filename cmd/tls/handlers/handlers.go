@@ -431,11 +431,9 @@ func (h *HandlersTLS) PrometheusMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(rw, r)
 
 		duration := time.Since(start).Seconds()
-
-		path := r.URL.Path
-		method := r.Method
-		statusCode := strconv.Itoa(rw.statusCode)
-		requestDuration.WithLabelValues(method, path, statusCode).Observe(duration)
+		// r.Pattern is the registered route, not the raw path: {env} is
+		// caller-chosen and would add a label set per distinct value.
+		requestDuration.WithLabelValues(r.Method, r.Pattern, strconv.Itoa(rw.statusCode)).Observe(duration)
 	})
 }
 

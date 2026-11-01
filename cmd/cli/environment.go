@@ -550,16 +550,19 @@ func quickAddEnvironment(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 	}
-	insecure := (cmd.Bool("insecure") || (env.Certificate != ""))
+	insecure := cmd.Bool("insecure")
 	var oneLiner string
 	switch cmd.String("target") {
 	case targetShell:
-		oneLiner, _ = environments.QuickAddOneLinerShell(insecure, env)
+		oneLiner, err = environments.QuickAddOneLinerShell(insecure, env)
 	case targetPowershell:
-		oneLiner, _ = environments.QuickAddOneLinerPowershell(insecure, env)
+		oneLiner, err = environments.QuickAddOneLinerPowershell(insecure, env)
 	default:
 		fmt.Fprintf(os.Stderr, "❌ invalid target! It can be %s or %s\n", targetShell, targetPowershell)
 		os.Exit(1)
+	}
+	if err != nil {
+		return err
 	}
 	fmt.Printf("%s\n", oneLiner)
 	return nil
@@ -691,16 +694,19 @@ func quickRemoveEnvironment(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 	}
-	insecure := (cmd.Bool("insecure") || (env.Certificate != ""))
+	insecure := cmd.Bool("insecure")
 	var oneLiner string
 	switch cmd.String("target") {
 	case targetShell:
-		oneLiner, _ = environments.QuickRemoveOneLinerShell(insecure, env)
+		oneLiner, err = environments.QuickRemoveOneLinerShell(insecure, env)
 	case targetPowershell:
-		oneLiner, _ = environments.QuickRemoveOneLinerPowershell(insecure, env)
+		oneLiner, err = environments.QuickRemoveOneLinerPowershell(insecure, env)
 	default:
 		fmt.Printf("❌ invalid target! It can be %s or %s\n", targetShell, targetPowershell)
 		os.Exit(1)
+	}
+	if err != nil {
+		return err
 	}
 	fmt.Printf("%s\n", oneLiner)
 	return nil

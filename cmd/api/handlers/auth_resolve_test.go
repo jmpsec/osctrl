@@ -177,3 +177,58 @@ func TestLinkedAccountResolvesAfterFlagIsDisabled(t *testing.T) {
 	require.NoError(t, err, "an already-linked account no longer needs the flag")
 	require.Equal(t, "oidc", user.AuthSource)
 }
+
+// A username the IdP hands to a different subject must not inherit the
+// account; the same subject under a new username keeps it.
+func TestFederatedLoginBindsSubjectNotUsername(t *testing.T) {
+	db := setupResolveTestDB(t)
+	userMgr := users.CreateUserManager(db)
+	h := &HandlersApi{Users: userMgr}
+	oidc := federatedPolicy{authSource: "oidc", jitProvision: true}
+	alice := auth.ResolvedIdentity{Issuer: "https://idp", Subject: "sub-alice", PreferredUsername: "alice"}
+
+	first, err := h.resolveFederatedUser(alice, oidc, "10.0.0.1")
+	require.NoError(t, err)
+	require.True(t, first.Admin)
+
+	// Another subject now asserting the username "alice" is rejected.
+	_, err = h.resolveFederatedUser(auth.ResolvedIdentity{Issuer: "https://idp", Subject: "sub-mallory", PreferredUsername: "alice"}, oidc, "10.0.0.1")
+	require.ErrorIs(t, err, ErrAuthUserRejected)
+	// So is the same subject value from another issuer.
+	_, err = h.resolveFederatedUser(auth.ResolvedIdentity{Issuer: "https://other", Subject: "sub-alice", PreferredUsername: "alice"}, oidc, "10.0.0.1")
+	require.ErrorIs(t, err, ErrAuthUserRejected)
+
+	// Renamed at the IdP: same subject, new username, same account.
+	alice.PreferredUsername = "alice.smith"
+	renamed, err := h.resolveFederatedUser(alice, oidc, "10.0.0.1")
+	require.NoError(t, err)
+	require.Equal(t, "alice", renamed.Username)
+}
+
+// Rows that predate binding are bound on their next login, after which
+// another subject cannot claim them. Each protocol keeps its own binding.
+func TestFederatedLoginBindsLegacyRowOnFirstLogin(t *testing.T) {
+	db := setupResolveTestDB(t)
+	userMgr := users.CreateUserManager(db)
+	legacy, err := userMgr.New("bob", "", "", "", true, false)
+	require.NoError(t, err)
+	legacy.AuthSource = "oidc"
+	require.NoError(t, userMgr.Create(legacy))
+	h := &HandlersApi{Users: userMgr}
+	oidc := federatedPolicy{authSource: "oidc"}
+	saml := federatedPolicy{authSource: "saml"}
+
+	got, err := h.resolveFederatedUser(auth.ResolvedIdentity{Issuer: "https://idp", Subject: "sub-bob", PreferredUsername: "bob"}, oidc, "10.0.0.1")
+	require.NoError(t, err)
+	require.Equal(t, "bob", got.Username)
+	_, err = h.resolveFederatedUser(auth.ResolvedIdentity{Issuer: "https://idp", Subject: "sub-eve", PreferredUsername: "bob"}, oidc, "10.0.0.1")
+	require.ErrorIs(t, err, ErrAuthUserRejected)
+
+	// SAML has a separate subject namespace and binding.
+	_, err = h.resolveFederatedUser(auth.ResolvedIdentity{Issuer: "urn:idp", Subject: "bob@corp", PreferredUsername: "bob"}, saml, "10.0.0.1")
+	require.NoError(t, err)
+	stored, err := userMgr.Get("bob")
+	require.NoError(t, err)
+	require.Equal(t, "https://idp#sub-bob", stored.OIDCSubject)
+	require.Equal(t, "urn:idp#bob@corp", stored.SAMLSubject)
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
 )
@@ -89,9 +90,9 @@ func (h *HandlersTLS) ProcessCarveWrite(req types.QueryCarveScheduled, queryName
 }
 
 // ProcessCarveInit - Function to initialize a file carve from a node
-func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, environment string) error {
+func (h *HandlersTLS) ProcessCarveInit(req types.CarveInitRequest, sessionid, environment string, node nodes.OsqueryNode) error {
 	// Create File Carve
-	if err := h.Carves.InitCarve(req, sessionid); err != nil {
+	if err := h.Carves.InitCarve(req, sessionid, node.ID, node.EnvironmentID); err != nil {
 		log.Err(err).Msg("error creating CarvedFile")
 		return err
 	}

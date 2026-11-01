@@ -895,8 +895,8 @@ func (s *dbStore) Settings() ([]settingRow, error) {
 	return out, nil
 }
 
-func (s *dbStore) DeleteNode(_, identifier string) error {
-	if err := nodesmgr.ArchiveDeleteByUUID(identifier); err != nil {
+func (s *dbStore) DeleteNode(env, identifier string) error {
+	if err := nodesmgr.ArchiveDeleteByUUIDEnv(identifier, env); err != nil {
 		return err
 	}
 	deleteNodeOverride(identifier)
