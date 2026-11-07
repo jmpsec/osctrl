@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -142,4 +143,41 @@ func TestEnvActionsCreateGrantsNonSuperuserCreator(t *testing.T) {
 	env, err := h.Envs.Get("viaact")
 	require.NoError(t, err)
 	require.True(t, h.Users.CheckPermissions("em", users.AdminLevel, env.UUID))
+}
+
+// A superuser rename moves the env's nodes, and a superuser delete is refused
+// while nodes remain, so no name is ever left behind for someone to recreate
+// and inherit the fleet.
+func TestEnvNodesNeverOrphanedByRenameOrDelete(t *testing.T) {
+	h := setupEnvRoles(t)
+	require.NoError(t, h.DB.AutoMigrate(&nodes.OsqueryNode{}))
+	require.NoError(t, h.DB.Create(&nodes.OsqueryNode{UUID: "n1", Environment: "prod"}).Error)
+
+	rr := envReq(h, "root", http.MethodDelete, "", "prod", h.EnvironmentDeleteHandler)
+	require.Equal(t, http.StatusConflict, rr.Code, rr.Body.String())
+	require.True(t, h.Envs.Exists("prod"))
+	const fleetUUID = "11111111-1111-4111-8111-111111111111"
+	require.NoError(t, h.Envs.Create(&environments.TLSEnvironment{Name: "fleet", UUID: fleetUUID}))
+	require.NoError(t, h.DB.Create(&nodes.OsqueryNode{UUID: "n3", Environment: "fleet"}).Error)
+	rr = envReq(h, "root", http.MethodPost, `{"action":"delete","uuid":"`+fleetUUID+`","name":"fleet"}`, "", h.EnvActionsHandler)
+	require.Equal(t, http.StatusConflict, rr.Code, rr.Body.String())
+	require.True(t, h.Envs.Exists("fleet"))
+
+	rr = envReq(h, "root", http.MethodPatch, `{"name":"prod-old"}`, "prod", h.EnvironmentUpdateHandler)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	var node nodes.OsqueryNode
+	require.NoError(t, h.DB.Where("uuid = ?", "n1").First(&node).Error)
+	require.Equal(t, "prod-old", node.Environment)
+
+	// The freed name now carries no nodes: an env manager recreating it gets an empty env.
+	rr = envReq(h, "em", http.MethodPost, `{"name":"prod","hostname":"h.example.com","type":"osquery","icon":"cloud"}`, "", h.EnvironmentCreateHandler)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var n int64
+	require.NoError(t, h.DB.Model(&nodes.OsqueryNode{}).Where("environment = ?", "prod").Count(&n).Error)
+	require.Zero(t, n)
+
+	// Nodes orphaned before this fix (a name with nodes but no env) can't be adopted.
+	require.NoError(t, h.DB.Create(&nodes.OsqueryNode{UUID: "n2", Environment: "ghost"}).Error)
+	rr = envReq(h, "em", http.MethodPost, `{"name":"ghost","hostname":"h.example.com","type":"osquery","icon":"cloud"}`, "", h.EnvironmentCreateHandler)
+	require.Equal(t, http.StatusConflict, rr.Code, rr.Body.String())
 }

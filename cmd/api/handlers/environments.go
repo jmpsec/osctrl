@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -718,6 +719,10 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 			env.Flags = flags
 			// Create environment
 			if err := h.Envs.Create(&env); err != nil {
+				if errors.Is(err, environments.ErrNameHasNodes) {
+					apiErrorResponse(w, "nodes still carry that environment name", http.StatusConflict, err)
+					return
+				}
 				apiErrorResponse(w, "error creating environment", http.StatusInternalServerError, err)
 				return
 			}
@@ -779,6 +784,10 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		if err := h.Envs.Delete(targetEnv.Name); err != nil {
+			if errors.Is(err, environments.ErrEnvHasNodes) {
+				apiErrorResponse(w, "environment still has enrolled nodes", http.StatusConflict, err)
+				return
+			}
 			apiErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
 			return
 		}

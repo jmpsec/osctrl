@@ -91,6 +91,10 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 			apiErrorResponse(w, "environment with that name already exists", http.StatusConflict, err)
 			return
 		}
+		if errors.Is(err, environments.ErrNameHasNodes) {
+			apiErrorResponse(w, "nodes still carry that environment name", http.StatusConflict, err)
+			return
+		}
 		apiErrorResponse(w, "error creating environment", http.StatusInternalServerError, err)
 		return
 	}
@@ -202,7 +206,6 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 				apiErrorResponse(w, "environment already exists", http.StatusConflict, fmt.Errorf("environment %s already exists", n))
 				return
 			}
-			// shortcut: nodes are keyed by env name (osquery_nodes.environment) and rename doesn't migrate them; fix when nodes move to env IDs.
 			patch["name"] = n
 		}
 	}
@@ -243,7 +246,12 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, env)
 		return
 	}
-	if err := h.Envs.DB.Model(&env).Updates(patch).Error; err != nil {
+	// UpdateFields also moves name-keyed rows (nodes, posture) on rename.
+	if err := h.Envs.UpdateFields(env, patch); err != nil {
+		if errors.Is(err, environments.ErrNameHasNodes) {
+			apiErrorResponse(w, "nodes still carry that environment name", http.StatusConflict, err)
+			return
+		}
 		// Race fallback for the rename path: a concurrent PATCH could
 		// have inserted the same target name between our Exists() check
 		// above and this UPDATE. uniqueIndex catches it; translate to
@@ -311,6 +319,10 @@ func (h *HandlersApi) EnvironmentDeleteHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if err := h.Envs.Delete(envVar); err != nil {
+		if errors.Is(err, environments.ErrEnvHasNodes) {
+			apiErrorResponse(w, "environment still has enrolled nodes", http.StatusConflict, err)
+			return
+		}
 		apiErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
 		return
 	}
