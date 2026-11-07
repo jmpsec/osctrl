@@ -1093,6 +1093,17 @@ describe('NodeDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'Create alert for this node' })).not.toBeInTheDocument();
   });
 
+  it('hides the node Alert button from env-admins (alerts API is global-admin only)', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, alerts: true });
+    mockGetMe.mockResolvedValue({
+      admin: false,
+      permissions: { 'env-uuid-1': { user: true, query: true, carve: true, admin: true } },
+    });
+    renderWithProviders(makeTestRouter());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run query' })).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Create alert for this node' })).not.toBeInTheDocument();
+  });
+
   it('shows the node Alert button and creates a node-scoped rule', async () => {
     mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, alerts: true });
     const user = userEvent.setup();

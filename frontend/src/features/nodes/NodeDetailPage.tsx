@@ -1046,7 +1046,8 @@ export function NodeDetailPage() {
                   Carve File
                 </button>
               )}
-              {alertsEnabled && canAdminNode && (
+              {/* Alerts API is global-admin only; env-admins would get a 403. */}
+              {alertsEnabled && me?.admin === true && (
                 <button
                   type="button"
                   aria-label="Create alert for this node"
