@@ -289,6 +289,7 @@ export const pl: Messages = {
     warmingState: 'przygotowywanie',
     opening: 'otwieranie konsoli...',
     waitingForNode: 'oczekiwanie na węzeł',
+    hint: 'Tab uzupełnia polecenia, ↑/↓ przywołuje historię',
     run: 'Wykonaj',
     noRows: 'brak wierszy',
     metadata: {

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NodeConsolePanel } from './NodeConsolePage';
+import { completeCommand, helpCommands, NodeConsolePanel } from './NodeConsolePage';
 
 const consoleApi = vi.hoisted(() => ({
   createConsoleSession: vi.fn(),
@@ -299,6 +299,38 @@ describe('NodeConsolePanel', () => {
     await screen.findByText('/');
     expect(input).toHaveFocus();
   });
+  it('prints help once warm-up completes, then completes commands with Tab and recalls history', async () => {
+    const help = 'Supported commands:\n\nProcesses:\n  ps               list processes\n  ports            show listening ports\n  pwd              show current directory';
+    consoleApi.createConsoleSession.mockResolvedValue({
+      session: makeSession(),
+      history: [{ command: makeCommand({ id: 7, status: 'completed', input: 'uptime' }), results: [] }],
+      priming: makeCommand({ id: 99, input: 'select version from osquery_info', priming: true }),
+      help,
+    });
+    consoleApi.getConsoleCommand.mockResolvedValue(
+      makeCommand({ id: 99, input: 'select version from osquery_info', priming: true, status: 'completed' }),
+    );
+    consoleApi.getConsoleCommandResults.mockResolvedValue([{ version: '5.11.0' }]);
+
+    renderConsole();
+
+    expect(await screen.findByText(/Supported commands:/)).toBeInTheDocument();
+    const input = await screen.findByLabelText(/console input/i);
+
+    fireEvent.change(input, { target: { value: 'po' } });
+    fireEvent.keyDown(input, { key: 'Tab' });
+    expect(input).toHaveValue('ports ');
+
+    fireEvent.change(input, { target: { value: 'p' } });
+    fireEvent.keyDown(input, { key: 'Tab' });
+    expect(await screen.findByText('ps ports pwd')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    expect(input).toHaveValue('uptime');
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(input).toHaveValue('');
+  });
 });
 
 function renderConsole() {
@@ -339,3 +371,23 @@ function makeCommand(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe('console completion helpers', () => {
+  it('extracts command names from the help text', () => {
+    expect(helpCommands('Supported commands:\n\nFiles:\n  ls [path]   list\n  stat <path> meta\n  .tables     tables')).toEqual([
+      'ls',
+      'stat',
+      '.tables',
+    ]);
+  });
+
+  it.each([
+    ['st', ['stat', 'sudoers'], 'stat '],
+    ['s', ['stat', 'sudoers', 'sockets'], 's'],
+    ['su', ['sudo', 'sudoers'], 'sudo'],
+    ['zz', ['stat'], 'zz'],
+    ['ls /tmp', ['ls'], 'ls /tmp'],
+  ])('completes %s', (input, commands, expected) => {
+    expect(completeCommand(input, commands).value).toBe(expected);
+  });
+});

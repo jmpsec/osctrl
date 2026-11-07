@@ -289,6 +289,7 @@ export const he: Messages = {
     warmingState: 'מכין',
     opening: 'פותח קונסולה...',
     waitingForNode: 'ממתין לצומת',
+    hint: 'Tab משלים פקודות, ↑/↓ מחזיר היסטוריה',
     run: 'הרצה',
     noRows: 'אין שורות',
     metadata: {

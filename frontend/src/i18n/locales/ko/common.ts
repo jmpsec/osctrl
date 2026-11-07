@@ -289,6 +289,7 @@ export const ko: Messages = {
     warmingState: '준비 중',
     opening: '콘솔 여는 중...',
     waitingForNode: '노드 대기 중',
+    hint: 'Tab으로 명령 자동 완성, ↑/↓로 기록 불러오기',
     run: '실행',
     noRows: '행 없음',
     metadata: {

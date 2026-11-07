@@ -289,6 +289,7 @@ export const it: Messages = {
     warmingState: 'preparazione',
     opening: 'apertura console...',
     waitingForNode: 'in attesa del nodo',
+    hint: 'Tab completa i comandi, ↑/↓ richiama la cronologia',
     run: 'Esegui',
     noRows: 'nessuna riga',
     metadata: {

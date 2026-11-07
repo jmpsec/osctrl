@@ -289,6 +289,7 @@ export const ca: Messages = {
     warmingState: 'escalfant',
     opening: 'obrint consola...',
     waitingForNode: 'esperant el node',
+    hint: 'Tab completa ordres, ↑/↓ recupera l\'historial',
     run: 'Executar',
     noRows: 'sense files',
     metadata: {

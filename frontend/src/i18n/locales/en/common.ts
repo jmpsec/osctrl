@@ -298,6 +298,7 @@ export const en = {
     warmingState: 'warming',
     opening: 'opening console...',
     waitingForNode: 'waiting for node',
+    hint: 'Tab completes commands, ↑/↓ recalls history',
     run: 'Run',
     noRows: 'no rows',
     metadata: {

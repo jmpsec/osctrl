@@ -289,6 +289,7 @@ export const es: Messages = {
     warmingState: 'calentando',
     opening: 'abriendo consola...',
     waitingForNode: 'esperando al nodo',
+    hint: 'Tab completa comandos, ↑/↓ recupera el historial',
     run: 'Ejecutar',
     noRows: 'sin filas',
     metadata: {

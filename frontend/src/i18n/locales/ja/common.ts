@@ -289,6 +289,7 @@ export const ja: Messages = {
     warmingState: '準備中',
     opening: 'コンソールを開いています...',
     waitingForNode: 'ノードを待機中',
+    hint: 'Tab でコマンド補完、↑/↓ で履歴を呼び出し',
     run: '実行',
     noRows: '行なし',
     metadata: {

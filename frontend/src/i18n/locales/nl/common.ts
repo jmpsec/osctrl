@@ -289,6 +289,7 @@ export const nl: Messages = {
     warmingState: 'opwarmen',
     opening: 'console openen...',
     waitingForNode: 'wachten op node',
+    hint: 'Tab vult commando\'s aan, ↑/↓ roept geschiedenis op',
     run: 'Uitvoeren',
     noRows: 'geen rijen',
     metadata: {

@@ -289,6 +289,7 @@ export const hi: Messages = {
     warmingState: 'तैयार हो रहा है',
     opening: 'कंसोल खुल रहा है...',
     waitingForNode: 'नोड की प्रतीक्षा',
+    hint: 'Tab कमांड पूरा करता है, ↑/↓ इतिहास दिखाता है',
     run: 'चलाएँ',
     noRows: 'कोई पंक्ति नहीं',
     metadata: {

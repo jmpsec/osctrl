@@ -289,6 +289,7 @@ export const tr: Messages = {
     warmingState: 'hazırlanıyor',
     opening: 'konsol açılıyor...',
     waitingForNode: 'düğüm bekleniyor',
+    hint: 'Tab komutları tamamlar, ↑/↓ geçmişi getirir',
     run: 'Çalıştır',
     noRows: 'satır yok',
     metadata: {

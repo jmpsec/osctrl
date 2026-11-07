@@ -51,6 +51,8 @@ type consoleSessionResponse struct {
 	// It may be nil if priming submission failed (the session is still
 	// usable; acceleration just won't be pre-warmed).
 	Priming *console.Command `json:"priming,omitempty"`
+	// Help is the console command reference, shown once warm-up completes.
+	Help string `json:"help"`
 }
 
 const defaultConsoleQueryReadSeconds = 5
@@ -100,6 +102,7 @@ func (h *HandlersApi) ConsoleSessionCreateHandler(w http.ResponseWriter, r *http
 		History:  history,
 		NodeInfo: consoleNodeInfoFromNode(node),
 		Priming:  priming,
+		Help:     console.HelpText(),
 	})
 }
 

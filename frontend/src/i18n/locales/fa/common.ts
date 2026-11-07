@@ -289,6 +289,7 @@ export const fa: Messages = {
     warmingState: 'گرم کردن',
     opening: 'در حال باز کردن کنسول...',
     waitingForNode: 'در انتظار گره',
+    hint: 'Tab دستورها را کامل می‌کند، ↑/↓ تاریخچه را فراخوانی می‌کند',
     run: 'اجرای کنسول',
     noRows: 'بدون ردیف',
     metadata: {
