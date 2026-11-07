@@ -99,13 +99,90 @@ func toAlertChannelDTO(c alerts.AlertChannel, reveal bool) alertChannelDTO {
 	}
 }
 
-func (h *HandlersApi) requireAlertsAdmin(w http.ResponseWriter, r *http.Request) (string, bool) {
+func (h *HandlersApi) requireAlertsRole(w http.ResponseWriter, r *http.Request, roles ...users.GlobalRole) (string, bool) {
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use alerts API by user %s", ctx[ctxUser]))
-		return "", false
+	for _, role := range roles {
+		if h.Users.HasRoleContext(r.Context(), ctx[ctxUser], role) {
+			return ctx[ctxUser], true
+		}
 	}
-	return ctx[ctxUser], true
+	apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use alerts API by user %s", ctx[ctxUser]))
+	return "", false
+}
+
+// requireAlertsRead allows alert admins and read-only admins.
+func (h *HandlersApi) requireAlertsRead(w http.ResponseWriter, r *http.Request) (string, bool) {
+	return h.requireAlertsRole(w, r, users.RoleAlertAdmin, users.RoleReadOnly)
+}
+
+// requireAlertsWrite allows alert admins only.
+func (h *HandlersApi) requireAlertsWrite(w http.ResponseWriter, r *http.Request) (string, bool) {
+	return h.requireAlertsRole(w, r, users.RoleAlertAdmin)
+}
+
+var logContentSources = []string{alerts.SourceResultLog, alerts.SourceQueryLog, alerts.SourceStatusLog}
+
+func isLogContentSource(source string) bool {
+	for _, s := range logContentSources {
+		if s == source {
+			return true
+		}
+	}
+	return false
+}
+
+// denyLogContent answers 403 unless the caller is a superuser. Log-content
+// matches put log data in channels and history, so every path that creates,
+// changes, deletes or reads such rules (or their channels) needs it.
+// shortcut: superuser-only for now (rule create/update/delete, channel update/delete, history), all relaxed in part 2 to full query tier in the rule's environment.
+func (h *HandlersApi) denyLogContent(w http.ResponseWriter, r *http.Request, user string) bool {
+	if h.Users.HasRoleContext(r.Context(), user, users.RoleSuperuser) {
+		return false
+	}
+	apiErrorResponse(w, "log-content alert rules require superuser", http.StatusForbidden, fmt.Errorf("attempt to manage log-content alert rule by user %s", user))
+	return true
+}
+
+// requireLogContentRuleAllowed refuses log-content rules to non-superusers.
+func (h *HandlersApi) requireLogContentRuleAllowed(w http.ResponseWriter, r *http.Request, user, source string) bool {
+	return !isLogContentSource(source) || !h.denyLogContent(w, r, user)
+}
+
+// logContentRules lists the rules whose source carries log content, in one query.
+func logContentRules(mgr *alerts.Manager) ([]alerts.AlertRule, error) {
+	var rules []alerts.AlertRule
+	err := mgr.DB.Where("source IN ?", logContentSources).Find(&rules).Error
+	return rules, err
+}
+
+// requireChannelNotLogContent refuses non-superusers a channel that any log-content rule sends to.
+func (h *HandlersApi) requireChannelNotLogContent(w http.ResponseWriter, r *http.Request, mgr *alerts.Manager, user string, channelID uint) bool {
+	if h.Users.HasRoleContext(r.Context(), user, users.RoleSuperuser) {
+		return true
+	}
+	rules, err := logContentRules(mgr)
+	if err != nil {
+		apiErrorResponse(w, "error checking alert rules", http.StatusInternalServerError, err)
+		return false
+	}
+	for _, rule := range rules {
+		ids, err := alerts.DecodeChannelIDs(rule.ChannelIDs)
+		if err != nil {
+			// Fail closed: a malformed rule might route to this channel.
+			return !h.denyLogContent(w, r, user)
+		}
+		for _, cid := range ids {
+			if cid == channelID {
+				return !h.denyLogContent(w, r, user)
+			}
+		}
+	}
+	return true
+}
+
+// canReveal honors reveal=1 for superusers only; everyone else gets redacted secrets.
+func (h *HandlersApi) canReveal(r *http.Request, user string) bool {
+	return parseReveal(r) && h.Users.HasRoleContext(r.Context(), user, users.RoleSuperuser)
 }
 
 func (h *HandlersApi) alertsMgr(w http.ResponseWriter) (*alerts.Manager, bool) {
@@ -135,7 +212,7 @@ func (h *HandlersApi) AlertRulesListHandler(w http.ResponseWriter, r *http.Reque
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	_, ok := h.requireAlertsAdmin(w, r)
+	_, ok := h.requireAlertsRead(w, r)
 	if !ok {
 		return
 	}
@@ -179,7 +256,7 @@ func (h *HandlersApi) AlertRuleGetHandler(w http.ResponseWriter, r *http.Request
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	_, ok := h.requireAlertsAdmin(w, r)
+	_, ok := h.requireAlertsRead(w, r)
 	if !ok {
 		return
 	}
@@ -220,7 +297,7 @@ func (h *HandlersApi) AlertRulesCreateHandler(w http.ResponseWriter, r *http.Req
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsWrite(w, r)
 	if !ok {
 		return
 	}
@@ -231,6 +308,9 @@ func (h *HandlersApi) AlertRulesCreateHandler(w http.ResponseWriter, r *http.Req
 	var body types.AlertRuleCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
+		return
+	}
+	if !h.requireLogContentRuleAllowed(w, r, user, body.Source) {
 		return
 	}
 	if !h.vulnRuleAllowed(w, body.Source) {
@@ -280,7 +360,7 @@ func (h *HandlersApi) AlertRulesUpdateHandler(w http.ResponseWriter, r *http.Req
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsWrite(w, r)
 	if !ok {
 		return
 	}
@@ -298,10 +378,17 @@ func (h *HandlersApi) AlertRulesUpdateHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
 		return
 	}
+	if !h.requireLogContentRuleAllowed(w, r, user, body.Source) {
+		return
+	}
+	existing, existErr := mgr.GetRule(id)
+	if existErr == nil && !h.requireLogContentRuleAllowed(w, r, user, existing.Source) {
+		return
+	}
 	// Only turning a rule into a vulnerability rule needs the feature: an
 	// existing one stays editable, so it can be disabled while the feature
 	// is off.
-	if existing, err := mgr.GetRule(id); err != nil || existing.Source != alerts.SourceVulnFinding {
+	if existErr != nil || existing.Source != alerts.SourceVulnFinding {
 		if !h.vulnRuleAllowed(w, body.Source) {
 			return
 		}
@@ -348,7 +435,7 @@ func (h *HandlersApi) AlertRulesDeleteHandler(w http.ResponseWriter, r *http.Req
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsWrite(w, r)
 	if !ok {
 		return
 	}
@@ -359,6 +446,9 @@ func (h *HandlersApi) AlertRulesDeleteHandler(w http.ResponseWriter, r *http.Req
 	id, err := parseAlertID(r, "id")
 	if err != nil {
 		apiErrorResponse(w, "invalid rule id", http.StatusBadRequest, err)
+		return
+	}
+	if existing, err := mgr.GetRule(id); err == nil && !h.requireLogContentRuleAllowed(w, r, user, existing.Source) {
 		return
 	}
 	if err := mgr.DeleteRule(id); err != nil {
@@ -374,11 +464,11 @@ func (h *HandlersApi) AlertRulesDeleteHandler(w http.ResponseWriter, r *http.Req
 // AlertChannelsListHandler — GET /api/v1/alerts/channels?env={id}&reveal={0|1}
 //
 // @Summary List alert channels
-// @Description Returns alert channel rows. Secrets are redacted unless reveal=1 is passed by an admin.
+// @Description Returns alert channel rows. Secrets are redacted unless reveal=1 is passed by a superuser.
 // @Tags alerts
 // @Produce json
 // @Param env query int false "Environment ID; omit to list all"
-// @Param reveal query int false "Pass 1 to include secret fields (admin only)"
+// @Param reveal query int false "Pass 1 to include secret fields (superuser only)"
 // @Success 200 {array} alertChannelDTO
 // @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
 // @Failure 403 {object} types.ApiErrorResponse "Forbidden"
@@ -389,7 +479,7 @@ func (h *HandlersApi) AlertChannelsListHandler(w http.ResponseWriter, r *http.Re
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	_, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsRead(w, r)
 	if !ok {
 		return
 	}
@@ -407,7 +497,7 @@ func (h *HandlersApi) AlertChannelsListHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "error listing alert channels", http.StatusInternalServerError, err)
 		return
 	}
-	reveal := parseReveal(r)
+	reveal := h.canReveal(r, user)
 	out := make([]alertChannelDTO, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, toAlertChannelDTO(row, reveal))
@@ -430,7 +520,7 @@ func (h *HandlersApi) AlertChannelsTypesHandler(w http.ResponseWriter, r *http.R
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	if _, ok := h.requireAlertsAdmin(w, r); !ok {
+	if _, ok := h.requireAlertsRead(w, r); !ok {
 		return
 	}
 	specs := make([]types.AlertChannelTypeSpec, 0, len(alerts.ChannelRegistry))
@@ -462,11 +552,11 @@ func (h *HandlersApi) AlertChannelsTypesHandler(w http.ResponseWriter, r *http.R
 // AlertChannelsGetHandler — GET /api/v1/alerts/channels/{id}?reveal={0|1}
 //
 // @Summary Get one alert channel
-// @Description Returns a single alert channel by ID. Secrets are redacted unless reveal=1.
+// @Description Returns a single alert channel by ID. Secrets are redacted unless reveal=1 is passed by a superuser.
 // @Tags alerts
 // @Produce json
 // @Param id path int true "Channel ID"
-// @Param reveal query int false "Pass 1 to include secret fields (admin only)"
+// @Param reveal query int false "Pass 1 to include secret fields (superuser only)"
 // @Success 200 {object} alertChannelDTO
 // @Failure 400 {object} types.ApiErrorResponse "Bad request"
 // @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
@@ -479,7 +569,7 @@ func (h *HandlersApi) AlertChannelsGetHandler(w http.ResponseWriter, r *http.Req
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	_, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsRead(w, r)
 	if !ok {
 		return
 	}
@@ -497,7 +587,7 @@ func (h *HandlersApi) AlertChannelsGetHandler(w http.ResponseWriter, r *http.Req
 		respondAlertsErr(w, err)
 		return
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, toAlertChannelDTO(row, parseReveal(r)))
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, toAlertChannelDTO(row, h.canReveal(r, user)))
 }
 
 // AlertChannelsCreateHandler — POST /api/v1/alerts/channels
@@ -520,7 +610,7 @@ func (h *HandlersApi) AlertChannelsCreateHandler(w http.ResponseWriter, r *http.
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsWrite(w, r)
 	if !ok {
 		return
 	}
@@ -574,7 +664,7 @@ func (h *HandlersApi) AlertChannelsTestHandler(w http.ResponseWriter, r *http.Re
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsWrite(w, r)
 	if !ok {
 		return
 	}
@@ -592,6 +682,10 @@ func (h *HandlersApi) AlertChannelsTestHandler(w http.ResponseWriter, r *http.Re
 	// test of an untouched secret has to merge the stored value or it
 	// would send the placeholder and fail for the wrong reason.
 	if body.ID != 0 {
+		// Merging stored secrets into a caller-supplied config could send them anywhere.
+		if !h.requireChannelNotLogContent(w, r, mgr, user, body.ID) {
+			return
+		}
 		prev, err := mgr.GetChannel(body.ID)
 		if err != nil {
 			respondAlertsErr(w, err)
@@ -644,7 +738,7 @@ func (h *HandlersApi) AlertChannelsUpdateHandler(w http.ResponseWriter, r *http.
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsWrite(w, r)
 	if !ok {
 		return
 	}
@@ -660,6 +754,9 @@ func (h *HandlersApi) AlertChannelsUpdateHandler(w http.ResponseWriter, r *http.
 	var body types.AlertChannelCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
+		return
+	}
+	if !h.requireChannelNotLogContent(w, r, mgr, user, id) {
 		return
 	}
 	prev, err := mgr.GetChannel(id)
@@ -707,7 +804,7 @@ func (h *HandlersApi) AlertChannelsDeleteHandler(w http.ResponseWriter, r *http.
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsWrite(w, r)
 	if !ok {
 		return
 	}
@@ -718,6 +815,9 @@ func (h *HandlersApi) AlertChannelsDeleteHandler(w http.ResponseWriter, r *http.
 	id, err := parseAlertID(r, "id")
 	if err != nil {
 		apiErrorResponse(w, "invalid channel id", http.StatusBadRequest, err)
+		return
+	}
+	if !h.requireChannelNotLogContent(w, r, mgr, user, id) {
 		return
 	}
 	if err := mgr.DeleteChannel(id); err != nil {
@@ -747,7 +847,7 @@ func (h *HandlersApi) AlertHistoryHandler(w http.ResponseWriter, r *http.Request
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	_, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsRead(w, r)
 	if !ok {
 		return
 	}
@@ -756,7 +856,20 @@ func (h *HandlersApi) AlertHistoryHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	rows, err := mgr.RecentHistory(limit)
+	var rows []alerts.AlertHistory
+	var err error
+	if h.Users.HasRoleContext(r.Context(), user, users.RoleSuperuser) {
+		rows, err = mgr.RecentHistory(limit)
+	} else {
+		// Fail closed: only rows of rules that still exist and are not
+		// log-content (history has no source column; deleted or converted
+		// rules may have carried log data).
+		var ruleIDs []uint
+		err = mgr.DB.Model(&alerts.AlertRule{}).Where("source NOT IN ?", logContentSources).Pluck("id", &ruleIDs).Error
+		if err == nil {
+			rows, err = mgr.RecentHistoryForRules(limit, ruleIDs)
+		}
+	}
 	if err != nil {
 		apiErrorResponse(w, "error listing alert history", http.StatusInternalServerError, err)
 		return
@@ -780,7 +893,7 @@ func (h *HandlersApi) AlertsApplyHandler(w http.ResponseWriter, r *http.Request)
 	if h.DebugHTTPConfig != nil && h.DebugHTTPConfig.EnableHTTP {
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
-	user, ok := h.requireAlertsAdmin(w, r)
+	user, ok := h.requireAlertsWrite(w, r)
 	if !ok {
 		return
 	}

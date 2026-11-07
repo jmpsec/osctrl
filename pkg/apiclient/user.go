@@ -61,14 +61,16 @@ func (api *OsctrlAPI) DeleteUser(username string) error {
 }
 
 // CreateUser to create user in osctrl, it also creates permissions
-func (api *OsctrlAPI) CreateUser(username, password, email, fullname, environment string, admin, service bool) error {
+func (api *OsctrlAPI) CreateUser(username, password, email, fullname, environment string, admin, service bool, roles users.RoleSet) error {
 	u := types.ApiUserRequest{
-		Username: username,
-		Password: password,
-		Email:    email,
-		Fullname: fullname,
-		Admin:    admin,
-		Service:  service,
+		Username:  username,
+		Password:  password,
+		Email:     email,
+		Fullname:  fullname,
+		Admin:     admin,
+		Service:   service,
+		UserAdmin: roles.UserAdmin, EnvManager: roles.EnvManager,
+		ReadOnlyAdmin: roles.ReadOnlyAdmin, AlertAdmin: roles.AlertAdmin,
 	}
 	if environment != "" {
 		u.Environments = []string{environment}

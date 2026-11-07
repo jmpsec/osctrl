@@ -38,19 +38,16 @@ func CacheAuthenticatedUser(ctx context.Context, user AdminUser) {
 // within the supplied request. Without a cache it uses the authoritative
 // CheckPermissions path, as do callers outside HTTP handlers.
 func (m *UserManager) CheckPermissionsContext(ctx context.Context, username string, level AccessLevel, environment string) bool {
-	cache, ok := ctx.Value(permissionContextKey{}).(*permissionCache)
-	if !ok {
+	cache, hasCache := ctx.Value(permissionContextKey{}).(*permissionCache)
+	if !hasCache {
 		return m.CheckPermissions(username, level, environment)
+	}
+	user, ok := m.cachedUser(ctx, username)
+	if !ok {
+		return false
 	}
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-	user, found := cache.users[username]
-	if !found {
-		if err := m.DB.WithContext(ctx).Where("username = ?", username).First(&user).Error; err != nil {
-			return false
-		}
-		cache.users[username] = user
-	}
 	if user.Admin || (environment == NoEnvironment && level == UserLevel) {
 		return true
 	}
@@ -71,6 +68,27 @@ func (m *UserManager) CheckPermissionsContext(ctx context.Context, username stri
 		byEnvironment[environment] = perms
 	}
 	return permissionsAllow(perms, level)
+}
+
+// cachedUser returns the user from the request cache, loading it from the
+// database on a miss. Without a cache it reads the database directly.
+func (m *UserManager) cachedUser(ctx context.Context, username string) (AdminUser, bool) {
+	cache, ok := ctx.Value(permissionContextKey{}).(*permissionCache)
+	if !ok {
+		user, err := m.Get(username)
+		return user, err == nil
+	}
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	if user, found := cache.users[username]; found {
+		return user, true
+	}
+	var user AdminUser
+	if err := m.DB.WithContext(ctx).Where("username = ?", username).First(&user).Error; err != nil {
+		return user, false
+	}
+	cache.users[username] = user
+	return user, true
 }
 
 func permissionsAllow(perms []UserPermission, level AccessLevel) bool {

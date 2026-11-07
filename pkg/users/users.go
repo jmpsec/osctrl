@@ -27,14 +27,19 @@ const (
 // AdminUser to hold all users
 type AdminUser struct {
 	gorm.Model
-	Username      string `gorm:"index"`
-	Email         string
-	Fullname      string
-	PassHash      string `json:"-"`
-	APIToken      string `json:"-"`
-	TokenExpire   time.Time
-	Admin         bool
-	Service       bool
+	Username    string `gorm:"index"`
+	Email       string
+	Fullname    string
+	PassHash    string `json:"-"`
+	APIToken    string `json:"-"`
+	TokenExpire time.Time
+	Admin       bool // superuser
+	Service     bool
+	// Global roles below Admin; see roles.go for what each implies.
+	UserAdmin     bool
+	EnvManager    bool
+	ReadOnlyAdmin bool
+	AlertAdmin    bool
 	UUID          string
 	CSRFToken     string `json:"-"`
 	LastIPAddress string

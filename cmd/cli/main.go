@@ -1831,6 +1831,22 @@ func init() {
 							Aliases: []string{"n"},
 							Usage:   "Full name for the new user",
 						},
+						&cli.BoolFlag{
+							Name:  "user-admin",
+							Usage: "Grant the user-management role",
+						},
+						&cli.BoolFlag{
+							Name:  "env-manager",
+							Usage: "Grant the environment-management role",
+						},
+						&cli.BoolFlag{
+							Name:  "read-only-admin",
+							Usage: "Grant the read-only global role",
+						},
+						&cli.BoolFlag{
+							Name:  "alert-admin",
+							Usage: "Grant the alert-management role",
+						},
 					},
 					Action: cliWrapper(addUser),
 				},
@@ -1887,6 +1903,38 @@ func init() {
 							Name:    "environment",
 							Aliases: []string{"env"},
 							Usage:   "Grant read access to this environment",
+						},
+						&cli.BoolFlag{
+							Name:  "user-admin",
+							Usage: "Grant the user-management role",
+						},
+						&cli.BoolFlag{
+							Name:  "no-user-admin",
+							Usage: "Revoke the user-management role",
+						},
+						&cli.BoolFlag{
+							Name:  "env-manager",
+							Usage: "Grant the environment-management role",
+						},
+						&cli.BoolFlag{
+							Name:  "no-env-manager",
+							Usage: "Revoke the environment-management role",
+						},
+						&cli.BoolFlag{
+							Name:  "read-only-admin",
+							Usage: "Grant the read-only global role",
+						},
+						&cli.BoolFlag{
+							Name:  "no-read-only-admin",
+							Usage: "Revoke the read-only global role",
+						},
+						&cli.BoolFlag{
+							Name:  "alert-admin",
+							Usage: "Grant the alert-management role",
+						},
+						&cli.BoolFlag{
+							Name:  "no-alert-admin",
+							Usage: "Revoke the alert-management role",
 						},
 					},
 					Action: cliWrapper(editUser),

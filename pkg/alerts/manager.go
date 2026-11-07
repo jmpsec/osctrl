@@ -297,6 +297,22 @@ func (m *Manager) RecentHistory(limit int) ([]AlertHistory, error) {
 	return rows, nil
 }
 
+// RecentHistoryForRules is RecentHistory restricted to the given rule IDs,
+// applied before the limit. An empty set yields no rows.
+func (m *Manager) RecentHistoryForRules(limit int, ruleIDs []uint) ([]AlertHistory, error) {
+	if len(ruleIDs) == 0 {
+		return []AlertHistory{}, nil
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	var rows []AlertHistory
+	if err := m.DB.Where("rule_id IN ?", ruleIDs).Order("created_at DESC").Limit(limit).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 // PruneHistory removes rows older than the retention window. Called by a
 // periodic sweep, never on the hot path. Returns the number of rows
 // deleted so the sweep can log the effect.

@@ -38,6 +38,15 @@ func (h *HandlersApi) denyEnv(w http.ResponseWriter, r *http.Request, ctx Contex
 	apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("denied: %s for user %s", reason, ctx[ctxUser]))
 }
 
+// canManageEnv reports whether user may edit or delete env: superusers always,
+// env managers only on environments they administer. Envs are resolved by
+// name, so an env manager renaming a foreign env could recreate it and take
+// over its nodes.
+func (h *HandlersApi) canManageEnv(r *http.Request, user, envUUID string) bool {
+	return h.Users.HasRoleContext(r.Context(), user, users.RoleSuperuser) ||
+		h.Users.CheckPermissionsContext(r.Context(), user, users.AdminLevel, envUUID)
+}
+
 // projectEnvironmentView strips the env-secret-bearing fields from
 // TLSEnvironment to produce the SPA-canonical low-privilege envelope.
 // Callers MUST use this when serving env data to a non-admin (UserLevel /
@@ -158,7 +167,7 @@ func (h *HandlersApi) EnvironmentMapHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleReadOnly) {
 		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
@@ -654,7 +663,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleEnvManagement) {
 		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
@@ -712,10 +721,7 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 				apiErrorResponse(w, "error creating environment", http.StatusInternalServerError, err)
 				return
 			}
-			// Generate full permissions for the user creating the environment
-			access := h.Users.GenEnvUserAccess([]string{env.UUID}, true, true, true, true)
-			perms := h.Users.GenPermissions(ctx[ctxUser], "osctrl-api", access)
-			if err := h.Users.CreatePermissions(perms); err != nil {
+			if err := h.grantEnvCreator(r, ctx[ctxUser], env.UUID, env.ID); err != nil {
 				apiErrorResponse(w, "error generating permissions", http.StatusInternalServerError, err)
 				return
 			}
@@ -768,6 +774,10 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "name does not match the environment with that UUID", http.StatusBadRequest, fmt.Errorf("uuid %s maps to name %q, body claims %q", e.UUID, targetEnv.Name, e.Name))
 			return
 		}
+		if !h.canManageEnv(r, ctx[ctxUser], targetEnv.UUID) {
+			h.denyEnv(w, r, ctx, targetEnv.ID, "env admin required to delete environment")
+			return
+		}
 		if err := h.Envs.Delete(targetEnv.Name); err != nil {
 			apiErrorResponse(w, "error deleting environment", http.StatusInternalServerError, err)
 			return
@@ -784,12 +794,16 @@ func (h *HandlersApi) EnvActionsHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "invalid hostname", http.StatusBadRequest, nil)
 			return
 		}
-		if h.Envs.Exists(e.UUID) {
-			if err := h.Envs.UpdateHostname(e.UUID, e.Hostname); err != nil {
+		if editEnv, err := h.Envs.Get(e.UUID); err == nil {
+			if !h.canManageEnv(r, ctx[ctxUser], editEnv.UUID) {
+				h.denyEnv(w, r, ctx, editEnv.ID, "env admin required to edit environment")
+				return
+			}
+			if err := h.Envs.UpdateHostname(editEnv.UUID, e.Hostname); err != nil {
 				apiErrorResponse(w, "error updating hostname", http.StatusInternalServerError, err)
 				return
 			}
-			h.invalidateEnvCache(r.Context(), e.UUID)
+			h.invalidateEnvCache(r.Context(), editEnv.UUID)
 			msgReturn = "environment updated successfully"
 		} else {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, fmt.Errorf("environment %s not found", e.UUID))

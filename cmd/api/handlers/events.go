@@ -27,7 +27,7 @@ type ResourceChanged struct {
 
 // EventsHandler streams authorized query/carve/session/alert/fleet invalidations.
 // @Summary Subscribe to resource change notifications
-// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively. Alerts may use env=all. service_commands and fleet require super-admin permissions and env=all.
+// @Description Best-effort SSE invalidation hints. No replay; refetch REST snapshots after stream.ready and retain polling. Requires the corresponding environment query/carve/admin permissions. Session-scoped console and file_explorer topics require console_session or file_explorer_session respectively. Alerts may use env=all. Alerts requires the alert admin or read-only admin role. service_commands and fleet require the read-only admin role (or higher) and env=all.
 // @Tags Events
 // @Produce text/event-stream json
 // @Param env query string true "Environment name or UUID; use all only with topic=alerts, topic=service_commands, or topic=fleet"
@@ -126,7 +126,9 @@ func (h *HandlersApi) EventsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, topic := range topics {
 			if topic == events.Alerts || topic == events.ServiceCommands || topic == events.Fleet {
-				if !h.Users.CheckPermissionsContext(r.Context(), username, users.AdminLevel, users.NoEnvironment) {
+				allowed := h.Users.HasRoleContext(r.Context(), username, users.RoleReadOnly) ||
+					(topic == events.Alerts && h.Users.HasRoleContext(r.Context(), username, users.RoleAlertAdmin))
+				if !allowed {
 					return false
 				}
 				continue

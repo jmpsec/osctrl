@@ -44,7 +44,7 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleEnvManagement) {
 		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
@@ -95,12 +95,9 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	h.invalidateEnvCache(r.Context(), env.UUID)
-	// Grant the creating user full access to the new environment so it shows up
-	// in their env list immediately (matches the legacy admin behaviour).
-	access := h.Users.GenEnvUserAccess([]string{env.UUID}, true, true, true, true)
-	perms := h.Users.GenPermissions(ctx[ctxUser], h.ServiceName, access)
-	if err := h.Users.CreatePermissions(perms); err != nil {
-		log.Err(err).Msgf("env %s created but failed to grant creator permissions", env.Name)
+	if err := h.grantEnvCreator(r, ctx[ctxUser], env.UUID, env.ID); err != nil {
+		apiErrorResponse(w, "environment created but failed to grant creator permissions", http.StatusInternalServerError, err)
+		return
 	}
 	// Auto-tag the environment for tag-based targeting.
 	if !h.Tags.ExistsByEnv(env.Name, env.ID) {
@@ -126,7 +123,8 @@ func (h *HandlersApi) EnvironmentCreateHandler(w http.ResponseWriter, r *http.Re
 // EnvironmentUpdateHandler - PATCH /api/v1/environments/{env}
 //
 // Updates name / hostname / type / icon / debug_http / accept_enrolls.
-// Other env fields go through the per-section endpoints. Super-admin only.
+// Other env fields go through the per-section endpoints. Superuser, or an
+// env manager who is env admin of this env.
 // @Summary Update environment
 // @Description Updates an environment.
 // @Tags environments
@@ -150,7 +148,7 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleEnvManagement) {
 		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
@@ -166,6 +164,10 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 			return
 		}
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		return
+	}
+	if !h.canManageEnv(r, ctx[ctxUser], env.UUID) {
+		h.denyEnv(w, r, ctx, env.ID, "env admin required to update environment")
 		return
 	}
 	var body types.EnvUpdateRequest
@@ -200,6 +202,7 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 				apiErrorResponse(w, "environment already exists", http.StatusConflict, fmt.Errorf("environment %s already exists", n))
 				return
 			}
+			// shortcut: nodes are keyed by env name (osquery_nodes.environment) and rename doesn't migrate them; fix when nodes move to env IDs.
 			patch["name"] = n
 		}
 	}
@@ -262,7 +265,8 @@ func (h *HandlersApi) EnvironmentUpdateHandler(w http.ResponseWriter, r *http.Re
 
 // EnvironmentDeleteHandler - DELETE /api/v1/environments/{env}
 //
-// Removes the environment. Super-admin only. Returns 200 with a message.
+// Removes the environment. Superuser, or an env manager who is env admin of
+// this env. Returns 200 with a message.
 // @Summary Delete environment
 // @Description Deletes an environment.
 // @Tags environments
@@ -284,7 +288,7 @@ func (h *HandlersApi) EnvironmentDeleteHandler(w http.ResponseWriter, r *http.Re
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleEnvManagement) {
 		h.denyEnv(w, r, ctx, auditlog.NoEnvironment, "permission check failed")
 		return
 	}
@@ -300,6 +304,10 @@ func (h *HandlersApi) EnvironmentDeleteHandler(w http.ResponseWriter, r *http.Re
 			return
 		}
 		apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
+		return
+	}
+	if !h.canManageEnv(r, ctx[ctxUser], env.UUID) {
+		h.denyEnv(w, r, ctx, env.ID, "env admin required to delete environment")
 		return
 	}
 	if err := h.Envs.Delete(envVar); err != nil {
@@ -701,3 +709,24 @@ func (h *HandlersApi) EnvironmentExpirationPatchHandler(w http.ResponseWriter, r
 // elsewhere in this file (it is — used by EnvUpdateRequest typing). This
 // stub is a no-op kept to keep the import obvious.
 var _ = environments.EnrollShell
+
+// grantEnvCreator makes a non-superuser creator env admin (and user) of the
+// environment they just created. Superusers already pass every check, so they
+// keep the legacy full-access rows and a failure there is only logged.
+func (h *HandlersApi) grantEnvCreator(r *http.Request, creator, envUUID string, envID uint) error {
+	if h.Users.HasRoleContext(r.Context(), creator, users.RoleSuperuser) {
+		access := h.Users.GenEnvUserAccess([]string{envUUID}, true, true, true, true)
+		if err := h.Users.CreatePermissions(h.Users.GenPermissions(creator, h.ServiceName, access)); err != nil {
+			log.Err(err).Msgf("env %s created but failed to grant creator permissions", envUUID)
+		}
+		return nil
+	}
+	if err := h.Users.SetEnvUser(creator, envUUID, true); err != nil {
+		return err
+	}
+	if err := h.Users.SetEnvAdmin(creator, envUUID, true); err != nil {
+		return err
+	}
+	h.AuditLog.EnvAction(creator, "grant env admin to creator "+creator, strings.Split(r.RemoteAddr, ":")[0], envID)
+	return nil
+}

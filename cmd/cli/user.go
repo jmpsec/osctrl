@@ -43,6 +43,22 @@ func userToData(u users.AdminUser, header []string) [][]string {
 	return data
 }
 
+// rolesFromFlags builds a RoleSet; a pointer is set only for explicitly given flags.
+func rolesFromFlags(cmd *cli.Command, revoke bool) users.RoleSet {
+	pick := func(name string) *bool {
+		if cmd.IsSet(name) && cmd.Bool(name) {
+			v := true
+			return &v
+		}
+		if revoke && cmd.IsSet("no-"+name) && cmd.Bool("no-"+name) {
+			v := false
+			return &v
+		}
+		return nil
+	}
+	return users.RoleSet{UserAdmin: pick("user-admin"), EnvManager: pick("env-manager"), ReadOnlyAdmin: pick("read-only-admin"), AlertAdmin: pick("alert-admin")}
+}
+
 func addUser(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	username := cmd.String("username")
@@ -56,6 +72,7 @@ func addUser(ctx context.Context, cmd *cli.Command) error {
 	admin := cmd.Bool("admin")
 	service := cmd.Bool("service")
 	environment := cmd.String("environment")
+	roles := rolesFromFlags(cmd, false)
 	if dbFlag {
 		// Check if user exists
 		if adminUsers.Exists(username) {
@@ -88,10 +105,13 @@ func addUser(ctx context.Context, cmd *cli.Command) error {
 		if err := adminUsers.CreateWithPermissions(user, perms); err != nil {
 			return fmt.Errorf("error creating user - %w", err)
 		}
+		if err := adminUsers.SetRoles(username, roles); err != nil {
+			return fmt.Errorf("error setting roles - %w", err)
+		}
 		// Audit log
 		auditlogsmgr.UserAction(getShellUsername(), "add user "+username, "CLI")
 	} else if apiFlag {
-		if err := osctrlAPI.CreateUser(username, password, email, fullname, environment, admin, service); err != nil {
+		if err := osctrlAPI.CreateUser(username, password, email, fullname, environment, admin, service, roles); err != nil {
 			return fmt.Errorf("error creating user - %w", err)
 		}
 	}
@@ -115,6 +135,7 @@ func editUser(ctx context.Context, cmd *cli.Command) error {
 	notAdmin := cmd.Bool("non-admin")
 	service := cmd.Bool("service")
 	nonService := cmd.Bool("non-service")
+	roles := rolesFromFlags(cmd, true)
 	// Same lockout policy as the permission commands, before any write.
 	if dbFlag && notAdmin {
 		if err := dbLockoutGuard(username, users.EnvAccess{}); err != nil {
@@ -170,6 +191,11 @@ func editUser(ctx context.Context, cmd *cli.Command) error {
 			}
 		}
 	}
+	if dbFlag {
+		if err := adminUsers.SetRoles(username, roles); err != nil {
+			return fmt.Errorf("error changing roles - %w", err)
+		}
+	}
 	// apiFlag is on by default: with --db the API client is never initialised
 	if !dbFlag && apiFlag {
 		u := types.ApiUserRequest{
@@ -181,6 +207,8 @@ func editUser(ctx context.Context, cmd *cli.Command) error {
 			NotAdmin:   notAdmin,
 			Service:    service,
 			NotService: nonService,
+			UserAdmin:  roles.UserAdmin, EnvManager: roles.EnvManager,
+			ReadOnlyAdmin: roles.ReadOnlyAdmin, AlertAdmin: roles.AlertAdmin,
 		}
 		if err := osctrlAPI.EditUserReq(u); err != nil {
 			return fmt.Errorf("error editing user - %w", err)

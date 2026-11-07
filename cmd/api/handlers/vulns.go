@@ -206,7 +206,7 @@ func (h *HandlersApi) VulnFeedsHandler(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !h.Users.CheckPermissionsContext(r.Context(), user, users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), user, users.RoleReadOnly) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
 		return
 	}

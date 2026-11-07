@@ -1077,7 +1077,7 @@ func (s *apiStore) DeleteTag(env, name string) error {
 }
 
 func (s *apiStore) CreateUser(username, password, email, fullname string, admin, service bool) error {
-	return s.api.CreateUser(username, password, email, fullname, "", admin, service)
+	return s.api.CreateUser(username, password, email, fullname, "", admin, service, users.RoleSet{})
 }
 
 func (s *apiStore) EditUserField(username, field, value string) error {
