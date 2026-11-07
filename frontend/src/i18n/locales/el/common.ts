@@ -289,6 +289,7 @@ export const el: Messages = {
     warmingState: 'προετοιμασία',
     opening: 'άνοιγμα κονσόλας...',
     waitingForNode: 'αναμονή κόμβου',
+    hint: 'Το Tab συμπληρώνει εντολές, ↑/↓ ανακαλεί το ιστορικό',
     run: 'Εκτέλεση',
     noRows: 'χωρίς γραμμές',
     metadata: {

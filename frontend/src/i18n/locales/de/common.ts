@@ -289,6 +289,7 @@ export const de: Messages = {
     warmingState: 'aufwärmen',
     opening: 'Konsole wird geöffnet...',
     waitingForNode: 'warte auf Knoten',
+    hint: 'Tab vervollständigt Befehle, ↑/↓ ruft den Verlauf ab',
     run: 'Ausführen',
     noRows: 'keine Zeilen',
     metadata: {

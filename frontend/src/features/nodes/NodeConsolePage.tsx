@@ -52,6 +52,10 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
   const handledCommandRef = useRef<number | null>(null);
   const focusedOnOpenRef = useRef(false);
   const focusAfterCommandRef = useRef(false);
+  const helpShownRef = useRef(false);
+  const commandHistoryRef = useRef<string[]>([]);
+  const historyPosRef = useRef<number | null>(null);
+  const [help, setHelp] = useState('');
   const [session, setSession] = useState<ConsoleSession | null>(null);
   const [nodeInfo, setNodeInfo] = useState<ConsoleNodeInfo | null>(null);
   const [primingCommand, setPrimingCommand] = useState<ConsoleCommand | null>(null);
@@ -87,6 +91,8 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
         setNodeInfo(created.node_info ?? null);
         setEntries(historyToEntries(created.history));
         setPrimingCommand(created.priming ?? null);
+        setHelp(created.help ?? '');
+        commandHistoryRef.current = created.history.map((item) => item.command.input);
       })
       .catch((error: unknown) => {
         if (!alive) return;
@@ -160,6 +166,14 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
       .catch(() => undefined)
       .finally(() => setPrimingCommand(null));
   }, [primingQuery.data, env, primingCommand, primingMetadata, session]);
+
+  // Print the command reference once, as soon as warm-up is over (or right
+  // away when no priming command was dispatched).
+  useEffect(() => {
+    if (!session || primingCommand || !help || helpShownRef.current) return;
+    helpShownRef.current = true;
+    setEntries((current) => [...current, { id: 'help-on-open', type: 'text', tone: 'muted', text: help }]);
+  }, [help, primingCommand, session]);
 
   const submitMutation = useMutation({
     mutationFn: async (value: string) => {
@@ -274,8 +288,42 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
       { id: `in-${Date.now()}`, type: 'input', prompt, text: value },
     ]);
     setInput('');
+    commandHistoryRef.current.push(value);
+    historyPosRef.current = null;
     focusAfterCommandRef.current = true;
     submitMutation.mutate(value);
+  }
+
+  const commands = useMemo(() => helpCommands(help), [help]);
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    // Leave Tab alone on an empty line so keyboard users can still move focus.
+    if (event.key === 'Tab' && !event.shiftKey && input.trim() !== '') {
+      event.preventDefault();
+      const candidates = commands.filter((name) => name.startsWith('.') === osqueryMode);
+      const { value, matches } = completeCommand(input, candidates);
+      if (value !== input) {
+        setInput(value);
+      } else if (matches.length > 1) {
+        setEntries((current) => [
+          ...current,
+          { id: `complete-${Date.now()}`, type: 'text', tone: 'muted', text: matches.join('  ') },
+        ]);
+      }
+      return;
+    }
+    const history = commandHistoryRef.current;
+    if (event.key === 'ArrowUp' && history.length > 0) {
+      event.preventDefault();
+      const pos = historyPosRef.current === null ? history.length - 1 : Math.max(0, historyPosRef.current - 1);
+      historyPosRef.current = pos;
+      setInput(history[pos]);
+    } else if (event.key === 'ArrowDown' && historyPosRef.current !== null) {
+      event.preventDefault();
+      const pos = historyPosRef.current + 1;
+      historyPosRef.current = pos < history.length ? pos : null;
+      setInput(pos < history.length ? history[pos] : '');
+    }
   }
 
   const disabled = !session || Boolean(pending) || submitMutation.isPending;
@@ -378,6 +426,8 @@ export function NodeConsolePanel({ env, uuid }: { env: string; uuid: string }) {
             aria-label={t('nodeConsole.input')}
             value={input}
             onChange={(event) => setInput(event.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder={t('nodeConsole.hint')}
             disabled={disabled}
             className="min-w-0 flex-1 bg-transparent font-mono text-xs text-[#d7f8df] outline-none placeholder:text-[#5a705f] disabled:cursor-not-allowed disabled:opacity-60"
             autoComplete="off"
@@ -405,6 +455,31 @@ function ConsoleEntry({ entry }: { entry: Entry }) {
     return <ResultTable rows={entry.rows} />;
   }
   return <Line text={entry.text} tone={entry.tone} />;
+}
+
+// Command names are the first token of each indented line in the server help.
+export function helpCommands(help: string): string[] {
+  const names = new Set<string>();
+  for (const line of help.split('\n')) {
+    const match = /^ {2}(\S+)/.exec(line);
+    if (match) names.add(match[1]);
+  }
+  return [...names];
+}
+
+// Shell-style completion of the first word: a unique match completes with a
+// trailing space, several matches extend to their longest common prefix.
+export function completeCommand(input: string, commands: string[]): { value: string; matches: string[] } {
+  const prefix = input.trimStart().toLowerCase();
+  if (/\s/.test(prefix)) return { value: input, matches: [] };
+  const matches = commands.filter((name) => name.startsWith(prefix));
+  if (matches.length === 1) return { value: `${matches[0]} `, matches };
+  if (matches.length === 0) return { value: input, matches };
+  let common = matches[0];
+  for (const name of matches) {
+    while (!name.startsWith(common)) common = common.slice(0, -1);
+  }
+  return { value: common.length > prefix.length ? common : input, matches };
 }
 
 function historyToEntries(history: ConsoleHistoryEntry[]): Entry[] {

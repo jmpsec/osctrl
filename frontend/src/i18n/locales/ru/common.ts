@@ -289,6 +289,7 @@ export const ru: Messages = {
     warmingState: 'подготовка',
     opening: 'открытие консоли...',
     waitingForNode: 'ожидание узла',
+    hint: 'Tab дополняет команды, ↑/↓ вызывает историю',
     run: 'Выполнить',
     noRows: 'нет строк',
     metadata: {

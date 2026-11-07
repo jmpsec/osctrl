@@ -289,6 +289,7 @@ export const zh: Messages = {
     warmingState: '预热中',
     opening: '正在打开控制台...',
     waitingForNode: '等待节点',
+    hint: 'Tab 补全命令，↑/↓ 调出历史记录',
     run: '运行',
     noRows: '无行',
     metadata: {

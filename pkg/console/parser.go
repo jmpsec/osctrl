@@ -48,7 +48,7 @@ func ParseInput(input, cwd, platform string, osqueryMode bool) (ParsedCommand, e
 	case "pwd":
 		return ParsedCommand{Kind: CommandLocal, Command: "pwd", Output: cwd}, nil
 	case "help":
-		return ParsedCommand{Kind: CommandLocal, Command: "help", Output: helpText()}, nil
+		return ParsedCommand{Kind: CommandLocal, Command: "help", Output: HelpText()}, nil
 	case "clear":
 		return ParsedCommand{Kind: CommandLocal, Command: "clear"}, nil
 	case "get":
@@ -262,7 +262,8 @@ func quoteSQL(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
 
-func helpText() string {
+// HelpText lists console commands; the frontend also derives Tab completion from it.
+func HelpText() string {
 	return `Supported commands:
 
 Navigation:

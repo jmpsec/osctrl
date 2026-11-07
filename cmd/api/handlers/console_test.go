@@ -103,6 +103,7 @@ func TestConsoleSessionCreateDispatchesPrimingCommand(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &resp))
 	require.NotNil(t, resp.Priming)
 	require.True(t, resp.Priming.Priming)
+	require.Contains(t, resp.Help, "Supported commands")
 	require.Equal(t, console.StatusQueued, resp.Priming.Status)
 	require.NotEmpty(t, resp.Priming.DistributedQueryName)
 

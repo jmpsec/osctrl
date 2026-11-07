@@ -289,6 +289,7 @@ export const pt: Messages = {
     warmingState: 'aquecendo',
     opening: 'abrindo console...',
     waitingForNode: 'aguardando o nó',
+    hint: 'Tab completa comandos, ↑/↓ recupera o histórico',
     run: 'Executar',
     noRows: 'sem linhas',
     metadata: {

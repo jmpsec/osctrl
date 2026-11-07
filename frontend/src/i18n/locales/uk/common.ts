@@ -289,6 +289,7 @@ export const uk: Messages = {
     warmingState: 'підготовка',
     opening: 'відкриття консолі...',
     waitingForNode: 'очікування вузла',
+    hint: 'Tab доповнює команди, ↑/↓ викликає історію',
     run: 'Виконати',
     noRows: 'немає рядків',
     metadata: {

@@ -316,6 +316,8 @@ export interface ConsoleSessionResponse {
   /** Priming metadata command dispatched at session open; poll its
    *  command show/results endpoints to render live osquery_info. */
   priming?: ConsoleCommand;
+  /** Console command reference, printed once warm-up completes. */
+  help?: string;
 }
 
 // ---------------------------------------------------------------------------

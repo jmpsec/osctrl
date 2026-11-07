@@ -289,6 +289,7 @@ export const fr: Messages = {
     warmingState: 'préchauffage',
     opening: 'ouverture de la console...',
     waitingForNode: 'en attente du nœud',
+    hint: 'Tab complète les commandes, ↑/↓ rappelle l\'historique',
     run: 'Exécuter',
     noRows: 'aucune ligne',
     metadata: {

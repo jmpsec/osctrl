@@ -289,6 +289,7 @@ export const ar: Messages = {
     warmingState: 'تجهيز',
     opening: 'جارٍ فتح الطرفية...',
     waitingForNode: 'بانتظار العقدة',
+    hint: 'Tab لإكمال الأوامر، ↑/↓ لاستدعاء السجل',
     run: 'تشغيل',
     noRows: 'لا صفوف',
     metadata: {
