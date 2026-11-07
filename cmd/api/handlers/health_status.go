@@ -49,7 +49,7 @@ func (h *HandlersApi) HealthStatusHandler(w http.ResponseWriter, r *http.Request
 		utils.DebugHTTPDump(h.DebugHTTP, r, false)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleReadOnly) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use health API by user %s", ctx[ctxUser]))
 		return
 	}

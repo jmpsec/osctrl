@@ -477,3 +477,273 @@ func TestAlertRuleVulnFindingEditableWhenFeatureOff(t *testing.T) {
 	rr = callWithID(t, h.AlertRulesUpdateHandler, http.MethodPut, "/api/v1/alerts/rules/2", logRule.ID, logBody)
 	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
 }
+
+// callAlertsAs runs a handler as a given user with an optional JSON body and {id}.
+func callAlertsAs(t *testing.T, h http.HandlerFunc, user, method string, body any, id uint) *httptest.ResponseRecorder {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	req := httptest.NewRequest(method, "/api/v1/alerts", bytes.NewReader(raw)).WithContext(alertsCtx(user))
+	req.RemoteAddr = "127.0.0.1:1234"
+	req.SetPathValue("id", strconv.FormatUint(uint64(id), 10))
+	rr := httptest.NewRecorder()
+	h(rr, req)
+	return rr
+}
+
+func setupAlertRoles(t *testing.T) *HandlersApi {
+	t.Helper()
+	h := setupAlertsHandler(t)
+	require.NoError(t, h.Users.Create(users.AdminUser{Username: "alerty", AlertAdmin: true}))
+	require.NoError(t, h.Users.Create(users.AdminUser{Username: "ro", ReadOnlyAdmin: true}))
+	return h
+}
+
+func TestAlertAdminManagesStatusRules(t *testing.T) {
+	h := setupAlertRoles(t)
+	rr := callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, map[string]any{
+		"name": "inactive", "source": "node_inactive", "cooldown_minutes": 30, "channel_ids": []uint{1}, "enabled": true,
+	}, 0)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	rr = callAlertsAs(t, h.AlertChannelsCreateHandler, "alerty", http.MethodPost, map[string]any{
+		"name": "hook", "type": "webhook", "config": map[string]any{"url": "https://example.com/hook"}, "enabled": true,
+	}, 0)
+	require.Less(t, rr.Code, 300, rr.Body.String())
+}
+
+func TestAlertAdminCannotCreateLogContentRule(t *testing.T) {
+	h := setupAlertRoles(t)
+	rr := callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, ruleBody(), 0)
+	require.Equal(t, http.StatusForbidden, rr.Code)
+	require.Contains(t, rr.Body.String(), "log-content alert rules require superuser")
+	rr = callAlertsAs(t, h.AlertRulesCreateHandler, "alice", http.MethodPost, ruleBody(), 0)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+}
+
+func TestAlertAdminCannotUpdateRuleToLogContent(t *testing.T) {
+	h := setupAlertRoles(t)
+	rr := callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, map[string]any{
+		"name": "inactive", "source": "node_inactive", "cooldown_minutes": 30, "channel_ids": []uint{1}, "enabled": true,
+	}, 0)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var created alertRuleDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &created))
+	body := ruleBody()
+	body["source"] = "query_log"
+	rr = callAlertsAs(t, h.AlertRulesUpdateHandler, "alerty", http.MethodPut, body, created.ID)
+	require.Equal(t, http.StatusForbidden, rr.Code)
+	// An existing log-content rule is not editable by a non-superuser either.
+	rr = callAlertsAs(t, h.AlertRulesCreateHandler, "alice", http.MethodPost, ruleBody(), 0)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var logRule alertRuleDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &logRule))
+	rr = callAlertsAs(t, h.AlertRulesUpdateHandler, "alerty", http.MethodPut, map[string]any{
+		"name": "x", "source": "node_inactive", "cooldown_minutes": 30, "channel_ids": []uint{1}, "enabled": true,
+	}, logRule.ID)
+	require.Equal(t, http.StatusForbidden, rr.Code)
+}
+
+func TestReadOnlyReadsAlertsNotWrites(t *testing.T) {
+	h := setupAlertRoles(t)
+	rr := callAlertsAs(t, h.AlertRulesListHandler, "ro", http.MethodGet, nil, 0)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	rr = callAlertsAs(t, h.AlertRulesCreateHandler, "ro", http.MethodPost, map[string]any{
+		"name": "inactive", "source": "node_inactive", "cooldown_minutes": 30, "channel_ids": []uint{1}, "enabled": true,
+	}, 0)
+	require.Equal(t, http.StatusForbidden, rr.Code)
+}
+
+func mustCreateRuleAs(t *testing.T, h *HandlersApi, user string, body map[string]any) alertRuleDTO {
+	t.Helper()
+	rr := callAlertsAs(t, h.AlertRulesCreateHandler, user, http.MethodPost, body, 0)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var out alertRuleDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &out))
+	return out
+}
+
+func mustCreateChannelAs(t *testing.T, h *HandlersApi, user, name string) alertChannelDTO {
+	t.Helper()
+	rr := callAlertsAs(t, h.AlertChannelsCreateHandler, user, http.MethodPost, map[string]any{
+		"name": name, "type": "webhook", "config": map[string]any{"url": "https://example.com/" + name}, "enabled": true,
+	}, 0)
+	require.Less(t, rr.Code, 300, rr.Body.String())
+	var out alertChannelDTO
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &out))
+	return out
+}
+
+func TestLogContentRulesAndChannelsProtected(t *testing.T) {
+	h := setupAlertRoles(t)
+	logCh := mustCreateChannelAs(t, h, "alice", "logch")
+	plainCh := mustCreateChannelAs(t, h, "alice", "plainch")
+	logBody := ruleBody()
+	logBody["channel_ids"] = []uint{logCh.ID}
+	logRule := mustCreateRuleAs(t, h, "alice", logBody)
+	plainRule := mustCreateRuleAs(t, h, "alice", map[string]any{
+		"name": "inactive", "source": "node_inactive", "cooldown_minutes": 30, "channel_ids": []uint{plainCh.ID}, "enabled": true,
+	})
+	chBody := func(name string) map[string]any {
+		return map[string]any{"name": name, "type": "webhook", "config": map[string]any{"url": "https://example.com/x"}, "enabled": true}
+	}
+	cases := []struct {
+		name string
+		fn   http.HandlerFunc
+		verb string
+		body any
+		id   uint
+		want int
+	}{
+		{"delete log rule", h.AlertRulesDeleteHandler, http.MethodDelete, nil, logRule.ID, http.StatusForbidden},
+		{"update log channel", h.AlertChannelsUpdateHandler, http.MethodPut, chBody("renamed"), logCh.ID, http.StatusForbidden},
+		{"delete log channel", h.AlertChannelsDeleteHandler, http.MethodDelete, nil, logCh.ID, http.StatusForbidden},
+		{"update plain channel", h.AlertChannelsUpdateHandler, http.MethodPut, chBody("renamed"), plainCh.ID, http.StatusOK},
+		{"delete plain rule", h.AlertRulesDeleteHandler, http.MethodDelete, nil, plainRule.ID, http.StatusNoContent},
+		{"delete plain channel", h.AlertChannelsDeleteHandler, http.MethodDelete, nil, plainCh.ID, http.StatusNoContent},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			rr := callAlertsAs(t, c.fn, "alerty", c.verb, c.body, c.id)
+			require.Equal(t, c.want, rr.Code, rr.Body.String())
+			if c.want == http.StatusForbidden {
+				require.Contains(t, rr.Body.String(), "log-content alert rules require superuser")
+			}
+		})
+	}
+	// A superuser still can.
+	require.Equal(t, http.StatusOK, callAlertsAs(t, h.AlertChannelsUpdateHandler, "alice", http.MethodPut, chBody("renamed-by-root"), logCh.ID).Code)
+	require.Equal(t, http.StatusNoContent, callAlertsAs(t, h.AlertRulesDeleteHandler, "alice", http.MethodDelete, nil, logRule.ID).Code)
+}
+
+func TestAlertHistoryHidesLogContentFromNonSuperuser(t *testing.T) {
+	h := setupAlertRoles(t)
+	logRule := mustCreateRuleAs(t, h, "alice", ruleBody())
+	plainRule := mustCreateRuleAs(t, h, "alice", map[string]any{
+		"name": "inactive", "source": "node_inactive", "cooldown_minutes": 30, "channel_ids": []uint{1}, "enabled": true,
+	})
+	require.NoError(t, h.Alerts.RecordHistory(alerts.AlertHistory{RuleID: logRule.ID, RuleName: "log", Detail: "secret log line"}))
+	require.NoError(t, h.Alerts.RecordHistory(alerts.AlertHistory{RuleID: plainRule.ID, RuleName: "plain", Detail: "node down"}))
+	hist := func(user string) string {
+		rr := callAlertsAs(t, h.AlertHistoryHandler, user, http.MethodGet, nil, 0)
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+		return rr.Body.String()
+	}
+	for _, u := range []string{"alerty", "ro"} {
+		body := hist(u)
+		require.Contains(t, body, "node down")
+		require.NotContains(t, body, "secret log line")
+	}
+	body := hist("alice")
+	require.Contains(t, body, "node down")
+	require.Contains(t, body, "secret log line")
+}
+
+func TestAlertHistoryFailsClosedAndHonorsLimit(t *testing.T) {
+	h := setupAlertRoles(t)
+	logRule := mustCreateRuleAs(t, h, "alice", ruleBody())
+	plainRule := mustCreateRuleAs(t, h, "alice", map[string]any{
+		"name": "inactive", "source": "node_inactive", "cooldown_minutes": 30, "channel_ids": []uint{1}, "enabled": true,
+	})
+	// A row whose rule no longer exists.
+	require.NoError(t, h.Alerts.RecordHistory(alerts.AlertHistory{RuleID: 9999, RuleName: "gone", Detail: "orphan log line"}))
+	// Newest rows are log-content, so a post-limit filter would return too few.
+	for i := 0; i < 3; i++ {
+		require.NoError(t, h.Alerts.RecordHistory(alerts.AlertHistory{RuleID: plainRule.ID, RuleName: "plain", Detail: "node down"}))
+	}
+	for i := 0; i < 5; i++ {
+		require.NoError(t, h.Alerts.RecordHistory(alerts.AlertHistory{RuleID: logRule.ID, RuleName: "log", Detail: "secret log line"}))
+	}
+	get := func(user, query string) []alerts.AlertHistory {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/alerts/history"+query, nil).WithContext(alertsCtx(user))
+		rr := httptest.NewRecorder()
+		h.AlertHistoryHandler(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+		var rows []alerts.AlertHistory
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &rows))
+		return rows
+	}
+	rows := get("alerty", "?limit=2")
+	require.Len(t, rows, 2)
+	for _, r := range get("alerty", "") {
+		require.Equal(t, plainRule.ID, r.RuleID)
+	}
+	require.Len(t, get("alerty", ""), 3)
+	require.Len(t, get("alice", ""), 9) // superuser sees all, including the orphan
+}
+
+// Only a superuser may read channel secrets back, even with reveal=1.
+func TestAlertChannelRevealSuperuserOnly(t *testing.T) {
+	h := setupAlertRoles(t)
+	ch := mustCreateChannelAs(t, h, "alice", "hook")
+	secretOf := func(fn http.HandlerFunc, user, path string, list bool) any {
+		req := httptest.NewRequest(http.MethodGet, path, nil).WithContext(alertsCtx(user))
+		req.SetPathValue("id", strconv.FormatUint(uint64(ch.ID), 10))
+		rr := httptest.NewRecorder()
+		fn(rr, req)
+		require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+		var dto alertChannelDTO
+		if list {
+			var rows []alertChannelDTO
+			require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &rows))
+			require.Len(t, rows, 1)
+			dto = rows[0]
+		} else {
+			require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &dto))
+		}
+		var cfg map[string]any
+		require.NoError(t, json.Unmarshal(dto.Config, &cfg))
+		return cfg["url"]
+	}
+	for _, user := range []string{"ro", "alerty"} {
+		require.Equal(t, "***", secretOf(h.AlertChannelsListHandler, user, "/api/v1/alerts/channels?reveal=1", true), user)
+		require.Equal(t, "***", secretOf(h.AlertChannelsGetHandler, user, "/api/v1/alerts/channels/1?reveal=1", false), user)
+	}
+	require.Equal(t, "https://example.com/hook", secretOf(h.AlertChannelsListHandler, "alice", "/api/v1/alerts/channels?reveal=1", true))
+	require.Equal(t, "https://example.com/hook", secretOf(h.AlertChannelsGetHandler, "alice", "/api/v1/alerts/channels/1?reveal=1", false))
+}
+
+// Test-sending a stored channel merges its secrets into the caller's config,
+// so a log-content channel stays superuser-only here too.
+func TestAlertChannelTestRefusesLogContentChannel(t *testing.T) {
+	h := setupAlertRoles(t)
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	cfg := json.RawMessage(fmt.Sprintf(`{"url":%q,"timeoutSeconds":5,"allowPrivateTargets":true}`, srv.URL))
+	mk := func(name string) uint {
+		rr := callAlertsAs(t, h.AlertChannelsCreateHandler, "alice", http.MethodPost, map[string]any{
+			"name": name, "type": "webhook", "enabled": true, "config": cfg,
+		}, 0)
+		require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+		var out alertChannelDTO
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &out))
+		return out.ID
+	}
+	logCh, plainCh := mk("logch"), mk("plainch")
+	logBody := ruleBody()
+	logBody["channel_ids"] = []uint{logCh}
+	mustCreateRuleAs(t, h, "alice", logBody)
+	testBody := func(id uint) map[string]any {
+		return map[string]any{"id": id, "type": "webhook", "config": json.RawMessage(`{"url":"***","timeoutSeconds":5,"allowPrivateTargets":true}`)}
+	}
+	rr := callAlertsAs(t, h.AlertChannelsTestHandler, "alerty", http.MethodPost, testBody(logCh), 0)
+	require.Equal(t, http.StatusForbidden, rr.Code, rr.Body.String())
+	require.Equal(t, 0, hits)
+	rr = callAlertsAs(t, h.AlertChannelsTestHandler, "alerty", http.MethodPost, testBody(plainCh), 0)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	require.Equal(t, 1, hits)
+	rr = callAlertsAs(t, h.AlertChannelsTestHandler, "alice", http.MethodPost, testBody(logCh), 0)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+}
+
+// A log-content rule with unreadable channel IDs might target any channel.
+func TestChannelGuardFailsClosedOnMalformedRule(t *testing.T) {
+	h := setupAlertRoles(t)
+	ch := mustCreateChannelAs(t, h, "alice", "plainch")
+	require.NoError(t, h.Alerts.DB.Create(&alerts.AlertRule{Name: "broken", Source: alerts.SourceResultLog, MatchType: "substring", MatchValue: "x", ChannelIDs: "{not json"}).Error)
+	rr := callAlertsAs(t, h.AlertChannelsDeleteHandler, "alerty", http.MethodDelete, nil, ch.ID)
+	require.Equal(t, http.StatusForbidden, rr.Code, rr.Body.String())
+}

@@ -50,6 +50,10 @@ func projectAdminUserView(u users.AdminUser) types.AdminUserView {
 		Email:         u.Email,
 		Fullname:      u.Fullname,
 		Admin:         u.Admin,
+		UserAdmin:     u.UserAdmin,
+		EnvManager:    u.EnvManager,
+		ReadOnlyAdmin: u.ReadOnlyAdmin,
+		AlertAdmin:    u.AlertAdmin,
 		Service:       u.Service,
 		UUID:          u.UUID,
 		TokenExpire:   u.TokenExpire,
@@ -82,7 +86,7 @@ func (h *HandlersApi) UserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleReadOnly) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -128,7 +132,7 @@ func (h *HandlersApi) UsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleReadOnly) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -179,7 +183,7 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleUserManagement) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -224,6 +228,9 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, err)
 			return
 		}
+		if !h.authorizeManageUser(w, r, ctx[ctxUser], u.Username, u.Admin) {
+			return
+		}
 		// If user is admin, give access to all environments
 		if u.Admin {
 			envs, err = h.Envs.UUIDs()
@@ -264,15 +271,22 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "error creating user", http.StatusInternalServerError, err)
 			return
 		}
+		if err := h.Users.SetRoles(u.Username, roleSet(u)); err != nil {
+			apiErrorResponse(w, "error setting roles", http.StatusInternalServerError, err)
+			return
+		}
 		// Record what was granted, never the password.
-		auditAction += fmt.Sprintf(" admin=%v service=%v envs=%s user=%v query=%v carve=%v admin_access=%v",
-			u.Admin, u.Service, strings.Join(envs, ","), userAcc, queryAcc, carveAcc, adminAcc)
+		auditAction += fmt.Sprintf(" admin=%v service=%v envs=%s user=%v query=%v carve=%v admin_access=%v%s",
+			u.Admin, u.Service, strings.Join(envs, ","), userAcc, queryAcc, carveAcc, adminAcc, rolesAudit(u))
 		returnData = "user added successfully"
 	case users.ActionEdit:
 		// Check if user exists
 		user, err := h.Users.Get(usernameVar)
 		if err != nil {
 			apiErrorResponse(w, "user does not exist", http.StatusBadRequest, err)
+			return
+		}
+		if !h.authorizeManageUser(w, r, ctx[ctxUser], u.Username, u.Admin && !user.Admin) {
 			return
 		}
 		// Same lockout policy as the permissions endpoints, before any write.
@@ -326,12 +340,20 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 		}
+		if err := h.Users.SetRoles(u.Username, roleSet(u)); err != nil {
+			apiErrorResponse(w, "error setting roles", http.StatusInternalServerError, err)
+			return
+		}
+		auditAction += rolesAudit(u)
 		// TODO: If user is admin, give access to all environments
 		returnData = "user updated successfully"
 	case users.ActionRemove:
 		// Check if user exists
 		if u.Username == ctx[ctxUser] {
 			apiErrorResponse(w, "error removing user", http.StatusBadRequest, fmt.Errorf("user %s can not remove itself", u.Username))
+			return
+		}
+		if !h.authorizeManageUser(w, r, ctx[ctxUser], u.Username, false) {
 			return
 		}
 		exist, user := h.Users.ExistsGet(u.Username)
@@ -372,4 +394,37 @@ func (h *HandlersApi) UserActionHandler(w http.ResponseWriter, r *http.Request) 
 	log.Debug().Msgf("Returned [%s]", returnData)
 	h.AuditLog.UserAction(ctx[ctxUser], auditAction, strings.Split(r.RemoteAddr, ":")[0])
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
+}
+
+// authorizeManageUser runs CheckManageUser and writes the error response:
+// role/superuser refusals are 403, anything else fails closed with 500.
+func (h *HandlersApi) authorizeManageUser(w http.ResponseWriter, r *http.Request, actor, target string, grantsSuperuser bool) bool {
+	err := h.Users.CheckManageUser(r.Context(), actor, target, grantsSuperuser)
+	switch {
+	case err == nil:
+		return true
+	case errors.Is(err, users.ErrNoUserManagement), errors.Is(err, users.ErrSuperuserTarget), errors.Is(err, users.ErrSuperuserGrant):
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("user %s managing %s: %w", actor, target, err))
+	default:
+		apiErrorResponse(w, "error checking access", http.StatusInternalServerError, err)
+	}
+	return false
+}
+
+func roleSet(u types.ApiUserRequest) users.RoleSet {
+	return users.RoleSet{UserAdmin: u.UserAdmin, EnvManager: u.EnvManager, ReadOnlyAdmin: u.ReadOnlyAdmin, AlertAdmin: u.AlertAdmin}
+}
+
+// rolesAudit renders the role fields the request sets, for the audit log.
+func rolesAudit(u types.ApiUserRequest) string {
+	out := ""
+	for _, f := range []struct {
+		name string
+		v    *bool
+	}{{"user_admin", u.UserAdmin}, {"env_manager", u.EnvManager}, {"read_only_admin", u.ReadOnlyAdmin}, {"alert_admin", u.AlertAdmin}} {
+		if f.v != nil {
+			out += fmt.Sprintf(" %s=%v", f.name, *f.v)
+		}
+	}
+	return out
 }

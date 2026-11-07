@@ -111,14 +111,14 @@ paths:
   /api/v1/alerts/channels:
     get:
       description: Returns alert channel rows. Secrets are redacted unless reveal=1 is
-        passed by an admin.
+        passed by a superuser.
       parameters:
         - description: Environment ID; omit to list all
           in: query
           name: env
           schema:
             type: integer
-        - description: Pass 1 to include secret fields (admin only)
+        - description: Pass 1 to include secret fields (superuser only)
           in: query
           name: reveal
           schema:
@@ -254,7 +254,7 @@ paths:
         - alerts
     get:
       description: Returns a single alert channel by ID. Secrets are redacted unless
-        reveal=1.
+        reveal=1 is passed by a superuser.
       parameters:
         - description: Channel ID
           in: path
@@ -262,7 +262,7 @@ paths:
           required: true
           schema:
             type: integer
-        - description: Pass 1 to include secret fields (admin only)
+        - description: Pass 1 to include secret fields (superuser only)
           in: query
           name: reveal
           schema:
@@ -3979,8 +3979,9 @@ paths:
         snapshots after stream.ready and retain polling. Requires the
         corresponding environment query/carve/admin permissions. Session-scoped
         console and file_explorer topics require console_session or
-        file_explorer_session respectively. Alerts may use env=all.
-        service_commands and fleet require super-admin permissions and env=all.
+        file_explorer_session respectively. Alerts may use env=all. Alerts
+        requires the alert admin or read-only admin role. service_commands and
+        fleet require the read-only admin role (or higher) and env=all.
       parameters:
         - description: Environment name or UUID; use all only with topic=alerts,
             topic=service_commands, or topic=fleet
@@ -12677,6 +12678,8 @@ components:
       properties:
         admin:
           type: boolean
+        alert_admin:
+          type: boolean
         auth_source:
           description: |-
             AuthSource is empty for the password-login path (the default)
@@ -12688,18 +12691,24 @@ components:
           type: string
         email:
           type: string
+        env_manager:
+          type: boolean
         environment_id:
           type: integer
         fullname:
           type: string
         id:
           type: integer
+        read_only_admin:
+          type: boolean
         service:
           type: boolean
         token_expire:
           type: string
         updated_at:
           type: string
+        user_admin:
+          type: boolean
         username:
           type: string
         uuid:
@@ -12956,12 +12965,16 @@ components:
           type: boolean
         admin_access:
           type: boolean
+        alert_admin:
+          type: boolean
         api:
           type: boolean
         carve_access:
           type: boolean
         email:
           type: string
+        env_manager:
+          type: boolean
         environments:
           items:
             type: string
@@ -12976,9 +12989,14 @@ components:
           type: string
         query_access:
           type: boolean
+        read_only_admin:
+          type: boolean
         service:
           type: boolean
         user_access:
+          type: boolean
+        user_admin:
+          description: Global roles; nil leaves the stored value unchanged.
           type: boolean
         username:
           type: string
@@ -14295,8 +14313,12 @@ components:
       properties:
         admin:
           type: boolean
+        alert_admin:
+          type: boolean
         email:
           type: string
+        env_manager:
+          type: boolean
         fullname:
           type: string
         last_access:
@@ -14311,10 +14333,14 @@ components:
             UI language the operator picked. Empty means "no server-side
             preference"; the SPA falls back to its own detection.
           type: string
+        read_only_admin:
+          type: boolean
         service:
           type: boolean
         token_expire:
           type: string
+        user_admin:
+          type: boolean
         username:
           type: string
         uuid:

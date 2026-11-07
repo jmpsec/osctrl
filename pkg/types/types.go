@@ -490,6 +490,11 @@ type ApiUserRequest struct {
 	QueryAccess  *bool    `json:"query_access,omitempty"`
 	CarveAccess  *bool    `json:"carve_access,omitempty"`
 	AdminAccess  *bool    `json:"admin_access,omitempty"`
+	// Global roles; nil leaves the stored value unchanged.
+	UserAdmin     *bool `json:"user_admin,omitempty"`
+	EnvManager    *bool `json:"env_manager,omitempty"`
+	ReadOnlyAdmin *bool `json:"read_only_admin,omitempty"`
+	AlertAdmin    *bool `json:"alert_admin,omitempty"`
 }
 
 // NodesPagedResponse is the SPA-canonical paginated response for GET /api/v1/nodes/{env}.
@@ -698,14 +703,18 @@ var SupportedLanguages = map[string]struct{}{
 
 // UserMeResponse is the GET/PATCH /api/v1/users/me payload.
 type UserMeResponse struct {
-	Username    string    `json:"username"`
-	Email       string    `json:"email"`
-	Fullname    string    `json:"fullname"`
-	Admin       bool      `json:"admin"`
-	Service     bool      `json:"service"`
-	UUID        string    `json:"uuid"`
-	TokenExpire time.Time `json:"token_expire"`
-	LastAccess  time.Time `json:"last_access"`
+	Username      string    `json:"username"`
+	Email         string    `json:"email"`
+	Fullname      string    `json:"fullname"`
+	Admin         bool      `json:"admin"`
+	UserAdmin     bool      `json:"user_admin"`
+	EnvManager    bool      `json:"env_manager"`
+	ReadOnlyAdmin bool      `json:"read_only_admin"`
+	AlertAdmin    bool      `json:"alert_admin"`
+	Service       bool      `json:"service"`
+	UUID          string    `json:"uuid"`
+	TokenExpire   time.Time `json:"token_expire"`
+	LastAccess    time.Time `json:"last_access"`
 	// PreferredLanguage mirrors AdminUser.PreferredLanguage — the
 	// UI language the operator picked. Empty means "no server-side
 	// preference"; the SPA falls back to its own detection.
@@ -963,6 +972,10 @@ type AdminUserView struct {
 	Email         string    `json:"email"`
 	Fullname      string    `json:"fullname"`
 	Admin         bool      `json:"admin"`
+	UserAdmin     bool      `json:"user_admin"`
+	EnvManager    bool      `json:"env_manager"`
+	ReadOnlyAdmin bool      `json:"read_only_admin"`
+	AlertAdmin    bool      `json:"alert_admin"`
 	Service       bool      `json:"service"`
 	UUID          string    `json:"uuid"`
 	TokenExpire   time.Time `json:"token_expire"`

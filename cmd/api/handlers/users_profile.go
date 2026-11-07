@@ -52,7 +52,7 @@ func (h *HandlersApi) GetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleReadOnly) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -89,7 +89,7 @@ func (h *HandlersApi) GetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 //
 // Body: { env_uuid, access: { user, query, carve, admin } }. Replaces the
 // target user's per-env access rows. Returns 200 with the new EnvAccess.
-// Requires super-admin (AdminLevel, NoEnvironment) — env-scoped admins can
+// Requires the user-management role plus CheckManageUser — env-scoped admins can
 // not grant permissions for their environment from this endpoint.
 // @Summary Set user permissions
 // @Description Sets per-environment permissions for a user.
@@ -114,7 +114,7 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleUserManagement) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -125,6 +125,9 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 	}
 	if !h.Users.Exists(username) {
 		apiErrorResponse(w, "user not found", http.StatusNotFound, nil)
+		return
+	}
+	if !h.authorizeManageUser(w, r, ctx[ctxUser], username, false) {
 		return
 	}
 
@@ -193,8 +196,8 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 // { access: { user, query, carve, admin } }. Returns
 // { updated, total, access } on success.
 //
-// Same authn/authz posture as the per-env handler: requires super-admin
-// (AdminLevel, NoEnvironment). Same lockout guards:
+// Same authn/authz posture as the per-env handler: requires user management
+// plus CheckManageUser. Same lockout guards:
 //
 //   - Super-admins cannot self-demote via this endpoint.
 //   - The last super-admin cannot be demoted under any path.
@@ -225,7 +228,7 @@ func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *htt
 		utils.DebugHTTPDump(h.DebugHTTP, r, h.DebugHTTPConfig.ShowBody)
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, users.NoEnvironment) {
+	if !h.Users.HasRoleContext(r.Context(), ctx[ctxUser], users.RoleUserManagement) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -236,6 +239,9 @@ func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *htt
 	}
 	if !h.Users.Exists(username) {
 		apiErrorResponse(w, "user not found", http.StatusNotFound, nil)
+		return
+	}
+	if !h.authorizeManageUser(w, r, ctx[ctxUser], username, false) {
 		return
 	}
 
@@ -305,7 +311,7 @@ func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *htt
 //
 // Generates a new JWT for the target user, persists it as the user's
 // APIToken (invalidating the previous token), and returns the new token +
-// expiry. Requires super-admin OR the request author asking for their own
+// expiry. Requires user management (CheckManageUser) OR the request author asking for their own
 // token. Audit-logged on success.
 // @Summary Refresh user token
 // @Description Refreshes an API token for a user.
@@ -336,8 +342,7 @@ func (h *HandlersApi) RefreshUserTokenHandler(w http.ResponseWriter, r *http.Req
 	}
 	requester := ctx[ctxUser]
 	isSelf := username == requester
-	if !isSelf && !h.Users.CheckPermissionsContext(r.Context(), requester, users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to refresh token for %s by %s", username, requester))
+	if !isSelf && !h.authorizeManageUser(w, r, requester, username, false) {
 		return
 	}
 	if !h.Users.Exists(username) {
@@ -400,7 +405,7 @@ func (h *HandlersApi) RefreshUserTokenHandler(w http.ResponseWriter, r *http.Req
 // DeleteUserTokenHandler - DELETE /api/v1/users/{username}/token
 //
 // Clears the user's APIToken so any existing JWT for them stops working.
-// Requires super-admin OR the user themselves.
+// Requires user management (CheckManageUser) OR the user themselves.
 // @Summary Delete user token
 // @Description Deletes an API token for a user.
 // @Tags users
@@ -429,8 +434,7 @@ func (h *HandlersApi) DeleteUserTokenHandler(w http.ResponseWriter, r *http.Requ
 	}
 	requester := ctx[ctxUser]
 	isSelf := username == requester
-	if !isSelf && !h.Users.CheckPermissionsContext(r.Context(), requester, users.AdminLevel, users.NoEnvironment) {
-		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to delete token for %s by %s", username, requester))
+	if !isSelf && !h.authorizeManageUser(w, r, requester, username, false) {
 		return
 	}
 	if err := h.Users.ClearToken(username); err != nil {
@@ -476,11 +480,17 @@ func (h *HandlersApi) MeHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting user", http.StatusInternalServerError, err)
 		return
 	}
-	// Pull the user's permission map so the SPA can hide nav items
-	// the operator has no access to. GetAccess errors are non-fatal
-	// — we still return the profile; the SPA falls back to "no
-	// per-env access known yet" and shows nothing env-scoped, which
-	// is the safe default.
+	resp := h.meResponse(requester, user)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
+}
+
+// meResponse builds the /users/me payload shared by GET and PATCH.
+// Pull the user's permission map so the SPA can hide nav items
+// the operator has no access to. GetAccess errors are non-fatal
+// — we still return the profile; the SPA falls back to "no
+// per-env access known yet" and shows nothing env-scoped, which
+// is the safe default.
+func (h *HandlersApi) meResponse(requester string, user users.AdminUser) types.UserMeResponse {
 	perms := make(map[string]types.EnvAccessView)
 	if access, gerr := h.Users.GetAccess(requester); gerr == nil {
 		for env, ea := range access {
@@ -492,11 +502,15 @@ func (h *HandlersApi) MeHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	resp := types.UserMeResponse{
+	return types.UserMeResponse{
 		Username:          user.Username,
 		Email:             user.Email,
 		Fullname:          user.Fullname,
 		Admin:             user.Admin,
+		UserAdmin:         user.UserAdmin,
+		EnvManager:        user.EnvManager,
+		ReadOnlyAdmin:     user.ReadOnlyAdmin,
+		AlertAdmin:        user.AlertAdmin,
 		Service:           user.Service,
 		UUID:              user.UUID,
 		TokenExpire:       user.TokenExpire,
@@ -504,7 +518,6 @@ func (h *HandlersApi) MeHandler(w http.ResponseWriter, r *http.Request) {
 		PreferredLanguage: user.PreferredLanguage,
 		Permissions:       perms,
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, resp)
 }
 
 // MePatchHandler - PATCH /api/v1/users/me
@@ -572,17 +585,7 @@ func (h *HandlersApi) MePatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.AuditLog.UserAction(requester, "updated own profile", strings.Split(r.RemoteAddr, ":")[0])
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.UserMeResponse{
-		Username:          user.Username,
-		Email:             user.Email,
-		Fullname:          user.Fullname,
-		Admin:             user.Admin,
-		Service:           user.Service,
-		UUID:              user.UUID,
-		TokenExpire:       user.TokenExpire,
-		LastAccess:        user.LastAccess,
-		PreferredLanguage: user.PreferredLanguage,
-	})
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, h.meResponse(requester, user))
 }
 
 // MePasswordHandler - POST /api/v1/users/me/password
