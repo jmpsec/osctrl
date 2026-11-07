@@ -42,7 +42,7 @@ func setupConsoleHandlers(t *testing.T) (*gorm.DB, *HandlersApi, environments.TL
 
 	env := environments.TLSEnvironment{UUID: "env-uuid", Name: "env"}
 	require.NoError(t, db.Create(&env).Error)
-	node := nodes.OsqueryNode{UUID: "NODE-UUID", Platform: "linux", EnvironmentID: env.ID, Environment: env.UUID}
+	node := nodes.OsqueryNode{UUID: "NODE-UUID", Platform: "linux", EnvironmentID: env.ID, Environment: env.Name}
 	require.NoError(t, db.Create(&node).Error)
 
 	require.NoError(t, userManager.Create(users.AdminUser{Username: "alice"}))

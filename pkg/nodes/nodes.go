@@ -629,7 +629,8 @@ type NodesPage struct {
 // platformBucket is one of the buckets normalizePlatformBucket recognises; an
 // empty string disables the filter. Unknown buckets also disable it (so the
 // caller can pass user input directly without input-validation boilerplate).
-func (n *NodeManager) GetByEnvPaged(env, target string, hours int64, search string, page, pageSize int, sortColumn string, desc bool, platformBucket string) (NodesPage, error) {
+// scope, when non-nil, restricts the base query before counting and paging.
+func (n *NodeManager) GetByEnvPaged(env, target string, hours int64, search string, page, pageSize int, sortColumn string, desc bool, platformBucket string, scope func(*gorm.DB) *gorm.DB) (NodesPage, error) {
 	if pageSize <= 0 {
 		pageSize = 50
 	}
@@ -659,6 +660,9 @@ func (n *NodeManager) GetByEnvPaged(env, target string, hours int64, search stri
 	query := n.DB.Model(&OsqueryNode{}).Where("environment = ?", env)
 	query = ApplyNodeTarget(query, target, hours)
 	query = applyPlatformBucket(query, platformBucket)
+	if scope != nil {
+		query = scope(query)
+	}
 	if search != "" {
 		like := "%" + search + "%"
 		query = query.Where(

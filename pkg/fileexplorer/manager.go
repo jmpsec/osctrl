@@ -409,7 +409,7 @@ func (m *Manager) RequestResults(requestID uint) ([]Entry, error) {
 		return entries, nil
 	}
 	env := m.requestEnv(requestID)
-	err = m.logReader().StreamQueryResults(env, request.DistributedQueryName, func(row logging.OsqueryQueryData) error {
+	err = m.logReader().StreamQueryResults(env, request.DistributedQueryName, nil, func(row logging.OsqueryQueryData) error {
 		decoded, err := decodeEntries([]byte(row.Data))
 		if err != nil {
 			return err
@@ -435,7 +435,7 @@ func (m *Manager) RequestMetadataRows(requestID uint) ([]map[string]any, error) 
 		return rows, nil
 	}
 	env := m.requestEnv(requestID)
-	err = m.logReader().StreamQueryResults(env, request.DistributedQueryName, func(row logging.OsqueryQueryData) error {
+	err = m.logReader().StreamQueryResults(env, request.DistributedQueryName, nil, func(row logging.OsqueryQueryData) error {
 		decoded, err := decodeRows([]byte(row.Data))
 		if err != nil {
 			return err

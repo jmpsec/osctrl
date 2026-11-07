@@ -428,7 +428,7 @@ func TestEnvDeleteRemovesPermissions(t *testing.T) {
 		require.Zero(t, n, mode)
 		got, err := rig.Users.GetEnvAccess("bob", dev.UUID)
 		require.NoError(t, err, mode)
-		require.Equal(t, full, got, "other environments untouched (%s)", mode)
+		require.Equal(t, withTiers(full), got, "other environments untouched (%s)", mode)
 		// Recreated with the same UUID: the old grants are not revived.
 		again := rig.Envs.Empty(name, name+".example.com")
 		again.UUID = env.UUID

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -285,9 +286,30 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 			apiErrorResponse(w, "tag not found", http.StatusNotFound, nil)
 			return
 		}
+		doomed, gerr := h.Tags.Get(t.Name, env.ID)
+		if gerr != nil {
+			apiErrorResponse(w, "error getting tag", http.StatusInternalServerError, gerr)
+			return
+		}
+		// Collected before the delete: afterwards the taggings are gone.
+		var taggedIDs []uint
+		if tagged, terr := h.Tags.GetTaggedNodes(doomed); terr != nil {
+			log.Err(terr).Msgf("error listing nodes tagged with %d", doomed.ID)
+		} else {
+			for _, tn := range tagged {
+				taggedIDs = append(taggedIDs, tn.NodeID)
+			}
+		}
 		if err := h.Tags.DeleteGet(t.Name, env.ID); err != nil {
 			apiErrorResponse(w, "error removing tag", http.StatusInternalServerError, err)
 			return
+		}
+		// The tag is gone; a failure here only leaves harmless dangling grants.
+		if err := h.Users.DeleteScopeTagsForTag(doomed.ID); err != nil {
+			log.Err(err).Msgf("error deleting scope tag grants for tag %d", doomed.ID)
+		}
+		if err := h.cancelOutOfScope(context.Background(), taggedIDs); err != nil {
+			log.Err(err).Msgf("error canceling out-of-scope pending work for tag %d", doomed.ID)
 		}
 		returnData = "tag removed successfully"
 	default:

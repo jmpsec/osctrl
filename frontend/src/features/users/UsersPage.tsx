@@ -515,7 +515,9 @@ function PermissionsModal({
     if (!envUuid) return;
     const found = existingPerms?.permissions?.[envUuid];
     if (found) {
-      setAccess(found);
+      // Legacy dialog: keep only the bools so saves never resend loaded
+      // tiers or scope_tags (the bulk endpoint rejects scope_tags).
+      setAccess({ user: found.user, query: found.query, carve: found.carve, admin: found.admin });
     } else {
       setAccess({ user: false, query: false, carve: false, admin: false });
     }

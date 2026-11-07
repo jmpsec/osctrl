@@ -83,20 +83,25 @@ func (h *HandlersApi) NodeLogsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.UserLevel, env.UUID) {
+	scope, err := h.visibleScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if scope.Tier == users.TierNone {
 		apiErrorResponse(w, "no access", http.StatusForbidden, nil)
 		return
 	}
 
-	// Verify the node exists in this env — prevents probing for arbitrary UUIDs
-	// across tenants (resolves cross-tenant log read vector).
-	node, err := h.Nodes.GetByUUID(nodeUUID)
+	// Missing and out-of-scope nodes are indistinguishable (404), which also
+	// prevents probing for arbitrary UUIDs across tenants.
+	node, ok, err := h.visibleNode(scope, env, nodeUUID)
 	if err != nil {
-		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		return
 	}
-	if node.Environment == "" || !strings.EqualFold(node.Environment, env.Name) {
-		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
+	if !ok {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
 		return
 	}
 

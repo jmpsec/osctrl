@@ -147,7 +147,7 @@ func (r *s3LogReader) NodeLogs(logType, env, uuid string, since time.Time, limit
 // prefix (already name-scoped), applies the since filter, then pages.
 // Because keys are chronologically ordered, page N is a contiguous slice
 // of the sorted key list.
-func (r *s3LogReader) QueryResults(env, name string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
+func (r *s3LogReader) QueryResults(env, name string, uuids []string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
 	if pageSize <= 0 {
 		pageSize = 100
 	}
@@ -162,6 +162,7 @@ func (r *s3LogReader) QueryResults(env, name string, since time.Time, page, page
 	if err != nil {
 		return nil, 0, err
 	}
+	keys = filterQueryKeysByUUID(keys, uuids)
 	// keys are oldest-first (lexical). Apply the since filter to narrow
 	// the total before paging.
 	if !since.IsZero() {
@@ -203,12 +204,13 @@ func (r *s3LogReader) QueryResults(env, name string, since time.Time, page, page
 // {env}/query/{name}/ (oldest-first) and invokes fn for each decoded
 // OsqueryQueryData row. Memory is bounded by a single object body at a
 // time; the key list itself can be large but is just strings.
-func (r *s3LogReader) StreamQueryResults(env, name string, fn func(OsqueryQueryData) error) error {
+func (r *s3LogReader) StreamQueryResults(env, name string, uuids []string, fn func(OsqueryQueryData) error) error {
 	prefix := env + "/query/" + name + "/"
 	keys, err := r.listKeys(prefix)
 	if err != nil {
 		return err
 	}
+	keys = filterQueryKeysByUUID(keys, uuids)
 	for _, key := range keys {
 		body, err := r.getObject(key)
 		if err != nil {
@@ -462,4 +464,23 @@ func tsFromKey(key string) (time.Time, bool) {
 // chronological, because the timestamp is the last path segment).
 func sortKeysDesc(keys []string) {
 	sort.Sort(sort.Reverse(sort.StringSlice(keys)))
+}
+
+// filterQueryKeysByUUID keeps keys whose uuid segment is in uuids. nil means
+// no filter; an empty non-nil slice (or an unparseable key) keeps nothing.
+func filterQueryKeysByUUID(keys, uuids []string) []string {
+	if uuids == nil {
+		return keys
+	}
+	want := make(map[string]bool, len(uuids))
+	for _, u := range uuids {
+		want[upperUUID(u)] = true
+	}
+	out := make([]string, 0, len(keys))
+	for _, k := range keys {
+		if _, u, _, ok := splitQueryKey(k); ok && want[upperUUID(u)] {
+			out = append(out, k)
+		}
+	}
+	return out
 }

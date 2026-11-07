@@ -104,6 +104,10 @@ func CreateUserManager(backend *gorm.DB) *UserManager {
 	if err := backend.AutoMigrate(&UserPermission{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (user_permissions): %v", err)
 	}
+	// table user_scope_tags
+	if err := backend.AutoMigrate(&UserScopeTag{}); err != nil {
+		log.Fatal().Msgf("Failed to AutoMigrate table (user_scope_tags): %v", err)
+	}
 	return u
 }
 

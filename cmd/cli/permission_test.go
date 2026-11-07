@@ -63,7 +63,7 @@ func TestPermissionsResetParity(t *testing.T) {
 	for _, name := range []string{"db", "api"} {
 		got, err := r.Users.GetEnvAccess(name, uuid)
 		require.NoError(t, err)
-		require.Equal(t, users.EnvAccess{User: true}, got, name)
+		require.Equal(t, users.EnvAccess{User: true, QueryTier: "none", CarveTier: "none"}, got, name)
 	}
 }
 
@@ -79,7 +79,7 @@ func TestPermissionsChangeIsAdditiveInBothModes(t *testing.T) {
 		require.NoError(t, err, mode)
 		got, err := r.Users.GetEnvAccess(mode, uuid)
 		require.NoError(t, err)
-		require.Equal(t, users.EnvAccess{User: true, Query: true, Carve: true}, got, mode)
+		require.Equal(t, users.EnvAccess{User: true, Query: true, Carve: true, QueryTier: "standard", CarveTier: "standard"}, got, mode)
 	}
 }
 
@@ -96,7 +96,7 @@ func TestPermissionsAdminImpliesAll(t *testing.T) {
 		for _, n := range []string{mode + "c", mode + "r"} {
 			got, err := r.Users.GetEnvAccess(n, uuid)
 			require.NoError(t, err)
-			require.Equal(t, all, got, n)
+			require.Equal(t, withTiers(all), got, n)
 		}
 	}
 }
@@ -116,7 +116,7 @@ func TestDBResetRefusesDemotingLastSuperAdmin(t *testing.T) {
 	}
 	got, err := r.Users.GetEnvAccess("admin", uuid)
 	require.NoError(t, err)
-	require.Equal(t, full, got)
+	require.Equal(t, withTiers(full), got)
 	// With a second super-admin the demotion is allowed.
 	r.SeedUser("root", true)
 	_, err = r.RunDB("user", "reset-permissions", "-u", "admin", "-e", "dev", "-U")
@@ -133,14 +133,14 @@ func TestDBResetRefusesSelfDemotion(t *testing.T) {
 	require.ErrorContains(t, err, "self-demote")
 	got, gerr := r.Users.GetEnvAccess("admin", uuid)
 	require.NoError(t, gerr)
-	require.Equal(t, full, got)
+	require.Equal(t, withTiers(full), got)
 	// Same refusal and unchanged state through the API server (token user admin).
 	_, err = r.RunAPI("user", "reset-permissions", "-u", "admin", "-e", "dev", "-U")
 	require.ErrorContains(t, err, "self-demote")
 	require.ErrorContains(t, err, "403")
 	got, gerr = r.Users.GetEnvAccess("admin", uuid)
 	require.NoError(t, gerr)
-	require.Equal(t, full, got)
+	require.Equal(t, withTiers(full), got)
 }
 
 func TestAPIPermissionsForbiddenShown(t *testing.T) {
@@ -152,7 +152,7 @@ func TestAPIPermissionsForbiddenShown(t *testing.T) {
 	require.ErrorContains(t, err, "403")
 	got, gerr := r.Users.GetEnvAccess("bob", uuid)
 	require.NoError(t, gerr)
-	require.Equal(t, users.EnvAccess{User: true}, got)
+	require.Equal(t, users.EnvAccess{User: true, QueryTier: "none", CarveTier: "none"}, got)
 }
 
 func TestDBChangeNeverRefusedAndNonSuperAdminSelfResetAllowed(t *testing.T) {
@@ -172,7 +172,7 @@ func TestDBChangeNeverRefusedAndNonSuperAdminSelfResetAllowed(t *testing.T) {
 	require.NoError(t, err)
 	got, err = r.Users.GetEnvAccess("bob", uuid)
 	require.NoError(t, err)
-	require.Equal(t, users.EnvAccess{User: true}, got)
+	require.Equal(t, users.EnvAccess{User: true, QueryTier: "none", CarveTier: "none"}, got)
 }
 
 func TestAPIBulkPermissionsSelfDemoteRefused(t *testing.T) {
@@ -217,5 +217,17 @@ func TestAPISelfDemoteRefusedForNonGlobalAdminActor(t *testing.T) {
 	}
 	got, err := r.Users.GetEnvAccess("envadmin", uuid)
 	require.NoError(t, err)
-	require.Equal(t, users.EnvAccess{User: true, Query: true}, got)
+	require.Equal(t, users.EnvAccess{User: true, Query: true, QueryTier: "standard", CarveTier: "none"}, got)
+}
+
+// withTiers is the EnvAccess as read back, with the tier names its bools imply.
+func withTiers(a users.EnvAccess) users.EnvAccess {
+	a.QueryTier, a.CarveTier = "none", "none"
+	if a.Query {
+		a.QueryTier = "standard"
+	}
+	if a.Carve {
+		a.CarveTier = "standard"
+	}
+	return a
 }

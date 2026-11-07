@@ -81,7 +81,7 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.QueryLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -104,10 +104,15 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		Type  string `json:"type"`
 		Value string `json:"value"`
 	}
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
 	targets := []queryTarget{}
 	if rows, terr := h.Queries.GetTargets(name); terr == nil {
 		for _, t := range rows {
-			targets = append(targets, queryTarget{Type: t.Type, Value: t.Value})
+			targets = append(targets, queryTarget{Type: t.Type, Value: scopedTargetValue(scope, t.Type, t.Value)})
 		}
 	} else {
 		log.Debug().Err(terr).Msgf("query targets fetch failed for %s", name)
@@ -180,8 +185,8 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	// Check if query is carve and user has permissions to carve
 	if queries.IsCarveQuery(q.Query) {
-		if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
-			apiErrorResponse(w, fmt.Sprintf("%s has insufficient permissions to carve", ctx[ctxUser]), http.StatusForbidden, nil)
+		if h.Users.TierContext(r.Context(), ctx[ctxUser], env.UUID, users.CarveLevel) != users.TierFull {
+			apiErrorResponse(w, "full carve tier required for carve queries", http.StatusForbidden, nil)
 			return
 		}
 	}
@@ -189,6 +194,15 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 	targetEnvs, ok := h.authorizeTargetEnvs(w, r, ctx[ctxUser], users.QueryLevel, q.Environments, "queries")
 	if !ok {
 		return
+	}
+	// Raw carve SQL needs full carve tier in every target environment too.
+	if queries.IsCarveQuery(q.Query) {
+		for _, e := range targetEnvs {
+			if e != "" && h.Users.TierContext(r.Context(), ctx[ctxUser], e, users.CarveLevel) != users.TierFull {
+				apiErrorResponse(w, "full carve tier required for carve queries", http.StatusForbidden, nil)
+				return
+			}
+		}
 	}
 	expTime := queries.QueryExpiration(q.ExpHours)
 	if q.ExpHours == 0 {
@@ -210,8 +224,22 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		Tags:     h.Tags,
 	}
 	targetNodesID, err := handlers.CreateQueryCarve(data, manager, queries.DistributedQuery{})
+	// A missing named node must look like an out-of-scope one.
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
+		return
+	}
 	if err != nil {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		return
+	}
+	targetNodesID, err = h.scopeTargets(r.Context(), ctx[ctxUser], users.QueryLevel, data, targetNodesID)
+	if errors.Is(err, errNodeOutOfScope) {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
+		return
+	}
+	if err != nil {
+		apiErrorResponse(w, "error scoping targets", http.StatusInternalServerError, err)
 		return
 	}
 	targetRows, err := handlers.BuildQueryTargetRecords(data, manager)
@@ -391,7 +419,7 @@ func (h *HandlersApi) AllQueriesShowHandler(w http.ResponseWriter, r *http.Reque
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.QueryLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -454,7 +482,7 @@ func (h *HandlersApi) QueryListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.QueryLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -569,8 +597,18 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.QueryLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	uuids, err := scope.UUIDs(h.DB, env.Name)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
 	// Verify the named query belongs to THIS env. logging.GetQueryResults
@@ -604,7 +642,7 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	items, total, err := h.logReader().QueryResults(env.UUID, name, since, page, pageSize)
+	items, total, err := h.logReader().QueryResults(env.UUID, name, uuids, since, page, pageSize)
 	if err != nil {
 		apiErrorResponse(w, "error getting query results", http.StatusInternalServerError, err)
 		return
@@ -676,8 +714,18 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.QueryLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.QueryLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
+		return
+	}
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	uuids, err := scope.UUIDs(h.DB, env.Name)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
 	// Verify the named query belongs to THIS env. See the matching gate
@@ -689,7 +737,7 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 	// Pass 1 (streaming): walk every row, collect the union of column names.
 	// We only retain column names here — never the row data — to keep memory at O(columns).
 	colSet := make(map[string]struct{})
-	if err := h.logReader().StreamQueryResults(env.UUID, name, func(row logging.OsqueryQueryData) error {
+	if err := h.logReader().StreamQueryResults(env.UUID, name, uuids, func(row logging.OsqueryQueryData) error {
 		var cols map[string]string
 		if err := json.Unmarshal([]byte(row.Data), &cols); err != nil {
 			cols = map[string]string{"data": row.Data}
@@ -728,7 +776,7 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 
 	// Pass 2 (streaming): write data rows, flushing after each so bytes reach the client incrementally.
 	rowCount := 0
-	if err := h.logReader().StreamQueryResults(env.UUID, name, func(row logging.OsqueryQueryData) error {
+	if err := h.logReader().StreamQueryResults(env.UUID, name, uuids, func(row logging.OsqueryQueryData) error {
 		var cols map[string]string
 		if err := json.Unmarshal([]byte(row.Data), &cols); err != nil {
 			cols = map[string]string{"data": row.Data}

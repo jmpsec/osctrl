@@ -18,6 +18,13 @@ type EnvAccess struct {
 	Query bool `json:"query"`
 	Carve bool `json:"carve"`
 	Admin bool `json:"admin"`
+	// QueryTier and CarveTier are the stored tier names ("none", "tags",
+	// "standard", "full"). On input they apply only when the matching bool is
+	// true; empty or "none" means "use the legacy bool".
+	QueryTier string `json:"query_tier,omitempty"`
+	CarveTier string `json:"carve_tier,omitempty"`
+	// ScopeTags are the tag IDs the "tags" tier is limited to (single env only).
+	ScopeTags []uint `json:"scope_tags,omitempty"`
 }
 
 // UserPermission to hold all permissions for users
@@ -29,6 +36,8 @@ type UserPermission struct {
 	Environment   string
 	EnvironmentID uint
 	GrantedBy     string
+	// Tier is only meaningful on Query/Carve rows with AccessValue=true; 0 is standard.
+	Tier int `gorm:"default:0"`
 }
 
 // AccessLevel as abstraction of level of access for a user
@@ -161,6 +170,10 @@ func (m *UserManager) CheckPermissions(username string, level AccessLevel, envir
 	if environment == NoEnvironment {
 		return false
 	}
+	// Read-only roles may view any environment.
+	if level == UserLevel && user.HasRole(RoleReadOnly) {
+		return true
+	}
 	// Check if the user has access to the environment
 	var perms []UserPermission
 	if err := m.DB.Where("username = ? AND environment = ?", username, environment).Find(&perms).Error; err != nil {
@@ -203,16 +216,32 @@ func (m *UserManager) ChangeAccess(username, environment string, access EnvAcces
 	if err := m.SetEnvUser(username, environment, access.User); err != nil {
 		return fmt.Errorf("error setting user access - %w", err)
 	}
-	if err := m.SetEnvQuery(username, environment, access.Query); err != nil {
+	if err := m.changeQueryCarve(username, environment, QueryLevel, access.Query, access.QueryTier); err != nil {
 		return fmt.Errorf("error setting query access - %w", err)
 	}
-	if err := m.SetEnvCarve(username, environment, access.Carve); err != nil {
+	if err := m.changeQueryCarve(username, environment, CarveLevel, access.Carve, access.CarveTier); err != nil {
 		return fmt.Errorf("error setting carve access - %w", err)
 	}
 	if err := m.SetEnvAdmin(username, environment, access.Admin); err != nil {
 		return fmt.Errorf("error setting admin access - %w", err)
 	}
 	return nil
+}
+
+// changeQueryCarve writes the level; the bool wins when it disagrees with the
+// tier, since the UI reloads tiers from GetAccess and toggles only bools.
+func (m *UserManager) changeQueryCarve(username, environment string, level AccessLevel, legacy bool, tierName string) error {
+	t := TierNone
+	if tierName != "" {
+		var err error
+		if t, err = ParseTier(tierName); err != nil {
+			return err
+		}
+	}
+	if !legacy || t == TierNone {
+		return m.SetEnvLevel(username, environment, level, legacy)
+	}
+	return m.SetEnvTier(username, environment, level, t)
 }
 
 // ChangeAccessAll applies the same EnvAccess to every environment in
@@ -311,11 +340,16 @@ func (m *UserManager) SetEnvLevel(username, environment string, level AccessLeve
 		}
 		return fmt.Errorf("error getting permissions for %s/%s - %w", username, environment, err)
 	}
-	m.DB.Model(&perm).Updates(map[string]interface{}{
+	updates := map[string]interface{}{
 		"access_type":  level,
 		"access_value": value,
 		"granted_by":   perm.GrantedBy,
-	})
+	}
+	// Legacy rule: true keeps the tier, false clears it.
+	if !value && (level == QueryLevel || level == CarveLevel) {
+		updates["tier"] = 0
+	}
+	m.DB.Model(&perm).Updates(updates)
 	return nil
 }
 
@@ -336,12 +370,23 @@ func (m *UserManager) GetAccess(username string) (UserAccess, error) {
 			acs.User = p.AccessValue
 		case int(QueryLevel):
 			acs.Query = p.AccessValue
+			acs.QueryTier = rowTier(p).String()
 		case int(CarveLevel):
 			acs.Carve = p.AccessValue
+			acs.CarveTier = rowTier(p).String()
 		case int(AdminLevel):
 			acs.Admin = p.AccessValue
 		}
 		access[p.Environment] = acs
+	}
+	tagIDs, err := m.scopeTagIDs(username, "")
+	if err != nil {
+		return access, err
+	}
+	for env, acs := range access {
+		acs.QueryTier, acs.CarveTier = noneIfEmpty(acs.QueryTier), noneIfEmpty(acs.CarveTier)
+		acs.ScopeTags = tagIDs[env]
+		access[env] = acs
 	}
 	return access, nil
 }
@@ -362,12 +407,20 @@ func (m *UserManager) GetEnvAccess(username, env string) (EnvAccess, error) {
 			envAccess.User = p.AccessValue
 		case int(QueryLevel):
 			envAccess.Query = p.AccessValue
+			envAccess.QueryTier = rowTier(p).String()
 		case int(CarveLevel):
 			envAccess.Carve = p.AccessValue
+			envAccess.CarveTier = rowTier(p).String()
 		case int(AdminLevel):
 			envAccess.Admin = p.AccessValue
 		}
 	}
+	envAccess.QueryTier, envAccess.CarveTier = noneIfEmpty(envAccess.QueryTier), noneIfEmpty(envAccess.CarveTier)
+	tagIDs, err := m.scopeTagIDs(username, env)
+	if err != nil {
+		return envAccess, fmt.Errorf("error getting scope tags - %w", err)
+	}
+	envAccess.ScopeTags = tagIDs[env]
 	return envAccess, nil
 }
 
@@ -421,6 +474,9 @@ func (m *UserManager) DeleteEnvPermissions(username, environment string) error {
 			return fmt.Errorf("error deleting permission %w", err)
 		}
 	}
+	if err := m.DB.Unscoped().Where("username = ? AND env_uuid = ?", username, environment).Delete(&UserScopeTag{}).Error; err != nil {
+		return fmt.Errorf("error deleting scope tags %w", err)
+	}
 	return nil
 }
 
@@ -437,6 +493,9 @@ func (m *UserManager) DeleteAllPermissions(username string) error {
 		if err := m.DB.Unscoped().Delete(&p).Error; err != nil {
 			return fmt.Errorf("error deleting permission %w", err)
 		}
+	}
+	if err := m.DB.Unscoped().Where("username = ?", username).Delete(&UserScopeTag{}).Error; err != nil {
+		return fmt.Errorf("error deleting scope tags %w", err)
 	}
 	return nil
 }

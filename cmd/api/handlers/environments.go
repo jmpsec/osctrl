@@ -233,15 +233,10 @@ func (h *HandlersApi) EnvironmentsHandler(w http.ResponseWriter, r *http.Request
 			out = append(out, e)
 		}
 	} else {
-		access, gerr := h.Users.GetAccess(requester)
-		if gerr != nil {
-			access = nil
-		}
 		for _, e := range envAll {
-			ea := access[e.UUID]
-			if ea.Admin {
+			if h.Users.CheckPermissionsContext(r.Context(), requester, users.AdminLevel, e.UUID) {
 				out = append(out, e)
-			} else if ea.User {
+			} else if h.Users.CheckPermissionsContext(r.Context(), requester, users.UserLevel, e.UUID) {
 				out = append(out, projectEnvironmentView(e))
 			}
 		}

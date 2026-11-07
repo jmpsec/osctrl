@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -134,7 +135,7 @@ func isLogContentSource(source string) bool {
 // denyLogContent answers 403 unless the caller is a superuser. Log-content
 // matches put log data in channels and history, so every path that creates,
 // changes, deletes or reads such rules (or their channels) needs it.
-// shortcut: superuser-only for now (rule create/update/delete, channel update/delete, history), all relaxed in part 2 to full query tier in the rule's environment.
+// Rule create/update/delete use canLogContentRule instead; channel update/delete and history stay superuser-only.
 func (h *HandlersApi) denyLogContent(w http.ResponseWriter, r *http.Request, user string) bool {
 	if h.Users.HasRoleContext(r.Context(), user, users.RoleSuperuser) {
 		return false
@@ -143,9 +144,31 @@ func (h *HandlersApi) denyLogContent(w http.ResponseWriter, r *http.Request, use
 	return true
 }
 
-// requireLogContentRuleAllowed refuses log-content rules to non-superusers.
-func (h *HandlersApi) requireLogContentRuleAllowed(w http.ResponseWriter, r *http.Request, user, source string) bool {
-	return !isLogContentSource(source) || !h.denyLogContent(w, r, user)
+// canLogContentRule allows a superuser, or a caller with full query tier in
+// the rule's environment (never for all-environments rules, envID 0). It
+// fails closed when the environment cannot be resolved.
+func (h *HandlersApi) canLogContentRule(ctx context.Context, user string, envID uint) bool {
+	if h.Users.HasRoleContext(ctx, user, users.RoleSuperuser) {
+		return true
+	}
+	if envID == 0 || h.Envs == nil {
+		return false
+	}
+	env, err := h.Envs.GetByID(envID)
+	if err != nil {
+		return false
+	}
+	return h.Users.TierContext(ctx, user, env.UUID, users.QueryLevel) == users.TierFull
+}
+
+// requireLogContentRuleAllowed answers 403 when a rule on a log-content source
+// is out of the caller's reach.
+func (h *HandlersApi) requireLogContentRuleAllowed(w http.ResponseWriter, r *http.Request, user, source string, envID uint) bool {
+	if !isLogContentSource(source) || h.canLogContentRule(r.Context(), user, envID) {
+		return true
+	}
+	apiErrorResponse(w, "log-content alert rules require full query tier", http.StatusForbidden, fmt.Errorf("attempt to manage log-content alert rule by user %s", user))
+	return false
 }
 
 // logContentRules lists the rules whose source carries log content, in one query.
@@ -310,7 +333,7 @@ func (h *HandlersApi) AlertRulesCreateHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
 		return
 	}
-	if !h.requireLogContentRuleAllowed(w, r, user, body.Source) {
+	if !h.requireLogContentRuleAllowed(w, r, user, body.Source, body.EnvironmentID) {
 		return
 	}
 	if !h.vulnRuleAllowed(w, body.Source) {
@@ -378,17 +401,25 @@ func (h *HandlersApi) AlertRulesUpdateHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error parsing request body", http.StatusBadRequest, err)
 		return
 	}
-	if !h.requireLogContentRuleAllowed(w, r, user, body.Source) {
+	existing, existErr := mgr.GetRule(id)
+	if existErr != nil {
+		respondAlertsErr(w, existErr)
 		return
 	}
-	existing, existErr := mgr.GetRule(id)
-	if existErr == nil && !h.requireLogContentRuleAllowed(w, r, user, existing.Source) {
+	// The environment never changes on update, so the effective state is the
+	// new source in the stored environment.
+	if body.EnvironmentID != 0 && body.EnvironmentID != existing.EnvironmentID {
+		apiErrorResponse(w, "rule environment cannot be changed", http.StatusBadRequest, fmt.Errorf("attempt to move alert rule %d to environment %d", id, body.EnvironmentID))
+		return
+	}
+	if !h.requireLogContentRuleAllowed(w, r, user, existing.Source, existing.EnvironmentID) ||
+		!h.requireLogContentRuleAllowed(w, r, user, body.Source, existing.EnvironmentID) {
 		return
 	}
 	// Only turning a rule into a vulnerability rule needs the feature: an
 	// existing one stays editable, so it can be disabled while the feature
 	// is off.
-	if existErr != nil || existing.Source != alerts.SourceVulnFinding {
+	if existing.Source != alerts.SourceVulnFinding {
 		if !h.vulnRuleAllowed(w, body.Source) {
 			return
 		}
@@ -448,7 +479,7 @@ func (h *HandlersApi) AlertRulesDeleteHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "invalid rule id", http.StatusBadRequest, err)
 		return
 	}
-	if existing, err := mgr.GetRule(id); err == nil && !h.requireLogContentRuleAllowed(w, r, user, existing.Source) {
+	if existing, err := mgr.GetRule(id); err == nil && !h.requireLogContentRuleAllowed(w, r, user, existing.Source, existing.EnvironmentID) {
 		return
 	}
 	if err := mgr.DeleteRule(id); err != nil {
