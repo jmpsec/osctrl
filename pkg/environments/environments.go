@@ -230,6 +230,13 @@ func (environment *EnvManager) Empty(name, hostname string) TLSEnvironment {
 
 // Create new TLS Environment
 func (environment *EnvManager) Create(env *TLSEnvironment) error {
+	n, err := countNodesNamed(environment.DB, env.Name)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return ErrNameHasNodes
+	}
 	if err := environment.DB.Create(&env).Error; err != nil {
 		return fmt.Errorf("Create TLS Environment %w", err)
 	}
@@ -370,6 +377,13 @@ func (environment *EnvManager) Delete(identifier string) error {
 		return fmt.Errorf("error getting environment %w", err)
 	}
 	return environment.DB.Transaction(func(tx *gorm.DB) error {
+		n, err := countNodesNamed(tx, env.Name)
+		if err != nil {
+			return err
+		}
+		if n > 0 {
+			return fmt.Errorf("%w: %d", ErrEnvHasNodes, n)
+		}
 		if err := tx.Unscoped().Delete(&env).Error; err != nil {
 			return fmt.Errorf("delete %w", err)
 		}
