@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -22,7 +24,7 @@ import (
 
 // NodeHandler - GET Handler for single JSON nodes
 // @Summary Get node
-// @Description Returns a single enrolled node in an environment, including admin-only detail fields.
+// @Description Returns a single enrolled node in an environment, visible to the caller (per query/carve tier and scope tags); node_key is included only for environment admins.
 // @Tags nodes
 // @Produce json
 // @Param env path string true "Environment name or UUID"
@@ -57,7 +59,12 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if scope.Tier == users.TierNone {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -67,14 +74,14 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting node", http.StatusBadRequest, nil)
 		return
 	}
-	// Get node by identifier, scoped to this environment
-	node, err := h.Nodes.GetByIdentifierEnv(nodeVar, env.ID)
+	// Get node by identifier, scoped to this environment and the caller's visibility
+	node, ok, err := h.visibleNode(scope, env, nodeVar)
 	if err != nil {
-		if err.Error() == "record not found" {
-			apiErrorResponse(w, "node not found", http.StatusNotFound, err)
-		} else {
-			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
-		}
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
 		return
 	}
 	log.Debug().Msgf("Returned node %s", nodeVar)
@@ -83,7 +90,10 @@ func (h *HandlersApi) NodeHandler(w http.ResponseWriter, r *http.Request) {
 	// the otherwise-hidden RawEnrollment blob. The enroll_secret inside that
 	// blob is intentionally NOT in the projection — see pkg/types/node_view.go.
 	view := h.projectNode(node)
-	view.NodeKey = node.NodeKey
+	// node_key authenticates the osquery agent: admins only.
+	if h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
+		view.NodeKey = node.NodeKey
+	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, view)
 }
 
@@ -123,7 +133,12 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if scope.Tier == users.TierNone {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -133,6 +148,13 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
+	}
+	if scope.Tier == users.TierTags {
+		nodeList, err = h.filterNodes(nodeList, scope)
+		if err != nil {
+			apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
+			return
+		}
 	}
 	if len(nodeList) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
@@ -179,7 +201,12 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if scope.Tier == users.TierNone {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -189,6 +216,13 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
+	}
+	if scope.Tier == users.TierTags {
+		nodeList, err = h.filterNodes(nodeList, scope)
+		if err != nil {
+			apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
+			return
+		}
 	}
 	if len(nodeList) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
@@ -235,7 +269,12 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get context data and check access
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.AdminLevel, env.UUID) {
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if scope.Tier == users.TierNone {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -244,6 +283,13 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
+	}
+	if scope.Tier == users.TierTags {
+		nodeList, err = h.filterNodes(nodeList, scope)
+		if err != nil {
+			apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
+			return
+		}
 	}
 	if len(nodeList) == 0 {
 		apiErrorResponse(w, "no nodes", http.StatusNotFound, nil)
@@ -620,7 +666,12 @@ func (h *HandlersApi) NodesPagedHandler(w http.ResponseWriter, r *http.Request) 
 
 	// auth context — user
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.UserLevel, env.UUID) {
+	scope, err := h.visibleScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if scope.Tier == users.TierNone {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -674,7 +725,7 @@ func (h *HandlersApi) NodesPagedHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	hours := h.Settings.InactiveHours(env.ID)
-	pageData, err := h.Nodes.Replica().GetByEnvPaged(env.Name, status, hours, search, page, pageSize, sortCol, desc, platformBucket)
+	pageData, err := h.Nodes.Replica().GetByEnvPaged(env.Name, status, hours, search, page, pageSize, sortCol, desc, platformBucket, scope.Apply)
 	if err != nil {
 		apiErrorResponse(w, "failed to query nodes", http.StatusInternalServerError, err)
 		return
@@ -783,6 +834,7 @@ func (h *HandlersApi) PostureProfileHandler(w http.ResponseWriter, r *http.Reque
 // @Failure 401 {object} types.ApiErrorResponse "Unauthorized"
 // @Failure 403 {object} types.ApiErrorResponse "Forbidden"
 // @Failure 404 {object} types.ApiErrorResponse "Not found"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
 // @Security ApiKeyAuth
 // @Router /api/v1/nodes/{env}/node/{uuid}/posture [get]
 func (h *HandlersApi) NodePostureHandler(w http.ResponseWriter, r *http.Request) {
@@ -805,17 +857,22 @@ func (h *HandlersApi) NodePostureHandler(w http.ResponseWriter, r *http.Request)
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissionsContext(r.Context(), user, users.AdminLevel, env.UUID) {
+	scope, err := h.dataScope(r.Context(), user, env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if scope.Tier == users.TierNone {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
 		return
 	}
-	node, err := h.Nodes.GetByUUID(uuidVar)
+	node, ok, err := h.visibleNode(scope, env, uuidVar)
 	if err != nil {
-		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		return
 	}
-	if !strings.EqualFold(node.Environment, env.Name) {
-		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
+	if !ok {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
 		return
 	}
 	if h.Posture == nil {
@@ -848,6 +905,7 @@ func (h *HandlersApi) NodePostureHandler(w http.ResponseWriter, r *http.Request)
 // @Failure 403 {object} types.ApiErrorResponse "Forbidden"
 // @Failure 404 {object} types.ApiErrorResponse "Not found"
 // @Failure 503 {object} types.ApiErrorResponse "Service unavailable"
+// @Failure 500 {object} types.ApiErrorResponse "Internal server error"
 // @Security ApiKeyAuth
 // @Router /api/v1/nodes/{env}/node/{uuid}/posture/score [get]
 func (h *HandlersApi) NodePostureScoreHandler(w http.ResponseWriter, r *http.Request) {
@@ -870,17 +928,22 @@ func (h *HandlersApi) NodePostureScoreHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
 		return
 	}
-	if !h.Users.CheckPermissionsContext(r.Context(), user, users.AdminLevel, env.UUID) {
+	scope, err := h.dataScope(r.Context(), user, env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if scope.Tier == users.TierNone {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
 		return
 	}
-	node, err := h.Nodes.GetByUUID(uuidVar)
+	node, ok, err := h.visibleNode(scope, env, uuidVar)
 	if err != nil {
-		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		return
 	}
-	if !strings.EqualFold(node.Environment, env.Name) {
-		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
+	if !ok {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
 		return
 	}
 	if h.Posture == nil {
@@ -893,4 +956,49 @@ func (h *HandlersApi) NodePostureScoreHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, score)
+}
+
+// visibleNode finds a node in env by identifier; ok is false when it is
+// missing or outside scope (both look the same to callers).
+func (h *HandlersApi) visibleNode(scope handlers.NodeScope, env environments.TLSEnvironment, identifier string) (nodes.OsqueryNode, bool, error) {
+	node, err := h.Nodes.GetByIdentifierEnv(identifier, env.ID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nodes.OsqueryNode{}, false, nil
+	}
+	if err != nil {
+		return nodes.OsqueryNode{}, false, err
+	}
+	if scope.Tier == users.TierTags {
+		if ids, err := h.filterIDs(scope, []uint{node.ID}); err != nil || len(ids) == 0 {
+			return nodes.OsqueryNode{}, false, err
+		}
+	}
+	return node, true, nil
+}
+
+func (h *HandlersApi) filterIDs(scope handlers.NodeScope, ids []uint) ([]uint, error) {
+	return scope.FilterIDs(h.DB, ids)
+}
+
+// filterNodes keeps the nodes inside scope, preserving order.
+func (h *HandlersApi) filterNodes(in []nodes.OsqueryNode, scope handlers.NodeScope) ([]nodes.OsqueryNode, error) {
+	ids := make([]uint, len(in))
+	for i, n := range in {
+		ids[i] = n.ID
+	}
+	keep, err := h.filterIDs(scope, ids)
+	if err != nil {
+		return nil, err
+	}
+	ok := make(map[uint]bool, len(keep))
+	for _, id := range keep {
+		ok[id] = true
+	}
+	out := []nodes.OsqueryNode{}
+	for _, n := range in {
+		if ok[n.ID] {
+			out = append(out, n)
+		}
+	}
+	return out, nil
 }

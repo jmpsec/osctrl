@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/stretchr/testify/require"
 )
@@ -181,4 +183,47 @@ func TestUserAdminCannotChangeSuperuserPermissionsOrToken(t *testing.T) {
 			require.Equal(t, "root-token", u.APIToken)
 		})
 	}
+}
+
+func TestSetPermissionsTiersAndScopeTags(t *testing.T) {
+	h := setupRoles(t)
+	h.Tags = tags.CreateTagManager(h.DB)
+	devEnv, err := h.Envs.GetByUUID("uuid-dev")
+	require.NoError(t, err)
+	prodEnv, err := h.Envs.GetByUUID("uuid-prod")
+	require.NoError(t, err)
+	require.NoError(t, h.Tags.NewTag("web", "", "", "", "root", devEnv.ID, false, tags.TagTypeCustom, ""))
+	require.NoError(t, h.Tags.NewTag("db", "", "", "", "root", prodEnv.ID, false, tags.TagTypeCustom, ""))
+	devTag, err := h.Tags.Get("web", devEnv.ID)
+	require.NoError(t, err)
+	prodTag, err := h.Tags.Get("db", prodEnv.ID)
+	require.NoError(t, err)
+
+	post := func(body string) *httptest.ResponseRecorder {
+		return roReq(h, "root", http.MethodPost, "/api/v1/users/bob/permissions", body, map[string]string{"username": "bob"}, h.SetUserPermissionsHandler)
+	}
+	rr := post(fmt.Sprintf(`{"env_uuid":"uuid-dev","access":{"user":true,"query":true,"query_tier":"tags","scope_tags":[%d]}}`, devTag.ID))
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	acc, err := h.Users.GetEnvAccess("bob", "uuid-dev")
+	require.NoError(t, err)
+	require.Equal(t, "tags", acc.QueryTier)
+	require.Equal(t, []uint{devTag.ID}, acc.ScopeTags)
+
+	rr = post(fmt.Sprintf(`{"env_uuid":"uuid-dev","access":{"user":true,"query_tier":"tags","scope_tags":[%d]}}`, prodTag.ID))
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, rr.Body.String(), "scope tag not in environment")
+
+	rr = post(`{"env_uuid":"uuid-dev","access":{"user":true,"query_tier":"bogus"}}`)
+	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
+
+	rr = roReq(h, "root", http.MethodPost, "/api/v1/users/bob/permissions/all", fmt.Sprintf(`{"access":{"user":true,"scope_tags":[%d]}}`, devTag.ID), map[string]string{"username": "bob"}, h.SetUserPermissionsAllHandler)
+	require.Equal(t, http.StatusBadRequest, rr.Code)
+	require.Contains(t, rr.Body.String(), "scope_tags needs a single environment")
+
+	// deleting the tag drops the grant
+	rr = roReq(h, "root", http.MethodPost, "/api/v1/tags/uuid-dev/remove", `{"name":"web"}`, map[string]string{"env": "uuid-dev", "action": tags.ActionRemove}, h.TagsActionHandler)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	ids, err := h.Users.ScopeTagIDsContext(context.Background(), "bob", "uuid-dev")
+	require.NoError(t, err)
+	require.Empty(t, ids)
 }

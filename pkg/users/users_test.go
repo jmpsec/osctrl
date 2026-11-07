@@ -60,6 +60,18 @@ func setupTestManager(t *testing.T) (*UserManager, sqlmock.Sqlmock) {
 	mock.ExpectExec(`CREATE INDEX IF NOT EXISTS .*`).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
+	// user_scope_tags table
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1 AND table_type = $2`)).
+		WithArgs("user_scope_tags", "BASE TABLE").
+		WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(0))
+	mock.ExpectExec(`CREATE TABLE "user_scope_tags" .*`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	for i := 0; i < 4; i++ {
+		mock.ExpectExec(`CREATE INDEX IF NOT EXISTS .*`).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+
 	manager := CreateUserManager(_postgres).WithJWT(&conf)
 	return manager, mock
 }

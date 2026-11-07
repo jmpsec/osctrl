@@ -72,12 +72,7 @@ func (h *HandlersApi) GetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 	}
 	out := make(map[string]types.EnvAccessView, len(access))
 	for envUUID, ea := range access {
-		out[envUUID] = types.EnvAccessView{
-			User:  ea.User,
-			Query: ea.Query,
-			Carve: ea.Carve,
-			Admin: ea.Admin,
-		}
+		out[envUUID] = envAccessView(ea)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.GetPermissionsResponse{
 		Username:    username,
@@ -141,7 +136,8 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 		apiErrorResponse(w, "env_uuid is required", http.StatusBadRequest, nil)
 		return
 	}
-	if _, err := h.Envs.GetByUUID(body.EnvUUID); err != nil {
+	env, err := h.Envs.GetByUUID(body.EnvUUID)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			apiErrorResponse(w, "environment not found", http.StatusNotFound, err)
 			return
@@ -151,10 +147,16 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 	}
 
 	access := users.EnvAccess{
-		User:  body.Access.User,
-		Query: body.Access.Query,
-		Carve: body.Access.Carve,
-		Admin: body.Access.Admin,
+		User:      body.Access.User,
+		Query:     body.Access.Query,
+		Carve:     body.Access.Carve,
+		Admin:     body.Access.Admin,
+		QueryTier: body.Access.QueryTier,
+		CarveTier: body.Access.CarveTier,
+	}
+	if err := validateTierNames(access); err != nil {
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+		return
 	}
 
 	// Lockout guards. A super-admin cannot:
@@ -176,14 +178,40 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	if len(body.Access.ScopeTags) > 0 {
+		envTags, terr := h.Tags.GetByEnv(env.ID)
+		if terr != nil {
+			apiErrorResponse(w, "error getting tags", http.StatusInternalServerError, terr)
+			return
+		}
+		inEnv := make(map[uint]bool, len(envTags))
+		for _, t := range envTags {
+			inEnv[t.ID] = true
+		}
+		for _, id := range body.Access.ScopeTags {
+			if !inEnv[id] {
+				apiErrorResponse(w, "scope tag not in environment", http.StatusBadRequest, nil)
+				return
+			}
+		}
+	}
+
 	if err := h.Users.ChangeAccess(username, body.EnvUUID, access); err != nil {
 		apiErrorResponse(w, "error setting permissions", http.StatusInternalServerError, err)
 		return
 	}
+	// A nil list leaves the grants alone; an explicit empty list clears them.
+	if body.Access.ScopeTags != nil {
+		if err := h.Users.SetScopeTags(username, body.EnvUUID, ctx[ctxUser], body.Access.ScopeTags); err != nil {
+			apiErrorResponse(w, "error setting scope tags", http.StatusInternalServerError, err)
+			return
+		}
+	}
 
 	h.AuditLog.Permissions(ctx[ctxUser],
-		fmt.Sprintf("set %s on env=%s u=%v q=%v c=%v a=%v",
-			username, body.EnvUUID, access.User, access.Query, access.Carve, access.Admin),
+		fmt.Sprintf("set %s on env=%s u=%v q=%v c=%v a=%v qt=%s ct=%s tags=%v",
+			username, body.EnvUUID, access.User, access.Query, access.Carve, access.Admin,
+			access.QueryTier, access.CarveTier, body.Access.ScopeTags),
 		strings.Split(r.RemoteAddr, ":")[0], 0)
 	log.Debug().Msgf("permissions updated for user %s on env %s", username, body.EnvUUID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, body.Access)
@@ -252,10 +280,20 @@ func (h *HandlersApi) SetUserPermissionsAllHandler(w http.ResponseWriter, r *htt
 	}
 
 	access := users.EnvAccess{
-		User:  body.Access.User,
-		Query: body.Access.Query,
-		Carve: body.Access.Carve,
-		Admin: body.Access.Admin,
+		User:      body.Access.User,
+		Query:     body.Access.Query,
+		Carve:     body.Access.Carve,
+		Admin:     body.Access.Admin,
+		QueryTier: body.Access.QueryTier,
+		CarveTier: body.Access.CarveTier,
+	}
+	if len(body.Access.ScopeTags) > 0 {
+		apiErrorResponse(w, "scope_tags needs a single environment", http.StatusBadRequest, nil)
+		return
+	}
+	if err := validateTierNames(access); err != nil {
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+		return
 	}
 
 	// Lockout guards — identical to SetUserPermissionsHandler.
@@ -494,12 +532,7 @@ func (h *HandlersApi) meResponse(requester string, user users.AdminUser) types.U
 	perms := make(map[string]types.EnvAccessView)
 	if access, gerr := h.Users.GetAccess(requester); gerr == nil {
 		for env, ea := range access {
-			perms[env] = types.EnvAccessView{
-				User:  ea.User,
-				Query: ea.Query,
-				Carve: ea.Carve,
-				Admin: ea.Admin,
-			}
+			perms[env] = envAccessView(ea)
 		}
 	}
 	return types.UserMeResponse{
@@ -651,4 +684,25 @@ func lockoutErrorResponse(w http.ResponseWriter, lerr error) {
 	default:
 		apiErrorResponse(w, "error checking admin count", http.StatusInternalServerError, lerr)
 	}
+}
+
+// envAccessView converts stored access to its API shape.
+func envAccessView(ea users.EnvAccess) types.EnvAccessView {
+	return types.EnvAccessView{
+		User: ea.User, Query: ea.Query, Carve: ea.Carve, Admin: ea.Admin,
+		QueryTier: ea.QueryTier, CarveTier: ea.CarveTier, ScopeTags: ea.ScopeTags,
+	}
+}
+
+// validateTierNames rejects unknown tier names so they answer 400, not 500.
+func validateTierNames(a users.EnvAccess) error {
+	for _, n := range []string{a.QueryTier, a.CarveTier} {
+		if n == "" {
+			continue
+		}
+		if _, err := users.ParseTier(n); err != nil {
+			return err
+		}
+	}
+	return nil
 }

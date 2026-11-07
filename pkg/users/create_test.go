@@ -37,7 +37,10 @@ func TestCreateWithPermissionsIsAtomic(t *testing.T) {
 	require.True(t, m.Exists("carol"))
 	access, err := m.GetAccess("carol")
 	require.NoError(t, err)
-	require.Equal(t, UserAccess{"env-a": {User: true, Query: true}, "env-b": {User: true, Query: true}}, access)
+	require.Equal(t, UserAccess{
+		"env-a": {User: true, Query: true, QueryTier: "standard", CarveTier: "none"},
+		"env-b": {User: true, Query: true, QueryTier: "standard", CarveTier: "none"},
+	}, access)
 }
 
 func TestPermissionWritesRefuseBlankEnvironment(t *testing.T) {

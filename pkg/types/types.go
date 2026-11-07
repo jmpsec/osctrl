@@ -625,6 +625,13 @@ type EnvAccessView struct {
 	Query bool `json:"query"`
 	Carve bool `json:"carve"`
 	Admin bool `json:"admin"`
+	// QueryTier and CarveTier are "none", "tags", "standard" or "full"; on
+	// input they apply only when the matching bool is true (false means none),
+	// and empty or "none" means the legacy bool applies. ScopeTags limits the "tags" tier
+	// and is accepted only for a single environment.
+	QueryTier string `json:"query_tier,omitempty"`
+	CarveTier string `json:"carve_tier,omitempty"`
+	ScopeTags []uint `json:"scope_tags,omitempty"`
 }
 
 // SetPermissionsRequest is the body for POST /api/v1/users/{username}/permissions.

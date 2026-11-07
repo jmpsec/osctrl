@@ -59,6 +59,18 @@ func setupTestManagerForPermissions(t *testing.T) (*UserManager, sqlmock.Sqlmock
 	mock.ExpectExec(`CREATE INDEX IF NOT EXISTS .*`).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
+	// user_scope_tags table
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1 AND table_type = $2`)).
+		WithArgs("user_scope_tags", "BASE TABLE").
+		WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(0))
+	mock.ExpectExec(`CREATE TABLE "user_scope_tags" .*`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	for i := 0; i < 4; i++ {
+		mock.ExpectExec(`CREATE INDEX IF NOT EXISTS .*`).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+
 	manager := CreateUserManager(_postgres).WithJWT(&conf)
 	return manager, mock
 }
@@ -84,8 +96,8 @@ func TestCreatePermission(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(
-		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
-		WithArgs(tt, tt, nil, perm.Username, perm.AccessType, perm.AccessValue, perm.Environment, perm.EnvironmentID, perm.GrantedBy).
+		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by","tier") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "id"`)).
+		WithArgs(tt, tt, nil, perm.Username, perm.AccessType, perm.AccessValue, perm.Environment, perm.EnvironmentID, perm.GrantedBy, 0).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(456))
 	mock.ExpectCommit()
 	err := manager.CreatePermission(perm)
@@ -124,14 +136,14 @@ func TestCreatePermissions(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(
-		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
-		WithArgs(tt, tt, nil, perm1.Username, perm1.AccessType, perm1.AccessValue, perm1.Environment, perm1.EnvironmentID, perm1.GrantedBy).
+		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by","tier") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "id"`)).
+		WithArgs(tt, tt, nil, perm1.Username, perm1.AccessType, perm1.AccessValue, perm1.Environment, perm1.EnvironmentID, perm1.GrantedBy, 0).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(456))
 	mock.ExpectCommit()
 	mock.ExpectBegin()
 	mock.ExpectQuery(
-		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
-		WithArgs(tt, tt, nil, perm2.Username, perm2.AccessType, perm2.AccessValue, perm2.Environment, perm2.EnvironmentID, perm2.GrantedBy).
+		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by","tier") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "id"`)).
+		WithArgs(tt, tt, nil, perm2.Username, perm2.AccessType, perm2.AccessValue, perm2.Environment, perm2.EnvironmentID, perm2.GrantedBy, 0).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(456))
 	mock.ExpectCommit()
 	err := manager.CreatePermissions([]UserPermission{perm1, perm2})
@@ -188,7 +200,7 @@ func TestSetEnvLevelCreatesRowWhenAbsent(t *testing.T) {
 	// Upsert branch: INSERT a fresh row.
 	mock.ExpectBegin()
 	mock.ExpectQuery(
-		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
+		regexp.QuoteMeta(`INSERT INTO "user_permissions" ("created_at","updated_at","deleted_at","username","access_type","access_value","environment","environment_id","granted_by","tier") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "id"`)).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(789))
 	mock.ExpectCommit()
 
@@ -622,6 +634,11 @@ func TestGetAccess(t *testing.T) {
 			AddRow("testUser", CarveLevel, false, "test", "testEnv").
 			AddRow("testUser", QueryLevel, false, "test", "testEnv"))
 
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "user_scope_tags" WHERE username = $1 AND "user_scope_tags"."deleted_at" IS NULL ORDER BY tag_id`)).
+		WithArgs("testUser").
+		WillReturnRows(sqlmock.NewRows([]string{"env_uuid", "tag_id"}))
+
 	uAccess, err := manager.GetAccess("testUser")
 
 	assert.NoError(t, err)
@@ -650,6 +667,11 @@ func TestGetEnvAccess(t *testing.T) {
 			AddRow("testUser", UserLevel, true, "test", "testEnv").
 			AddRow("testUser", CarveLevel, false, "test", "testEnv").
 			AddRow("testUser", QueryLevel, false, "test", "testEnv"))
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "user_scope_tags" WHERE username = $1 AND env_uuid = $2 AND "user_scope_tags"."deleted_at" IS NULL ORDER BY tag_id`)).
+		WithArgs("testUser", "testEnv").
+		WillReturnRows(sqlmock.NewRows([]string{"env_uuid", "tag_id"}))
 
 	eAccess, err := manager.GetEnvAccess("testUser", "testEnv")
 
@@ -691,6 +713,13 @@ func TestDeleteEnvPermissions(t *testing.T) {
 		regexp.QuoteMeta(`DELETE FROM "user_permissions" WHERE "user_permissions"."id" = $1`)).
 		WithArgs(2).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(
+		regexp.QuoteMeta(`DELETE FROM "user_scope_tags" WHERE username = $1 AND env_uuid = $2`)).
+		WithArgs("testUser", "testEnv").
+		WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 
 	err := manager.DeleteEnvPermissions("testUser", "testEnv")

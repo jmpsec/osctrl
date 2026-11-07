@@ -39,7 +39,7 @@ type LogReader interface {
 	// reader uses it as the key prefix). Pagination is 1-indexed; pageSize
 	// clamped to [1,1000]. Returns the page items, the total matching
 	// count, and any error.
-	QueryResults(env, name string, since time.Time, page, pageSize int) ([]map[string]any, int64, error)
+	QueryResults(env, name string, uuids []string, since time.Time, page, pageSize int) ([]map[string]any, int64, error)
 
 	// StreamQueryResults invokes fn for each row of query result data for
 	// `name`, ordered by created_at ASC. env scopes the read (DB reader
@@ -47,7 +47,7 @@ type LogReader interface {
 	// so memory stays bounded — used by the CSV exporter and the
 	// console/file-explorer result decoders. fn may return an error to
 	// stop iteration.
-	StreamQueryResults(env, name string, fn func(OsqueryQueryData) error) error
+	StreamQueryResults(env, name string, uuids []string, fn func(OsqueryQueryData) error) error
 }
 
 // dbLogReader is the historical implementation backed by the GORM DB.
@@ -64,12 +64,12 @@ func (r *dbLogReader) NodeLogs(logType, env, uuid string, since time.Time, limit
 	return GetNodeLogs(r.db, logType, env, uuid, since, limit, search, severity)
 }
 
-func (r *dbLogReader) QueryResults(env, name string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
-	return GetQueryResults(r.db, name, since, page, pageSize)
+func (r *dbLogReader) QueryResults(env, name string, uuids []string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
+	return GetQueryResults(r.db, name, uuids, since, page, pageSize)
 }
 
-func (r *dbLogReader) StreamQueryResults(env, name string, fn func(OsqueryQueryData) error) error {
-	return StreamQueryResults(r.db, name, fn)
+func (r *dbLogReader) StreamQueryResults(env, name string, uuids []string, fn func(OsqueryQueryData) error) error {
+	return StreamQueryResults(r.db, name, uuids, fn)
 }
 
 // normalizeLogType maps the public "status"/"result" strings to the S3
@@ -90,4 +90,17 @@ func normalizeLogType(logType string) (string, error) {
 // match keys written with the original case-insensitive host identifier.
 func upperUUID(uuid string) string {
 	return strings.ToUpper(uuid)
+}
+
+// upperUUIDs normalizes a uuid filter; nil stays nil (no filter) and an
+// empty non-nil slice stays empty (no rows).
+func upperUUIDs(uuids []string) []string {
+	if uuids == nil {
+		return nil
+	}
+	out := make([]string, len(uuids))
+	for i, u := range uuids {
+		out[i] = upperUUID(u)
+	}
+	return out
 }

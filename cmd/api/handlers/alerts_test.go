@@ -16,6 +16,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/vulns"
@@ -515,7 +516,7 @@ func TestAlertAdminCannotCreateLogContentRule(t *testing.T) {
 	h := setupAlertRoles(t)
 	rr := callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, ruleBody(), 0)
 	require.Equal(t, http.StatusForbidden, rr.Code)
-	require.Contains(t, rr.Body.String(), "log-content alert rules require superuser")
+	require.Contains(t, rr.Body.String(), "log-content alert rules require full query tier")
 	rr = callAlertsAs(t, h.AlertRulesCreateHandler, "alice", http.MethodPost, ruleBody(), 0)
 	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
 }
@@ -593,20 +594,21 @@ func TestLogContentRulesAndChannelsProtected(t *testing.T) {
 		body any
 		id   uint
 		want int
+		msg  string
 	}{
-		{"delete log rule", h.AlertRulesDeleteHandler, http.MethodDelete, nil, logRule.ID, http.StatusForbidden},
-		{"update log channel", h.AlertChannelsUpdateHandler, http.MethodPut, chBody("renamed"), logCh.ID, http.StatusForbidden},
-		{"delete log channel", h.AlertChannelsDeleteHandler, http.MethodDelete, nil, logCh.ID, http.StatusForbidden},
-		{"update plain channel", h.AlertChannelsUpdateHandler, http.MethodPut, chBody("renamed"), plainCh.ID, http.StatusOK},
-		{"delete plain rule", h.AlertRulesDeleteHandler, http.MethodDelete, nil, plainRule.ID, http.StatusNoContent},
-		{"delete plain channel", h.AlertChannelsDeleteHandler, http.MethodDelete, nil, plainCh.ID, http.StatusNoContent},
+		{"delete log rule", h.AlertRulesDeleteHandler, http.MethodDelete, nil, logRule.ID, http.StatusForbidden, "log-content alert rules require full query tier"},
+		{"update log channel", h.AlertChannelsUpdateHandler, http.MethodPut, chBody("renamed"), logCh.ID, http.StatusForbidden, "log-content alert rules require superuser"},
+		{"delete log channel", h.AlertChannelsDeleteHandler, http.MethodDelete, nil, logCh.ID, http.StatusForbidden, "log-content alert rules require superuser"},
+		{"update plain channel", h.AlertChannelsUpdateHandler, http.MethodPut, chBody("renamed"), plainCh.ID, http.StatusOK, ""},
+		{"delete plain rule", h.AlertRulesDeleteHandler, http.MethodDelete, nil, plainRule.ID, http.StatusNoContent, ""},
+		{"delete plain channel", h.AlertChannelsDeleteHandler, http.MethodDelete, nil, plainCh.ID, http.StatusNoContent, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			rr := callAlertsAs(t, c.fn, "alerty", c.verb, c.body, c.id)
 			require.Equal(t, c.want, rr.Code, rr.Body.String())
 			if c.want == http.StatusForbidden {
-				require.Contains(t, rr.Body.String(), "log-content alert rules require superuser")
+				require.Contains(t, rr.Body.String(), c.msg)
 			}
 		})
 	}
@@ -746,4 +748,76 @@ func TestChannelGuardFailsClosedOnMalformedRule(t *testing.T) {
 	require.NoError(t, h.Alerts.DB.Create(&alerts.AlertRule{Name: "broken", Source: alerts.SourceResultLog, MatchType: "substring", MatchValue: "x", ChannelIDs: "{not json"}).Error)
 	rr := callAlertsAs(t, h.AlertChannelsDeleteHandler, "alerty", http.MethodDelete, nil, ch.ID)
 	require.Equal(t, http.StatusForbidden, rr.Code, rr.Body.String())
+}
+
+// setupAlertTiers adds environments E and F, and the alert admin "alerty"
+// with the given query tiers there.
+func setupAlertTiers(t *testing.T, tierE, tierF users.Tier) (h *HandlersApi, e, f environments.TLSEnvironment) {
+	t.Helper()
+	h = setupAlertRoles(t)
+	h.Envs = environments.CreateEnvironment(h.Alerts.DB)
+	e = environments.TLSEnvironment{UUID: "e-uuid", Name: "E"}
+	f = environments.TLSEnvironment{UUID: "f-uuid", Name: "F"}
+	require.NoError(t, h.Alerts.DB.Create(&e).Error)
+	require.NoError(t, h.Alerts.DB.Create(&f).Error)
+	require.NoError(t, h.Users.SetEnvTier("alerty", e.UUID, users.QueryLevel, tierE))
+	require.NoError(t, h.Users.SetEnvTier("alerty", f.UUID, users.QueryLevel, tierF))
+	return h, e, f
+}
+
+func logRuleIn(env uint) map[string]any {
+	b := ruleBody()
+	b["environment_id"] = env
+	return b
+}
+
+func TestAlertAdminResultLogRuleFullTier(t *testing.T) {
+	h, e, _ := setupAlertTiers(t, users.TierFull, users.TierStandard)
+	rr := callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, logRuleIn(e.ID), 0)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+}
+
+func TestAlertAdminResultLogRuleStandardTier(t *testing.T) {
+	h, e, _ := setupAlertTiers(t, users.TierStandard, users.TierStandard)
+	rr := callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, logRuleIn(e.ID), 0)
+	require.Equal(t, http.StatusForbidden, rr.Code)
+	require.Contains(t, rr.Body.String(), "log-content alert rules require full query tier")
+}
+
+func TestAlertAdminResultLogRuleAllEnvs(t *testing.T) {
+	h, _, _ := setupAlertTiers(t, users.TierFull, users.TierFull)
+	rr := callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, logRuleIn(0), 0)
+	require.Equal(t, http.StatusForbidden, rr.Code)
+	require.Contains(t, rr.Body.String(), "log-content alert rules require full query tier")
+}
+
+// The environment never changes on update: a different one is a 400, and the
+// stored environment is what the tier check uses.
+func TestAlertAdminUpdateCannotMoveRuleEnv(t *testing.T) {
+	h, e, f := setupAlertTiers(t, users.TierFull, users.TierStandard)
+	rule := mustCreateRuleAs(t, h, "alerty", logRuleIn(e.ID))
+	rr := callAlertsAs(t, h.AlertRulesUpdateHandler, "alerty", http.MethodPut, logRuleIn(f.ID), rule.ID)
+	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
+	require.Contains(t, rr.Body.String(), "rule environment cannot be changed")
+	require.Equal(t, http.StatusOK, callAlertsAs(t, h.AlertRulesUpdateHandler, "alerty", http.MethodPut, logRuleIn(e.ID), rule.ID).Code)
+	// A log rule stored in F is out of reach for a standard-tier caller.
+	fRule := mustCreateRuleAs(t, h, "alice", logRuleIn(f.ID))
+	require.Equal(t, http.StatusForbidden, callAlertsAs(t, h.AlertRulesUpdateHandler, "alerty", http.MethodPut, logRuleIn(f.ID), fRule.ID).Code)
+	require.Equal(t, http.StatusForbidden, callAlertsAs(t, h.AlertRulesDeleteHandler, "alerty", http.MethodDelete, nil, fRule.ID).Code)
+	require.Equal(t, http.StatusNoContent, callAlertsAs(t, h.AlertRulesDeleteHandler, "alerty", http.MethodDelete, nil, rule.ID).Code)
+}
+
+func TestAlertAdminUpdateToLogContentUsesStoredEnv(t *testing.T) {
+	h, e, f := setupAlertTiers(t, users.TierFull, users.TierStandard)
+	rule := mustCreateRuleAs(t, h, "alerty", map[string]any{
+		"name": "inactive", "environment_id": f.ID, "source": "node_inactive", "cooldown_minutes": 30, "channel_ids": []uint{1}, "enabled": true,
+	})
+	body := ruleBody()
+	delete(body, "environment_id")
+	rr := callAlertsAs(t, h.AlertRulesUpdateHandler, "alerty", http.MethodPut, body, rule.ID)
+	require.Equal(t, http.StatusForbidden, rr.Code, rr.Body.String())
+	require.Contains(t, rr.Body.String(), "log-content alert rules require full query tier")
+	body["environment_id"] = e.ID
+	rr = callAlertsAs(t, h.AlertRulesUpdateHandler, "alerty", http.MethodPut, body, rule.ID)
+	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
 }

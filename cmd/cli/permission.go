@@ -106,7 +106,7 @@ func apiUserAccess(username string) (users.UserAccess, error) {
 	}
 	out := make(users.UserAccess, len(resp.Permissions))
 	for uuid, a := range resp.Permissions {
-		out[uuid] = users.EnvAccess{User: a.User, Query: a.Query, Carve: a.Carve, Admin: a.Admin}
+		out[uuid] = users.EnvAccess{User: a.User, Query: a.Query, Carve: a.Carve, Admin: a.Admin, QueryTier: a.QueryTier, CarveTier: a.CarveTier, ScopeTags: a.ScopeTags}
 	}
 	return out, nil
 }

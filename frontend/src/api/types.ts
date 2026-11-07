@@ -513,6 +513,9 @@ export interface EnvAccess {
   query: boolean;
   carve: boolean;
   admin: boolean;
+  query_tier?: 'none' | 'tags' | 'standard' | 'full';
+  carve_tier?: 'none' | 'tags' | 'standard' | 'full';
+  scope_tags?: number[];
 }
 
 export interface SetPermissionsRequest {

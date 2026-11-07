@@ -111,7 +111,7 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.CarveLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -137,6 +137,16 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting carve files", http.StatusInternalServerError, err)
 		return
 	}
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	files, err = h.visibleCarveFiles(scope, files)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
 	views := make([]types.CarveFileView, 0, len(files))
 	for _, f := range files {
 		views = append(views, carveFileView(f))
@@ -145,7 +155,7 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 	targets := []types.QueryTargetView{}
 	if rows, terr := h.Queries.GetTargets(name); terr == nil {
 		for _, t := range rows {
-			targets = append(targets, types.QueryTargetView{Type: t.Type, Value: t.Value})
+			targets = append(targets, types.QueryTargetView{Type: t.Type, Value: scopedTargetValue(scope, t.Type, t.Value)})
 		}
 	} else {
 		log.Debug().Err(terr).Msgf("carve targets fetch failed for %s", name)
@@ -202,7 +212,7 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.CarveLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -264,7 +274,7 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.CarveLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -303,10 +313,19 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 	if items == nil {
 		items = []queries.DistributedQuery{}
 	}
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
 	for i := range items {
 		files, ferr := h.Carves.GetByQuery(items[i].Name, env.ID)
 		if ferr != nil {
 			apiErrorResponse(w, "error getting carve files", http.StatusInternalServerError, ferr)
+			return
+		}
+		if files, ferr = h.visibleCarveFiles(scope, files); ferr != nil {
+			apiErrorResponse(w, "error getting access", http.StatusInternalServerError, ferr)
 			return
 		}
 		items[i].CarveStatus = deriveCarveStatus(items[i], files)
@@ -385,20 +404,6 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	if c.ExpHours == 0 {
 		expTime = time.Time{}
 	}
-	newQuery := queries.DistributedQuery{
-		Query:         carves.GenCarveQuery(c.Path, false),
-		Name:          carves.GenCarveName(),
-		Creator:       ctx[ctxUser],
-		Active:        true,
-		Expiration:    expTime,
-		Type:          queries.CarveQueryType,
-		Path:          c.Path,
-		EnvironmentID: env.ID,
-	}
-	if err := h.Queries.Create(&newQuery); err != nil {
-		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
-		return
-	}
 	data := handlers.ProcessingQuery{
 		Envs:      targetEnvs,
 		Platforms: c.Platforms,
@@ -413,8 +418,35 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		Envs:     h.Envs,
 		Tags:     h.Tags,
 	}
-	targetNodesID, err := handlers.CreateQueryCarve(data, manager, newQuery)
+	targetNodesID, err := handlers.CreateQueryCarve(data, manager, queries.DistributedQuery{})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
+		return
+	}
 	if err != nil {
+		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
+		return
+	}
+	targetNodesID, err = h.scopeTargets(r.Context(), ctx[ctxUser], users.CarveLevel, data, targetNodesID)
+	if errors.Is(err, errNodeOutOfScope) {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
+		return
+	}
+	if err != nil {
+		apiErrorResponse(w, "error scoping targets", http.StatusInternalServerError, err)
+		return
+	}
+	newQuery := queries.DistributedQuery{
+		Query:         carves.GenCarveQuery(c.Path, false),
+		Name:          carves.GenCarveName(),
+		Creator:       ctx[ctxUser],
+		Active:        true,
+		Expiration:    expTime,
+		Type:          queries.CarveQueryType,
+		Path:          c.Path,
+		EnvironmentID: env.ID,
+	}
+	if err := h.Queries.Create(&newQuery); err != nil {
 		apiErrorResponse(w, "error creating query", http.StatusInternalServerError, err)
 		return
 	}
@@ -580,7 +612,7 @@ func (h *HandlersApi) CarveArchiveHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	ctx := r.Context().Value(ContextKey(contextAPI)).(ContextValue)
-	if !h.Users.CheckPermissionsContext(r.Context(), ctx[ctxUser], users.CarveLevel, env.UUID) {
+	if !h.canReadQueries(r.Context(), ctx[ctxUser], env.UUID, users.CarveLevel) {
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
@@ -603,6 +635,16 @@ func (h *HandlersApi) CarveArchiveHandler(w http.ResponseWriter, r *http.Request
 	files, err := h.Carves.GetByQuery(name, env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error getting carve files", http.StatusInternalServerError, err)
+		return
+	}
+	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	files, err = h.visibleCarveFiles(scope, files)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
 	if len(files) == 0 {

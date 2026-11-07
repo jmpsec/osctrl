@@ -14,6 +14,7 @@ type permissionCache struct {
 	mu          sync.Mutex
 	users       map[string]AdminUser
 	permissions map[string]map[string][]UserPermission
+	scopeTags   map[string][]uint
 }
 
 // WithPermissionCache starts a fresh, empty authorization snapshot.
@@ -21,6 +22,7 @@ func WithPermissionCache(ctx context.Context) context.Context {
 	return context.WithValue(ctx, permissionContextKey{}, &permissionCache{
 		users:       make(map[string]AdminUser),
 		permissions: make(map[string]map[string][]UserPermission),
+		scopeTags:   make(map[string][]uint),
 	})
 }
 
@@ -55,6 +57,19 @@ func (m *UserManager) CheckPermissionsContext(ctx context.Context, username stri
 	if environment == NoEnvironment {
 		return false
 	}
+	perms, ok := m.cachedEnvPermissions(ctx, cache, username, environment)
+	if !ok {
+		return false
+	}
+	if level == UserLevel && user.HasRole(RoleReadOnly) {
+		return true
+	}
+	return permissionsAllow(perms, level)
+}
+
+// cachedEnvPermissions loads the env's rows through the request cache.
+// The caller must hold cache.mu.
+func (m *UserManager) cachedEnvPermissions(ctx context.Context, cache *permissionCache, username, environment string) ([]UserPermission, bool) {
 	byEnvironment := cache.permissions[username]
 	if byEnvironment == nil {
 		byEnvironment = make(map[string][]UserPermission)
@@ -63,11 +78,11 @@ func (m *UserManager) CheckPermissionsContext(ctx context.Context, username stri
 	perms, found := byEnvironment[environment]
 	if !found {
 		if err := m.DB.WithContext(ctx).Where("username = ? AND environment = ?", username, environment).Find(&perms).Error; err != nil {
-			return false
+			return nil, false
 		}
 		byEnvironment[environment] = perms
 	}
-	return permissionsAllow(perms, level)
+	return perms, true
 }
 
 // cachedUser returns the user from the request cache, loading it from the
