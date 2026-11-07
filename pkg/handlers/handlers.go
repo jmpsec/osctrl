@@ -64,7 +64,8 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 	if len(data.Envs) > 0 {
 		expected = []uint{}
 		for _, e := range data.Envs {
-			// TODO: Check if user has permissions to query the environment
+			// Callers authorize each target env first (API: authorizeTargetEnvs;
+			// the CLI runs with direct DB access and is trusted).
 			if (e != "") && manager.Envs.Exists(e) {
 				// An exact UUID match wins, so a UUID authorized by the
 				// caller cannot re-resolve to an environment named like it.
