@@ -36,9 +36,10 @@ func TestIntersect(t *testing.T) {
 	assert.Equal(t, expected, slice1)
 }
 
+// An empty side is an empty set, not "no filter".
 func TestIntersectEmpty(t *testing.T) {
 	var slice1 = []uint{}
 	var slice2 = []uint{3, 4, 5, 6, 7}
-	var expected = []uint{3, 4, 5, 6, 7}
-	assert.Equal(t, expected, utils.Intersect(slice1, slice2))
+	assert.Empty(t, utils.Intersect(slice1, slice2))
+	assert.Empty(t, utils.Intersect(slice2, slice1))
 }

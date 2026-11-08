@@ -51,6 +51,16 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 		}
 		return targetNodesID, nil
 	}
+	// Selectors combine with AND: the first one sets the candidates and each
+	// later one narrows them, so a selector that matches nothing leaves nothing.
+	filtered := false
+	narrow := func(ids []uint) {
+		if !filtered {
+			targetNodesID, filtered = ids, true
+			return
+		}
+		targetNodesID = utils.Intersect(targetNodesID, ids)
+	}
 	// Environments target
 	hoursByEnv := make(map[uint]int64)
 	inactiveHours := func(envID uint) int64 {
@@ -85,7 +95,7 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 				}
 			}
 		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+		narrow(expected)
 	}
 	// Platforms target
 	if len(data.Platforms) > 0 {
@@ -102,7 +112,7 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 				}
 			}
 		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+		narrow(expected)
 	}
 	// UUIDs target
 	if len(data.UUIDs) > 0 {
@@ -116,7 +126,7 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 				expected = append(expected, node.ID)
 			}
 		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+		narrow(expected)
 	}
 	// Hostnames target
 	if len(data.Hosts) > 0 {
@@ -130,7 +140,7 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 				expected = append(expected, node.ID)
 			}
 		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+		narrow(expected)
 	}
 	// Tags target
 	if len(data.Tags) > 0 {
@@ -149,7 +159,7 @@ func CreateQueryCarve(data ProcessingQuery, manager Managers, newQuery queries.D
 				}
 			}
 		}
-		targetNodesID = utils.Intersect(targetNodesID, expected)
+		narrow(expected)
 	}
 	return targetNodesID, nil
 }
