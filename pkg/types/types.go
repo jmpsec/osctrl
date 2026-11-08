@@ -448,6 +448,11 @@ type ApiUpdatePackageRequest struct {
 	URL string `json:"url"`
 }
 
+// ApiSensitivePathRequest to add a sensitive carve path to an environment
+type ApiSensitivePathRequest struct {
+	Path string `json:"path"`
+}
+
 // ApiEnvRequest to receive environment action requests
 type ApiEnvRequest struct {
 	Action   string `json:"action"`

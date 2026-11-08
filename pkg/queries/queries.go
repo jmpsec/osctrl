@@ -729,6 +729,41 @@ func (q *Queries) GetByEnvTargetPaged(envID uint, target, qtype, search string, 
 	}
 	offset := (page - 1) * pageSize
 
+	db, orderExpr, err := q.envTargetQuery(envID, target, qtype, search, sortColumn, desc)
+	if err != nil {
+		return QueryListPage{}, err
+	}
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return QueryListPage{}, err
+	}
+	var items []DistributedQuery
+	if err := db.Order(orderExpr).Offset(offset).Limit(pageSize).Find(&items).Error; err != nil {
+		return QueryListPage{}, err
+	}
+	return QueryListPage{Items: items, TotalItems: total}, nil
+}
+
+// GetByEnvTargetAll is GetByEnvTargetPaged without paging: every matching
+// row, sorted, for callers that must filter before counting.
+func (q *Queries) GetByEnvTargetAll(envID uint, target, qtype, search, sortColumn string, desc bool) ([]DistributedQuery, error) {
+	if IsInternalQueryType(qtype) {
+		return []DistributedQuery{}, nil
+	}
+	db, orderExpr, err := q.envTargetQuery(envID, target, qtype, search, sortColumn, desc)
+	if err != nil {
+		return nil, err
+	}
+	var items []DistributedQuery
+	if err := db.Order(orderExpr).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// envTargetQuery builds the filtered query and sort expression shared by
+// GetByEnvTargetPaged and GetByEnvTargetAll.
+func (q *Queries) envTargetQuery(envID uint, target, qtype, search, sortColumn string, desc bool) (*gorm.DB, string, error) {
 	dbCol, ok := QuerySortableColumns[sortColumn]
 	if !ok || sortColumn == "" {
 		dbCol = "created_at"
@@ -764,23 +799,14 @@ func (q *Queries) GetByEnvTargetPaged(envID uint, target, qtype, search string, 
 		// Mirror Gets() semantics by returning zero rows here.
 		db = db.Where("1 = 0")
 	default:
-		return QueryListPage{}, fmt.Errorf("invalid target %q", target)
+		return nil, "", fmt.Errorf("invalid target %q", target)
 	}
 
 	if search != "" {
 		like := "%" + search + "%"
 		db = db.Where("name LIKE ? OR creator LIKE ? OR query LIKE ?", like, like, like)
 	}
-
-	var total int64
-	if err := db.Count(&total).Error; err != nil {
-		return QueryListPage{}, err
-	}
-	var items []DistributedQuery
-	if err := db.Order(orderExpr).Offset(offset).Limit(pageSize).Find(&items).Error; err != nil {
-		return QueryListPage{}, err
-	}
-	return QueryListPage{Items: items, TotalItems: total}, nil
+	return db, orderExpr, nil
 }
 
 // NotifyChange sends a best-effort metadata invalidation after a caller's write/commit.
