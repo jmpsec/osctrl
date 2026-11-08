@@ -21,7 +21,7 @@ const maxBodyStatus = 4 << 10 // 4 KiB: osctrld health and rollback report
 // counted and audited once.
 func (h *HandlersTLS) StatusHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.OsctrldStatusRequest
-	env, ok := h.osctrldRequest(w, r, maxBodyStatus, &t, func() string { return t.Secret })
+	env, ok := h.osctrldRequest(w, r, "StatusHandler", maxBodyStatus, &t, func() string { return t.Secret })
 	if !ok {
 		return
 	}

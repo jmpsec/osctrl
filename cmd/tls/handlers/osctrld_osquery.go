@@ -24,7 +24,7 @@ var osqueryToken = regexp.MustCompile(`^[a-z0-9_]{1,16}$`)
 // unsupported platform is a 200 with a reason.
 func (h *HandlersTLS) OsqueryHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.OsctrldOsqueryRequest
-	env, ok := h.osctrldRequest(w, r, maxBodyOsquery, &t, func() string { return t.Secret })
+	env, ok := h.osctrldRequest(w, r, "OsqueryHandler", maxBodyOsquery, &t, func() string { return t.Secret })
 	if !ok {
 		return
 	}

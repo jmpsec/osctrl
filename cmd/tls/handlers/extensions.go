@@ -20,17 +20,17 @@ const (
 )
 
 // osctrldRequest checks the environment in the path, reads a body of at most
-// max bytes into v and checks its secret. It writes the error response and
+// max bytes into v and checks its secret. handler is the caller's fixed name
+// for metrics. It writes the error response and
 // returns false when any step fails.
-func (h *HandlersTLS) osctrldRequest(w http.ResponseWriter, r *http.Request, max int64, v any, secret func() string) (environments.TLSEnvironment, bool) {
+func (h *HandlersTLS) osctrldRequest(w http.ResponseWriter, r *http.Request, handler string, max int64, v any, secret func() string) (environments.TLSEnvironment, bool) {
 	envVar := r.PathValue("env")
 	if !utils.CheckUUID(envVar) {
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return environments.TLSEnvironment{}, false
 	}
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, handler)
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return env, false
 	}
@@ -50,7 +50,7 @@ func (h *HandlersTLS) osctrldRequest(w http.ResponseWriter, r *http.Request, max
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return env, false
 	}
-	if !h.osctrldSecret(w, r, secret(), env) {
+	if !h.osctrldSecret(w, r, secret(), env, known) {
 		return env, false
 	}
 	return env, true
@@ -61,7 +61,7 @@ func (h *HandlersTLS) osctrldRequest(w http.ResponseWriter, r *http.Request, max
 // environment. It records the extension status that node reports.
 func (h *HandlersTLS) ExtensionsHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.OsctrldExtensionsRequest
-	env, ok := h.osctrldRequest(w, r, maxBodyExtensions, &t, func() string { return t.Secret })
+	env, ok := h.osctrldRequest(w, r, "ExtensionsHandler", maxBodyExtensions, &t, func() string { return t.Secret })
 	if !ok {
 		return
 	}
@@ -104,7 +104,7 @@ func (h *HandlersTLS) ExtensionsHandler(w http.ResponseWriter, r *http.Request) 
 // environment, chunk by chunk.
 func (h *HandlersTLS) ExtensionDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	var t types.OsctrldDownloadRequest
-	env, ok := h.osctrldRequest(w, r, maxBodyExtensionDownload, &t, func() string { return t.Secret })
+	env, ok := h.osctrldRequest(w, r, "ExtensionDownloadHandler", maxBodyExtensionDownload, &t, func() string { return t.Secret })
 	if !ok {
 		return
 	}

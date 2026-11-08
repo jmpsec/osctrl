@@ -29,6 +29,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/semaphore"
+	"gorm.io/gorm"
 )
 
 // Per-endpoint request-body caps. Anonymous (pre-enroll) endpoints get a
@@ -105,6 +106,24 @@ func isMaxBytesError(err error) bool {
 	return errors.As(err, &maxErr)
 }
 
+// getEnv resolves the environment in the path. An environment that does not
+// exist returns known=false and a nil error: the caller answers it exactly
+// like a bad credential for a known environment, so a scanner cannot tell
+// which UUIDs exist. Any other lookup error is logged and returned.
+func (h *HandlersTLS) getEnv(ctx context.Context, envVar, handler string) (env environments.TLSEnvironment, known bool, err error) {
+	env, err = h.EnvCache.GetByUUID(ctx, envVar)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		log.Debug().Str("handler", handler).Msg("unknown environment")
+		unknownEnvironment.WithLabelValues(handler).Inc()
+		return environments.TLSEnvironment{}, false, nil
+	}
+	if err != nil {
+		log.Err(err).Msg("error getting environment")
+		return env, false, err
+	}
+	return env, true, nil
+}
+
 // EnrollHandler - Function to handle the enroll requests from osquery nodes
 func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	// Retrieve environment variable
@@ -119,15 +138,9 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
+	env, known, err := h.getEnv(context.TODO(), envVar, "EnrollHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
-		return
-	}
-	// Check if environment accept enrolls
-	if !env.AcceptEnrolls {
-		utils.HTTPResponse(w, "", http.StatusServiceUnavailable, []byte(""))
 		return
 	}
 	// Debug HTTP for environment
@@ -160,7 +173,13 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	var nodeKey string
 	var newNode nodes.OsqueryNode
 	nodeInvalid := true
-	if h.checkValidSecret(t.EnrollSecret, env) {
+	if known && h.checkValidSecret(t.EnrollSecret, env) {
+		// Checked only after the secret, so a disabled environment answers
+		// a wrong secret like an unknown one.
+		if !env.AcceptEnrolls {
+			utils.HTTPResponse(w, "", http.StatusServiceUnavailable, []byte(""))
+			return
+		}
 		// Generate node_key using UUID as entropy
 		nodeKey = generateNodeKey()
 		newNode = nodeFromEnroll(t, env, utils.GetIP(r), nodeKey, len(body))
@@ -188,8 +207,10 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		log.Err(err).Msg("invalid enrolling secret")
-		h.AuditLog.FailedEnroll(utils.GetIP(r), env.Name, "invalid enroll secret", env.ID)
+		if known {
+			log.Err(err).Msg("invalid enrolling secret")
+			h.AuditLog.FailedEnroll(utils.GetIP(r), env.Name, "invalid enroll secret", env.ID)
+		}
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
@@ -222,9 +243,9 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(ctx, envVar)
+	env, known, err := h.getEnv(ctx, envVar, "ConfigHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
+		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
 	// Debug HTTP for environment
@@ -258,8 +279,9 @@ func (h *HandlersTLS) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
 	}
 	if nodeErr == nil {
-		// Check if node belongs to the environment
-		if node.EnvironmentID != env.ID {
+		// Check if node belongs to the environment; no node belongs to an
+		// unknown one
+		if !known || node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
 			response = types.ConfigResponse{NodeInvalid: true}
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -326,9 +348,8 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
+	env, known, err := h.getEnv(context.TODO(), envVar, "LogHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -388,8 +409,9 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
 	}
 	if nodeErr == nil {
-		// Check if node belongs to the environment
-		if node.EnvironmentID != env.ID {
+		// Check if node belongs to the environment; no node belongs to an
+		// unknown one
+		if !known || node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
 			response = types.LogResponse{NodeInvalid: true}
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -463,9 +485,8 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
+	env, known, err := h.getEnv(context.TODO(), envVar, "QueryReadHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -503,8 +524,9 @@ func (h *HandlersTLS) QueryReadHandler(w http.ResponseWriter, r *http.Request) {
 		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
 	}
 	if nodeErr == nil {
-		// Check if node belongs to the environment
-		if node.EnvironmentID != env.ID {
+		// Check if node belongs to the environment; no node belongs to an
+		// unknown one
+		if !known || node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
 			response = types.ConfigResponse{NodeInvalid: true}
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -560,9 +582,8 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(context.TODO(), envVar)
+	env, known, err := h.getEnv(context.TODO(), envVar, "QueryWriteHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -599,8 +620,9 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
 	}
 	if nodeErr == nil {
-		// Check if node belongs to the environment
-		if node.EnvironmentID != env.ID {
+		// Check if node belongs to the environment; no node belongs to an
+		// unknown one
+		if !known || node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
 			response = types.QueryWriteResponse{NodeInvalid: true}
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -671,9 +693,8 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "QuickEnrollHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -697,7 +718,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if strings.HasPrefix(script, settings.ScriptEnroll) {
-		if !h.checkValidEnrollSecretPath(env, secretPath) {
+		if !known || !h.checkValidEnrollSecretPath(env, secretPath) {
 			log.Warn().Msg("Invalid secret path for enrolling")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 			return
@@ -708,7 +729,7 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	} else if strings.HasPrefix(script, settings.ScriptRemove) {
-		if !h.checkValidRemoveSecretPath(env, secretPath) {
+		if !known || !h.checkValidRemoveSecretPath(env, secretPath) {
 			log.Warn().Msg("Invalid secret path for removing")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 			return
@@ -719,7 +740,12 @@ func (h *HandlersTLS) QuickEnrollHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	// Prepare response with the script
+	// Prepare response with the script. Any script reaching here for an
+	// unknown environment is not a valid one, so it fails like QuickAddScript.
+	if !known {
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Error generating script"})
+		return
+	}
 	quickScript, err := environments.QuickAddScript("osctrl-"+env.Name, script, env)
 	if err != nil {
 		log.Err(err).Msg("error getting script")
@@ -744,9 +770,8 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "QuickRemoveHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 		return
 	}
@@ -770,7 +795,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 	}
 	// Check if provided SecretPath is valid and is not expired
 	if strings.HasPrefix(script, settings.ScriptEnroll) {
-		if !h.checkValidEnrollSecretPath(env, secretPath) {
+		if !known || !h.checkValidEnrollSecretPath(env, secretPath) {
 			log.Debug().Msg("Invalid secret path for enrolling")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 			return
@@ -781,7 +806,7 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	} else if strings.HasPrefix(script, settings.ScriptRemove) {
-		if !h.checkValidRemoveSecretPath(env, secretPath) {
+		if !known || !h.checkValidRemoveSecretPath(env, secretPath) {
 			log.Debug().Msg("Invalid secret path for removing")
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Invalid"})
 			return
@@ -792,7 +817,12 @@ func (h *HandlersTLS) QuickRemoveHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	// Prepare response with the script
+	// Prepare response with the script. Any script reaching here for an
+	// unknown environment is not a valid one, so it fails like QuickAddScript.
+	if !known {
+		utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusInternalServerError, TLSResponse{Message: "Error generating script"})
+		return
+	}
 	quickScript, err := environments.QuickAddScript("osctrl-"+env.Name, script, env)
 	if err != nil {
 		log.Err(err).Msg("error getting script")
@@ -819,9 +849,8 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "CarveInitHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -859,8 +888,9 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		utils.DebugHTTPDumpWithBody(h.DebugHTTP, r, body, h.DebugHTTPConfig.ShowBody)
 	}
 	if nodeErr == nil {
-		// Check if node belongs to the environment
-		if node.EnvironmentID != env.ID {
+		// Check if node belongs to the environment; no node belongs to an
+		// unknown one
+		if !known || node.EnvironmentID != env.ID {
 			log.Warn().Msgf("node UUID: %s in %s environment does not belong to the environment", node.UUID, env.Name)
 			response = types.CarveInitResponse{Success: false, SessionID: ""}
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, response)
@@ -906,9 +936,8 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "CarveBlockHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -934,7 +963,7 @@ func (h *HandlersTLS) CarveBlockHandler(w http.ResponseWriter, r *http.Request) 
 	blockCarve := false
 	// Check if provided session_id matches with the request_id (carve query name)
 	if carve, err := h.Carves.GetCheckCarve(t.SessionID, t.RequestID); err == nil {
-		if carve.EnvironmentID != env.ID {
+		if !known || carve.EnvironmentID != env.ID {
 			log.Warn().Msgf("CarveBlockHandler: carve env %d does not match URL env %d", carve.EnvironmentID, env.ID)
 			utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.CarveBlockResponse{Success: false})
 			return
@@ -977,9 +1006,8 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "FlagsHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -1003,7 +1031,7 @@ func (h *HandlersTLS) FlagsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check the secret; a wrong one is charged to the failure budget
-	if !h.osctrldSecret(w, r, t.Secret, env) {
+	if !h.osctrldSecret(w, r, t.Secret, env, known) {
 		return
 	}
 	flagsStr, err := h.Envs.NodeFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
@@ -1084,9 +1112,8 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "CertHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -1110,7 +1137,7 @@ func (h *HandlersTLS) CertHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check the secret; a wrong one is charged to the failure budget
-	if !h.osctrldSecret(w, r, t.Secret, env) {
+	if !h.osctrldSecret(w, r, t.Secret, env, known) {
 		return
 	}
 	response = []byte(env.Certificate)
@@ -1137,9 +1164,8 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "VerifyHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -1163,7 +1189,7 @@ func (h *HandlersTLS) VerifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check the secret; a wrong one is charged to the failure budget
-	if !h.osctrldSecret(w, r, t.Secret, env) {
+	if !h.osctrldSecret(w, r, t.Secret, env, known) {
 		return
 	}
 	flagsStr, err := h.Envs.NodeFlags(env, t.SecrefFile, t.CertFile, *h.OsqueryValues)
@@ -1201,9 +1227,8 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "ScriptHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -1254,7 +1279,7 @@ func (h *HandlersTLS) ScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Check the secret; a wrong one is charged to the failure budget
-	if !h.osctrldSecret(w, r, t.Secret, env) {
+	if !h.osctrldSecret(w, r, t.Secret, env, known) {
 		return
 	}
 	script, err := environments.QuickAddScript("osctrl-"+env.Name, actionVar, env)
@@ -1286,9 +1311,8 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Get environment
-	env, err := h.EnvCache.GetByUUID(r.Context(), envVar)
+	env, known, err := h.getEnv(r.Context(), envVar, "EnrollPackageHandler")
 	if err != nil {
-		log.Err(err).Msg("error getting environment")
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
@@ -1315,7 +1339,7 @@ func (h *HandlersTLS) EnrollPackageHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// Check if provided SecretPath is valid and is not expired
-	if !h.checkValidEnrollSecretPath(env, secretPath) {
+	if !known || !h.checkValidEnrollSecretPath(env, secretPath) {
 		utils.HTTPResponse(w, "", http.StatusForbidden, []byte(""))
 		return
 	}
