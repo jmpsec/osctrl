@@ -284,8 +284,8 @@ export function UsersPage() {
                   <td className="px-4 py-3">
                     {isSelf || !canManage(u) ? (
                       <span
-                        aria-label={isSelf ? "You can't select your own account" : 'Superuser accounts can only be managed by a superuser'}
-                        title={isSelf ? "You can't delete your own account." : 'Superuser accounts can only be managed by a superuser.'}
+                        aria-label={isSelf ? "You can't select your own account" : !canWrite ? "You can't manage users" : 'Superuser accounts can only be managed by a superuser'}
+                        title={isSelf ? "You can't delete your own account." : !canWrite ? "You can't manage users." : 'Superuser accounts can only be managed by a superuser.'}
                         className="inline-block w-4 h-4"
                       />
                     ) : (

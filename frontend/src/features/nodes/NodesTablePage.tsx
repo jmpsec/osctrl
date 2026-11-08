@@ -472,7 +472,8 @@ export function NodesTablePage() {
     queryFn: () => listEnvironments(),
     staleTime: 60_000,
   });
-  const envUuidForPerms = envsForPerms?.find((e) => e.name === env)?.uuid;
+  // The route param is the env name or UUID (the command palette links by UUID).
+  const envUuidForPerms = envsForPerms?.find((e) => e.name === env || e.uuid === env)?.uuid;
   const canDeleteNodes = envUuidForPerms !== undefined && envCaps(me, envUuidForPerms).manage;
   const { data: features } = useQuery({
     queryKey: ['features'],
