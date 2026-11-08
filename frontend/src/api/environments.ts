@@ -5,6 +5,7 @@
  * CRUD + per-section config + intervals + expiration are additions.
  */
 import { apiFetch } from './client';
+import type { SensitivePath, SensitivePathRequest } from './types';
 
 /**
  * TLSEnvironment — full storage shape returned by the API. Mirrors
@@ -294,4 +295,25 @@ export function updateEnvPackage(
       body: JSON.stringify({ url }),
     },
   );
+}
+
+/** GET /api/v1/environments/sensitive-paths/{env} — carve paths hidden from users below full carve tier. */
+export function listSensitivePaths(env: string): Promise<SensitivePath[]> {
+  return apiFetch<SensitivePath[]>(`/api/v1/environments/sensitive-paths/${encodeURIComponent(env)}`);
+}
+
+/** POST /api/v1/environments/sensitive-paths/{env} — add a sensitive path. */
+export function addSensitivePath(env: string, body: SensitivePathRequest): Promise<SensitivePath> {
+  return apiFetch<SensitivePath>(`/api/v1/environments/sensitive-paths/${encodeURIComponent(env)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** DELETE /api/v1/environments/sensitive-paths/{env}/{id} — remove a sensitive path. */
+export function deleteSensitivePath(env: string, id: number): Promise<void> {
+  return apiFetch<void>(`/api/v1/environments/sensitive-paths/${encodeURIComponent(env)}/${id}`, {
+    method: 'DELETE',
+  });
 }

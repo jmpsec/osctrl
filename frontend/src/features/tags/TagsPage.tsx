@@ -4,6 +4,9 @@ import { usePageTitle } from '$/lib/usePageTitle';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listEnvTags, tagsAction } from '$/api/tags';
+import { listEnvironments } from '$/api/environments';
+import { useMe } from '$/lib/useMe';
+import { envCaps } from '$/lib/access';
 import { AuthError, ApiError } from '$/api/client';
 import type { AdminTag } from '$/api/types';
 import { formatRelative } from '$/lib/time';
@@ -41,6 +44,16 @@ export function TagsPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   const queryKey = ['tags', env] as const;
+
+  // Server requires env AdminLevel for tag writes. The route param may be the env name or UUID.
+  const { data: me } = useMe();
+  const { data: envs } = useQuery({
+    queryKey: ['environments'],
+    queryFn: () => listEnvironments(),
+    staleTime: 60_000,
+  });
+  const envUuid = envs?.find((e) => e.name === env || e.uuid === env)?.uuid;
+  const canManage = envCaps(me, envUuid ?? '').manage;
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey,
@@ -147,12 +160,14 @@ export function TagsPage() {
         </p>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            type="button"
-            onClick={() => setModal({ kind: 'create' })}
-          >
-            {t('tagsPage.newTag')}
-          </Button>
+          {canManage && (
+            <Button
+              type="button"
+              onClick={() => setModal({ kind: 'create' })}
+            >
+              {t('tagsPage.newTag')}
+            </Button>
+          )}
 
           {isFetching && !isLoading && (
             <span
@@ -171,7 +186,7 @@ export function TagsPage() {
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
               <th scope="col" className="px-4 py-3 w-10">
-                <input
+                {canManage && <input
                   type="checkbox"
                   aria-label={t('tagsPage.selectTags')}
                   checked={allChecked}
@@ -180,7 +195,7 @@ export function TagsPage() {
                   }}
                   onChange={toggleAll}
                   className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
-                />
+                />}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
                 Tag
@@ -236,7 +251,7 @@ export function TagsPage() {
                       </svg>
                     }
                     title={t('tagsPage.noTags')}
-                    action={
+                    action={canManage ? (
                       <button
                         type="button"
                         onClick={() => setModal({ kind: 'create' })}
@@ -244,7 +259,7 @@ export function TagsPage() {
                       >
                         Create your first tag
                       </button>
-                    }
+                    ) : undefined}
                   />
                 </td>
               </tr>
@@ -263,21 +278,28 @@ export function TagsPage() {
                   )}
                 >
                   <td className="px-4 py-3">
-                    <input
+                    {canManage && <input
                       type="checkbox"
                       aria-label={`Select tag ${tag.name}`}
                       checked={isSelected}
                       onChange={() => toggleOne(tag.name)}
                       className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
-                    />
+                    />}
                   </td>
                   <td className="px-4 py-3">
-                    <TagChip
-                      label={tag.name}
-                      color={tag.color || DEFAULT_COLOR}
-                      Icon={resolveTagIcon(tag.icon || DEFAULT_ICON)}
-                      title={tag.description || tag.name}
-                    />
+                    <div className="flex items-center gap-2">
+                      <TagChip
+                        label={tag.name}
+                        color={tag.color || DEFAULT_COLOR}
+                        Icon={resolveTagIcon(tag.icon || DEFAULT_ICON)}
+                        title={tag.description || tag.name}
+                      />
+                      {tag.sensitive && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded border border-[color:var(--danger)] text-[color:var(--danger)]">
+                          Sensitive
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-[color:var(--text-2)] text-xs">
                     {tag.description || <span className="text-[color:var(--text-3)]">—</span>}
@@ -289,7 +311,7 @@ export function TagsPage() {
                     <span title={tag.created_at}>{formatRelative(tag.created_at)}</span>
                   </td>
                   <td className="px-2 py-3 text-right whitespace-nowrap">
-                    <button
+                    {canManage && <><button
                       type="button"
                       onClick={() => setModal({ kind: 'edit', tag })}
                       className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
@@ -302,7 +324,7 @@ export function TagsPage() {
                       className="px-2 py-1 text-xs font-medium rounded text-[color:var(--danger)] hover:bg-[color:var(--bg-3)] transition-colors"
                     >
                       Delete
-                    </button>
+                    </button></>}
                   </td>
                 </tr>
                 );
@@ -430,7 +452,10 @@ function TagFormModal({
   const [description, setDescription] = useState(initial?.description ?? '');
   const [color, setColor] = useState(initial?.color || DEFAULT_COLOR);
   const [icon, setIcon] = useState(initial?.icon || DEFAULT_ICON);
+  const [sensitive, setSensitive] = useState(!!initial?.sensitive);
+  const [confirming, setConfirming] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const wasSensitive = !!initial?.sensitive;
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -443,6 +468,8 @@ function TagFormModal({
         color: color.trim(),
         icon: icon.trim(),
         tagtype: TAG_TYPE_REGULAR,
+        // Create sends it only when true; edit only when it changed.
+        ...((mode === 'create' ? sensitive : sensitive !== wasSensitive) && { sensitive }),
       });
     },
     onSuccess: () => {
@@ -454,6 +481,8 @@ function TagFormModal({
         window.location.href = appPath('/login');
         return;
       }
+      // Back to the form so the error is visible.
+      setConfirming(false);
       if (e instanceof ApiError && e.status === 409) {
         setErr('A tag with that name already exists in this environment.');
         return;
@@ -461,6 +490,33 @@ function TagFormModal({
       setErr(e instanceof Error ? e.message : 'Save failed');
     },
   });
+
+  if (confirming) {
+    return (
+      <ModalShell title={`Mark ${initial?.name ?? ''} sensitive`} titleId="tag-sensitive-modal-title" onClose={onClose}>
+        <p className="text-sm text-[color:var(--text-2)]">
+          Marking this tag sensitive removes it from every user's tag grants and cancels pending queries and carves that users below full tier can no longer reach.
+        </p>
+        <div className="flex items-center justify-end gap-2 pt-4">
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate()}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-[color:var(--danger)] text-[color:var(--accent-contrast)] disabled:opacity-50"
+          >
+            Mark sensitive
+          </button>
+        </div>
+      </ModalShell>
+    );
+  }
 
   return (
     <ModalShell
@@ -471,7 +527,8 @@ function TagFormModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          mutation.mutate();
+          if (mode === 'edit' && sensitive && !wasSensitive) setConfirming(true);
+          else mutation.mutate();
         }}
         className="space-y-4"
       >
@@ -542,6 +599,16 @@ function TagFormModal({
             />
           </div>
         </div>
+
+        <label className="flex items-center gap-2 text-xs text-[color:var(--text-2)]">
+          <input
+            type="checkbox"
+            checked={sensitive}
+            onChange={(e) => setSensitive(e.target.checked)}
+            className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
+          />
+          Sensitive
+        </label>
 
         {err && (
           <p

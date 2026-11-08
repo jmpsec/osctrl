@@ -20,6 +20,9 @@ import { getFeatures } from '$/api/features';
 import { useOsctrldEnabled } from '$/lib/useOsctrldEnabled';
 import type { PostureProfile } from '$/api/types';
 import { EnvExtensionsTab } from './EnvExtensionsTab';
+import { EnvSensitivePathsTab } from './EnvSensitivePathsTab';
+import { useMe } from '$/lib/useMe';
+import { envCaps } from '$/lib/access';
 import { EnvOsqueryTab } from './EnvOsqueryTab';
 import { applyPostureProfileToSchedule } from './postureSchedule';
 import { VulnProfilePicker } from '$/features/vulnerabilities/VulnProfilePicker';
@@ -142,7 +145,7 @@ export function EnvConfigPage() {
   const [postureAggressiveness, setPostureAggressiveness] = useState(1);
   const [showVulnPicker, setShowVulnPicker] = useState(false);
   const closeVulnPicker = useCallback(() => setShowVulnPicker(false), []);
-  type TabKey = 'settings' | SectionKey | 'posture' | 'extensions' | 'osquery' | 'assembled';
+  type TabKey = 'settings' | SectionKey | 'posture' | 'extensions' | 'osquery' | 'sensitive' | 'assembled';
   const [activeTab, setActiveTab] = useState<TabKey>('settings');
   const featuresQuery = useQuery({
     queryKey: ['features'],
@@ -150,6 +153,7 @@ export function EnvConfigPage() {
     staleTime: 5 * 60_000,
   });
   const { enabled: osctrldEnabled } = useOsctrldEnabled();
+  const { data: me } = useMe();
   // A selected osctrld tab falls back to the default once osctrld is off.
   useEffect(() => {
     if (!osctrldEnabled && (activeTab === 'extensions' || activeTab === 'osquery')) setActiveTab('settings');
@@ -306,6 +310,7 @@ export function EnvConfigPage() {
   }
 
   const envInfo = envQuery.data;
+  const canManage = !!envInfo && envCaps(me, envInfo.uuid).manage;
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -408,6 +413,14 @@ export function EnvConfigPage() {
             />
           </>
         )}
+        {canManage && (
+          <TabButton
+            id="sensitive"
+            label="Sensitive paths"
+            active={activeTab === 'sensitive'}
+            onClick={() => setActiveTab('sensitive')}
+          />
+        )}
         <TabButton
           id="assembled"
           label={t('envConfig.fullConfiguration')}
@@ -451,6 +464,9 @@ export function EnvConfigPage() {
 
         {osctrldEnabled && activeTab === 'extensions' && <EnvExtensionsTab env={env} />}
         {osctrldEnabled && activeTab === 'osquery' && <EnvOsqueryTab env={env} />}
+        {canManage && envInfo && activeTab === 'sensitive' && (
+          <EnvSensitivePathsTab env={env} envUuid={envInfo.uuid} />
+        )}
 
         {activeTab === 'posture' && postureEnabled && (
           <PostureScheduleEditor

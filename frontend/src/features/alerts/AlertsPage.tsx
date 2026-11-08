@@ -35,6 +35,8 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { Button } from '$/components/atoms/Button';
 import { cn } from '$/lib/cn';
+import { useMe } from '$/lib/useMe';
+import { canLogContentRule, canSeePage, canWritePage, isSuperuser } from '$/lib/access';
 import { StatusBadge } from '$/components/data/StatusBadge';
 
 const GLOBAL_ENV_ID = 0;
@@ -126,6 +128,9 @@ export function AlertsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
+  const { data: me } = useMe();
+  const canWrite = canWritePage(me, 'alerts');
+  const superuser = isSuperuser(me);
   const [tab, setTab] = useState<Tab>('rules');
   const [selectedEnv, setSelectedEnv] = useState<number>(ALL_ENVS);
   const [ruleModal, setRuleModal] = useState<RuleModalMode>({ kind: 'closed' });
@@ -152,6 +157,14 @@ export function AlertsPage() {
     queryKey: ['alert-rules', selectedEnv],
     queryFn: () => listAlertRules(selectedEnv === ALL_ENVS ? undefined : { env: selectedEnv }),
     enabled: !!features?.alerts,
+    staleTime: 30_000,
+  });
+
+  // Unfiltered list, shared with NodeDetailPage, for the channel lock below.
+  const { data: allRules } = useQuery({
+    queryKey: ['alert-rules', 'all'],
+    queryFn: () => listAlertRules(),
+    enabled: !!features?.alerts && canWrite && !superuser,
     staleTime: 30_000,
   });
 
@@ -267,6 +280,21 @@ export function AlertsPage() {
       .catch(() => undefined);
   }, [reloadCommandID]);
   useServiceCommandUpdates(reloadCommandID, refreshReloadCommand);
+  const envUuidOf = (id: number) => (id > 0 ? envs?.find((e) => e.id === id)?.uuid : undefined);
+  // Server checks alert admin first, then the log-content gate.
+  const canEditRule = (rule: AlertRule) =>
+    canWrite &&
+    (PATTERN_SOURCES.has(rule.source) ? canLogContentRule(me, envUuidOf(rule.environment_id)) : true);
+  // Channels that any log-content rule (in any env) sends to stay superuser-only, like on the
+  // server; until that list loads, treat every channel as locked.
+  const logContentChannelIDs = useMemo(
+    () =>
+      allRules &&
+      new Set(allRules.filter((r) => PATTERN_SOURCES.has(r.source)).flatMap((r) => r.channel_ids)),
+    [allRules],
+  );
+  const canEditChannel = (id: number) =>
+    superuser || (canWrite && !!logContentChannelIDs && !logContentChannelIDs.has(id));
   const envName = (id: number) =>
     id === GLOBAL_ENV_ID ? 'Global' : (envs?.find((e) => e.id === id)?.name ?? `env ${id}`);
 
@@ -277,6 +305,12 @@ export function AlertsPage() {
   ) {
     void navigate({ to: '/login' });
     return null;
+  }
+
+  if (me && !canSeePage(me, 'alerts')) {
+    return (
+      <div className="p-6 text-sm text-[color:var(--text-2)]">You don't have access to this page.</div>
+    );
   }
 
   if (alertsDisabled) {
@@ -295,6 +329,8 @@ export function AlertsPage() {
           notifications. Global rules apply to every environment.
         </p>
         <div className="ml-auto flex items-center gap-2">
+          {canWrite && (
+            <>
           <Button
             type="button"
             onClick={() =>
@@ -327,6 +363,8 @@ export function AlertsPage() {
                 ? 'Reload triggered ✓'
                 : 'Apply changes'}
           </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -399,6 +437,7 @@ export function AlertsPage() {
             loading={rulesQuery.isLoading}
             envName={envName}
             channels={channels}
+            canEdit={canEditRule}
             onEdit={(rule) => setRuleModal({ kind: 'edit', rule })}
             onDelete={(id) => deleteRuleMutation.mutate(id)}
           />
@@ -409,6 +448,7 @@ export function AlertsPage() {
             types={channelTypes ?? []}
             loading={channelsQuery.isLoading}
             envName={envName}
+            canEdit={(c) => canEditChannel(c.id)}
             onEdit={(channel) => setChannelModal({ kind: 'edit', channel })}
             onDelete={(id) => deleteChannelMutation.mutate(id)}
           />
@@ -428,6 +468,7 @@ export function AlertsPage() {
           envs={envs ?? []}
           channels={channels}
           vulnsEnabled={features?.vulnerabilities === true}
+          canLogContent={(id) => canLogContentRule(me, envUuidOf(id))}
           onClose={() => setRuleModal({ kind: 'closed' })}
           onSaved={() => {
             setRuleModal({ kind: 'closed' });
@@ -439,6 +480,7 @@ export function AlertsPage() {
         <ChannelEditorModal
           mode={channelModal}
           types={channelTypes ?? []}
+          canTest={channelModal.kind === 'edit' ? canEditChannel(channelModal.channel.id) : canWrite}
           onClose={() => setChannelModal({ kind: 'closed' })}
           onSaved={() => {
             setChannelModal({ kind: 'closed' });
@@ -521,6 +563,7 @@ function RulesTable({
   loading,
   envName,
   channels,
+  canEdit,
   onEdit,
   onDelete,
 }: {
@@ -528,6 +571,7 @@ function RulesTable({
   loading: boolean;
   envName: (id: number) => string;
   channels: AlertChannel[];
+  canEdit: (rule: AlertRule) => boolean;
   onEdit: (rule: AlertRule) => void;
   onDelete: (id: number) => void;
 }) {
@@ -608,6 +652,8 @@ function RulesTable({
           </div>
           <div className="flex items-center justify-end gap-2">
             <StatusBadge variant={rule.enabled ? 'success' : 'dim'} label={rule.enabled ? 'Enabled' : 'Disabled'} />
+            {canEdit(rule) && (
+              <>
             <button
               type="button"
               onClick={() => onEdit(rule)}
@@ -622,6 +668,8 @@ function RulesTable({
             >
               Delete
             </button>
+              </>
+            )}
           </div>
         </div>
       ))}
@@ -634,6 +682,7 @@ function ChannelsTable({
   types,
   loading,
   envName,
+  canEdit,
   onEdit,
   onDelete,
 }: {
@@ -641,6 +690,7 @@ function ChannelsTable({
   types: AlertChannelTypeSpec[];
   loading: boolean;
   envName: (id: number) => string;
+  canEdit: (channel: AlertChannel) => boolean;
   onEdit: (channel: AlertChannel) => void;
   onDelete: (id: number) => void;
 }) {
@@ -693,6 +743,8 @@ function ChannelsTable({
           </div>
           <div className="flex items-center justify-end gap-2">
             <StatusBadge variant={channel.enabled ? 'success' : 'dim'} label={channel.enabled ? 'Enabled' : 'Disabled'} />
+            {canEdit(channel) && (
+              <>
             <button
               type="button"
               onClick={() => onEdit(channel)}
@@ -707,6 +759,8 @@ function ChannelsTable({
             >
               Delete
             </button>
+              </>
+            )}
           </div>
         </div>
       ))}
@@ -777,6 +831,7 @@ function RuleEditorModal({
   envs,
   channels,
   vulnsEnabled,
+  canLogContent,
   onClose,
   onSaved,
 }: {
@@ -784,6 +839,7 @@ function RuleEditorModal({
   envs: { id: number; name: string }[];
   channels: AlertChannel[];
   vulnsEnabled: boolean;
+  canLogContent: (envID: number) => boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -791,7 +847,7 @@ function RuleEditorModal({
   const existing = mode.kind === 'edit' ? mode.rule : null;
   const [name, setName] = useState(existing?.name ?? '');
   const [envID, setEnvID] = useState<number>(existing?.environment_id ?? GLOBAL_ENV_ID);
-  const [source, setSource] = useState(existing?.source ?? 'result_log');
+  const [rawSource, setSource] = useState(existing?.source ?? 'result_log');
   const [matchType, setMatchType] = useState(existing?.match_type ?? 'substring');
   const [matchField, setMatchField] = useState(existing?.match_field ?? '');
   const [matchValue, setMatchValue] = useState(existing?.match_value ?? '');
@@ -800,8 +856,13 @@ function RuleEditorModal({
   // The vulnerability source is offered only while the feature is on;
   // an existing vulnerability rule stays editable either way.
   const sourceOptions = RULE_SOURCES.filter(
-    (s) => s.value !== 'vuln_finding' || vulnsEnabled || existing?.source === 'vuln_finding',
+    (s) =>
+      (s.value !== 'vuln_finding' || vulnsEnabled || existing?.source === 'vuln_finding') &&
+      // Log-content sources need superuser or full query tier in the rule's environment.
+      (!PATTERN_SOURCES.has(s.value) || canLogContent(envID)),
   );
+  // The state may hold a source the current env no longer allows; fall back to the first offered one.
+  const source = sourceOptions.some((s) => s.value === rawSource) ? rawSource : sourceOptions[0].value;
   const [cooldown, setCooldown] = useState(existing?.cooldown_minutes ?? 0);
   const [channelIDs, setChannelIDs] = useState<number[]>(existing?.channel_ids ?? []);
   const nodeScope = existing?.node_uuid ?? '';
@@ -885,7 +946,7 @@ function RuleEditorModal({
               Start from a premade rule
             </span>
             <div className="flex flex-wrap gap-2">
-              {RULE_PRESETS.map((preset) => (
+              {RULE_PRESETS.filter((p) => sourceOptions.some((s) => s.value === p.fields.source)).map((preset) => (
                 <Button
                   key={preset.label}
                   type="button"
@@ -1130,11 +1191,13 @@ function RuleEditorModal({
 function ChannelEditorModal({
   mode,
   types,
+  canTest,
   onClose,
   onSaved,
 }: {
   mode: ChannelModalMode;
   types: AlertChannelTypeSpec[];
+  canTest: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -1303,6 +1366,7 @@ function ChannelEditorModal({
         )}
 
         <div className="flex items-center gap-2 pt-2">
+          {canTest && (
           <Button
             type="button"
             variant="ghost"
@@ -1314,6 +1378,7 @@ function ChannelEditorModal({
           >
             {testMutation.isPending ? 'Sending…' : 'Send test'}
           </Button>
+          )}
           <span className="ml-auto flex gap-2">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel

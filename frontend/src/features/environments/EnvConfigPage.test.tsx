@@ -29,6 +29,7 @@ const {
   mockResetInactiveHours,
   mockGetMe,
   mockGetEnvExtensions,
+  mockListSensitivePaths,
 } = vi.hoisted(() => ({
   mockGetEnvironment: vi.fn<() => Promise<TLSEnvironment>>(),
   mockGetConfig: vi.fn<() => Promise<EnvConfigResponse>>(),
@@ -44,6 +45,7 @@ const {
   mockResetInactiveHours: vi.fn(),
   mockGetMe: vi.fn(),
   mockGetEnvExtensions: vi.fn(),
+  mockListSensitivePaths: vi.fn(),
 }));
 
 vi.mock('$/api/environments', () => ({
@@ -51,6 +53,9 @@ vi.mock('$/api/environments', () => ({
   getEnvironmentInactiveHours: mockGetInactiveHours,
   setEnvironmentInactiveHours: mockSetInactiveHours,
   resetEnvironmentInactiveHours: mockResetInactiveHours,
+  listSensitivePaths: (...args: unknown[]) => mockListSensitivePaths(...args),
+  addSensitivePath: vi.fn(),
+  deleteSensitivePath: vi.fn(),
   getEnvironmentConfig: mockGetConfig,
   getEnvironmentAssembledConfig: mockGetAssembledConfig,
   patchEnvironmentConfig: (...args: unknown[]) => mockPatchConfig(...args),
@@ -544,6 +549,20 @@ describe('EnvConfigPage', () => {
 
     expect(await screen.findByText('No extensions assigned to this environment.')).toBeInTheDocument();
     expect(mockGetEnvExtensions).toHaveBeenCalledWith('dev');
+  });
+
+  it('shows the Sensitive paths tab to an env admin, not to a plain user', async () => {
+    mockListSensitivePaths.mockResolvedValue([]);
+    const uuid = makeEnv().uuid;
+    mockGetMe.mockResolvedValue({ admin: false, permissions: { [uuid]: { admin: true, user: true } } });
+    const view = renderWithProviders();
+    expect(await screen.findByRole('tab', { name: 'Sensitive paths' })).toBeInTheDocument();
+    view.unmount();
+    mockGetMe.mockResolvedValue({ admin: false, permissions: { [uuid]: { admin: false, user: true } } });
+    renderWithProviders();
+    await screen.findByRole('tab', { name: 'Settings' });
+    await waitFor(() => expect(mockGetMe).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('tab', { name: 'Sensitive paths' })).not.toBeInTheDocument();
   });
 
   it('does not load extensions before the tab is opened', async () => {

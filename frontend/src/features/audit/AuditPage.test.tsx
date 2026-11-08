@@ -12,6 +12,7 @@ import {
 } from '@tanstack/react-router';
 import { z } from 'zod';
 import { AuditPage } from './AuditPage';
+import type { UserMeResponse } from '$/api/types';
 import type { AuditLogsPagedResponse, AuditLogsQuery } from '$/api/audit';
 
 const mockList = vi.fn<(q?: AuditLogsQuery) => Promise<AuditLogsPagedResponse>>();
@@ -27,20 +28,18 @@ vi.mock('$/api/audit', async () => {
 // AuditPage queries /api/v1/users/me to decide whether to show the
 // Username filter input (super-admins only). Tests run a super-admin
 // to keep the existing happy-path assertions valid.
-vi.mock('$/api/users', () => ({
-  getMe: () =>
-    Promise.resolve({
-      username: 'admin',
-      email: '',
-      fullname: 'admin',
-      admin: true,
-      service: false,
-      uuid: 'aaaa',
-      token_expire: new Date(Date.now() + 86_400_000).toISOString(),
-      last_access: new Date().toISOString(),
-      permissions: {},
-    }),
-}));
+const mockGetMe = vi.fn<() => Promise<UserMeResponse>>();
+vi.mock('$/api/users', () => ({ getMe: () => mockGetMe() }));
+
+function makeMe(overrides: Partial<UserMeResponse> = {}): UserMeResponse {
+  return {
+    username: 'u', email: '', fullname: 'u', admin: false, user_admin: false, env_manager: false,
+    read_only_admin: false, alert_admin: false, service: false, uuid: 'aaaa',
+    token_expire: new Date(Date.now() + 86_400_000).toISOString(),
+    last_access: new Date().toISOString(), permissions: {}, preferred_language: '',
+    ...overrides,
+  };
+}
 
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
@@ -123,6 +122,7 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('AuditPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetMe.mockResolvedValue(makeMe({ admin: true }));
   });
 
   it('renders audit rows', async () => {
@@ -207,5 +207,21 @@ describe('AuditPage', () => {
       const lastArgs = mockList.mock.calls[mockList.mock.calls.length - 1]?.[0];
       expect(lastArgs?.username).toBe('alice');
     });
+  });
+
+  it('gives a read-only admin the full trail and the username filter', async () => {
+    mockGetMe.mockResolvedValue(makeMe({ read_only_admin: true }));
+    mockList.mockResolvedValue(makeResp([]));
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByRole('heading', { name: 'Audit Trail' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Username/i)).toBeInTheDocument();
+  });
+
+  it('shows a plain operator only their own activity', async () => {
+    mockList.mockResolvedValue(makeResp([]));
+    mockGetMe.mockResolvedValue(makeMe());
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByRole('heading', { name: 'My Activity' })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Username/i)).not.toBeInTheDocument();
   });
 });

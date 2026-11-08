@@ -23,6 +23,9 @@ import { SearchInput } from '$/components/data/SearchInput';
 import { SortableHeader } from '$/components/data/SortableHeader';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { buttonClasses } from '$/components/atoms/Button';
+import { listEnvironments } from '$/api/environments';
+import { useMe } from '$/lib/useMe';
+import { envCaps } from '$/lib/access';
 
 function CarveStatusBadge({
   q,
@@ -85,6 +88,17 @@ export function CarvesListPage() {
   const queryKey = ['carves', env, { target, q, sort, dir, page, pageSize }] as const;
 
   const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
+  // Starting a carve needs carve access; bulk delete needs env admin on the server.
+  const { data: me } = useMe();
+  const { data: envs } = useQuery({
+    queryKey: ['environments'],
+    queryFn: () => listEnvironments(),
+    staleTime: 60_000,
+  });
+  const envUuid = envs?.find((e) => e.name === env || e.uuid === env)?.uuid;
+  const caps = envCaps(me, envUuid ?? '');
+  const canCarve = envUuid !== undefined && caps.carve;
+  const canManage = envUuid !== undefined && caps.manage;
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
@@ -205,13 +219,15 @@ export function CarvesListPage() {
             Refresh
           </button>
 
-          <Link
-            to="/_app/env/$env/carves/new"
-            params={{ env }}
-            className={buttonClasses()}
-          >
-            {t('carvesPage.newCarve')}
-          </Link>
+          {canCarve && (
+            <Link
+              to="/_app/env/$env/carves/new"
+              params={{ env }}
+              className={buttonClasses()}
+            >
+              {t('carvesPage.newCarve')}
+            </Link>
+          )}
 
           <label htmlFor="carves-page-size" className="sr-only">{t('commonExt.rowsPerPage')}</label>
           <select
@@ -246,14 +262,14 @@ export function CarvesListPage() {
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
               <th scope="col" className="w-10 px-4 py-3">
-                <input
+                {canManage && <input
                   type="checkbox"
                   checked={allChecked}
                   ref={(el) => { if (el) el.indeterminate = someChecked && !allChecked; }}
                   onChange={toggleAll}
                   aria-label={t('carvesPage.selectAll')}
                   className="accent-[color:var(--signal)]"
-                />
+                />}
               </th>
               <SortableHeader
                 column={'name' as CarveSortColumn}
@@ -341,7 +357,7 @@ export function CarvesListPage() {
                         >
                           Clear filters
                         </button>
-                      ) : (
+                      ) : canCarve && (
                         <Link
                           to="/_app/env/$env/carves/new"
                           params={{ env }}
@@ -375,13 +391,13 @@ export function CarvesListPage() {
                     )}
                   >
                     <td className="w-10 px-4 py-3">
-                      <input
+                      {canManage && <input
                         type="checkbox"
                         checked={selectedNames.has(item.name)}
                         onChange={() => toggleRow(item.name)}
                         aria-label={`Select ${item.name}`}
                         className="accent-[color:var(--signal)]"
-                      />
+                      />}
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -428,7 +444,7 @@ export function CarvesListPage() {
         />
       )}
 
-      {selectedNames.size > 0 && (
+      {canManage && selectedNames.size > 0 && (
         <div
           role="toolbar"
           aria-label={t('commonExt.bulkActions')}

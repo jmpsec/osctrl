@@ -12,7 +12,22 @@ import {
 } from '@tanstack/react-router';
 import { QueriesListPage } from './QueriesListPage';
 import { queriesSearchSchema } from '$/routes/_app/env/$env/queries';
-import type { QueriesPagedResponse, DistributedQuery } from '$/api/types';
+import type { QueriesPagedResponse, DistributedQuery, UserMeResponse } from '$/api/types';
+
+const mockGetMe = vi.fn<() => Promise<UserMeResponse>>();
+vi.mock('$/api/users', () => ({ getMe: () => mockGetMe() }));
+vi.mock('$/api/environments', () => ({
+  listEnvironments: () => Promise.resolve([{ id: 1, name: 'test-env', uuid: 'env-uuid' }]),
+}));
+function makeMe(overrides: Partial<UserMeResponse> = {}): UserMeResponse {
+  return {
+    username: 'u', email: '', fullname: 'u', admin: false, user_admin: false, env_manager: false,
+    read_only_admin: false, alert_admin: false, service: false, uuid: 'aaaa',
+    token_expire: new Date(Date.now() + 86_400_000).toISOString(),
+    last_access: new Date().toISOString(), permissions: {}, preferred_language: '',
+    ...overrides,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Mock the queries API module
@@ -164,6 +179,37 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('QueriesListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetMe.mockResolvedValue(makeMe({ admin: true }));
+  });
+
+  it('hides run and bulk controls from a read-only admin', async () => {
+    mockGetMe.mockResolvedValue(makeMe({ read_only_admin: true }));
+    mockListQueries.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByText('SELECT * FROM osquery_info;')).toBeInTheDocument();
+    await waitFor(() => expect(mockGetMe).toHaveBeenCalled());
+    expect(screen.queryByRole('link', { name: 'Run query' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('shows run and bulk controls to an env admin', async () => {
+    mockGetMe.mockResolvedValue(
+      makeMe({ permissions: { 'env-uuid': { user: true, query: true, carve: true, admin: true } } }),
+    );
+    mockListQueries.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByRole('link', { name: 'Run query' })).toBeInTheDocument();
+    expect(await screen.findByRole('checkbox', { name: /select query q_test_0001/i })).toBeInTheDocument();
+  });
+
+  it('shows Run query but no bulk controls to a query-tier user', async () => {
+    mockGetMe.mockResolvedValue(
+      makeMe({ permissions: { 'env-uuid': { user: true, query: true, carve: false, query_tier: 'standard', admin: false } } }),
+    );
+    mockListQueries.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByRole('link', { name: 'Run query' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
   it('renders query rows after loading', async () => {
@@ -239,7 +285,7 @@ describe('QueriesListPage', () => {
       expect(screen.getByText('SELECT * FROM osquery_info;')).toBeInTheDocument();
     });
 
-    const checkbox = screen.getByRole('checkbox', { name: /select query q_test_0001/i });
+    const checkbox = await screen.findByRole('checkbox', { name: /select query q_test_0001/i });
     await user.click(checkbox);
 
     await waitFor(() => {

@@ -6,6 +6,20 @@ import { createMemoryHistory, createRouter, createRoute, createRootRoute, Router
 import { HealthPage } from "./HealthPage";
 import type { HealthStatus } from "$/api/health";
 import { setLanguageEphemeral } from "$/i18n/i18n";
+import type { UserMeResponse } from "$/api/types";
+
+const mockGetMe = vi.fn<() => Promise<UserMeResponse>>();
+vi.mock("$/api/users", () => ({ getMe: () => mockGetMe() }));
+function makeMe(overrides: Partial<UserMeResponse> = {}): UserMeResponse {
+  return {
+    username: "u", email: "", fullname: "u", admin: false, user_admin: false, env_manager: false,
+    read_only_admin: false, alert_admin: false, service: false, uuid: "aaaa",
+    token_expire: new Date(Date.now() + 86_400_000).toISOString(),
+    last_access: new Date().toISOString(), permissions: {}, preferred_language: "",
+    ...overrides,
+  };
+}
+
 
 const mockGetHealth = vi.fn<() => Promise<HealthStatus>>();
 vi.mock("$/api/health", () => ({
@@ -50,6 +64,7 @@ describe("HealthPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetHealth.mockResolvedValue(makeStatus());
+    mockGetMe.mockResolvedValue(makeMe({ admin: true }));
   });
 
   afterEach(async () => {
@@ -204,5 +219,12 @@ describe("HealthPage", () => {
     expect(await screen.findByText(/upstream check has not run yet/i)).toBeInTheDocument();
     expect(screen.queryByText(/up to date/i)).not.toBeInTheDocument();
     expect(screen.queryByText("no")).not.toBeInTheDocument();
+  });
+
+  it("shows an access message to users who cannot see health", async () => {
+    mockGetMe.mockResolvedValue(makeMe());
+    renderPage();
+    expect(await screen.findByText("You don't have access to this page.")).toBeInTheDocument();
+    expect(mockGetHealth).not.toHaveBeenCalled();
   });
 });

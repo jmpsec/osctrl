@@ -17,7 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '$/lib/cn';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { listEnvironments, type TLSEnvironment } from '$/api/environments';
-import { getMe } from '$/api/users';
+import { useMe } from '$/lib/useMe';
+import { canSeePage, envCaps, type Page } from '$/lib/access';
 import { isAuthenticated } from '$/api/client';
 
 type CommandKind = 'page' | 'env' | 'action';
@@ -35,14 +36,14 @@ interface CommandItem {
 // Static page registry. `tKey` selects the translated label; `hintKey`
 // the translated hint. English aliases stay in the haystack so typing
 // English still matches regardless of the active language.
-const STATIC_PAGES: { tKey: string; hintKey?: string; serviceSuffix?: string; to: string; aliases?: string[]; requires?: 'admin' }[] = [
+const STATIC_PAGES: { tKey: string; hintKey?: string; serviceSuffix?: string; to: string; aliases?: string[]; requires?: Page }[] = [
   { tKey: 'nav.dashboard', hintKey: 'commandPalette.dashboardHint', to: '/_app/' },
-  { tKey: 'nav.operators', hintKey: 'commandPalette.operatorsHint', to: '/_app/users', aliases: ['users', 'permissions'], requires: 'admin' },
+  { tKey: 'nav.operators', hintKey: 'commandPalette.operatorsHint', to: '/_app/users', aliases: ['users', 'permissions'], requires: 'users' },
   { tKey: 'nav.profile', hintKey: 'commandPalette.profileHint', to: '/_app/profile' },
-  { tKey: 'nav.environments', hintKey: 'commandPalette.environmentsHint', to: '/_app/environments', requires: 'admin' },
-  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'admin', to: '/_app/settings/admin', aliases: ['settings', 'admin'], requires: 'admin' },
-  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'tls', to: '/_app/settings/tls', aliases: ['settings', 'tls'], requires: 'admin' },
-  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'osctrl-api', to: '/_app/settings/api', aliases: ['settings', 'api'], requires: 'admin' },
+  { tKey: 'nav.environments', hintKey: 'commandPalette.environmentsHint', to: '/_app/environments', requires: 'environments' },
+  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'admin', to: '/_app/settings/admin', aliases: ['settings', 'admin'], requires: 'settings' },
+  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'tls', to: '/_app/settings/tls', aliases: ['settings', 'tls'], requires: 'settings' },
+  { tKey: 'nav.settings', hintKey: 'commandPalette.settingsHint', serviceSuffix: 'osctrl-api', to: '/_app/settings/api', aliases: ['settings', 'api'], requires: 'settings' },
   // Audit Trail is visible to everyone — non-admins see only their
   // own activity (api force-clamps the username filter server-side).
   { tKey: 'nav.auditTrail', hintKey: 'commandPalette.auditHint', to: '/_app/audit' },
@@ -72,13 +73,7 @@ export function CommandPalette({
   // entries. Non-admins shouldn't see commands for surfaces they
   // can't actually reach. The "Edit config" env entry also gates on
   // env.admin (env-scoped admin) — same logic the SideNav applies.
-  const { data: me } = useQuery({
-    queryKey: ['users-me'],
-    queryFn: () => getMe(),
-    enabled: open && isAuthenticated(),
-    staleTime: 5 * 60_000,
-  });
-  const isSuperAdmin = me?.admin === true;
+  const { data: me } = useMe();
 
   // Reset filter and selection each time we open.
   useEffect(() => {
@@ -91,7 +86,7 @@ export function CommandPalette({
   const items = useMemo<CommandItem[]>(() => {
     const out: CommandItem[] = [];
     for (const p of STATIC_PAGES) {
-      if (p.requires === 'admin' && !isSuperAdmin) continue;
+      if (p.requires && !canSeePage(me, p.requires)) continue;
       const label = p.serviceSuffix
         ? `${t(p.tKey)} · ${p.serviceSuffix}`
         : t(p.tKey);
@@ -127,8 +122,7 @@ export function CommandPalette({
       // "Edit config" is admin-tier — gate on super-admin OR
       // env-scoped admin. Without this, a non-admin would see a
       // command that 403s on the config page's data fetch.
-      const envAdmin = isSuperAdmin || me?.permissions?.[e.uuid]?.admin === true;
-      if (envAdmin) {
+      if (envCaps(me, e.uuid).manage) {
         out.push({
           id: `env-config:${e.uuid}`,
           kind: 'action',
@@ -143,7 +137,7 @@ export function CommandPalette({
       }
     }
     return out;
-  }, [envs, navigate, onOpenChange, isSuperAdmin, me, t]);
+  }, [envs, navigate, onOpenChange, me, t]);
 
   const filtered = useMemo(() => {
     const tokens = filter

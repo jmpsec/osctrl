@@ -12,7 +12,22 @@ import {
 } from '@tanstack/react-router';
 import { CarvesListPage } from './CarvesListPage';
 import { carvesSearchSchema } from '$/routes/_app/env/$env/carves';
-import type { CarvesPagedResponse, DistributedQuery } from '$/api/types';
+import type { CarvesPagedResponse, DistributedQuery, UserMeResponse } from '$/api/types';
+
+const mockGetMe = vi.fn<() => Promise<UserMeResponse>>();
+vi.mock('$/api/users', () => ({ getMe: () => mockGetMe() }));
+vi.mock('$/api/environments', () => ({
+  listEnvironments: () => Promise.resolve([{ id: 1, name: 'test-env', uuid: 'env-uuid' }]),
+}));
+function makeMe(overrides: Partial<UserMeResponse> = {}): UserMeResponse {
+  return {
+    username: 'u', email: '', fullname: 'u', admin: false, user_admin: false, env_manager: false,
+    read_only_admin: false, alert_admin: false, service: false, uuid: 'aaaa',
+    token_expire: new Date(Date.now() + 86_400_000).toISOString(),
+    last_access: new Date().toISOString(), permissions: {}, preferred_language: '',
+    ...overrides,
+  };
+}
 
 const mockList = vi.fn<(p: unknown) => Promise<CarvesPagedResponse>>();
 
@@ -123,6 +138,39 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('CarvesListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetMe.mockResolvedValue(makeMe({ admin: true }));
+  });
+
+  it('hides new carve and bulk controls from a read-only admin', async () => {
+    mockGetMe.mockResolvedValue(makeMe({ read_only_admin: true }));
+    mockList.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByText('/etc/hosts')).toBeInTheDocument();
+    await waitFor(() => expect(mockGetMe).toHaveBeenCalled());
+    expect(screen.queryByRole('link', { name: 'New carve' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('shows new carve and bulk controls to an env admin', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue(
+      makeMe({ permissions: { 'env-uuid': { user: true, query: true, carve: true, admin: true } } }),
+    );
+    mockList.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByRole('link', { name: 'New carve' })).toBeInTheDocument();
+    await user.click(await screen.findByRole('checkbox', { name: 'Select carve_abcdef' }));
+    expect(screen.getByRole('toolbar', { name: /bulk actions/i })).toBeInTheDocument();
+  });
+
+  it('shows New carve but no bulk controls to a carve-tier user', async () => {
+    mockGetMe.mockResolvedValue(
+      makeMe({ permissions: { 'env-uuid': { user: true, query: false, carve: true, carve_tier: 'standard', admin: false } } }),
+    );
+    mockList.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    expect(await screen.findByRole('link', { name: 'New carve' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
   it('renders carve rows after loading', async () => {
@@ -146,7 +194,7 @@ describe('CarvesListPage', () => {
       expect(screen.getByText('No carves yet.')).toBeInTheDocument();
     });
     expect(
-      screen.getByRole('link', { name: /start first carve/i }),
+      await screen.findByRole('link', { name: /start first carve/i }),
     ).toBeInTheDocument();
   });
 

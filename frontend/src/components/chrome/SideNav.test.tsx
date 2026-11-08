@@ -5,6 +5,7 @@ import {
   createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider,
 } from '@tanstack/react-router';
 import type { Features } from '$/api/features';
+import type { UserMeResponse } from '$/api/types';
 import { SideNav } from './SideNav';
 
 const mockGetFeatures = vi.fn<() => Promise<Features>>();
@@ -16,6 +17,15 @@ vi.mock('$/api/users', () => ({ getMe: () => mockGetMe() }));
 vi.mock('$/api/environments', () => ({
   listEnvironments: () => Promise.resolve([{ id: 1, name: 'dev', uuid: 'env-uuid' }]),
 }));
+
+function makeMe(overrides: Partial<UserMeResponse> = {}): UserMeResponse {
+  return {
+    username: 'u', email: '', fullname: 'u', admin: false, user_admin: false, env_manager: false,
+    read_only_admin: false, alert_admin: false, service: false, uuid: 'aaaa',
+    token_expire: '', last_access: '', permissions: {}, preferred_language: '',
+    ...overrides,
+  };
+}
 
 const baseFeatures: Features = { posture: false, service_config: false, accelerated: false, file_explorer: false };
 
@@ -152,5 +162,59 @@ describe('SideNav osctrld-gated admin entries', () => {
     renderNav();
     await settle();
     for (const n of names) expect(screen.queryByRole('link', { name: n })).not.toBeInTheDocument();
+  });
+});
+
+describe('SideNav role-aware sections', () => {
+  const allFeatures: Features = {
+    ...baseFeatures, vulnerabilities: true, alerts: true, health: true, log_sinks: true,
+    service_config: true, auth_providers: true,
+  };
+  const adminLinks = ['Operators', 'Environments', 'Alerts', 'Health'];
+  const cases: [string, Partial<UserMeResponse>, string[]][] = [
+    ['superuser', { admin: true }, [...adminLinks, 'Settings', 'Log Sinks']],
+    ['user admin', { user_admin: true }, adminLinks],
+    ['environment manager', { env_manager: true }, adminLinks],
+    ['read-only admin', { read_only_admin: true }, adminLinks],
+    ['alert admin', { alert_admin: true }, ['Alerts']],
+    ['plain user', {}, []],
+  ];
+  it.each(cases)('shows the right admin links to a %s', async (_name, role, expected) => {
+    mockGetFeatures.mockResolvedValue(allFeatures);
+    mockGetMe.mockResolvedValue(
+      makeMe({ ...role, permissions: { 'env-uuid': { user: true, query: false, carve: false, admin: false } } }),
+    );
+    renderNav();
+    await settle();
+    for (const name of [...adminLinks, 'Settings', 'Log Sinks']) {
+      const el = screen.queryByRole('link', { name });
+      if (expected.includes(name)) expect(el).toBeInTheDocument();
+      else expect(el).not.toBeInTheDocument();
+    }
+  });
+
+  it('lets a read-only admin read an environment but not administer it', async () => {
+    mockGetFeatures.mockResolvedValue(allFeatures);
+    mockGetMe.mockResolvedValue(makeMe({ read_only_admin: true }));
+    renderNav();
+    await settle();
+    for (const name of ['Nodes', 'Queries', 'Carves']) {
+      expect(screen.getByRole('link', { name })).toBeInTheDocument();
+    }
+    // The server requires environment admin for these.
+    for (const name of ['Vulnerabilities', 'Tags', 'Enrollment', 'Configuration']) {
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
+    }
+  });
+
+  it('shows carves to a user with the tags carve tier', async () => {
+    mockGetFeatures.mockResolvedValue(baseFeatures);
+    mockGetMe.mockResolvedValue(
+      makeMe({ permissions: { 'env-uuid': { user: false, query: false, carve: true, carve_tier: 'tags', admin: false } } }),
+    );
+    renderNav();
+    await settle();
+    expect(screen.getByRole('link', { name: 'Carves' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Queries' })).not.toBeInTheDocument();
   });
 });
