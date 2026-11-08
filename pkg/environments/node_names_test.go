@@ -107,6 +107,40 @@ func TestUpdateFieldsRenameMovesNameKeyedRows(t *testing.T) {
 	}
 }
 
+func TestUpdateFieldsRenameMovesQueryTargets(t *testing.T) {
+	m := &EnvManager{DB: setupTestDB(t)}
+	nodeTables(t, m)
+	if err := m.DB.Exec("CREATE TABLE distributed_query_targets (id INTEGER PRIMARY KEY, type TEXT, value TEXT)").Error; err != nil {
+		t.Fatal(err)
+	}
+	env := newEnv(t, m, "prod", "uuid-prod")
+	m.DB.Exec(`INSERT INTO distributed_query_targets (type, value) VALUES
+		('environment', 'prod'), ('environment', 'uuid-prod'), ('platform', 'prod'), ('environment', 'dev')`)
+
+	if err := m.UpdateFields(env, map[string]interface{}{"name": "prod-old"}); err != nil {
+		t.Fatal(err)
+	}
+	count := func(typ, value string) int64 {
+		var n int64
+		m.DB.Table("distributed_query_targets").Where("type = ? AND value = ?", typ, value).Count(&n)
+		return n
+	}
+	for _, c := range []struct {
+		typ, value string
+		want       int64
+	}{
+		{"environment", "prod", 0},
+		{"environment", "prod-old", 1},
+		{"environment", "uuid-prod", 1}, // UUID targets survive renames as is
+		{"platform", "prod", 1},         // only environment targets are names
+		{"environment", "dev", 1},
+	} {
+		if got := count(c.typ, c.value); got != c.want {
+			t.Fatalf("%s=%s: want %d, got %d", c.typ, c.value, c.want, got)
+		}
+	}
+}
+
 func TestUpdateFieldsRenameRefusesNameCarriedByNodes(t *testing.T) {
 	m := &EnvManager{DB: setupTestDB(t)}
 	nodeTables(t, m)

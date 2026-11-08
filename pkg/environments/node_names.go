@@ -13,6 +13,9 @@ import (
 const (
 	nodesTable   = "osquery_nodes"
 	postureTable = "node_posture"
+	// Query/carve targets of type "environment" store the env as submitted
+	// (name or UUID); result reads resolve them, so names must follow renames.
+	queryTargetsTable = "distributed_query_targets"
 )
 
 var (
@@ -65,6 +68,11 @@ func (environment *EnvManager) UpdateFields(env TLSEnvironment, patch map[string
 			}
 			if err := tx.Table(table).Where("environment = ?", oldName).Update("environment", newName).Error; err != nil {
 				return fmt.Errorf("rename %s %w", table, err)
+			}
+		}
+		if tx.Migrator().HasTable(queryTargetsTable) {
+			if err := tx.Table(queryTargetsTable).Where("type = ? AND value = ?", "environment", oldName).Update("value", newName).Error; err != nil {
+				return fmt.Errorf("rename %s %w", queryTargetsTable, err)
 			}
 		}
 		return nil
