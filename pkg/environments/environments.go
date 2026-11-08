@@ -141,6 +141,10 @@ func CreateEnvironment(backend *gorm.DB) *EnvManager {
 	if err := backend.AutoMigrate(&EnvironmentPackage{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (environment_packages): %v", err)
 	}
+	// table env_sensitive_paths
+	if err := backend.AutoMigrate(&SensitivePath{}); err != nil {
+		log.Fatal().Msgf("Failed to AutoMigrate table (env_sensitive_paths): %v", err)
+	}
 	// Migrate legacy single-package fields into the new table (idempotent).
 	if err := e.MigrateLegacyPackages(); err != nil {
 		log.Warn().Err(err).Msg("legacy package migration failed")
@@ -393,6 +397,11 @@ func (environment *EnvManager) Delete(identifier string) error {
 		if tx.Migrator().HasTable(userPermissionsTable) {
 			if err := tx.Exec("DELETE FROM "+userPermissionsTable+" WHERE environment = ?", env.UUID).Error; err != nil {
 				return fmt.Errorf("delete permissions %w", err)
+			}
+		}
+		if tx.Migrator().HasTable(&SensitivePath{}) {
+			if err := tx.Unscoped().Where("environment_id = ?", env.ID).Delete(&SensitivePath{}).Error; err != nil {
+				return fmt.Errorf("delete sensitive paths %w", err)
 			}
 		}
 		return tx.Unscoped().Where("service = ? AND name = ? AND environment_id = ?", config.ServiceAPI, settings.InactiveHours, env.ID).

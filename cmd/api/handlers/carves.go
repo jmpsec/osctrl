@@ -13,6 +13,7 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/config"
+	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -130,6 +131,15 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "carve not found", http.StatusNotFound, nil)
 		return
 	}
+	hide, err := h.carvePathHider(r.Context(), ctx[ctxUser], env)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if hide(q.Path) {
+		apiErrorResponse(w, "carve not found", http.StatusNotFound, nil)
+		return
+	}
 
 	// Look up the carved files (one per node that completed the carve).
 	files, err := h.Carves.GetByQuery(name, env.ID)
@@ -147,6 +157,7 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
+	files = visiblePathFiles(hide, files)
 	views := make([]types.CarveFileView, 0, len(files))
 	for _, f := range files {
 		views = append(views, carveFileView(f))
@@ -230,6 +241,12 @@ func (h *HandlersApi) CarveQueriesHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "error getting carve queries", http.StatusInternalServerError, err)
 		return
 	}
+	hide, err := h.carvePathHider(r.Context(), ctx[ctxUser], env)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	carvesList = visiblePathQueries(hide, carvesList)
 	log.Debug().Msgf("Returned %d carves", len(carvesList))
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, carvesList)
 }
@@ -304,15 +321,30 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 
-	result, err := h.Queries.GetByEnvTargetPaged(env.ID, target, queries.CarveQueryType, search, page, pageSize, sortCol, desc)
+	prefixes, err := h.carvePathPrefixes(r.Context(), ctx[ctxUser], env)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	hide := pathHider(prefixes)
+	var result queries.QueryListPage
+	if len(prefixes) == 0 {
+		result, err = h.Queries.GetByEnvTargetPaged(env.ID, target, queries.CarveQueryType, search, page, pageSize, sortCol, desc)
+	} else {
+		// Hidden carves must not count toward totals (search would leak their paths),
+		// so filter every match before paging in memory.
+		var all []queries.DistributedQuery
+		all, err = h.Queries.GetByEnvTargetAll(env.ID, target, queries.CarveQueryType, search, sortCol, desc)
+		all = visiblePathQueries(hide, all)
+		result.TotalItems = int64(len(all))
+		start := min((page-1)*pageSize, len(all))
+		result.Items = all[start:min(start+pageSize, len(all))]
+	}
 	if err != nil {
 		apiErrorResponse(w, "error getting carves", http.StatusInternalServerError, err)
 		return
 	}
-	items := result.Items
-	if items == nil {
-		items = []queries.DistributedQuery{}
-	}
+	items := visiblePathQueries(hide, result.Items)
 	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
 	if err != nil {
 		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
@@ -328,6 +360,7 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 			apiErrorResponse(w, "error getting access", http.StatusInternalServerError, ferr)
 			return
 		}
+		files = visiblePathFiles(hide, files)
 		items[i].CarveStatus = deriveCarveStatus(items[i], files)
 	}
 	var totalPages int
@@ -392,6 +425,10 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "path can not be empty", http.StatusBadRequest, nil)
 		return
 	}
+	if _, err := environments.NormalizePath(c.Path); err != nil {
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+		return
+	}
 	// SQL injection on the carves.GenCarveQuery splice is defended at
 	// the splice site (single-quote escape, LIKE pattern escape) — no
 	// allowlist gate here so legitimate paths containing spaces or
@@ -399,6 +436,29 @@ func (h *HandlersApi) CarvesRunHandler(w http.ResponseWriter, r *http.Request) {
 	targetEnvs, ok := h.authorizeTargetEnvs(w, r, ctx[ctxUser], users.CarveLevel, c.Environments, "carves")
 	if !ok {
 		return
+	}
+	hideEnvs := []environments.TLSEnvironment{env}
+	for _, te := range targetEnvs {
+		if te == "" || te == env.UUID {
+			continue
+		}
+		tenv, terr := h.Envs.GetByUUID(te)
+		if terr != nil {
+			apiErrorResponse(w, "error getting environment", http.StatusInternalServerError, terr)
+			return
+		}
+		hideEnvs = append(hideEnvs, tenv)
+	}
+	for _, he := range hideEnvs {
+		hidden, herr := h.carvePathHidden(r.Context(), ctx[ctxUser], he, c.Path)
+		if herr != nil {
+			apiErrorResponse(w, "error checking sensitive paths", http.StatusInternalServerError, herr)
+			return
+		}
+		if hidden {
+			apiErrorResponse(w, "path is sensitive", http.StatusForbidden, nil)
+			return
+		}
 	}
 	expTime := queries.QueryExpiration(c.ExpHours)
 	if c.ExpHours == 0 {
@@ -631,6 +691,15 @@ func (h *HandlersApi) CarveArchiveHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "carve not found", http.StatusNotFound, nil)
 		return
 	}
+	hide, err := h.carvePathHider(r.Context(), ctx[ctxUser], env)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
+	if hide(q.Path) {
+		apiErrorResponse(w, "carve not found", http.StatusNotFound, nil)
+		return
+	}
 
 	files, err := h.Carves.GetByQuery(name, env.ID)
 	if err != nil {
@@ -647,6 +716,7 @@ func (h *HandlersApi) CarveArchiveHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
+	files = visiblePathFiles(hide, files)
 	if len(files) == 0 {
 		apiErrorResponse(w, "no carved files yet", http.StatusNotFound, nil)
 		return

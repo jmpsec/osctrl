@@ -1348,6 +1348,15 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 	muxAPI.Handle(
 		"DELETE "+_apiPath(apiEnvironmentsPath)+"/{env}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.EnvironmentDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"GET "+_apiPath(apiEnvironmentsPath)+"/sensitive-paths/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SensitivePathsListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiEnvironmentsPath)+"/sensitive-paths/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SensitivePathsAddHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiEnvironmentsPath)+"/sensitive-paths/{env}/{id}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SensitivePathsDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// Env config routes use a `/config/{env}` shape (literal in segment 1) so
 	// they cannot register-conflict with `/map/{target}` registered above. A
 	// `/{env}/config` shape would put a wildcard in segment 1 — Go's ServeMux

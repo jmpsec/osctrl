@@ -484,6 +484,19 @@ export interface TagsActionRequest {
   sensitive?: boolean;
 }
 
+export interface SensitivePath {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  environment_id: number;
+  path: string;
+  created_by: string;
+}
+
+export interface SensitivePathRequest {
+  path: string;
+}
+
 // ---------------------------------------------------------------------------
 // Users + permissions
 // ---------------------------------------------------------------------------

@@ -95,6 +95,18 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	// Queries.Get uses Find, which does not error on a miss: an empty row means not found.
+	if query.ID == 0 {
+		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+		return
+	}
+	if denied, derr := h.carveQueryDenied(r.Context(), ctx[ctxUser], env, query); derr != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, derr)
+		return
+	} else if denied {
+		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+		return
+	}
 	// Targets — the creation-time scope (platform/uuid/hostname/tag rows
 	// stored in the query_targets table). The legacy admin shows them
 	// in a small Type/Value table on the query detail page; surface
@@ -620,6 +632,16 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if cq, gerr := h.Queries.Get(name, env.ID); gerr != nil {
+		apiErrorResponse(w, "error getting query", http.StatusInternalServerError, gerr)
+		return
+	} else if denied, derr := h.carveQueryDenied(r.Context(), ctx[ctxUser], env, cq); derr != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, derr)
+		return
+	} else if denied {
+		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+		return
+	}
 	// Parse pagination + since cursor
 	q := r.URL.Query()
 	page, _ := strconv.Atoi(q.Get("page"))
@@ -731,6 +753,16 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 	// Verify the named query belongs to THIS env. See the matching gate
 	// in QueryResultsHandler for the rationale.
 	if !h.Queries.Exists(name, env.ID) {
+		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
+		return
+	}
+	if cq, gerr := h.Queries.Get(name, env.ID); gerr != nil {
+		apiErrorResponse(w, "error getting query", http.StatusInternalServerError, gerr)
+		return
+	} else if denied, derr := h.carveQueryDenied(r.Context(), ctx[ctxUser], env, cq); derr != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, derr)
+		return
+	} else if denied {
 		apiErrorResponse(w, "query not found", http.StatusNotFound, nil)
 		return
 	}
