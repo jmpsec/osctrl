@@ -197,7 +197,7 @@ func (h *HandlersApi) cancelSensitiveCarves(ctx context.Context, env environment
 	if len(cancel) == 0 {
 		return nil
 	}
-	if err := h.DB.Unscoped().Where("id IN ?", cancel).Delete(&queries.NodeQuery{}).Error; err != nil {
+	if err := h.Queries.CancelNodeQueries(cancel); err != nil {
 		return err
 	}
 	h.Queries.Cache.InvalidateMany(ctx, affected)
