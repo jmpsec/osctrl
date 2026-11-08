@@ -134,6 +134,12 @@ func TestPathTouchesMacAliases(t *testing.T) {
 	assert.True(t, PathTouches("/system/volumes/data/users", []string{"/users/x"}))
 	assert.False(t, PathTouches("/private/var/log", []string{"/etc/shadow"}))
 	assert.False(t, PathTouches("/privateetc/shadow", []string{"/etc/shadow"}))
+	// An alias root, or a parent of one, contains the whole aliased tree.
+	for _, p := range []string{"/private", "/PRIVATE/", "/System/Volumes/Data", "/system/volumes", "/System"} {
+		assert.True(t, PathTouches(p, []string{"/etc/shadow"}), p)
+	}
+	assert.False(t, PathTouches("/system/library", []string{"/etc/shadow"}))
+	assert.False(t, PathTouches("/private", nil))
 }
 
 func TestSensitivePathJSON(t *testing.T) {

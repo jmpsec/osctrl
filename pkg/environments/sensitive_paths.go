@@ -106,6 +106,10 @@ func PathTouches(p string, prefixes []string) bool {
 		if rest, ok := strings.CutPrefix(np, alias); ok && pathTouches("/"+rest, prefixes) {
 			return true
 		}
+		// The alias root, or a parent of it, contains the whole aliased tree.
+		if len(prefixes) > 0 && strings.HasPrefix(alias, np+"/") {
+			return true
+		}
 	}
 	return pathTouches(np, prefixes)
 }
