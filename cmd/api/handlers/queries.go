@@ -112,7 +112,7 @@ func (h *HandlersApi) QueryShowHandler(w http.ResponseWriter, r *http.Request) {
 	targets := []queryTarget{}
 	if rows, terr := h.Queries.GetTargets(name); terr == nil {
 		for _, t := range rows {
-			targets = append(targets, queryTarget{Type: t.Type, Value: scopedTargetValue(scope, t.Type, t.Value)})
+			targets = append(targets, queryTarget{Type: t.Type, Value: h.scopedTargetValue(scope, env, t.Type, t.Value)})
 		}
 	} else {
 		log.Debug().Err(terr).Msgf("query targets fetch failed for %s", name)
@@ -601,12 +601,12 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	scope, err := h.resultScope(r.Context(), ctx[ctxUser], env, name)
 	if err != nil {
 		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
-	uuids, err := scope.UUIDs(h.DB, env.Name)
+	filter, err := scope.ResultFilter(h.DB, env.Name)
 	if err != nil {
 		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
@@ -642,7 +642,7 @@ func (h *HandlersApi) QueryResultsHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	items, total, err := h.logReader().QueryResults(env.UUID, name, uuids, since, page, pageSize)
+	items, total, err := h.logReader().QueryResults(env.UUID, name, filter, since, page, pageSize)
 	if err != nil {
 		apiErrorResponse(w, "error getting query results", http.StatusInternalServerError, err)
 		return
@@ -718,12 +718,12 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", ctx[ctxUser]))
 		return
 	}
-	scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID)
+	scope, err := h.resultScope(r.Context(), ctx[ctxUser], env, name)
 	if err != nil {
 		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
-	uuids, err := scope.UUIDs(h.DB, env.Name)
+	filter, err := scope.ResultFilter(h.DB, env.Name)
 	if err != nil {
 		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
@@ -737,7 +737,7 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 	// Pass 1 (streaming): walk every row, collect the union of column names.
 	// We only retain column names here — never the row data — to keep memory at O(columns).
 	colSet := make(map[string]struct{})
-	if err := h.logReader().StreamQueryResults(env.UUID, name, uuids, func(row logging.OsqueryQueryData) error {
+	if err := h.logReader().StreamQueryResults(env.UUID, name, filter, func(row logging.OsqueryQueryData) error {
 		var cols map[string]string
 		if err := json.Unmarshal([]byte(row.Data), &cols); err != nil {
 			cols = map[string]string{"data": row.Data}
@@ -776,7 +776,7 @@ func (h *HandlersApi) QueryResultsCSVHandler(w http.ResponseWriter, r *http.Requ
 
 	// Pass 2 (streaming): write data rows, flushing after each so bytes reach the client incrementally.
 	rowCount := 0
-	if err := h.logReader().StreamQueryResults(env.UUID, name, uuids, func(row logging.OsqueryQueryData) error {
+	if err := h.logReader().StreamQueryResults(env.UUID, name, filter, func(row logging.OsqueryQueryData) error {
 		var cols map[string]string
 		if err := json.Unmarshal([]byte(row.Data), &cols); err != nil {
 			cols = map[string]string{"data": row.Data}

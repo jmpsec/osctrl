@@ -102,3 +102,13 @@ func TestGetByPlatformAllReturnsAllPlatformNodes(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 }
+
+func TestArchiveDeleteRecordsNodeID(t *testing.T) {
+	db := setupTestDB(t)
+	require.NoError(t, db.AutoMigrate(&ArchiveOsqueryNode{}))
+	node := createMockNode(t, db, testNodeParams{UUID: "ARCH-1", Environment: "dev"})
+	require.NoError(t, (&NodeManager{DB: db}).ArchiveDelete(node))
+	var a ArchiveOsqueryNode
+	require.NoError(t, db.Where("uuid = ?", "ARCH-1").First(&a).Error)
+	require.Equal(t, node.ID, a.NodeID)
+}

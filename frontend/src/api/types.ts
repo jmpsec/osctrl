@@ -471,6 +471,7 @@ export interface AdminTag {
   environment_id: number;
   tag_type: number;
   cohort: boolean;
+  sensitive?: boolean;
 }
 
 export interface TagsActionRequest {
@@ -480,6 +481,7 @@ export interface TagsActionRequest {
   icon?: string;
   tagtype?: number;
   custom?: string;
+  sensitive?: boolean;
 }
 
 // ---------------------------------------------------------------------------

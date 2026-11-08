@@ -149,7 +149,7 @@ func (h *HandlersApi) ActiveNodesHandler(w http.ResponseWriter, r *http.Request)
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
 	}
-	if scope.Tier == users.TierTags {
+	if scope.Tier != users.TierFull {
 		nodeList, err = h.filterNodes(nodeList, scope)
 		if err != nil {
 			apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
@@ -217,7 +217,7 @@ func (h *HandlersApi) InactiveNodesHandler(w http.ResponseWriter, r *http.Reques
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
 	}
-	if scope.Tier == users.TierTags {
+	if scope.Tier != users.TierFull {
 		nodeList, err = h.filterNodes(nodeList, scope)
 		if err != nil {
 			apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
@@ -284,7 +284,7 @@ func (h *HandlersApi) AllNodesHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
 		return
 	}
-	if scope.Tier == users.TierTags {
+	if scope.Tier != users.TierFull {
 		nodeList, err = h.filterNodes(nodeList, scope)
 		if err != nil {
 			apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
@@ -458,6 +458,11 @@ func (h *HandlersApi) TagNodeHandler(w http.ResponseWriter, r *http.Request) {
 		apiErrorResponse(w, "error tagging node", http.StatusInternalServerError, err)
 		return
 	}
+	if ok, tag := h.Tags.ExistsGet(t.Tag, env.ID); ok && tag.Sensitive {
+		if err := h.cancelOutOfScope(context.Background(), []uint{n.ID}); err != nil {
+			log.Err(err).Msgf("error canceling out-of-scope pending work for node %d", n.ID)
+		}
+	}
 	log.Debug().Msgf("Tagged node %s with %s", n.UUID, t.Tag)
 	h.AuditLog.NodeAction(ctx[ctxUser], "tagged node "+n.UUID+" with "+t.Tag, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	// Serialize and serve JSON
@@ -510,6 +515,20 @@ func (h *HandlersApi) LookupNodeHandler(w http.ResponseWriter, r *http.Request) 
 		} else {
 			apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
 		}
+		return
+	}
+	// A node outside the caller's data scope looks like a missing one.
+	if env, err := h.Envs.GetByID(n.EnvironmentID); err != nil {
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		return
+	} else if scope, err := h.dataScope(r.Context(), ctx[ctxUser], env.UUID); err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	} else if keep, err := h.filterIDs(scope, []uint{n.ID}); err != nil {
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		return
+	} else if len(keep) == 0 {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
 		return
 	}
 	log.Debug().Msgf("Looked up node %s", l.Identifier)
@@ -968,7 +987,7 @@ func (h *HandlersApi) visibleNode(scope handlers.NodeScope, env environments.TLS
 	if err != nil {
 		return nodes.OsqueryNode{}, false, err
 	}
-	if scope.Tier == users.TierTags {
+	if scope.Tier != users.TierFull {
 		if ids, err := h.filterIDs(scope, []uint{node.ID}); err != nil || len(ids) == 0 {
 			return nodes.OsqueryNode{}, false, err
 		}

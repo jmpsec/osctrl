@@ -131,35 +131,3 @@ func TestUpdateMetadataConcurrentBytes(t *testing.T) {
 	require.NoError(t, db.Where("uuid = ?", "NODE-A").First(&n).Error)
 	require.Equal(t, writers*each*3, n.BytesReceived, "concurrent batches lost increments")
 }
-
-func TestUUIDsInEnvironment(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&OsqueryNode{}))
-	repo := NodeManager{DB: db}
-
-	rows := []OsqueryNode{
-		{UUID: "IN-PROD", Environment: "prod"},
-		{UUID: "IN-STAGING", Environment: "staging"},
-		{UUID: "DELETED", Environment: "prod"},
-		// Enrolled in both: membership must not depend on which row is first.
-		{UUID: "BOTH", Environment: "staging"},
-		{UUID: "BOTH", Environment: "prod"},
-	}
-	require.NoError(t, db.Create(&rows).Error)
-	require.NoError(t, db.Delete(&rows[2]).Error)
-
-	var selects int
-	require.NoError(t, db.Callback().Query().After("gorm:query").Register("count_membership_selects", func(*gorm.DB) { selects++ }))
-
-	got, err := repo.UUIDsInEnvironment([]string{"in-prod", "IN-STAGING", "DELETED", "BOTH", "UNKNOWN"}, "PROD")
-	require.NoError(t, err)
-	require.Equal(t, 1, selects, "membership for a whole page must be one query")
-	require.Equal(t, map[string]struct{}{"IN-PROD": {}, "BOTH": {}}, got,
-		"only live nodes enrolled in the environment, keyed by stored UUID")
-
-	empty, err := repo.UUIDsInEnvironment(nil, "prod")
-	require.NoError(t, err)
-	require.Empty(t, empty)
-	require.Equal(t, 1, selects, "an empty set must not query")
-}

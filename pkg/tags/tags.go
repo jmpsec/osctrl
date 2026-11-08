@@ -69,6 +69,7 @@ type AdminTag struct {
 	EnvironmentID uint           `json:"environment_id"`
 	TagType       uint           `json:"tag_type"`
 	Cohort        bool           `json:"cohort"`
+	Sensitive     bool           `json:"sensitive" gorm:"not null;default:false"`
 }
 
 // AdminTagForNode to check if this tag is used for an specific node
@@ -292,6 +293,16 @@ func (m *TagManager) ChangeGetColor(name, color string, envID uint) error {
 func (m *TagManager) ChangeColor(tag *AdminTag, color string) error {
 	if color != tag.Color {
 		if err := m.DB.Model(tag).Update("color", color).Error; err != nil {
+			return fmt.Errorf("update %w", err)
+		}
+	}
+	return nil
+}
+
+// ChangeSensitive to update the sensitive flag for a tag
+func (m *TagManager) ChangeSensitive(tag *AdminTag, sensitive bool) error {
+	if sensitive != tag.Sensitive {
+		if err := m.DB.Model(tag).Update("sensitive", sensitive).Error; err != nil {
 			return fmt.Errorf("update %w", err)
 		}
 	}

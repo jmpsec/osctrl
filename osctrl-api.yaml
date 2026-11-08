@@ -12682,6 +12682,8 @@ components:
           type: integer
         name:
           type: string
+        sensitive:
+          type: boolean
         tag_type:
           type: integer
         updated_at:
@@ -12964,6 +12966,8 @@ components:
           type: string
         name:
           type: string
+        sensitive:
+          type: boolean
         tagtype:
           type: integer
       type: object

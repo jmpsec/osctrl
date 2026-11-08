@@ -224,7 +224,7 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 		apiErrorResponse(w, "tag name can not be empty", http.StatusBadRequest, nil)
 		return
 	}
-	var returnData string
+	var returnData, auditNote string
 	switch actionVar {
 	case tags.ActionAdd:
 		if h.Tags.ExistsByEnv(t.Name, env.ID) {
@@ -234,6 +234,18 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 		if err := h.Tags.NewTag(t.Name, t.Description, t.Color, t.Icon, ctx[ctxUser], env.ID, false, t.TagType, t.Custom); err != nil {
 			apiErrorResponse(w, "error creating tag", http.StatusInternalServerError, err)
 			return
+		}
+		if t.Sensitive != nil && *t.Sensitive {
+			// A brand-new tag has no nodes, so there is nothing to cancel.
+			created, gerr := h.Tags.Get(t.Name, env.ID)
+			if gerr == nil {
+				gerr = h.Tags.ChangeSensitive(&created, true)
+			}
+			if gerr != nil {
+				apiErrorResponse(w, "error marking tag sensitive", http.StatusInternalServerError, gerr)
+				return
+			}
+			auditNote = " (sensitive=true)"
 		}
 		returnData = "tag added successfully"
 	case tags.ActionEdit:
@@ -280,6 +292,30 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 				return
 			}
 		}
+		if t.Sensitive != nil && *t.Sensitive != tag.Sensitive {
+			if err := h.Tags.ChangeSensitive(&tag, *t.Sensitive); err != nil {
+				apiErrorResponse(w, "error changing sensitive flag", http.StatusInternalServerError, err)
+				return
+			}
+			auditNote = fmt.Sprintf(" (sensitive=%t)", *t.Sensitive)
+			// Unmarking never cancels; marking drops grants and pending work now out of reach.
+			if *t.Sensitive {
+				if err := h.Users.DeleteScopeTagsForTag(tag.ID); err != nil {
+					log.Err(err).Msgf("error deleting scope tag grants for tag %d", tag.ID)
+				}
+				var taggedIDs []uint
+				if tagged, terr := h.Tags.GetTaggedNodes(tag); terr != nil {
+					log.Err(terr).Msgf("error listing nodes tagged with %d", tag.ID)
+				} else {
+					for _, tn := range tagged {
+						taggedIDs = append(taggedIDs, tn.NodeID)
+					}
+				}
+				if err := h.cancelOutOfScope(context.Background(), taggedIDs); err != nil {
+					log.Err(err).Msgf("error canceling out-of-scope pending work for tag %d", tag.ID)
+				}
+			}
+		}
 		returnData = "tag updated successfully"
 	case tags.ActionRemove:
 		if !h.Tags.ExistsByEnv(t.Name, env.ID) {
@@ -317,6 +353,6 @@ func (h *HandlersApi) TagsActionHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	log.Debug().Msgf("Returned [%s]", returnData)
-	h.AuditLog.TagAction(ctx[ctxUser], actionVar+" tag "+t.Name, strings.Split(r.RemoteAddr, ":")[0], env.ID)
+	h.AuditLog.TagAction(ctx[ctxUser], actionVar+" tag "+t.Name+auditNote, strings.Split(r.RemoteAddr, ":")[0], env.ID)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, types.ApiDataResponse{Data: returnData})
 }

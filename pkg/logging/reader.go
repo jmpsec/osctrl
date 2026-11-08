@@ -2,6 +2,7 @@ package logging
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -39,7 +40,7 @@ type LogReader interface {
 	// reader uses it as the key prefix). Pagination is 1-indexed; pageSize
 	// clamped to [1,1000]. Returns the page items, the total matching
 	// count, and any error.
-	QueryResults(env, name string, uuids []string, since time.Time, page, pageSize int) ([]map[string]any, int64, error)
+	QueryResults(env, name string, filter NodeFilter, since time.Time, page, pageSize int) ([]map[string]any, int64, error)
 
 	// StreamQueryResults invokes fn for each row of query result data for
 	// `name`, ordered by created_at ASC. env scopes the read (DB reader
@@ -47,7 +48,38 @@ type LogReader interface {
 	// so memory stays bounded — used by the CSV exporter and the
 	// console/file-explorer result decoders. fn may return an error to
 	// stop iteration.
-	StreamQueryResults(env, name string, uuids []string, fn func(OsqueryQueryData) error) error
+	StreamQueryResults(env, name string, filter NodeFilter, fn func(OsqueryQueryData) error) error
+}
+
+// NodeFilter restricts query results by node UUID. The zero value is no filter.
+// Only != nil keeps just those UUIDs (non-nil empty keeps nothing); Except drops
+// those UUIDs (empty drops nothing). Both may be set; matching is case-insensitive.
+type NodeFilter struct {
+	Only   []string
+	Except []string
+}
+
+// none reports whether the filter can match no rows at all.
+func (f NodeFilter) none() bool { return f.Only != nil && len(f.Only) == 0 }
+
+// keepsUUID reports whether a row for uuid passes the filter.
+func (f NodeFilter) keepsUUID(uuid string) bool {
+	u := upperUUID(uuid)
+	if f.Only != nil && !slices.Contains(upperUUIDs(f.Only), u) {
+		return false
+	}
+	return !slices.Contains(upperUUIDs(f.Except), u)
+}
+
+// apply adds the filter's WHERE clauses; callers check none() first.
+func (f NodeFilter) apply(q *gorm.DB) *gorm.DB {
+	if f.Only != nil {
+		q = q.Where("uuid IN ?", upperUUIDs(f.Only))
+	}
+	if len(f.Except) > 0 {
+		q = q.Where("uuid NOT IN ?", upperUUIDs(f.Except))
+	}
+	return q
 }
 
 // dbLogReader is the historical implementation backed by the GORM DB.
@@ -64,12 +96,12 @@ func (r *dbLogReader) NodeLogs(logType, env, uuid string, since time.Time, limit
 	return GetNodeLogs(r.db, logType, env, uuid, since, limit, search, severity)
 }
 
-func (r *dbLogReader) QueryResults(env, name string, uuids []string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
-	return GetQueryResults(r.db, name, uuids, since, page, pageSize)
+func (r *dbLogReader) QueryResults(env, name string, filter NodeFilter, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
+	return GetQueryResults(r.db, name, filter, since, page, pageSize)
 }
 
-func (r *dbLogReader) StreamQueryResults(env, name string, uuids []string, fn func(OsqueryQueryData) error) error {
-	return StreamQueryResults(r.db, name, uuids, fn)
+func (r *dbLogReader) StreamQueryResults(env, name string, filter NodeFilter, fn func(OsqueryQueryData) error) error {
+	return StreamQueryResults(r.db, name, filter, fn)
 }
 
 // normalizeLogType maps the public "status"/"result" strings to the S3

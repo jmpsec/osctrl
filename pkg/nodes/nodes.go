@@ -173,38 +173,6 @@ func (n *NodeManager) GetByUUID(uuid string) (OsqueryNode, error) {
 	return node, nil
 }
 
-// UUIDsInEnvironment reports which of uuids belong to a live node enrolled in
-// environment env, keyed by the stored (upper-case) UUID. The environment name
-// is matched case-insensitively, as the handlers compare it elsewhere.
-//
-// One query for the whole set, reading only the two columns it needs, in place
-// of a full-row lookup per UUID: the rows carry the raw enrollment blob, and
-// callers check membership for a whole page of nodes at a time.
-func (n *NodeManager) UUIDsInEnvironment(uuids []string, env string) (map[string]struct{}, error) {
-	out := make(map[string]struct{}, len(uuids))
-	if len(uuids) == 0 {
-		return out, nil
-	}
-	upper := make([]string, len(uuids))
-	for i, u := range uuids {
-		upper[i] = strings.ToUpper(u)
-	}
-	var rows []struct {
-		UUID        string
-		Environment string
-	}
-	if err := n.DB.Model(&OsqueryNode{}).Select("uuid", "environment").
-		Where("uuid IN ?", upper).Find(&rows).Error; err != nil {
-		return nil, err
-	}
-	for _, r := range rows {
-		if strings.EqualFold(r.Environment, env) {
-			out[r.UUID] = struct{}{}
-		}
-	}
-	return out, nil
-}
-
 // GetByUUIDEnv to retrieve full node object from DB, by uuid and environment ID
 // UUID is expected uppercase
 func (n *NodeManager) GetByUUIDEnv(uuid string, envid uint) (OsqueryNode, error) {
@@ -549,6 +517,7 @@ func (n *NodeManager) ArchiveDeleteByUUIDEnv(uuid, environment string) error {
 // Helper to convert an enrolled osquery node into an archived osquery node
 func nodeArchiveFromNode(node OsqueryNode, trigger string) ArchiveOsqueryNode {
 	return ArchiveOsqueryNode{
+		NodeID:          node.ID,
 		NodeKey:         node.NodeKey,
 		UUID:            node.UUID,
 		Trigger:         trigger,

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -13,12 +14,15 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/dbutil"
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/handlers"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 // EnvStats is one row in the per-env breakdown returned by /api/v1/stats.
@@ -404,15 +408,20 @@ func (h *HandlersApi) NodeActivityHandler(w http.ResponseWriter, r *http.Request
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
-	// Resolve the node — gives us the numeric NodeID for the node_queries
-	// join and lets us reject probes for arbitrary UUIDs across tenants.
-	node, err := h.Nodes.GetByUUID(uuidVar)
+	scope, err := h.visibleScope(r.Context(), user, env.UUID)
 	if err != nil {
-		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
-	if !strings.EqualFold(node.Environment, env.Name) {
-		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
+	// Resolve the node — gives us the numeric NodeID for the node_queries
+	// join. A node outside this env or the caller's scope looks like a missing one.
+	node, found, err := h.visibleNodeByUUID(scope, env, uuidVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		return
+	}
+	if !found {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
 		return
 	}
 
@@ -606,6 +615,11 @@ func (h *HandlersApi) NodeActivityBatchHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
+	scope, err := h.visibleScope(r.Context(), user, env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
 
 	uuidsParam := strings.TrimSpace(r.URL.Query().Get("uuids"))
 	if uuidsParam == "" {
@@ -664,8 +678,16 @@ func (h *HandlersApi) NodeActivityBatchHandler(w http.ResponseWriter, r *http.Re
 		}
 	}
 
+	visible, err := h.visibleUUIDs(scope, env, uuids)
+	if err != nil {
+		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
+		return
+	}
 	out := make(map[string][]NodeActivityBucket, len(uuids))
 	for _, u := range uuids {
+		if !visible[u] {
+			continue
+		}
 		// Per-uuid resolution. A miss is logged-but-skipped rather than
 		// failed-the-whole-batch — see handler comment for rationale.
 		node, err := h.Nodes.GetByUUID(u)
@@ -806,13 +828,18 @@ func (h *HandlersApi) NodeActivityTilesHandler(w http.ResponseWriter, r *http.Re
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
-	node, err := h.Nodes.GetByUUID(uuidVar)
+	scope, err := h.visibleScope(r.Context(), user, env.UUID)
 	if err != nil {
-		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
 		return
 	}
-	if !strings.EqualFold(node.Environment, env.Name) {
-		apiErrorResponse(w, "node not in environment", http.StatusForbidden, nil)
+	node, found, err := h.visibleNodeByUUID(scope, env, uuidVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		return
+	}
+	if !found {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, nil)
 		return
 	}
 	if h.Activity == nil {
@@ -885,6 +912,11 @@ func (h *HandlersApi) NodeActivityTilesBatchHandler(w http.ResponseWriter, r *ht
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
+	scope, err := h.visibleScope(r.Context(), user, env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
 	if h.Activity == nil {
 		apiErrorResponse(w, "activity store not configured", http.StatusServiceUnavailable, nil)
 		return
@@ -921,13 +953,12 @@ func (h *HandlersApi) NodeActivityTilesBatchHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Only include nodes that actually belong to this env. A lookup failure
-	// leaves nodes out rather than failing the poll, as the per-node lookups
-	// it replaces did.
+	// Only include nodes in this env and the caller's scope; others are omitted silently.
 	out := make(map[string]activity.NodeTileSeries, len(uuids))
-	inEnv, err := h.Nodes.UUIDsInEnvironment(uuids, env.Name)
+	inEnv, err := h.visibleUUIDs(scope, env, uuids)
 	if err != nil {
-		log.Warn().Err(err).Str("env", env.Name).Msg("activity tiles: node membership lookup failed")
+		apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
+		return
 	}
 	for u := range inEnv {
 		if s, ok := series[u]; ok {
@@ -1050,6 +1081,11 @@ func (h *HandlersApi) EnvErrorNodesHandler(w http.ResponseWriter, r *http.Reques
 		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt to use API by user %s", user))
 		return
 	}
+	scope, err := h.visibleScope(r.Context(), user, env.UUID)
+	if err != nil {
+		apiErrorResponse(w, "error getting access", http.StatusInternalServerError, err)
+		return
+	}
 	if h.Activity == nil {
 		apiErrorResponse(w, "activity store not configured", http.StatusServiceUnavailable, nil)
 		return
@@ -1062,8 +1098,23 @@ func (h *HandlersApi) EnvErrorNodesHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Below full tier only nodes the caller may see are listed; entries for deleted nodes cannot be checked and drop out.
+	var visible map[string]bool
+	if scope.Tier != users.TierFull {
+		uuids := make([]string, len(ranked))
+		for i, entry := range ranked {
+			uuids[i] = entry.NodeUUID
+		}
+		if visible, err = h.visibleUUIDs(scope, env, uuids); err != nil {
+			apiErrorResponse(w, "error getting nodes", http.StatusInternalServerError, err)
+			return
+		}
+	}
 	rows := make([]ErrorNodeRow, 0, len(ranked))
 	for _, entry := range ranked {
+		if visible != nil && !visible[strings.ToUpper(entry.NodeUUID)] {
+			continue
+		}
 		row := ErrorNodeRow{UUID: entry.NodeUUID, Errors: entry.Errors}
 		// Resolve the hostname for display. A node deleted since it last
 		// errored keeps its row — the errors were still real — it just
@@ -1076,4 +1127,60 @@ func (h *HandlersApi) EnvErrorNodesHandler(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Cache-Control", "private, max-age=30")
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rows)
+}
+
+// visibleUUIDs reports which of uuids are live nodes of env inside scope, keyed by
+// upper-case UUID. One query resolves the ids, one filters them.
+func (h *HandlersApi) visibleUUIDs(scope handlers.NodeScope, env environments.TLSEnvironment, uuids []string) (map[string]bool, error) {
+	out := make(map[string]bool, len(uuids))
+	if len(uuids) == 0 {
+		return out, nil
+	}
+	upper := make([]string, len(uuids))
+	for i, u := range uuids {
+		upper[i] = strings.ToUpper(u)
+	}
+	var rows []struct {
+		ID   uint
+		UUID string
+	}
+	if err := h.DB.Model(&nodes.OsqueryNode{}).Select("id", "uuid").
+		Where("uuid IN ? AND environment_id = ?", upper, env.ID).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	ids := make([]uint, len(rows))
+	for i, r := range rows {
+		ids[i] = r.ID
+	}
+	keep, err := h.filterIDs(scope, ids)
+	if err != nil {
+		return nil, err
+	}
+	in := make(map[uint]bool, len(keep))
+	for _, id := range keep {
+		in[id] = true
+	}
+	for _, r := range rows {
+		if in[r.ID] {
+			out[r.UUID] = true
+		}
+	}
+	return out, nil
+}
+
+// visibleNodeByUUID is visibleNode restricted to UUID matches: the stats routes are
+// UUID-only, so a hostname must never resolve to another node's data.
+func (h *HandlersApi) visibleNodeByUUID(scope handlers.NodeScope, env environments.TLSEnvironment, uuid string) (nodes.OsqueryNode, bool, error) {
+	node, err := h.Nodes.GetByUUIDEnv(uuid, env.ID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nodes.OsqueryNode{}, false, nil
+	}
+	if err != nil {
+		return nodes.OsqueryNode{}, false, err
+	}
+	keep, err := h.filterIDs(scope, []uint{node.ID})
+	if err != nil || len(keep) == 0 {
+		return nodes.OsqueryNode{}, false, err
+	}
+	return node, true, nil
 }

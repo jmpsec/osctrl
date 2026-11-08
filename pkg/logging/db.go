@@ -505,7 +505,7 @@ func GetNodeResultBucketed(db *gorm.DB, env, uuid string, since time.Time, bucke
 // If since is non-zero only rows created strictly after that time are returned.
 // page is 1-indexed; pageSize is clamped to [1, 1000]; pageSize <= 0 defaults to 100.
 // Returns the page items, total matching rows, and any error.
-func GetQueryResults(db *gorm.DB, name string, uuids []string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
+func GetQueryResults(db *gorm.DB, name string, filter NodeFilter, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
 	if pageSize <= 0 {
 		pageSize = 100
 	}
@@ -517,14 +517,10 @@ func GetQueryResults(db *gorm.DB, name string, uuids []string, since time.Time, 
 	}
 	offset := (page - 1) * pageSize
 
-	// nil uuids = no filter; an empty non-nil slice means no visible nodes.
-	if uuids != nil && len(uuids) == 0 {
+	if filter.none() {
 		return []map[string]any{}, 0, nil
 	}
-	q := db.Model(&OsqueryQueryData{}).Where("name = ?", name)
-	if uuids != nil {
-		q = q.Where("uuid IN ?", upperUUIDs(uuids))
-	}
+	q := filter.apply(db.Model(&OsqueryQueryData{}).Where("name = ?", name))
 	if !since.IsZero() {
 		q = q.Where("created_at > ?", since)
 	}
@@ -554,14 +550,11 @@ func GetQueryResults(db *gorm.DB, name string, uuids []string, since time.Time, 
 // StreamQueryResults invokes fn for each row of query result data for `name`, ordered by created_at ASC.
 // Rows are read via a cursor so memory usage stays bounded — used by the CSV exporter.
 // fn may return an error to stop iteration; that error is returned by StreamQueryResults.
-func StreamQueryResults(db *gorm.DB, name string, uuids []string, fn func(OsqueryQueryData) error) error {
-	if uuids != nil && len(uuids) == 0 {
+func StreamQueryResults(db *gorm.DB, name string, filter NodeFilter, fn func(OsqueryQueryData) error) error {
+	if filter.none() {
 		return nil
 	}
-	q := db.Model(&OsqueryQueryData{}).Where("name = ?", name)
-	if uuids != nil {
-		q = q.Where("uuid IN ?", upperUUIDs(uuids))
-	}
+	q := filter.apply(db.Model(&OsqueryQueryData{}).Where("name = ?", name))
 	rows, err := q.Order("created_at ASC").Rows()
 	if err != nil {
 		return err
