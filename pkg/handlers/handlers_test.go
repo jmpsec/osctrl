@@ -55,6 +55,35 @@ func TestCreateQueryCarveEnvironmentThresholds(t *testing.T) {
 	}
 }
 
+// Selectors combine with AND: one that matches nothing must leave nothing,
+// never fall back to the other selectors' nodes.
+func TestCreateQueryCarveEmptySelectorNarrowsToNothing(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	manager := Managers{Envs: environments.CreateEnvironment(db), Nodes: nodes.CreateNodes(db), Settings: settings.NewSettings(db)}
+	require.NoError(t, manager.Settings.NewIntegerValue(config.ServiceAPI, settings.InactiveHours, 24, 0))
+	env := manager.Envs.Empty("prod", "prod.example.com")
+	require.NoError(t, manager.Envs.Create(&env))
+	node := nodes.OsqueryNode{UUID: "LINUX-1", Hostname: "web-1", Platform: "linux", Environment: "prod", EnvironmentID: env.ID, LastSeen: time.Now()}
+	require.NoError(t, db.Create(&node).Error)
+
+	for _, tc := range []struct {
+		name string
+		data ProcessingQuery
+		want []uint
+	}{
+		{"platform matches nothing, host matches", ProcessingQuery{EnvID: env.ID, Platforms: []string{"darwin"}, Hosts: []string{"web-1"}}, nil},
+		{"unknown environment, platform matches", ProcessingQuery{EnvID: env.ID, Envs: []string{"missing"}, Platforms: []string{"linux"}}, nil},
+		{"both match", ProcessingQuery{EnvID: env.ID, Platforms: []string{"linux"}, Hosts: []string{"web-1"}}, []uint{node.ID}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := CreateQueryCarve(tc.data, manager, queries.DistributedQuery{})
+			require.NoError(t, err)
+			require.ElementsMatch(t, tc.want, got)
+		})
+	}
+}
+
 func TestCreateQueryCarveWithoutTargetsIncludesAllEnvironmentNodes(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)

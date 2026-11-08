@@ -34,13 +34,6 @@ func RandomForNames() string {
 
 // Intersect returns the intersection of two slices of uints
 func Intersect(slice1, slice2 []uint) []uint {
-	if len(slice1) == 0 {
-		return slice2
-	}
-	// If slice2 is empty, return slice1
-	if len(slice2) == 0 {
-		return slice1
-	}
 	set := make(map[uint]struct{})
 	for _, item := range slice1 {
 		set[item] = struct{}{} // Add items from slice1 to the set

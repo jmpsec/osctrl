@@ -156,15 +156,6 @@ func (c *Carves) InitCarve(req types.CarveInitRequest, sessionid string, nodeID,
 	return nil
 }
 
-// CheckCarve to verify a session belong to a carve
-func (c *Carves) CheckCarve(sessionid, requestid string) bool {
-	carve, err := c.GetBySession(sessionid)
-	if err != nil {
-		return false
-	}
-	return (carve.RequestID == strings.TrimSpace(requestid))
-}
-
 // GetCarve to verify a session belong to a carve
 func (c *Carves) GetCheckCarve(sessionid, requestid string) (CarvedFile, error) {
 	carve, err := c.GetBySession(sessionid)
