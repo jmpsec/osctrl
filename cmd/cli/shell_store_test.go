@@ -7,6 +7,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/stretchr/testify/require"
 )
@@ -83,6 +84,29 @@ func TestParseHidden(t *testing.T) {
 		if parseHidden(v) {
 			t.Fatalf("expected not hidden for %q", v)
 		}
+	}
+}
+
+// The shell's tag edit must keep fields the operator didn't give: an empty
+// type used to parse as Custom, so the API rewrote a non-custom tag's type.
+func TestShellStoreEditTagKeepsUnsetType(t *testing.T) {
+	r := newParityRig(t)
+	env, err := r.Envs.Get("dev")
+	require.NoError(t, err)
+	mgr := tags.CreateTagManager(r.DB)
+	envs, tagsmgr = r.Envs, mgr // restored by the rig
+	for mode, store := range map[string]DataStore{"db": &dbStore{}, "api": &apiStore{api: r.API}} {
+		name := "plain-" + mode
+		require.NoError(t, store.AddTag(env.UUID, name, "#112233", "tag", "orig", "tag", ""), mode)
+		before, err := mgr.Get(name, env.ID)
+		require.NoError(t, err)
+		require.NoError(t, store.EditTag(env.UUID, name, "", "", "newdesc", "", ""), mode)
+		got, err := mgr.Get(name, env.ID)
+		require.NoError(t, err)
+		require.Equal(t, before.TagType, got.TagType, mode)
+		require.Equal(t, before.CustomTag, got.CustomTag, mode)
+		require.Equal(t, before.Color, got.Color, mode)
+		require.Equal(t, "newdesc", got.Description, mode)
 	}
 }
 

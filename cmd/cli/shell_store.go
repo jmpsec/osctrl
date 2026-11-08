@@ -1067,7 +1067,19 @@ func (s *apiStore) AddTag(env, name, color, icon, desc, tagType, custom string) 
 }
 
 func (s *apiStore) EditTag(env, name, color, icon, desc, tagType, custom string) error {
-	_, err := s.api.EditTag(env, name, color, icon, desc, parseTagType(tagType), custom, nil)
+	// An empty type would parse as Custom and the server would rewrite the
+	// tag's type, so keep the stored type when none is given.
+	var typ uint
+	if tagType == "" {
+		stored, err := s.api.GetTag(env, name)
+		if err != nil {
+			return err
+		}
+		typ = stored.TagType
+	} else {
+		typ = parseTagType(tagType)
+	}
+	_, err := s.api.EditTag(env, name, color, icon, desc, typ, custom, nil)
 	return err
 }
 
@@ -1221,8 +1233,8 @@ func (s *dbStore) AddTag(env, name, color, icon, desc, tagType, custom string) e
 			return fmt.Errorf("env: %w", err)
 		}
 	}
-	_, err = tagsmgr.New(name, desc, color, icon, getShellUsername(), e.ID, false, parseTagType(tagType), custom)
-	return err
+	// NewTag builds and stores the tag; New alone only builds it.
+	return tagsmgr.NewTag(name, desc, color, icon, getShellUsername(), e.ID, false, parseTagType(tagType), custom)
 }
 
 func (s *dbStore) EditTag(env, name, color, icon, desc, tagType, custom string) error {
