@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
@@ -11,11 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Node keys authenticate agents, so they must not be derivable from the host
+// identifier or the enrollment time.
 func TestGenerateNodeKey(t *testing.T) {
-	ts := time.Date(2019, 9, 17, 20, 34, 58, 0, time.UTC)
-	_hash := "4d42e1adfb9a4d3e1b02be5370b5d1668c49d970"
-	nodekey := generateNodeKey("test", ts)
-	assert.Equal(t, _hash, nodekey)
+	first := generateNodeKey()
+	second := generateNodeKey()
+	assert.Regexp(t, `^[0-9a-f]{64}$`, first)
+	assert.NotEqual(t, first, second)
 }
 
 func TestGenerateCarveSessionID(t *testing.T) {

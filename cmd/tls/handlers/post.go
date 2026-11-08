@@ -81,6 +81,14 @@ const logIngestBudget = 256 << 20
 
 var logIngest = semaphore.NewWeighted(logIngestBudget)
 
+// queryIngestBudget caps the bytes of distributed query results being
+// processed at once, separate from logs so large results can't starve them.
+// A request waits for room rather than piling results into memory.
+// shortcut: fixed budget, make it a flag if a fleet needs more parallelism.
+const queryIngestBudget = 256 << 20
+
+var queryIngest = semaphore.NewWeighted(queryIngestBudget)
+
 // logTypeLabel bounds the log_type metric label; the node chooses the value.
 func logTypeLabel(logType string) string {
 	if logType == types.ResultLog || logType == types.StatusLog {
@@ -154,7 +162,7 @@ func (h *HandlersTLS) EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	nodeInvalid := true
 	if h.checkValidSecret(t.EnrollSecret, env) {
 		// Generate node_key using UUID as entropy
-		nodeKey = generateNodeKey(t.HostIdentifier, time.Now())
+		nodeKey = generateNodeKey()
 		newNode = nodeFromEnroll(t, env, utils.GetIP(r), nodeKey, len(body))
 		// Check if UUID exists already, if so archive node and enroll new node
 		// Scoped to this environment: the same UUID may be enrolled elsewhere,
@@ -604,6 +612,14 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		log.Debug().Msgf("node UUID: %s in %s environment ingested %d bytes for QueryWriteHandler endpoint", node.UUID, env.Name, len(body))
 
 		nodeInvalid = false
+		// Wait for room in the results budget before any side effect, so a
+		// request that gives up (503, osquery retries) changed nothing.
+		weight := int64(len(body))
+		if err := queryIngest.Acquire(r.Context(), weight); err != nil {
+			log.Warn().Msgf("node UUID: %s in %s environment: query results budget full, asking node to retry", node.UUID, env.Name)
+			utils.HTTPResponse(w, "", http.StatusServiceUnavailable, []byte(""))
+			return
+		}
 		for name, c := range t.Queries {
 			var carves []types.QueryCarveScheduled
 			if err := json.Unmarshal(c, &carves); err == nil {
@@ -622,6 +638,7 @@ func (h *HandlersTLS) QueryWriteHandler(w http.ResponseWriter, r *http.Request) 
 		// Process submitted results and mark query as processed
 		h.recordActivity(env.UUID, node.UUID, activity.EventQueryWrite)
 		go func() {
+			defer queryIngest.Release(weight)
 			start := time.Now()
 			h.Logs.ProcessLogQueryResult(t, env.ID, env.DebugHTTP)
 			duration := time.Since(start).Seconds()
