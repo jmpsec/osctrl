@@ -65,3 +65,24 @@ func TestPermissionsEscapeUsername(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "a b/c", got)
 }
+
+func TestSetUserPermissionsTiersAndScopeTags(t *testing.T) {
+	mux := http.NewServeMux()
+	var raw struct {
+		Access map[string]any `json:"access"`
+	}
+	mux.HandleFunc("POST /api/v1/users/{username}/permissions", func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&raw))
+		_, _ = w.Write([]byte(`{}`))
+	})
+	api := newRealURLServer(t, mux)
+	require.NoError(t, api.SetUserPermissions("bob", "u", users.EnvAccess{Query: true, QueryTier: "tags", ScopeTags: []uint{7}}))
+	require.Equal(t, "tags", raw.Access["query_tier"])
+	require.Equal(t, []any{float64(7)}, raw.Access["scope_tags"])
+	raw.Access = nil
+	require.NoError(t, api.SetUserPermissions("bob", "u", users.EnvAccess{User: true, ScopeTags: []uint{}}))
+	require.Equal(t, []any{}, raw.Access["scope_tags"])
+	raw.Access = nil
+	require.NoError(t, api.SetUserPermissions("bob", "u", users.EnvAccess{User: true}))
+	require.NotContains(t, raw.Access, "scope_tags")
+}

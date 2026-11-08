@@ -1062,12 +1062,12 @@ func (s *apiStore) TagNode(env, uuid, tag string) error {
 }
 
 func (s *apiStore) AddTag(env, name, color, icon, desc, tagType, custom string) error {
-	_, err := s.api.AddTag(env, name, color, icon, desc, parseTagType(tagType), custom)
+	_, err := s.api.AddTag(env, name, color, icon, desc, parseTagType(tagType), custom, nil)
 	return err
 }
 
 func (s *apiStore) EditTag(env, name, color, icon, desc, tagType, custom string) error {
-	_, err := s.api.EditTag(env, name, color, icon, desc, parseTagType(tagType), custom)
+	_, err := s.api.EditTag(env, name, color, icon, desc, parseTagType(tagType), custom, nil)
 	return err
 }
 
