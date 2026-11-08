@@ -184,4 +184,7 @@ func TestCarveListSearchNoOracle(t *testing.T) {
 	require.Equal(t, 0, resp.TotalPages)
 	require.Empty(t, resp.Items)
 	require.EqualValues(t, 1, page("alice", "shad").TotalItems)
+	// A page number that overflows (page-1)*pageSize must not panic.
+	rr := f.get(f.h.CarveListHandler, "std", "/x?page=4611686018427387904&page_size=4", map[string]string{})
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
 }

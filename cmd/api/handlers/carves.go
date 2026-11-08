@@ -337,7 +337,10 @@ func (h *HandlersApi) CarveListHandler(w http.ResponseWriter, r *http.Request) {
 		all, err = h.Queries.GetByEnvTargetAll(env.ID, target, queries.CarveQueryType, search, sortCol, desc)
 		all = visiblePathQueries(hide, all)
 		result.TotalItems = int64(len(all))
-		start := min((page-1)*pageSize, len(all))
+		start := len(all)
+		if page-1 < (len(all)+pageSize-1)/pageSize { // avoids (page-1)*pageSize overflow
+			start = (page - 1) * pageSize
+		}
 		result.Items = all[start:min(start+pageSize, len(all))]
 	}
 	if err != nil {
