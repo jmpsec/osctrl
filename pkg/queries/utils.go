@@ -7,6 +7,10 @@ import (
 	"github.com/jmpsec/osctrl/pkg/utils"
 )
 
+// MaxQueryLength caps the SQL text of an on-demand or saved query in bytes. A
+// query is stored and sent to every targeted node until it answers.
+const MaxQueryLength = 64 << 10
+
 // Helper to generate a random query name
 func GenQueryName() string {
 	return "query_" + utils.RandomForNames()
