@@ -268,6 +268,17 @@ describe('NodesTablePage', () => {
     expect(await screen.findByRole('button', { name: 'Tag selected nodes' })).toBeInTheDocument();
   });
 
+  it('shows the Tag action to an env admin when the route uses the env UUID', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue(
+      makeMe({ permissions: { 'env-uuid': { user: true, query: true, carve: true, admin: true } } }),
+    );
+    mockListNodes.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter('/_app/env/env-uuid/nodes'));
+    await user.click(await screen.findByRole('checkbox', { name: 'Select node web-server-01' }));
+    expect(await screen.findByRole('button', { name: 'Tag selected nodes' })).toBeInTheDocument();
+  });
+
   it('renders node rows after loading', async () => {
     mockListNodes.mockResolvedValue(makeResponse());
     const router = makeTestRouter();

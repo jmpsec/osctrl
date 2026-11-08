@@ -167,6 +167,9 @@ describe('UsersPage', () => {
     renderPage();
     expect(within(await row('bob')).queryAllByRole('button')).toHaveLength(0);
     expect(screen.queryByRole('button', { name: 'Add operator' })).toBeNull();
+    // bob is not a superuser, so the superuser label must not appear on his row.
+    expect(within(await row('bob')).queryByLabelText(/superuser/i)).toBeNull();
+    expect(within(await row('bob')).getByLabelText("You can't manage users")).toBeInTheDocument();
   });
 
   it('roles modal sends only changed fields', async () => {
