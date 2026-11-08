@@ -135,14 +135,15 @@ func (h *HandlersApi) SensitivePathsDeleteHandler(w http.ResponseWriter, r *http
 	if !ok {
 		return
 	}
-	id, err := strconv.ParseUint(r.PathValue("id"), 10, 64)
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, strconv.IntSize)
 	if err != nil {
 		apiErrorResponse(w, "invalid id", http.StatusBadRequest, err)
 		return
 	}
-	row, err := h.Envs.SensitivePath(env.ID, uint(id))
+	pathID := uint(id)
+	row, err := h.Envs.SensitivePath(env.ID, pathID)
 	if err == nil {
-		err = h.Envs.DeleteSensitivePath(env.ID, uint(id))
+		err = h.Envs.DeleteSensitivePath(env.ID, pathID)
 	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
