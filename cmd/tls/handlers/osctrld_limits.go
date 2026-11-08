@@ -148,13 +148,21 @@ func (h *HandlersTLS) osctrldAuditEnv(r *http.Request, envVar string) environmen
 // requests that passed the middleware together cannot exceed the budget:
 // once it is spent the request gets 429 without a comparison. A wrong
 // secret is counted, audited (capped per environment) and answered 403.
-func (h *HandlersTLS) osctrldSecret(w http.ResponseWriter, r *http.Request, secret string, env environments.TLSEnvironment) bool {
+// An unknown environment (known false) is treated as a wrong secret,
+// charged to the path's budget and audited under osctrldUnknownEnv.
+func (h *HandlersTLS) osctrldSecret(w http.ResponseWriter, r *http.Request, secret string, env environments.TLSEnvironment, known bool) bool {
+	key := env.UUID
 	valid := func() bool { return h.checkValidSecret(secret, env) }
+	if !known {
+		key = r.PathValue("env")
+		env = environments.TLSEnvironment{UUID: osctrldUnknownEnv, Name: osctrldUnknownEnv}
+		valid = func() bool { return false }
+	}
 	ip := utils.GetIP(r)
 	if h.OsctrldLimits != nil {
-		allowed, ok := h.OsctrldLimits.Auth.Attempt(osctrldAuthKey(ip, env.UUID), valid)
+		allowed, ok := h.OsctrldLimits.Auth.Attempt(osctrldAuthKey(ip, key), valid)
 		if !allowed {
-			h.osctrldBlocked(w, r, ip, env.UUID, &env)
+			h.osctrldBlocked(w, r, ip, key, &env)
 			return false
 		}
 		if ok {

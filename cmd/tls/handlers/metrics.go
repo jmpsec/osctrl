@@ -61,6 +61,12 @@ var (
 		Name: "osctrl_tls_log_backpressure_total",
 		Help: "Log batches rejected with 503 because the ingestion budget was full",
 	})
+	// unknownEnvironment counts requests for an environment UUID that does
+	// not exist, by fixed handler name (never the UUID, which the client picks).
+	unknownEnvironment = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "osctrl_tls_unknown_environment_total",
+		Help: "Requests for an environment that does not exist, answered like a bad credential",
+	}, []string{"handler"})
 	osctrldRateLimited = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "osctrld_rate_limited_total",
 		Help: "osctrld requests rejected by a rate limit",
@@ -102,6 +108,7 @@ func RegisterMetrics(reg prometheus.Registerer) {
 	reg.MustRegister(requestSize)
 	reg.MustRegister(logProcessDuration)
 	reg.MustRegister(logBackpressure)
+	reg.MustRegister(unknownEnvironment)
 	reg.MustRegister(distributedQueryProcessingDuration)
 	reg.MustRegister(batchFlushDuration)
 	reg.MustRegister(dbDegraded)
