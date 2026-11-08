@@ -314,7 +314,15 @@ func parityAuth(um *users.UserManager, h http.HandlerFunc) http.Handler {
 var parityRoutes = []struct{ pattern, handler string }{
 	// parityRoutes are the cmd/api registerRoutes patterns the parity tests use.
 	{"GET /api/v1/checks-auth", "CheckHandlerAuth"},
+	// tags (scope tag lookups)
+	{"GET /api/v1/tags", "AllTagsHandler"},
+	{"GET /api/v1/tags/{env}", "TagsEnvHandler"},
+	{"GET /api/v1/tags/{env}/{name}", "TagEnvHandler"},
+	{"POST /api/v1/tags/{env}/{action}", "TagsActionHandler"},
 	// environments
+	{"GET /api/v1/environments/sensitive-paths/{env}", "SensitivePathsListHandler"},
+	{"POST /api/v1/environments/sensitive-paths/{env}", "SensitivePathsAddHandler"},
+	{"DELETE /api/v1/environments/sensitive-paths/{env}/{id}", "SensitivePathsDeleteHandler"},
 	{"GET /api/v1/environments", "EnvironmentsHandler"},
 	{"POST /api/v1/environments/actions", "EnvActionsHandler"},
 	{"GET /api/v1/environments/{env}", "EnvironmentHandler"},

@@ -1196,6 +1196,37 @@ func init() {
 					Usage:   "List all existing TLS environments",
 					Action:  cliWrapper(listEnvironment),
 				},
+				{
+					Name:  "sensitive-paths",
+					Usage: "Manage sensitive carve paths of an environment",
+					Commands: []*cli.Command{
+						{
+							Name:    "list",
+							Aliases: []string{"l"},
+							Usage:   "List the sensitive carve paths",
+							Flags:   []cli.Flag{&cli.StringFlag{Name: "environment", Aliases: []string{"e"}, Usage: "Environment name or UUID"}},
+							Action:  cliWrapper(listSensitivePaths),
+						},
+						{
+							Name:  "add",
+							Usage: "Add a sensitive carve path",
+							Flags: []cli.Flag{
+								&cli.StringFlag{Name: "environment", Aliases: []string{"e"}, Usage: "Environment name or UUID"},
+								&cli.StringFlag{Name: "path", Aliases: []string{"p"}, Usage: "Absolute path prefix to protect"},
+							},
+							Action: cliWrapper(addSensitivePath),
+						},
+						{
+							Name:  "remove",
+							Usage: "Remove a sensitive carve path by ID",
+							Flags: []cli.Flag{
+								&cli.StringFlag{Name: "environment", Aliases: []string{"e"}, Usage: "Environment name or UUID"},
+								&cli.UintFlag{Name: "id", Usage: "Sensitive path ID"},
+							},
+							Action: cliWrapper(removeSensitivePath),
+						},
+					},
+				},
 			},
 		},
 		{
@@ -1681,6 +1712,10 @@ func init() {
 							Aliases: []string{"C", "custom"},
 							Usage:   "Tag custom value to be used. It is only used if tag-type is set to 'custom'",
 						},
+						&cli.BoolFlag{
+							Name:  "sensitive",
+							Usage: "Mark the tag as sensitive: it is removed from every scope grant and cannot be granted (env admins only)",
+						},
 					},
 					Action: cliWrapper(addTag),
 				},
@@ -1723,6 +1758,10 @@ func init() {
 							Name:    "tag-custom",
 							Aliases: []string{"C", "custom"},
 							Usage:   "Tag custom value to be used. It is only used if tag-type is set to 'custom'",
+						},
+						&cli.BoolFlag{
+							Name:  "sensitive",
+							Usage: "Mark the tag as sensitive: it is removed from every scope grant and cannot be granted (env admins only)",
 						},
 					},
 					Action: cliWrapper(editTag),
@@ -1979,6 +2018,18 @@ func init() {
 							Hidden:  false,
 							Usage:   "Grant carve permissions",
 						},
+						&cli.StringFlag{
+							Name:  "query-tier",
+							Usage: "Query tier: none, tags, standard or full (sets the query permission accordingly)",
+						},
+						&cli.StringFlag{
+							Name:  "carve-tier",
+							Usage: "Carve tier: none, tags, standard or full (sets the carve permission accordingly)",
+						},
+						&cli.StringFlag{
+							Name:  "scope-tags",
+							Usage: "Comma-separated tag names the tags tier is limited to (replaces existing; empty clears). In API mode, resolving tag names requires environment admin on that environment",
+						},
 					},
 					Action: cliWrapper(changePermissions),
 				},
@@ -2020,6 +2071,18 @@ func init() {
 							Aliases: []string{"c"},
 							Hidden:  false,
 							Usage:   "Grant carve permissions",
+						},
+						&cli.StringFlag{
+							Name:  "query-tier",
+							Usage: "Query tier: none, tags, standard or full (sets the query permission accordingly)",
+						},
+						&cli.StringFlag{
+							Name:  "carve-tier",
+							Usage: "Carve tier: none, tags, standard or full (sets the carve permission accordingly)",
+						},
+						&cli.StringFlag{
+							Name:  "scope-tags",
+							Usage: "Comma-separated tag names the tags tier is limited to (replaces existing; empty clears). In API mode, resolving tag names requires environment admin on that environment",
 						},
 					},
 					Action: cliWrapper(resetPermissions),

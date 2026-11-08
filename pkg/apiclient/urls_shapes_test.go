@@ -99,7 +99,7 @@ func TestAddTagSendsCustom(t *testing.T) {
 		writeJSON(w, types.ApiGenericResponse{Message: "ok"})
 	})
 	api := newRealURLServer(t, mux)
-	_, err := api.AddTag("dev", "t", "#fff", "icon", "d", 3, "custom-val")
+	_, err := api.AddTag("dev", "t", "#fff", "icon", "d", 3, "custom-val", nil)
 	require.NoError(t, err)
 	require.Equal(t, "custom-val", body.Custom)
 }
@@ -145,4 +145,38 @@ func TestGetQueriesLimitedStopsEarly(t *testing.T) {
 	require.Len(t, got, 5)
 	require.True(t, truncated)
 	require.Equal(t, 1, pages, "must not follow every page")
+}
+
+func TestSensitivePathURLShapes(t *testing.T) {
+	var got []string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.Method+" "+r.URL.Path)
+		if r.Method == http.MethodDelete {
+			writeJSON(w, types.ApiDataResponse{Data: "sensitive path removed"})
+			return
+		}
+		if r.Method == http.MethodPost {
+			var req types.ApiSensitivePathRequest
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+			require.Equal(t, "/etc/shadow", req.Path)
+			w.WriteHeader(http.StatusCreated)
+			writeJSON(w, map[string]any{"id": 7, "path": req.Path})
+			return
+		}
+		writeJSON(w, []map[string]any{{"id": 7, "path": "/etc/shadow"}})
+	})
+	api := newRealURLServer(t, mux)
+	rows, err := api.ListSensitivePaths("dev")
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
+	row, err := api.AddSensitivePath("dev", "/etc/shadow")
+	require.NoError(t, err)
+	require.Equal(t, uint(7), row.ID)
+	require.NoError(t, api.DeleteSensitivePath("dev", 7))
+	require.Equal(t, []string{
+		"GET /api/v1/environments/sensitive-paths/dev",
+		"POST /api/v1/environments/sensitive-paths/dev",
+		"DELETE /api/v1/environments/sensitive-paths/dev/7",
+	}, got)
 }

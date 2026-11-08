@@ -43,6 +43,7 @@ func tagToData(t tags.AdminTag, m environments.MapEnvByID, header []string) [][]
 		stringifyBool(t.AutoTag),
 		tags.TagTypeDecorator(t.TagType),
 		t.CustomTag,
+		stringifyBool(t.Sensitive),
 	}
 	data = append(data, _t)
 	return data
@@ -74,6 +75,7 @@ func addTag(ctx context.Context, cmd *cli.Command) error {
 	description := cmd.String("description")
 	tagType := tags.TagTypeParser(cmd.String("tag-type"))
 	tagCustom := cmd.String("tag-custom")
+	sensitive := cmd.Bool("sensitive")
 	if tagType == tags.TagTypeCustom && tagCustom == "" {
 		fmt.Println("❌ tag custom value is required when tag type is set to 'custom'")
 		os.Exit(1)
@@ -88,9 +90,27 @@ func addTag(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("%w", err)
 		}
 		// Audit log
-		auditlogsmgr.TagAction(getShellUsername(), "add tag "+name, "CLI", e.ID)
+		if sensitive {
+			// a new tag has no scope grants to remove
+			t, err := tagsmgr.Get(name, e.ID)
+			if err != nil {
+				return fmt.Errorf("%w", err)
+			}
+			if err := tagsmgr.ChangeSensitive(&t, true); err != nil {
+				return fmt.Errorf("%w", err)
+			}
+		}
+		note := ""
+		if sensitive {
+			note = " (sensitive=true)"
+		}
+		auditlogsmgr.TagAction(getShellUsername(), "add tag "+name+note, "CLI", e.ID)
 	} else if apiFlag {
-		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom))
+		var sens *bool
+		if sensitive {
+			sens = &sensitive
+		}
+		_, err := osctrlAPI.AddTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom), sens)
 		if err != nil {
 			return fmt.Errorf("%w", err)
 		}
@@ -147,41 +167,75 @@ func editTag(ctx context.Context, cmd *cli.Command) error {
 		fmt.Println("❌ tag name is required")
 		os.Exit(1)
 	}
-	color := cmd.String("color")
-	if color == "" {
-		color = tags.RandomColor()
-	} else if !strings.HasPrefix(color, "#") || len(color) != 7 {
-		fmt.Println("❌ color must be a hex value starting with # and 6 characters long (e.g. #FF5733)")
-		os.Exit(1)
+	if cmd.IsSet("color") {
+		if c := cmd.String("color"); !strings.HasPrefix(c, "#") || len(c) != 7 {
+			fmt.Println("❌ color must be a hex value starting with # and 6 characters long (e.g. #FF5733)")
+			os.Exit(1)
+		}
 	}
-	icon := cmd.String("icon")
-	description := cmd.String("description")
-	tagType := tags.TagTypeParser(cmd.String("tag-type"))
-	tagCustom := cmd.String("tag-custom")
-	if tagType == tags.TagTypeCustom && tagCustom == "" {
+	if cmd.IsSet("tag-type") && tags.TagTypeParser(cmd.String("tag-type")) == tags.TagTypeCustom && cmd.String("tag-custom") == "" {
 		fmt.Println("❌ tag custom value is required when tag type is set to 'custom'")
 		os.Exit(1)
 	}
+	// nil leaves the flag unchanged
+	var sens *bool
+	if cmd.IsSet("sensitive") {
+		v := cmd.Bool("sensitive")
+		sens = &v
+	}
+	// Retrieve the stored tag: every field the operator did not set keeps its value
+	var t tags.AdminTag
+	var envID uint
 	if dbFlag {
 		e, err := envs.Get(env)
 		if err != nil {
 			return fmt.Errorf("error env get - %w", err)
 		}
-		t, err := tagsmgr.Get(name, e.ID)
+		envID = e.ID
+		t, err = tagsmgr.Get(name, e.ID)
 		if err != nil {
 			return fmt.Errorf("%w", err)
 		}
-		if description != "" && description != t.Description {
+	} else if apiFlag {
+		var err error
+		t, err = osctrlAPI.GetTag(env, name)
+		if err != nil {
+			return fmt.Errorf("%w", err)
+		}
+	}
+	color, icon, description := t.Color, t.Icon, t.Description
+	tagType, tagCustom := t.TagType, t.CustomTag
+	if cmd.IsSet("color") {
+		color = cmd.String("color")
+	}
+	if cmd.IsSet("icon") {
+		icon = cmd.String("icon")
+	}
+	if cmd.IsSet("description") {
+		description = cmd.String("description")
+	}
+	if cmd.IsSet("tag-type") {
+		tagType = tags.TagTypeParser(cmd.String("tag-type"))
+		tagCustom = ""
+	}
+	if cmd.IsSet("tag-custom") {
+		tagCustom = cmd.String("tag-custom")
+	}
+	if cmd.IsSet("tag-type") || cmd.IsSet("tag-custom") {
+		tagCustom = tags.SetCustomTag(tagType, tagCustom)
+	}
+	if dbFlag {
+		if description != t.Description {
 			if err := tagsmgr.ChangeDescription(&t, description); err != nil {
 				return fmt.Errorf("%w", err)
 			}
 		}
-		if color != "" && color != t.Color {
+		if color != t.Color {
 			if err := tagsmgr.ChangeColor(&t, color); err != nil {
 				return fmt.Errorf("%w", err)
 			}
 		}
-		if icon != "" && icon != t.Icon {
+		if icon != t.Icon {
 			if err := tagsmgr.ChangeIcon(&t, icon); err != nil {
 				return fmt.Errorf("%w", err)
 			}
@@ -190,19 +244,31 @@ func editTag(ctx context.Context, cmd *cli.Command) error {
 			if err := tagsmgr.ChangeTagType(&t, tagType); err != nil {
 				return fmt.Errorf("%w", err)
 			}
-			if err := tagsmgr.ChangeCustom(&t, tags.ValidateCustom(tagCustom)); err != nil {
-				return fmt.Errorf("%w", err)
-			}
 		}
-		if tagCustom != "" && tagCustom != t.CustomTag {
+		if tagCustom != t.CustomTag {
 			if err := tagsmgr.ChangeCustom(&t, tagCustom); err != nil {
 				return fmt.Errorf("%w", err)
 			}
 		}
+		auditNote := ""
+		if sens != nil {
+			if *sens != t.Sensitive {
+				if err := tagsmgr.ChangeSensitive(&t, *sens); err != nil {
+					return fmt.Errorf("%w", err)
+				}
+				auditNote = fmt.Sprintf(" (sensitive=%t)", *sens)
+			}
+			if *sens {
+				// mirror the API: a sensitive tag cannot stay in a scope grant (idempotent, so a retry heals)
+				if err := adminUsers.DeleteScopeTagsForTag(t.ID); err != nil {
+					return fmt.Errorf("%w", err)
+				}
+			}
+		}
 		// Audit log
-		auditlogsmgr.TagAction(getShellUsername(), "edit tag "+name, "CLI", e.ID)
+		auditlogsmgr.TagAction(getShellUsername(), "edit tag "+name+auditNote, "CLI", envID)
 	} else if apiFlag {
-		_, err = osctrlAPI.EditTag(env, name, color, icon, description, tagType, tags.SetCustomTag(tagType, tagCustom))
+		_, err := osctrlAPI.EditTag(env, name, color, icon, description, tagType, tagCustom, sens)
 		if err != nil {
 			return fmt.Errorf("%w", err)
 		}
@@ -257,6 +323,7 @@ func showTag(ctx context.Context, cmd *cli.Command) error {
 	fmt.Printf("AutoTag: %s\n", stringifyBool(t.AutoTag))
 	fmt.Printf("TagType: %s\n", tags.TagTypeDecorator(t.TagType))
 	fmt.Printf("Custom: %s\n", t.CustomTag)
+	fmt.Printf("Sensitive: %s\n", stringifyBool(t.Sensitive))
 	fmt.Printf("Environment: %s\n", envName)
 	fmt.Println()
 	return nil
@@ -274,6 +341,7 @@ func helperListTags(tgs []tags.AdminTag, m environments.MapEnvByID) error {
 		"AutoTag",
 		"TagType",
 		"CustomTag",
+		"Sensitive",
 	}
 	// Prepare output
 	switch formatFlag {

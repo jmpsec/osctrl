@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/stretchr/testify/require"
 )
@@ -230,4 +231,101 @@ func withTiers(a users.EnvAccess) users.EnvAccess {
 		a.CarveTier = "standard"
 	}
 	return a
+}
+
+func TestPermissionsTiersAndScopeTagsParity(t *testing.T) {
+	r, uuid := permRig(t, map[string]users.EnvAccess{"db": {}, "api": {}})
+	tm := tags.CreateTagManager(r.DB)
+	dev, err := r.Envs.Get("dev")
+	require.NoError(t, err)
+	prod := r.SeedEnv("prod")
+	require.NoError(t, tm.NewTag("web", "", "", "", "t", dev.ID, false, 0, ""))
+	require.NoError(t, tm.NewTag("secret", "", "", "", "t", dev.ID, false, 0, ""))
+	require.NoError(t, tm.NewTag("other", "", "", "", "t", prod.ID, false, 0, ""))
+	secret, err := tm.Get("secret", dev.ID)
+	require.NoError(t, err)
+	require.NoError(t, tm.ChangeSensitive(&secret, true))
+	web, err := tm.Get("web", dev.ID)
+	require.NoError(t, err)
+	for mode, run := range r.modes() {
+		_, err := run("user", "change-permissions", "-u", mode, "-e", "dev", "--query-tier", "tags", "--scope-tags", " web ")
+		require.NoError(t, err, mode)
+		got, err := r.Users.GetEnvAccess(mode, uuid)
+		require.NoError(t, err)
+		require.True(t, got.Query, mode)
+		require.Equal(t, "tags", got.QueryTier, mode)
+		require.Equal(t, []uint{web.ID}, got.ScopeTags, mode)
+		out, err := run("-o", "csv", "user", "show-permissions", "-u", mode, "-e", "dev")
+		require.NoError(t, err, mode)
+		require.Contains(t, out, "tags,none,web", mode)
+		// A boolean-only change keeps the narrower tier and the grants.
+		_, err = run("user", "change-permissions", "-u", mode, "-e", "dev", "-U")
+		require.NoError(t, err, mode)
+		got, err = r.Users.GetEnvAccess(mode, uuid)
+		require.NoError(t, err)
+		require.Equal(t, "tags", got.QueryTier, mode)
+		require.Equal(t, []uint{web.ID}, got.ScopeTags, mode)
+		for _, bad := range [][]string{{"--query-tier", "bogus"}, {"--scope-tags", "secret"}, {"--scope-tags", "other"}, {"--scope-tags", "nope"}} {
+			_, err = run(append([]string{"user", "change-permissions", "-u", mode, "-e", "dev", "--carve-tier", "full"}, bad...)...)
+			require.Error(t, err, mode, bad)
+			got, err = r.Users.GetEnvAccess(mode, uuid)
+			require.NoError(t, err)
+			require.False(t, got.Carve, "nothing written (%s %v)", mode, bad)
+			require.Equal(t, []uint{web.ID}, got.ScopeTags, mode)
+		}
+		_, err = run("user", "change-permissions", "-u", mode, "-e", "dev", "--scope-tags", "secret")
+		require.ErrorContains(t, err, "sensitive tag cannot be a scope tag", mode)
+		_, err = run("user", "change-permissions", "-u", mode, "-e", "dev", "--scope-tags", "")
+		require.NoError(t, err, mode)
+		got, err = r.Users.GetEnvAccess(mode, uuid)
+		require.NoError(t, err)
+		require.Empty(t, got.ScopeTags, mode)
+		_, err = run("user", "reset-permissions", "-u", mode, "-e", "dev", "-U", "--query-tier", "none", "--carve-tier", "standard")
+		require.NoError(t, err, mode)
+		got, err = r.Users.GetEnvAccess(mode, uuid)
+		require.NoError(t, err)
+		require.Equal(t, users.EnvAccess{User: true, Carve: true, QueryTier: "none", CarveTier: "standard"}, got, mode)
+	}
+}
+
+func TestPermissionsResetIsFullReplaceInBothModes(t *testing.T) {
+	r, uuid := permRig(t, map[string]users.EnvAccess{"db": {}, "api": {}})
+	dev, err := r.Envs.Get("dev")
+	require.NoError(t, err)
+	tm := tags.CreateTagManager(r.DB)
+	require.NoError(t, tm.NewTag("web", "", "", "", "t", dev.ID, false, 0, ""))
+	web, err := tm.Get("web", dev.ID)
+	require.NoError(t, err)
+	for mode, run := range r.modes() {
+		_, err := run("user", "change-permissions", "-u", mode, "-e", "dev", "--query-tier", "tags", "--scope-tags", "web")
+		require.NoError(t, err, mode)
+		got, err := r.Users.GetEnvAccess(mode, uuid)
+		require.NoError(t, err)
+		require.Equal(t, []uint{web.ID}, got.ScopeTags, mode)
+		// change -q on a tags-tier user keeps the tier
+		_, err = run("user", "change-permissions", "-u", mode, "-e", "dev", "-q")
+		require.NoError(t, err, mode)
+		got, err = r.Users.GetEnvAccess(mode, uuid)
+		require.NoError(t, err)
+		require.Equal(t, "tags", got.QueryTier, mode)
+		_, err = run("user", "reset-permissions", "-u", mode, "-e", "dev", "-q")
+		require.NoError(t, err, mode)
+		got, err = r.Users.GetEnvAccess(mode, uuid)
+		require.NoError(t, err)
+		require.Equal(t, users.EnvAccess{Query: true, QueryTier: "standard", CarveTier: "none"}, got, mode)
+	}
+}
+
+func TestPermissionsAdminRefusesTierNone(t *testing.T) {
+	r, uuid := permRig(t, map[string]users.EnvAccess{"dbc": {}, "apic": {}})
+	for mode, run := range r.modes() {
+		for _, flag := range []string{"--query-tier", "--carve-tier"} {
+			_, err := run("user", "change-permissions", "-u", mode+"c", "-e", "dev", "-a", flag, "none")
+			require.Error(t, err, mode+flag)
+			require.Contains(t, err.Error(), "--admin implies", mode+flag)
+		}
+		got, err := r.Users.GetEnvAccess(mode+"c", uuid)
+		require.NoError(t, err)
+		require.False(t, got.Admin, mode)
+	}
 }

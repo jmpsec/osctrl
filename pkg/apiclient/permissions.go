@@ -31,10 +31,20 @@ func (api *OsctrlAPI) GetUserPermissions(username string) (types.GetPermissionsR
 // environment (identified by UUID).
 func (api *OsctrlAPI) SetUserPermissions(username, envUUID string, access users.EnvAccess) error {
 	reqURL := fmt.Sprintf("%s%s", api.Configuration.URL, path.Join(APIPath, APIUSers, url.PathEscape(username), "permissions"))
-	jsonMessage, err := json.Marshal(types.SetPermissionsRequest{
-		EnvUUID: envUUID,
-		Access:  types.EnvAccessView{User: access.User, Query: access.Query, Carve: access.Carve, Admin: access.Admin},
-	})
+	// types.EnvAccessView omits an empty scope_tags, but the server reads
+	// "[]" as clear and an absent key as unchanged, so send it as a pointer.
+	body := struct {
+		EnvUUID string `json:"env_uuid"`
+		Access  struct {
+			types.EnvAccessView
+			ScopeTags *[]uint `json:"scope_tags,omitempty"`
+		} `json:"access"`
+	}{EnvUUID: envUUID}
+	body.Access.EnvAccessView = types.EnvAccessView{User: access.User, Query: access.Query, Carve: access.Carve, Admin: access.Admin, QueryTier: access.QueryTier, CarveTier: access.CarveTier}
+	if access.ScopeTags != nil {
+		body.Access.ScopeTags = &access.ScopeTags
+	}
+	jsonMessage, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("error marshaling data - %w", err)
 	}
