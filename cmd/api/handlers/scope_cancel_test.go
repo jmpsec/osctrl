@@ -46,6 +46,10 @@ func TestUntagCancelsTagScopedPending(t *testing.T) {
 	require.NoError(t, f.h.cancelOutOfScope(context.Background(), []uint{f.n1.ID}))
 	require.False(t, f.pendingExists(t, q))
 	require.False(t, f.pendingExists(t, c))
+	// The cancelled target no longer counts toward the query's Expected.
+	var expected []int
+	require.NoError(t, f.h.DB.Model(&queries.DistributedQuery{}).Where("creator = ?", "tagger").Pluck("expected", &expected).Error)
+	require.Equal(t, []int{0, 0}, expected)
 }
 
 func TestUntagKeepsStandardPending(t *testing.T) {
