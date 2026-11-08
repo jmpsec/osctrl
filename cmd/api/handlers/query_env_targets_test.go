@@ -12,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/stretchr/testify/require"
@@ -28,6 +29,8 @@ func setupEnvTargets(t *testing.T) (*HandlersApi, nodes.OsqueryNode) {
 	auditLog, err := auditlog.CreateAuditLogManager(db, "api", false)
 	require.NoError(t, err)
 	h.AuditLog = auditLog
+	// The standard-tier scope filter reads these tables.
+	require.NoError(t, db.AutoMigrate(&tags.TaggedNode{}, &tags.AdminTag{}))
 	other := environments.TLSEnvironment{UUID: "other-uuid", Name: "other"}
 	require.NoError(t, db.Create(&other).Error)
 	node := nodes.OsqueryNode{UUID: "OTHER-NODE", Platform: "linux", EnvironmentID: other.ID, Environment: other.Name, LastSeen: time.Now()}

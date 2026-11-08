@@ -41,3 +41,27 @@ func TestGetTagsByNodeIDsReturnsTagsGroupedByNode(t *testing.T) {
 		t.Fatalf("expected staging for node b, got %+v", got[nodeB.ID])
 	}
 }
+
+func TestChangeSensitive(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:tags_change_sensitive?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	m := CreateTagManager(db)
+	tag := AdminTag{Name: "secret", EnvironmentID: 7}
+	if err := db.Create(&tag).Error; err != nil {
+		t.Fatalf("create tag: %v", err)
+	}
+	for _, want := range []bool{true, false} {
+		if err := m.ChangeSensitive(&tag, want); err != nil {
+			t.Fatalf("change sensitive: %v", err)
+		}
+		var got AdminTag
+		if err := db.First(&got, tag.ID).Error; err != nil {
+			t.Fatalf("reload: %v", err)
+		}
+		if got.Sensitive != want {
+			t.Fatalf("expected sensitive=%v, got %v", want, got.Sensitive)
+		}
+	}
+}

@@ -467,6 +467,7 @@ type ApiTagsRequest struct {
 	Env         string `json:"env"`
 	TagType     uint   `json:"tagtype"`
 	Custom      string `json:"custom"`
+	Sensitive   *bool  `json:"sensitive,omitempty"`
 }
 
 // ApiLookupRequest to receive lookup requests

@@ -510,7 +510,7 @@ func (m *Manager) queryResults(env, queryName string) ([]map[string]any, error) 
 	if queryName == "" {
 		return rows, nil
 	}
-	err := m.logReader().StreamQueryResults(env, queryName, nil, func(row logging.OsqueryQueryData) error {
+	err := m.logReader().StreamQueryResults(env, queryName, logging.NodeFilter{}, func(row logging.OsqueryQueryData) error {
 		decoded, err := decodeResultRows([]byte(row.Data))
 		if err != nil {
 			return err

@@ -16,13 +16,16 @@ import (
 )
 
 var uuidFilterCases = []struct {
-	name  string
-	uuids []string
-	want  int
+	name   string
+	filter NodeFilter
+	want   int
 }{
-	{"nil is no filter", nil, 3},
-	{"one uuid", []string{"a"}, 1},
-	{"empty slice is no rows", []string{}, 0},
+	{"zero is no filter", NodeFilter{}, 3},
+	{"one uuid", NodeFilter{Only: []string{"a"}}, 1},
+	{"empty only is no rows", NodeFilter{Only: []string{}}, 0},
+	{"except one", NodeFilter{Except: []string{"b"}}, 2},
+	{"empty except drops nothing", NodeFilter{Except: []string{}}, 3},
+	{"except wins over only", NodeFilter{Only: []string{"a", "b"}, Except: []string{"b"}}, 1},
 }
 
 func TestQueryResultsUUIDFilterDB(t *testing.T) {
@@ -35,12 +38,12 @@ func TestQueryResultsUUIDFilterDB(t *testing.T) {
 	r := NewDBLogReader(db)
 	for _, tc := range uuidFilterCases {
 		t.Run(tc.name, func(t *testing.T) {
-			items, total, err := r.QueryResults("env", "q", tc.uuids, time.Time{}, 1, 100)
+			items, total, err := r.QueryResults("env", "q", tc.filter, time.Time{}, 1, 100)
 			require.NoError(t, err)
 			require.Len(t, items, tc.want)
 			require.EqualValues(t, tc.want, total)
 			n := 0
-			require.NoError(t, r.StreamQueryResults("env", "q", tc.uuids, func(OsqueryQueryData) error { n++; return nil }))
+			require.NoError(t, r.StreamQueryResults("env", "q", tc.filter, func(OsqueryQueryData) error { n++; return nil }))
 			require.Equal(t, tc.want, n)
 		})
 	}
@@ -61,12 +64,12 @@ func TestQueryResultsUUIDFilterS3(t *testing.T) {
 	r := NewS3LogReader(client, "bucket")
 	for _, tc := range uuidFilterCases {
 		t.Run(tc.name, func(t *testing.T) {
-			items, total, err := r.QueryResults("env", "q", tc.uuids, time.Time{}, 1, 100)
+			items, total, err := r.QueryResults("env", "q", tc.filter, time.Time{}, 1, 100)
 			require.NoError(t, err)
 			require.Len(t, items, tc.want)
 			require.EqualValues(t, tc.want, total)
 			n := 0
-			require.NoError(t, r.StreamQueryResults("env", "q", tc.uuids, func(OsqueryQueryData) error { n++; return nil }))
+			require.NoError(t, r.StreamQueryResults("env", "q", tc.filter, func(OsqueryQueryData) error { n++; return nil }))
 			require.Equal(t, tc.want, n)
 		})
 	}

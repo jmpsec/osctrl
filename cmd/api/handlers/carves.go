@@ -155,7 +155,7 @@ func (h *HandlersApi) CarveShowHandler(w http.ResponseWriter, r *http.Request) {
 	targets := []types.QueryTargetView{}
 	if rows, terr := h.Queries.GetTargets(name); terr == nil {
 		for _, t := range rows {
-			targets = append(targets, types.QueryTargetView{Type: t.Type, Value: scopedTargetValue(scope, t.Type, t.Value)})
+			targets = append(targets, types.QueryTargetView{Type: t.Type, Value: h.scopedTargetValue(scope, env, t.Type, t.Value)})
 		}
 	} else {
 		log.Debug().Err(terr).Msgf("carve targets fetch failed for %s", name)

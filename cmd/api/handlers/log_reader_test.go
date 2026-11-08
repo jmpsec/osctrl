@@ -48,12 +48,12 @@ func (f *fakeLogReader) NodeLogs(logType, env, uuid string, since time.Time, lim
 	return f.nodeLogsRows, nil
 }
 
-func (f *fakeLogReader) QueryResults(env, name string, uuids []string, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
+func (f *fakeLogReader) QueryResults(env, name string, filter logging.NodeFilter, since time.Time, page, pageSize int) ([]map[string]any, int64, error) {
 	f.queryResultsCall = &fakeQueryResultsCall{env, name, since, page, pageSize}
 	return f.queryRows, int64(len(f.queryRows)), nil
 }
 
-func (f *fakeLogReader) StreamQueryResults(env, name string, uuids []string, fn func(logging.OsqueryQueryData) error) error {
+func (f *fakeLogReader) StreamQueryResults(env, name string, filter logging.NodeFilter, fn func(logging.OsqueryQueryData) error) error {
 	call := env + "/" + name
 	f.streamCall = &call
 	return f.streamErr

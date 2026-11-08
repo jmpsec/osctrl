@@ -185,12 +185,18 @@ func (h *HandlersApi) SetUserPermissionsHandler(w http.ResponseWriter, r *http.R
 			return
 		}
 		inEnv := make(map[uint]bool, len(envTags))
+		sensitive := make(map[uint]bool)
 		for _, t := range envTags {
 			inEnv[t.ID] = true
+			sensitive[t.ID] = t.Sensitive
 		}
 		for _, id := range body.Access.ScopeTags {
 			if !inEnv[id] {
 				apiErrorResponse(w, "scope tag not in environment", http.StatusBadRequest, nil)
+				return
+			}
+			if sensitive[id] {
+				apiErrorResponse(w, "sensitive tag cannot be a scope tag", http.StatusBadRequest, nil)
 				return
 			}
 		}

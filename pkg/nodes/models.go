@@ -46,6 +46,7 @@ type OsqueryNode struct {
 // ArchiveOsqueryNode as abstraction of an archived node
 type ArchiveOsqueryNode struct {
 	ID              uint           `gorm:"primarykey" json:"id"`
+	NodeID          uint           `gorm:"index" json:"node_id"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
