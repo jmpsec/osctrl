@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"bytes"
-	"crypto/sha1"
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,13 +17,12 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
-// Helper to generate a random enough node key
-func generateNodeKey(uuid string, ts time.Time) string {
-	timestamp := strconv.FormatInt(ts.UTC().UnixNano(), 10)
-	hasher := sha1.New()
-	_, _ = hasher.Write([]byte(uuid + timestamp))
-	bs := hasher.Sum(nil)
-	return fmt.Sprintf("%x", bs)
+// generateNodeKey returns 32 random bytes, hex-encoded. The key is the agent's
+// only credential after enrollment, so nothing about the host goes into it.
+func generateNodeKey() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b) // crypto/rand.Read never returns an error
+	return hex.EncodeToString(b)
 }
 
 // Helper to generate a carve session_id using KSUID
