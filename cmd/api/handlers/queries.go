@@ -195,6 +195,10 @@ func (h *HandlersApi) QueriesRunHandler(w http.ResponseWriter, r *http.Request) 
 		apiErrorResponse(w, "query can not be empty", http.StatusBadRequest, nil)
 		return
 	}
+	if len(q.Query) > queries.MaxQueryLength {
+		apiErrorResponse(w, "query too long", http.StatusBadRequest, nil)
+		return
+	}
 	// Check if query is carve and user has permissions to carve
 	if queries.IsCarveQuery(q.Query) {
 		if h.Users.TierContext(r.Context(), ctx[ctxUser], env.UUID, users.CarveLevel) != users.TierFull {

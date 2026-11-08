@@ -18,6 +18,10 @@ import (
 const (
 	// Key to identify request context
 	contextAPI string = "osctrl-api-context"
+	// apiMaxBody is the default request body cap for authenticated routes.
+	// The environment config PATCH carries a whole osquery configuration
+	// (packs included), so this stays well above typical JSON bodies.
+	apiMaxBody = 8 << 20
 )
 
 // Cookie + header names — kept in sync with cmd/api/handlers/login.go.
@@ -98,6 +102,11 @@ func checkCSRF(r *http.Request, username string) bool {
 // Handler to check access to a resource based on the authentication enabled
 func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Default body cap for every authenticated route; handlers may set a
+		// smaller one. Multipart uploads stream and cap themselves.
+		if !strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
+			r.Body = http.MaxBytesReader(w, r.Body, apiMaxBody)
+		}
 		switch auth {
 		case config.AuthNone:
 			// Set middleware values

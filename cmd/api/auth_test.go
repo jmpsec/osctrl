@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,6 +44,39 @@ func TestHandlerAuthCheckJSONvsRedirect(t *testing.T) {
 			t.Fatal("missing Location header on redirect")
 		}
 	})
+}
+
+// Authenticated handlers decode bodies without their own limit, so the
+// middleware caps every non-multipart body; multipart uploads cap themselves.
+func TestHandlerAuthCheckCapsBodies(t *testing.T) {
+	var readErr error
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, readErr = io.Copy(io.Discard, r.Body)
+	})
+	h := handlerAuthCheck(inner, config.AuthNone, "")
+	send := func(contentType string, size int64) error {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/anything", io.LimitReader(zeroReader{}, size))
+		req.Header.Set("Content-Type", contentType)
+		h.ServeHTTP(httptest.NewRecorder(), req)
+		return readErr
+	}
+	var tooLarge *http.MaxBytesError
+	if err := send("application/json", apiMaxBody); err != nil {
+		t.Fatalf("body at the cap: unexpected error %v", err)
+	}
+	if err := send("application/json", apiMaxBody+1); !errors.As(err, &tooLarge) {
+		t.Fatalf("body over the cap: want MaxBytesError, got %v", err)
+	}
+	if err := send("multipart/form-data; boundary=x", apiMaxBody+1); err != nil {
+		t.Fatalf("multipart body is capped by its handler, not here: got %v", err)
+	}
+}
+
+type zeroReader struct{}
+
+func (zeroReader) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
 }
 
 func TestExtractHeaderTokenPrefersBearerThenCookie(t *testing.T) {

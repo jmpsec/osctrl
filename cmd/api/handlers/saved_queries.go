@@ -172,6 +172,10 @@ func (h *HandlersApi) SavedQueryCreateHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "query can not be empty", http.StatusBadRequest, nil)
 		return
 	}
+	if len(body.Query) > queries.MaxQueryLength {
+		apiErrorResponse(w, "query too long", http.StatusBadRequest, nil)
+		return
+	}
 	// The DB unique index on (name, environment_id) is the authoritative
 	// gate (see pkg/queries.SavedQuery + ErrSavedQueryExists). The
 	// SavedExists probe stays as a fast-path so the typical "this name
@@ -255,6 +259,10 @@ func (h *HandlersApi) SavedQueryUpdateHandler(w http.ResponseWriter, r *http.Req
 	body.Query = strings.TrimSpace(body.Query)
 	if body.Query == "" {
 		apiErrorResponse(w, "query can not be empty", http.StatusBadRequest, nil)
+		return
+	}
+	if len(body.Query) > queries.MaxQueryLength {
+		apiErrorResponse(w, "query too long", http.StatusBadRequest, nil)
 		return
 	}
 
