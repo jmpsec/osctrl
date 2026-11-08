@@ -19,6 +19,9 @@ import { SortableHeader } from '$/components/data/SortableHeader';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
 import { buttonClasses } from '$/components/atoms/Button';
+import { listEnvironments } from '$/api/environments';
+import { useMe } from '$/lib/useMe';
+import { envCaps } from '$/lib/access';
 
 function QueryStatusBadge({
   q,
@@ -68,6 +71,17 @@ export function QueriesListPage() {
   const pageSize: number = (search.page_size as number) ?? 50;
 
   const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
+  // Running needs query access; expire/delete need env admin on the server.
+  const { data: me } = useMe();
+  const { data: envs } = useQuery({
+    queryKey: ['environments'],
+    queryFn: () => listEnvironments(),
+    staleTime: 60_000,
+  });
+  const envUuid = envs?.find((e) => e.name === env || e.uuid === env)?.uuid;
+  const caps = envCaps(me, envUuid ?? '');
+  const canRun = envUuid !== undefined && caps.query;
+  const canManage = envUuid !== undefined && caps.manage;
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   function updateSearch(patch: Record<string, string | number | undefined>) {
@@ -221,13 +235,15 @@ export function QueriesListPage() {
           </button>
 
           {/* New query button */}
-          <Link
-            to="/_app/env/$env/queries/new"
-            params={{ env }}
-            className={buttonClasses()}
-          >
-            Run query
-          </Link>
+          {canRun && (
+            <Link
+              to="/_app/env/$env/queries/new"
+              params={{ env }}
+              className={buttonClasses()}
+            >
+              Run query
+            </Link>
+          )}
 
           {/* Page size */}
           <label htmlFor="ql-page-size" className="sr-only">{t('commonExt.rowsPerPage')}</label>
@@ -266,7 +282,7 @@ export function QueriesListPage() {
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
               {/* Select-all */}
               <th scope="col" className="px-4 py-3 w-10">
-                <input
+                {canManage && <input
                   type="checkbox"
                   aria-label={t('queriesPage.selectAll')}
                   checked={allChecked}
@@ -275,7 +291,7 @@ export function QueriesListPage() {
                   }}
                   onChange={toggleAll}
                   className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
-                />
+                />}
               </th>
               <SortableHeader
                 column="name"
@@ -372,7 +388,7 @@ export function QueriesListPage() {
                         >
                           Clear filters
                         </button>
-                      ) : (
+                      ) : canRun && (
                         <Link
                           to="/_app/env/$env/queries/new"
                           params={{ env }}
@@ -408,13 +424,13 @@ export function QueriesListPage() {
                   >
                     {/* Checkbox */}
                     <td className="px-4 py-3 w-10">
-                      <input
+                      {canManage && <input
                         type="checkbox"
                         aria-label={`Select query ${item.name}`}
                         checked={isSelected}
                         onChange={() => toggleRow(item.name)}
                         className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
-                      />
+                      />}
                     </td>
 
                     {/* Query text — link-blue, navigates to detail by internal name */}
@@ -491,7 +507,7 @@ export function QueriesListPage() {
       )}
 
       {/* ── Multi-select dock toolbar ── */}
-      {selectedNames.size > 0 && (
+      {canManage && selectedNames.size > 0 && (
         <div
           role="toolbar"
           aria-label={t('commonExt.bulkActions')}

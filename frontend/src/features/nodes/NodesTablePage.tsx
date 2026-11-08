@@ -7,7 +7,8 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { listNodes, deleteNode, type NodePlatform } from '$/api/nodes';
 import { getStats, getNodeActivityTilesBatch, type NodeTileSeries } from '$/api/stats';
 import { listEnvTags, tagNode } from '$/api/tags';
-import { getMe } from '$/api/users';
+import { useMe } from '$/lib/useMe';
+import { envCaps } from '$/lib/access';
 import { listEnvironments } from '$/api/environments';
 import { getFeatures } from '$/api/features';
 import { AuthError } from '$/api/client';
@@ -465,21 +466,14 @@ export function NodesTablePage() {
   // that gate in the UI so non-admins don't see a button that 403s.
   // Super-admins always pass; env-scoped admins get it for their
   // env. Same logic used in NodeDetailPage's single-node delete.
-  const { data: me } = useQuery({
-    queryKey: ['users-me'],
-    queryFn: () => getMe(),
-    staleTime: 5 * 60_000,
-  });
+  const { data: me } = useMe();
   const { data: envsForPerms } = useQuery({
     queryKey: ['environments'],
     queryFn: () => listEnvironments(),
     staleTime: 60_000,
   });
   const envUuidForPerms = envsForPerms?.find((e) => e.name === env)?.uuid;
-  const canDeleteNodes =
-    me?.admin === true ||
-    (envUuidForPerms !== undefined &&
-      me?.permissions?.[envUuidForPerms]?.admin === true);
+  const canDeleteNodes = envUuidForPerms !== undefined && envCaps(me, envUuidForPerms).manage;
   const { data: features } = useQuery({
     queryKey: ['features'],
     queryFn: getFeatures,
@@ -1011,14 +1005,17 @@ export function NodesTablePage() {
             {selectedUuids.size} selected
           </span>
           <div className="w-px h-4 bg-[color:var(--border)]" aria-hidden />
-          <button
-            type="button"
-            aria-label={t('nodesTable.tagSelected')}
-            className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
-            onClick={() => setTagModalOpen(true)}
-          >
-            {t('commonExt.tag')}…
-          </button>
+          {/* Tagging nodes is env-admin only on the server, like deletion. */}
+          {canDeleteNodes && (
+            <button
+              type="button"
+              aria-label={t('nodesTable.tagSelected')}
+              className="px-3 py-1 text-xs font-medium rounded text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
+              onClick={() => setTagModalOpen(true)}
+            >
+              {t('commonExt.tag')}…
+            </button>
+          )}
           {canDeleteNodes && (
             <button
               type="button"

@@ -14,10 +14,13 @@ import {
   createUser,
   deleteUser,
   adminResetUserPassword,
-  getMe,
+  editUserRoles,
 } from '$/api/users';
-import type { BulkSetReport } from '$/api/users';
+import type { BulkSetReport, RolePatch } from '$/api/users';
 import { listEnvironments } from '$/api/environments';
+import { listAllTags } from '$/api/tags';
+import { useMe } from '$/lib/useMe';
+import { canWritePage, isSuperuser } from '$/lib/access';
 import { AuthError, ApiError } from '$/api/client';
 import type { AdminUser, EnvAccess, TokenResponse } from '$/api/types';
 import { formatRelative } from '$/lib/time';
@@ -29,9 +32,19 @@ import { MetadataBadge } from '$/components/data/MetadataBadge';
 import { Button } from '$/components/atoms/Button';
 import { appPath } from '$/lib/base-path'
 
+// Global roles in display order, shared by the badges and the role checkboxes.
+const ROLES = [
+  { key: 'user_admin', label: 'User management', hint: 'manage operators and their access' },
+  { key: 'env_manager', label: 'Environment management', hint: 'create environments' },
+  { key: 'read_only_admin', label: 'Read-only admin', hint: 'read every environment, audit and health' },
+  { key: 'alert_admin', label: 'Alert admin', hint: 'manage alerts' },
+] as const;
+type RoleKey = (typeof ROLES)[number]['key'];
+
 type ModalMode =
   | { kind: 'closed' }
   | { kind: 'permissions'; user: AdminUser }
+  | { kind: 'roles'; user: AdminUser }
   | { kind: 'token'; user: AdminUser }
   | { kind: 'create' }
   | { kind: 'delete'; user: AdminUser }
@@ -59,11 +72,11 @@ export function UsersPage() {
   // Need the current operator's username so the delete button can be
   // suppressed on their own row (server-side guard also rejects
   // self-delete with 400, but hiding the button avoids surprise).
-  const { data: me } = useQuery({
-    queryKey: ['users-me'],
-    queryFn: () => getMe(),
-    staleTime: 5 * 60_000,
-  });
+  const { data: me } = useMe();
+  const canWrite = canWritePage(me, 'users');
+  const superuser = isSuperuser(me);
+  // The server refuses non-superusers any action on a superuser account.
+  const canManage = (u: AdminUser) => canWrite && (superuser || !u.admin);
 
   if (isError && error instanceof AuthError) {
     void navigate({ to: '/login' });
@@ -86,7 +99,7 @@ export function UsersPage() {
   // only visible users are non-deletable (e.g. you're the only super-admin)
   // the header checkbox is disabled rather than misleading.
   const deletableUsernames = users
-    .filter((u) => u.username !== me?.username)
+    .filter((u) => u.username !== me?.username && canManage(u))
     .map((u) => u.username);
   const allChecked =
     deletableUsernames.length > 0 &&
@@ -168,12 +181,14 @@ export function UsersPage() {
         <p className="text-xs text-[color:var(--text-3)] flex-1">
           {t('usersPage.superAdminView')}
         </p>
-        <Button
-          type="button"
-          onClick={() => setModal({ kind: 'create' })}
-        >
-          {t('usersPage.addOperator')}
-        </Button>
+        {canWrite && (
+          <Button
+            type="button"
+            onClick={() => setModal({ kind: 'create' })}
+          >
+            {t('usersPage.addOperator')}
+          </Button>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto min-h-0">
@@ -267,10 +282,10 @@ export function UsersPage() {
                   )}
                 >
                   <td className="px-4 py-3">
-                    {isSelf ? (
+                    {isSelf || !canManage(u) ? (
                       <span
-                        aria-label="You can't select your own account"
-                        title="You can't delete your own account."
+                        aria-label={isSelf ? "You can't select your own account" : 'Superuser accounts can only be managed by a superuser'}
+                        title={isSelf ? "You can't delete your own account." : 'Superuser accounts can only be managed by a superuser.'}
                         className="inline-block w-4 h-4"
                       />
                     ) : (
@@ -296,9 +311,14 @@ export function UsersPage() {
                   </td>
                   <td className="px-4 py-3 text-xs">
                     <div className="flex flex-wrap items-center gap-1">
-                      {u.admin && <MetadataBadge>{t('usersPage.admin')}</MetadataBadge>}
+                      {u.admin && <MetadataBadge>Superuser</MetadataBadge>}
+                      {ROLES.filter((r) => u[r.key]).map((r) => (
+                        <MetadataBadge key={r.key}>{r.label}</MetadataBadge>
+                      ))}
                       {u.service && <MetadataBadge>{t('usersPage.service')}</MetadataBadge>}
-                      {!u.admin && !u.service && <MetadataBadge>{t('usersPage.operator')}</MetadataBadge>}
+                      {!u.admin && !u.service && !ROLES.some((r) => u[r.key]) && (
+                        <MetadataBadge>{t('usersPage.operator')}</MetadataBadge>
+                      )}
                       {u.auth_source === 'oidc' && (
                         <MetadataBadge className="cursor-help" title={t('usersPage.jitOidc')}>
                           OIDC
@@ -315,6 +335,14 @@ export function UsersPage() {
                     <span title={u.last_access}>{formatRelative(u.last_access)}</span>
                   </td>
                   <td className="px-2 py-3 text-right whitespace-nowrap">
+                    {canManage(u) && (<>
+                    <button
+                      type="button"
+                      onClick={() => setModal({ kind: 'roles', user: u })}
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
+                    >
+                      Roles…
+                    </button>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'permissions', user: u })}
@@ -345,6 +373,7 @@ export function UsersPage() {
                         {t('commonExt.delete')}…
                       </button>
                     )}
+                    </>)}
                   </td>
                 </tr>
                 );
@@ -426,6 +455,14 @@ export function UsersPage() {
           onSaved={invalidate}
         />
       )}
+      {modal.kind === 'roles' && (
+        <RolesModal
+          user={modal.user}
+          superuser={superuser}
+          onClose={() => setModal({ kind: 'closed' })}
+          onSaved={invalidate}
+        />
+      )}
       {modal.kind === 'token' && (
         <TokenModal
           user={modal.user}
@@ -434,6 +471,7 @@ export function UsersPage() {
       )}
       {modal.kind === 'create' && (
         <CreateUserModal
+          superuser={superuser}
           onClose={() => setModal({ kind: 'closed' })}
           onCreated={invalidate}
         />
@@ -457,8 +495,149 @@ export function UsersPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Global roles: shared checkboxes, plus the Roles modal on each row
+// ---------------------------------------------------------------------------
+type RoleFlags = Record<RoleKey | 'admin', boolean>;
+
+function RoleCheckboxes({
+  value,
+  onChange,
+  superuser,
+}: {
+  value: RoleFlags;
+  onChange: (next: RoleFlags) => void;
+  superuser: boolean;
+}) {
+  // Only superusers may grant or clear the superuser flag.
+  const rows = [
+    ...(superuser
+      ? [{ key: 'admin' as const, label: 'Superuser', hint: 'full access across all environments' }]
+      : []),
+    ...ROLES,
+  ];
+  return (
+    <fieldset className="space-y-2 border border-[color:var(--border)] rounded-md p-3">
+      <legend className="px-1 text-xs font-semibold text-[color:var(--text-2)]">Roles</legend>
+      {rows.map((r) => (
+        <label key={r.key} className="flex items-center gap-2 text-xs text-[color:var(--text-1)] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={value[r.key]}
+            onChange={(e) => onChange({ ...value, [r.key]: e.target.checked })}
+            className="accent-[color:var(--signal)]"
+          />
+          <span>
+            {r.label} <span className="text-[color:var(--text-3)]">— {r.hint}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+function RolesModal({
+  user,
+  superuser,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser;
+  superuser: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const initial: RoleFlags = {
+    admin: user.admin,
+    user_admin: user.user_admin,
+    env_manager: user.env_manager,
+    read_only_admin: user.read_only_admin,
+    alert_admin: user.alert_admin,
+  };
+  const [roles, setRoles] = useState<RoleFlags>(initial);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Send only what changed; omitted role fields stay as they are on the server.
+  const patch: RolePatch = {};
+  if (roles.admin !== initial.admin) {
+    if (roles.admin) patch.admin = true;
+    else patch.not_admin = true;
+  }
+  for (const r of ROLES) {
+    if (roles[r.key] !== initial[r.key]) patch[r.key] = roles[r.key];
+  }
+  const changed = Object.keys(patch).length > 0;
+
+  const mutation = useMutation({
+    mutationFn: () => editUserRoles(user.username, patch),
+    onSuccess: () => {
+      onSaved();
+      onClose();
+    },
+    onError: (e) => {
+      if (e instanceof AuthError) {
+        window.location.href = appPath('/login');
+        return;
+      }
+      setErr(e instanceof Error ? e.message : 'Save failed');
+    },
+  });
+
+  return (
+    <ModalShell title={`Roles for ${user.username}`} titleId="user-roles-modal-title" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setErr(null);
+          mutation.mutate();
+        }}
+        className="space-y-4"
+      >
+        <RoleCheckboxes value={roles} onChange={setRoles} superuser={superuser} />
+        {err && (
+          <p
+            role="alert"
+            className="text-xs text-[color:var(--danger)] bg-[rgba(var(--danger-r),var(--danger-g),var(--danger-b),0.08)] px-3 py-2 rounded-md"
+          >
+            {err}
+          </p>
+        )}
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!changed || mutation.isPending}
+            className={cn(
+              'px-3 py-1.5 text-xs font-medium rounded-md',
+              'bg-[color:var(--signal)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--signal-bright)]',
+              'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            {mutation.isPending ? 'Saving…' : 'Save roles'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Permissions modal
 // ---------------------------------------------------------------------------
+type Tier = NonNullable<EnvAccess['query_tier']>;
+const TIERS: Tier[] = ['none', 'tags', 'standard', 'full'];
+const TIER_LABELS: Record<Tier, string> = { none: 'None', tags: 'Tags', standard: 'Standard', full: 'Full' };
+// Rows saved before tiers existed carry only the boolean, which means standard.
+const tierOf = (tier: Tier | undefined, flag: boolean | undefined): Tier =>
+  tier ?? (flag ? 'standard' : 'none');
+
+type PermForm = { user: boolean; admin: boolean; query_tier: Tier; carve_tier: Tier; scope_tags: number[] };
+
 function PermissionsModal({
   user,
   onClose,
@@ -470,20 +649,30 @@ function PermissionsModal({
 }) {
   const { t } = useTranslation();
   const [envUuid, setEnvUuid] = useState('');
-  const [access, setAccess] = useState<EnvAccess>({
+  const [form, setForm] = useState<PermForm>({
     user: true,
-    query: false,
-    carve: false,
     admin: false,
+    query_tier: 'none',
+    carve_tier: 'none',
+    scope_tags: [],
   });
   const [err, setErr] = useState<string | null>(null);
+  const usesTags = form.query_tier === 'tags' || form.carve_tier === 'tags';
+  // The boolean is authoritative on the server, so it always follows the tier.
+  const bulkAccess: EnvAccess = {
+    user: form.user,
+    admin: form.admin,
+    query: form.query_tier !== 'none',
+    carve: form.carve_tier !== 'none',
+    query_tier: form.query_tier,
+    carve_tier: form.carve_tier,
+  };
+  const access: EnvAccess = { ...bulkAccess, scope_tags: usesTags ? form.scope_tags : [] };
 
   // Pull the env list so we can render a dropdown of name → uuid
   // mappings. Falls back to a free-text input on query error so an
   // operator can still type a UUID manually if the env-list endpoint
-  // is flaky. The user opening this modal is necessarily a super-
-  // admin (UsersPage gates on admin-level), so /api/v1/environments
-  // is reachable.
+  // is flaky.
   const { data: envs, isLoading: envsLoading, error: envsError } = useQuery({
     queryKey: ['environments-for-permissions'],
     queryFn: () => listEnvironments(),
@@ -511,23 +700,37 @@ function PermissionsModal({
   // with no rows in existingPerms.permissions falls back to a
   // zero-value EnvAccess (everything false) so the modal shows
   // "this user has no access here yet" honestly.
+  // Switching environment replaces the tag selection with that env's grants.
   useEffect(() => {
     if (!envUuid) return;
     const found = existingPerms?.permissions?.[envUuid];
-    if (found) {
-      // Legacy dialog: keep only the bools so saves never resend loaded
-      // tiers or scope_tags (the bulk endpoint rejects scope_tags).
-      setAccess({ user: found.user, query: found.query, carve: found.carve, admin: found.admin });
-    } else {
-      setAccess({ user: false, query: false, carve: false, admin: false });
-    }
+    setForm({
+      user: found?.user ?? false,
+      admin: found?.admin ?? false,
+      query_tier: tierOf(found?.query_tier, found?.query),
+      carve_tier: tierOf(found?.carve_tier, found?.carve),
+      scope_tags: found?.scope_tags ?? [],
+    });
   }, [envUuid, existingPerms]);
+
+  // /tags/{env} needs env admin, which a user admin may lack; /tags allows read-only roles.
+  const envId = envs?.find((e) => e.uuid === envUuid)?.id;
+  const { data: allTags } = useQuery({
+    queryKey: ['tags-all'],
+    queryFn: () => listAllTags(),
+    staleTime: 60_000,
+    enabled: usesTags,
+  });
+  const tagOptions = (allTags ?? []).filter((tg) => tg.environment_id === envId && !tg.sensitive);
 
   const mutation = useMutation({
     mutationFn: () => {
       const trimmed = envUuid.trim();
       if (!trimmed) throw new Error('env_uuid is required');
-      return setUserPermissions(user.username, { env_uuid: trimmed, access });
+      // Drop grants for tags the env no longer offers (e.g. now sensitive), but only when known.
+      const offered = envId !== undefined && allTags ? new Set(tagOptions.map((tg) => tg.id)) : null;
+      const scope_tags = offered ? (access.scope_tags ?? []).filter((id) => offered.has(id)) : access.scope_tags;
+      return setUserPermissions(user.username, { env_uuid: trimmed, access: { ...access, scope_tags } });
     },
     onSuccess: () => {
       onSaved();
@@ -556,7 +759,8 @@ function PermissionsModal({
   const bulkMutation = useMutation({
     mutationFn: () => {
       const envUuids = (envs ?? []).map((e) => e.uuid);
-      return setUserPermissionsAllSafe(user.username, access, envUuids);
+      // The server rejects scope tags in bulk, and tiers here are never 'tags'.
+      return setUserPermissionsAllSafe(user.username, bulkAccess, envUuids);
     },
     onSuccess: (report) => {
       setBulkReport(report);
@@ -649,23 +853,69 @@ function PermissionsModal({
           <legend className="px-1 text-xs font-semibold text-[color:var(--text-2)]">
             Access
           </legend>
-          {(['user', 'query', 'carve', 'admin'] as const).map((k) => (
+          {(['user', 'admin'] as const).map((k) => (
             <label key={k} className="flex items-center gap-2 text-xs text-[color:var(--text-1)]">
               <input
                 type="checkbox"
-                checked={access[k]}
-                onChange={(e) => setAccess((a) => ({ ...a, [k]: e.target.checked }))}
+                checked={form[k]}
+                onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.checked }))}
                 className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
               />
               <span className="tabular-nums">{k}</span>
               <span className="text-[color:var(--text-3)]">
                 {k === 'user' && '— see this env in the SPA'}
-                {k === 'query' && '— run distributed queries'}
-                {k === 'carve' && '— initiate file carves'}
                 {k === 'admin' && '— manage env settings + tags + users'}
               </span>
             </label>
           ))}
+          {(['query_tier', 'carve_tier'] as const).map((k) => {
+            const label = k === 'query_tier' ? 'Query tier' : 'Carve tier';
+            // Tag grants need a single environment's tags.
+            const tiers = TIERS.filter((tier) => tier !== 'tags' || envUuid || form[k] === 'tags');
+            return (
+              <div key={k} className="flex items-center gap-2 text-xs text-[color:var(--text-1)]">
+                <label htmlFor={`perm-${k}`} className="w-20">{label}</label>
+                <select
+                  id={`perm-${k}`}
+                  value={form.admin ? 'env-admin' : form[k]}
+                  disabled={form.admin}
+                  onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value as Tier }))}
+                  className="px-2 py-1 text-xs rounded-md border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)] disabled:opacity-60"
+                >
+                  {form.admin && <option value="env-admin">Full (environment admin)</option>}
+                  {tiers.map((tier) => (
+                    <option key={tier} value={tier}>{TIER_LABELS[tier]}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+          {usesTags && !form.admin && (
+            <fieldset className="space-y-1 pt-1">
+              <legend className="text-xs font-semibold text-[color:var(--text-2)]">Scope tags</legend>
+              {tagOptions.length === 0 && (
+                <p className="text-xs text-[color:var(--text-3)]">No tags available in this environment.</p>
+              )}
+              {tagOptions.map((tg) => (
+                <label key={tg.id} className="flex items-center gap-2 text-xs text-[color:var(--text-1)]">
+                  <input
+                    type="checkbox"
+                    checked={form.scope_tags.includes(tg.id)}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        scope_tags: e.target.checked
+                          ? [...f.scope_tags, tg.id]
+                          : f.scope_tags.filter((id) => id !== tg.id),
+                      }))
+                    }
+                    className="rounded border-[color:var(--border)] accent-[color:var(--signal)]"
+                  />
+                  {tg.name}
+                </label>
+              ))}
+            </fieldset>
+          )}
         </fieldset>
 
         {err && (
@@ -710,7 +960,10 @@ function PermissionsModal({
               first click → confirmation pill; second click → fire.
               Disabled when env-list query is loading or in error
               state (we have no UUIDs to enumerate). */}
-          {bulkConfirm ? (
+          {usesTags && (
+            <span className="text-xs text-[color:var(--text-3)]">Tag grants are per environment</span>
+          )}
+          {bulkConfirm && !usesTags ? (
             <button
               type="button"
               disabled={bulkMutation.isPending}
@@ -730,7 +983,7 @@ function PermissionsModal({
           ) : (
             <button
               type="button"
-              disabled={!envs || envs.length === 0 || envsLoading}
+              disabled={!envs || envs.length === 0 || envsLoading || usesTags}
               onClick={() => setBulkConfirm(true)}
               className="px-3 py-1.5 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title={t('usersPage.grantAllEnvs')}
@@ -902,9 +1155,11 @@ function TokenModal({
 // success.
 // ====================================================================
 function CreateUserModal({
+  superuser,
   onClose,
   onCreated,
 }: {
+  superuser: boolean;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -913,7 +1168,13 @@ function CreateUserModal({
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [fullname, setFullname] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [roles, setRoles] = useState<RoleFlags>({
+    admin: false,
+    user_admin: false,
+    env_manager: false,
+    read_only_admin: false,
+    alert_admin: false,
+  });
   const [err, setErr] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -948,7 +1209,7 @@ function CreateUserModal({
         password,
         email: email.trim(),
         fullname: fullname.trim(),
-        admin: isAdmin,
+        ...roles,
       });
     },
     onSuccess: () => {
@@ -1026,20 +1287,7 @@ function CreateUserModal({
             className="w-full px-3 py-1.5 text-sm rounded border border-[color:var(--border)] bg-[color:var(--bg-3)] text-[color:var(--text-1)]"
           />
         </div>
-        <label className="flex items-center gap-2 text-xs text-[color:var(--text-1)] cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isAdmin}
-            onChange={(e) => setIsAdmin(e.target.checked)}
-            className="accent-[color:var(--signal)]"
-          />
-          <span>
-            Super-admin{' '}
-            <span className="text-[color:var(--text-3)]">
-              (full access across all environments)
-            </span>
-          </span>
-        </label>
+        <RoleCheckboxes value={roles} onChange={setRoles} superuser={superuser} />
 
         {err && (
           <p

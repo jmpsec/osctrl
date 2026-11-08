@@ -11,7 +11,7 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { TagsPage } from './TagsPage';
-import type { AdminTag } from '$/api/types';
+import type { AdminTag, UserMeResponse } from '$/api/types';
 
 const mockList = vi.fn<() => Promise<AdminTag[]>>();
 const mockAction = vi.fn();
@@ -23,6 +23,11 @@ vi.mock('$/api/tags', () => ({
   listAllTags: vi.fn(),
   getEnvTag: vi.fn(),
 }));
+
+const mockGetMe = vi.fn<() => Promise<UserMeResponse>>();
+const mockListEnvs = vi.fn();
+vi.mock('$/api/users', () => ({ getMe: () => mockGetMe() }));
+vi.mock('$/api/environments', () => ({ listEnvironments: () => mockListEnvs() }));
 
 vi.mock('$/api/client', () => ({
   isAuthenticated: () => true,
@@ -40,6 +45,16 @@ vi.mock('$/api/client', () => ({
     }
   },
 }));
+
+function makeMe(overrides: Partial<UserMeResponse> = {}): UserMeResponse {
+  return {
+    username: 'root', email: '', fullname: '', admin: true, user_admin: false, env_manager: false,
+    read_only_admin: false, alert_admin: false, service: false, uuid: 'aaaa',
+    token_expire: new Date(Date.now() + 86_400_000).toISOString(),
+    last_access: new Date().toISOString(), permissions: {}, preferred_language: '',
+    ...overrides,
+  };
+}
 
 function makeTag(overrides: Partial<AdminTag> = {}): AdminTag {
   return {
@@ -104,6 +119,9 @@ function renderWithProviders(router: ReturnType<typeof makeTestRouter>) {
 describe('TagsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetMe.mockResolvedValue(makeMe());
+    mockListEnvs.mockResolvedValue([{ uuid: 'env-uuid', name: 'test-env' }]);
+    mockAction.mockResolvedValue({ data: 'ok' });
   });
 
   it('renders tag rows after loading', async () => {
@@ -154,5 +172,94 @@ describe('TagsPage', () => {
     expect(args[0]).toBe('test-env');
     expect(args[1]).toBe('add');
     expect(args[2].name).toBe('new_tag');
+  });
+
+  const CONFIRM =
+    'Marking this tag sensitive removes it from every user\'s tag grants and cancels pending queries and carves that users below full tier can no longer reach.';
+
+  async function openEdit(tag: AdminTag) {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([tag]);
+    renderWithProviders(makeTestRouter());
+    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+    await screen.findByRole('dialog');
+    return user;
+  }
+
+  it('shows a Sensitive badge on sensitive tags only', async () => {
+    mockList.mockResolvedValue([makeTag({ sensitive: true }), makeTag({ id: 2, name: 'staging' })]);
+    renderWithProviders(makeTestRouter());
+    await screen.findByText('staging');
+    expect(screen.getAllByText('Sensitive')).toHaveLength(1);
+  });
+
+  it('sends sensitive: true when creating with Sensitive checked', async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue([]);
+    renderWithProviders(makeTestRouter());
+    await user.click(await screen.findByRole('button', { name: /new tag/i }));
+    await user.type(await screen.findByLabelText(/^name$/i), 'new_tag');
+    await user.click(screen.getByLabelText('Sensitive'));
+    await user.click(screen.getByRole('button', { name: /create tag/i }));
+    await waitFor(() => expect(mockAction).toHaveBeenCalledTimes(1));
+    expect(mockAction.mock.calls[0][2]).toMatchObject({ name: 'new_tag', sensitive: true });
+  });
+
+  it('confirms before marking an existing tag sensitive, then sends sensitive: true', async () => {
+    const user = await openEdit(makeTag());
+    await user.click(screen.getByLabelText('Sensitive'));
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    expect(await screen.findByText(CONFIRM)).toBeInTheDocument();
+    expect(mockAction).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /mark sensitive/i }));
+    await waitFor(() => expect(mockAction).toHaveBeenCalledTimes(1));
+    expect(mockAction.mock.calls[0][2]).toMatchObject({ sensitive: true });
+  });
+
+  it('shows a name conflict after confirming Mark sensitive', async () => {
+    const { ApiError } = await import('$/api/client');
+    mockAction.mockRejectedValue(new ApiError('conflict', 409));
+    const user = await openEdit(makeTag());
+    await user.click(screen.getByLabelText('Sensitive'));
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await user.click(await screen.findByRole('button', { name: /mark sensitive/i }));
+    expect(
+      await screen.findByText('A tag with that name already exists in this environment.'),
+    ).toBeInTheDocument();
+  });
+
+  it('sends nothing when the sensitive confirmation is cancelled', async () => {
+    const user = await openEdit(makeTag());
+    await user.click(screen.getByLabelText('Sensitive'));
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await screen.findByText(CONFIRM);
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(mockAction).not.toHaveBeenCalled();
+  });
+
+  it('sends sensitive: false without confirmation when unchecking', async () => {
+    const user = await openEdit(makeTag({ sensitive: true }));
+    await user.click(screen.getByLabelText('Sensitive'));
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(mockAction).toHaveBeenCalledTimes(1));
+    expect(mockAction.mock.calls[0][2]).toMatchObject({ sensitive: false });
+    expect(screen.queryByText(CONFIRM)).not.toBeInTheDocument();
+  });
+
+  it('omits sensitive on edit when the flag is unchanged', async () => {
+    const user = await openEdit(makeTag({ sensitive: true }));
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(mockAction).toHaveBeenCalledTimes(1));
+    expect(mockAction.mock.calls[0][2]).not.toHaveProperty('sensitive');
+  });
+
+  it('hides write controls without env manage access', async () => {
+    mockGetMe.mockResolvedValue(makeMe({ admin: false, read_only_admin: true }));
+    mockList.mockResolvedValue([makeTag()]);
+    renderWithProviders(makeTestRouter());
+    await screen.findByText('production');
+    expect(screen.queryByRole('button', { name: /new tag/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
   });
 });

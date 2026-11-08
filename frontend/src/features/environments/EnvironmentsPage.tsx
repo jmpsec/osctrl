@@ -20,6 +20,8 @@ import { IconPicker, resolveEnvIcon } from '$/components/forms/IconPicker';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { Button } from '$/components/atoms/Button';
 import { appPath } from '$/lib/base-path'
+import { useMe } from '$/lib/useMe';
+import { canWritePage, envCaps } from '$/lib/access';
 
 type ModalMode =
   | { kind: 'closed' }
@@ -33,6 +35,8 @@ export function EnvironmentsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [modal, setModal] = useState<ModalMode>({ kind: 'closed' });
+  const { data: me } = useMe();
+  const canCreate = canWritePage(me, 'environments');
 
   // Multi-select state — matches the dock pattern used on Tags / Carves
   // / Nodes / Users. Keyed by env name since DELETE /environments/{env}
@@ -52,6 +56,8 @@ export function EnvironmentsPage() {
   }
 
   const envs = data ?? [];
+  // PATCH/DELETE need env_manager (or superuser) and env admin; Config only needs env admin.
+  const canMutate = (uuid: string) => canCreate && envCaps(me, uuid).manage;
 
   function invalidate() {
     void qc.invalidateQueries({ queryKey: ['environments'] });
@@ -59,7 +65,7 @@ export function EnvironmentsPage() {
   }
 
   // Header checkbox state — same shape as TagsPage's toggleAll.
-  const allVisibleNames = envs.map((e) => e.name);
+  const allVisibleNames = envs.filter((e) => canMutate(e.uuid)).map((e) => e.name);
   const allChecked =
     allVisibleNames.length > 0 &&
     allVisibleNames.every((n) => selectedNames.has(n));
@@ -143,12 +149,14 @@ export function EnvironmentsPage() {
         </p>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            type="button"
-            onClick={() => setModal({ kind: 'create' })}
-          >
-            {t('environmentsPage.newEnv')}
-          </Button>
+          {canCreate && (
+            <Button
+              type="button"
+              onClick={() => setModal({ kind: 'create' })}
+            >
+              {t('environmentsPage.newEnv')}
+            </Button>
+          )}
 
           {isFetching && !isLoading && (
             <span
@@ -167,7 +175,7 @@ export function EnvironmentsPage() {
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--bg-0)] sticky top-0 z-10">
               <th scope="col" className="px-4 py-3 w-10">
-                <input
+                {allVisibleNames.length > 0 && <input
                   type="checkbox"
                   aria-label={t('environmentsPage.selectEnvs')}
                   checked={allChecked}
@@ -176,7 +184,7 @@ export function EnvironmentsPage() {
                   }}
                   onChange={toggleAll}
                   className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
-                />
+                />}
               </th>
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[color:var(--text-2)] uppercase tracking-wide">
                 Name
@@ -236,7 +244,7 @@ export function EnvironmentsPage() {
                       </svg>
                     }
                     title={t('environmentsPage.noEnvs')}
-                    action={
+                    action={canCreate ? (
                       <button
                         type="button"
                         onClick={() => setModal({ kind: 'create' })}
@@ -244,7 +252,7 @@ export function EnvironmentsPage() {
                       >
                         Create your first environment
                       </button>
-                    }
+                    ) : undefined}
                   />
                 </td>
               </tr>
@@ -254,6 +262,7 @@ export function EnvironmentsPage() {
               !isError &&
               envs.map((env) => {
                 const isSelected = selectedNames.has(env.name);
+                const canManage = envCaps(me, env.uuid).manage;
                 return (
                 <tr
                   key={env.id}
@@ -263,13 +272,13 @@ export function EnvironmentsPage() {
                   )}
                 >
                   <td className="px-4 py-3">
-                    <input
+                    {canMutate(env.uuid) && <input
                       type="checkbox"
                       aria-label={`Select environment ${env.name}`}
                       checked={isSelected}
                       onChange={() => toggleOne(env.name)}
                       className="rounded border-[color:var(--border)] accent-[color:var(--signal)] cursor-pointer"
-                    />
+                    />}
                   </td>
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-2">
@@ -304,6 +313,8 @@ export function EnvironmentsPage() {
                     <span title={env.created_at}>{formatRelative(env.created_at)}</span>
                   </td>
                   <td className="px-2 py-3 text-right whitespace-nowrap">
+                    {canManage && (
+                      <>
                     <button
                       type="button"
                       onClick={() => void navigate({
@@ -314,6 +325,8 @@ export function EnvironmentsPage() {
                     >
                       Config…
                     </button>
+                    {canMutate(env.uuid) && (
+                      <>
                     <button
                       type="button"
                       onClick={() => setModal({ kind: 'edit', env })}
@@ -328,6 +341,10 @@ export function EnvironmentsPage() {
                     >
                       Delete
                     </button>
+                      </>
+                    )}
+                      </>
+                    )}
                   </td>
                 </tr>
                 );
@@ -337,7 +354,7 @@ export function EnvironmentsPage() {
       </div>
 
       {/* Multi-select dock — matches CarvesListPage / TagsPage / UsersPage. */}
-      {selectedNames.size > 0 && (
+      {canCreate && selectedNames.size > 0 && (
         <div
           role="toolbar"
           aria-label={t('commonExt.bulkActions')}

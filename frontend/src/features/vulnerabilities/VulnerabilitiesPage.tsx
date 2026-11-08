@@ -13,7 +13,8 @@ import {
   type VulnState,
   type VulnSummary,
 } from '$/api/vulnerabilities';
-import { getMe } from '$/api/users';
+import { useMe } from '$/lib/useMe';
+import { canSeePage, canWritePage } from '$/lib/access';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useLocale } from '$/i18n/useLocale';
 import { StatCard } from '$/components/data/StatCard';
@@ -52,7 +53,7 @@ export function VulnerabilitiesPage() {
   const [advisory, setAdvisory] = useState<string | null>(null);
   const closeAdvisory = useCallback(() => setAdvisory(null), []);
 
-  const { data: me } = useQuery({ queryKey: ['users-me'], queryFn: () => getMe(), staleTime: 5 * 60_000 });
+  const { data: me } = useMe();
   const summary = useQuery({
     queryKey: ['vuln-summary', env],
     queryFn: () => getVulnSummary(env),
@@ -202,7 +203,7 @@ export function VulnerabilitiesPage() {
         />
       )}
 
-      {me?.admin === true && <FeedsCard />}
+      {canSeePage(me, 'vulnFeeds') && <FeedsCard canWrite={canWritePage(me, 'vulnFeeds')} />}
 
       {advisory && <AdvisoryModal env={env} advisoryId={advisory} onClose={closeAdvisory} />}
     </div>

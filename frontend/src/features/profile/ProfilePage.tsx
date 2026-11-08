@@ -4,7 +4,6 @@ import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
-  getMe,
   patchMe,
   changeMyPassword,
   refreshUserToken,
@@ -13,6 +12,7 @@ import {
 import { listEnvironments, type TLSEnvironment } from '$/api/environments';
 import { AuthError, ApiError, primeCsrfFromCookie } from '$/api/client';
 import { cn } from '$/lib/cn';
+import { useMe } from '$/lib/useMe';
 import { formatRelative } from '$/lib/time';
 import { toggleTheme, getInitialTheme } from '$/lib/theme';
 import type { Theme } from '$/lib/design-tokens';
@@ -23,7 +23,7 @@ import { Label } from '$/components/atoms/Label';
 import { Skeleton } from '$/components/data/Skeleton';
 import { StatusBadge } from '$/components/data/StatusBadge';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
-import type { EnvAccess } from '$/api/types';
+import type { EnvAccess, UserMeResponse } from '$/api/types';
 import { MFAPanel } from './MFAPanel';
 import { appPath } from '$/lib/base-path'
 
@@ -59,11 +59,7 @@ export function ProfilePage() {
     setTheme(t);
   }
 
-  const { data: me, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['me'],
-    queryFn: () => getMe(),
-    staleTime: 60_000,
-  });
+  const { data: me, isLoading, isError, error, refetch } = useMe();
   const { data: envs, isLoading: envsLoading } = useQuery({
     queryKey: ['environments-profile'],
     queryFn: () => listEnvironments(),
@@ -244,7 +240,7 @@ export function ProfilePage() {
                   </span>
                 </>
               )}
-              <RoleBadge admin={me.admin} service={me.service} />
+              <RoleBadges me={me} />
             </div>
 
             {/* Spacer */}
@@ -696,15 +692,24 @@ function Panel({
   );
 }
 
-function RoleBadge({ admin, service }: { admin: boolean; service: boolean }) {
+function RoleBadges({ me }: { me: UserMeResponse }) {
   const { t } = useTranslation();
-  if (admin) {
-    return <MetadataBadge>{t('profilePage.superAdmin')}</MetadataBadge>;
-  }
-  if (service) {
-    return <MetadataBadge>{t('usersPage.service')}</MetadataBadge>;
-  }
-  return <MetadataBadge>{t('usersPage.operator')}</MetadataBadge>;
+  // Show every role held; a plain operator (or service account) gets one fallback badge.
+  const roles = [
+    me.admin && t('profilePage.superAdmin'),
+    me.user_admin && 'User admin',
+    me.env_manager && 'Environment manager',
+    me.read_only_admin && 'Read-only admin',
+    me.alert_admin && 'Alert admin',
+  ].filter((r): r is string => !!r);
+  if (roles.length === 0) roles.push(me.service ? t('usersPage.service') : t('usersPage.operator'));
+  return (
+    <>
+      {roles.map((r) => (
+        <MetadataBadge key={r}>{r}</MetadataBadge>
+      ))}
+    </>
+  );
 }
 
 function PermissionsTable({

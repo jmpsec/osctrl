@@ -8,7 +8,8 @@ import {
   LOG_TYPE_LABELS,
   type AuditLogsQuery,
 } from '$/api/audit';
-import { getMe } from '$/api/users';
+import { useMe } from '$/lib/useMe';
+import { canSeePage } from '$/lib/access';
 import { AuthError } from '$/api/client';
 import { cn } from '$/lib/cn';
 import { SkeletonRow } from '$/components/data/Skeleton';
@@ -40,12 +41,8 @@ export function AuditPage() {
   // (the api force-clamps the username filter server-side) and
   // shouldn't see the username input — typing other usernames
   // would be a no-op and just confuse the operator.
-  const { data: me } = useQuery({
-    queryKey: ['users-me'],
-    queryFn: () => getMe(),
-    staleTime: 5 * 60_000,
-  });
-  const isSuperAdmin = me?.admin === true;
+  const { data: me } = useMe();
+  const canSeeAll = canSeePage(me, 'auditAll');
 
   const service: string = search.service ?? '';
   const username: string = search.username ?? '';
@@ -154,10 +151,10 @@ export function AuditPage() {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--border)] flex-wrap">
         <h1 className="font-display text-lg font-semibold text-[color:var(--text-1)]">
-          {isSuperAdmin ? 'Audit Trail' : 'My Activity'}
+          {canSeeAll ? 'Audit Trail' : 'My Activity'}
         </h1>
         <p className="text-xs text-[color:var(--text-3)]">
-          {isSuperAdmin
+          {canSeeAll
             ? 'Every state-changing API call writes one row.'
             : 'Your activity history. State-changing API calls you make appear here.'}
         </p>
@@ -207,7 +204,7 @@ export function AuditPage() {
             force-clamped to their own activity server-side; showing
             the input would let them type other names that have no
             effect — confusing. */}
-        {isSuperAdmin && (
+        {canSeeAll && (
           <FilterField id="f-username" label={t('auditPage.user')}>
             <input
               id="f-username"

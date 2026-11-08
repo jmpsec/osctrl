@@ -7,6 +7,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createAlertRule, applyAlerts, listAlertChannels, type AlertChannel } from '$/api/alerts';
 import { useQuery } from '@tanstack/react-query';
 import { AuthError } from '$/api/client';
+import { useMe } from '$/lib/useMe';
+import { canLogContentRule } from '$/lib/access';
 
 /**
  * NodeAlertModal — the node detail page's "alert on this node" flow.
@@ -68,12 +70,14 @@ const NODE_ALERT_KINDS: Record<
 
 export function NodeAlertModal({
   envID,
+  envUuid,
   envName,
   uuid,
   hostname,
   onClose,
 }: {
   envID: number | undefined;
+  envUuid: string | undefined;
   envName: string;
   uuid: string;
   hostname: string;
@@ -81,6 +85,11 @@ export function NodeAlertModal({
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { data: me } = useMe();
+  // Log-content rules need superuser or full query tier in this environment.
+  const kinds = (Object.keys(NODE_ALERT_KINDS) as NodeAlertKind[]).filter(
+    (k) => k === 'inactive' || canLogContentRule(me, envUuid),
+  );
   const [kind, setKind] = useState<NodeAlertKind>('inactive');
   const [pattern, setPattern] = useState('');
   const [matchField, setMatchField] = useState('');
@@ -213,7 +222,7 @@ export function NodeAlertModal({
 
         {/* Rule kind */}
         <div role="radiogroup" aria-label={t('alertModal.alertType')} className="space-y-2">
-          {(Object.keys(NODE_ALERT_KINDS) as NodeAlertKind[]).map((k) => (
+          {kinds.map((k) => (
             <label
               key={k}
               className={cn(

@@ -29,10 +29,10 @@ import { useTranslation } from 'react-i18next';
 import { Logo } from '$/components/atoms/Logo';
 import { EnvSwitcher } from './EnvSwitcher';
 import { listEnvironments } from '$/api/environments';
-import { getMe } from '$/api/users';
 import { getFeatures } from '$/api/features';
 import { useOsctrldEnabled } from '$/lib/useOsctrldEnabled';
-import type { EnvAccess } from '$/api/types';
+import { useMe } from '$/lib/useMe';
+import { canSeePage, envCaps, isReadOnlyAdmin, type Page } from '$/lib/access';
 import { readActiveEnvironment, writeActiveEnvironment } from '$/lib/environment-scope';
 import {
   SIDE_NAV_PREVIEW_ID,
@@ -195,13 +195,8 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
   // per-env rows for AdminLevel + NoEnvironment).
   //
   // Cache shared with the /_app layout route (same query key).
-  const { data: me } = useQuery({
-    queryKey: ['users-me'],
-    queryFn: () => getMe(),
-    staleTime: 5 * 60_000,
-    retry: 1,
-  });
-  const isSuperAdmin = me?.admin === true;
+  const { data: me } = useMe();
+  const can = (p: Page) => canSeePage(me, p);
   // Service Config is opt-in server-side (service.serviceConfigEnabled).
   // When it is off the endpoints do not exist, so hide the entry rather
   // than link to a page that can only fail.
@@ -217,17 +212,15 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
   const envUuid = envs?.find(
     (e) => e.name === currentEnv || e.uuid === currentEnv,
   )?.uuid;
-  const myEnvAccess: EnvAccess | undefined =
-    envUuid ? me?.permissions?.[envUuid] : undefined;
-  // Super-admins bypass per-env checks. For everyone else, "can see
-  // this env's surface at all" requires env.user OR env.admin
-  // (mirrors the server's CheckPermissions logic for read-only
-  // surfaces). Without a permission map we hide everything env-
-  // scoped — the safe default that matches the server's posture.
-  const canSeeEnv = isSuperAdmin || !!myEnvAccess?.user || !!myEnvAccess?.admin;
-  const canQuery = isSuperAdmin || !!myEnvAccess?.query;
-  const canCarve = isSuperAdmin || !!myEnvAccess?.carve;
-  const canManageEnv = isSuperAdmin || !!myEnvAccess?.admin;
+  const caps = envCaps(me, envUuid ?? '');
+  // Read-only admins see every environment's read pages but not the write surfaces.
+  const roAdmin = isReadOnlyAdmin(me);
+  const canSeeEnv = caps.view;
+  const canQueryPages = caps.query || (roAdmin && caps.view);
+  const canCarvePages = caps.carve || (roAdmin && caps.view);
+  const canManageEnv = caps.manage;
+  const adminPages: Page[] = ['users', 'environments', 'settings', 'serviceConfig', 'logSinks', 'extensions', 'osqueryVersions', 'alerts', 'health', 'authProviders'];
+  const showAdmin = adminPages.some(can);
 
   // Env-scoped routes live under /_app/env/{env}/... per
   // frontend/src/routes/_app/env/$env/*.tsx — the "_app" prefix is the
@@ -419,7 +412,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             </NavItem>
           </div>
         )}
-        {canQuery && (
+        {canQueryPages && (
           <div {...previewTriggerProps('queries')}>
             <NavItem
               collapsed={collapsed}
@@ -433,7 +426,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             </NavItem>
           </div>
         )}
-        {canQuery && (
+        {caps.query && (
           <NavItem
             collapsed={collapsed}
             active={isSavedQueriesActive}
@@ -444,7 +437,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             {t('nav.saved')}
           </NavItem>
         )}
-        {canCarve && (
+        {canCarvePages && (
           <NavItem
             collapsed={collapsed}
             active={isCarvesActive}
@@ -520,7 +513,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
           tone="amber"
           icon={<ListChecks size={14} strokeWidth={1.8} />}
         >
-          {isSuperAdmin ? t('nav.auditTrail') : t('nav.myActivity')}
+          {can('auditAll') ? t('nav.auditTrail') : t('nav.myActivity')}
         </NavItem>
       </nav>
 
@@ -534,7 +527,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
           shouldn't see an "Admin" header just for their profile
           link). Move Profile into its own footer-y group for the
           non-admin case. */}
-      {isSuperAdmin ? (
+      {showAdmin ? (
         <>
           {collapsed ? (
             <div className="mx-2 mb-2 border-t border-[color:var(--border)]" aria-hidden />
@@ -542,6 +535,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             <SectionLabel>{t('nav.admin')}</SectionLabel>
           )}
           <nav className="space-y-0.5">
+            {can('users') && (
             <NavItem
               collapsed={collapsed}
               active={isUsersActive}
@@ -551,6 +545,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.operators')}
             </NavItem>
+            )}
             <NavItem
               collapsed={collapsed}
               active={isProfileActive}
@@ -560,6 +555,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.profile')}
             </NavItem>
+            {can('environments') && (
             <NavItem
               collapsed={collapsed}
               active={isEnvironmentsActive}
@@ -569,6 +565,8 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.environments')}
             </NavItem>
+            )}
+            {can('settings') && (
             <NavItem
               collapsed={collapsed}
               active={isSettingsActive}
@@ -578,7 +576,8 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.settings')}
             </NavItem>
-            {features?.service_config && <NavItem
+            )}
+            {features?.service_config && can('serviceConfig') && <NavItem
               collapsed={collapsed}
               active={isServiceConfigActive}
               to="/_app/config/api"
@@ -587,7 +586,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.serviceConfig')}
             </NavItem>}
-            {features?.log_sinks && <NavItem
+            {features?.log_sinks && can('logSinks') && <NavItem
               collapsed={collapsed}
               active={isLogSinksActive}
               to="/_app/log-sinks"
@@ -596,7 +595,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.logSinks')}
             </NavItem>}
-            {osctrldEnabled && <NavItem
+            {osctrldEnabled && can('extensions') && <NavItem
               collapsed={collapsed}
               active={isExtensionsActive}
               to="/_app/extensions"
@@ -605,7 +604,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.extensions')}
             </NavItem>}
-            {osctrldEnabled && <NavItem
+            {osctrldEnabled && can('osqueryVersions') && <NavItem
               collapsed={collapsed}
               active={isOsqueryVersionsActive}
               to="/_app/osquery-versions"
@@ -614,7 +613,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               Osquery versions
             </NavItem>}
-            {features?.alerts && <NavItem
+            {features?.alerts && can('alerts') && <NavItem
               collapsed={collapsed}
               active={isAlertsActive}
               to="/_app/alerts"
@@ -623,7 +622,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.alerts')}
             </NavItem>}
-            {features?.health && <NavItem
+            {features?.health && can('health') && <NavItem
               collapsed={collapsed}
               active={isHealth}
               to="/_app/health"
@@ -632,7 +631,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             >
               {t('nav.health')}
             </NavItem>}
-            {features?.auth_providers && <NavItem
+            {features?.auth_providers && can('authProviders') && <NavItem
               collapsed={collapsed}
               active={isAuthProvidersActive}
               to="/_app/auth-providers"

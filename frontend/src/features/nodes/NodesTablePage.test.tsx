@@ -12,7 +12,7 @@ import {
 } from '@tanstack/react-router';
 import { NodesTablePage } from './NodesTablePage';
 import { nodesSearchSchema } from '$/routes/_app/env/$env/nodes';
-import type { NodesPagedResponse } from '$/api/types';
+import type { NodesPagedResponse, UserMeResponse } from '$/api/types';
 import type { Features } from '$/api/features';
 import type { NodeTileSeries, StatsResponse } from '$/api/stats';
 
@@ -31,8 +31,20 @@ vi.mock('$/api/nodes', () => ({
 
 vi.mock('$/api/environments', () => ({
   getEnvironmentInactiveHours: (...args: unknown[]) => mockGetInactiveHours(...args),
-  listEnvironments: () => Promise.resolve([]),
+  listEnvironments: () => Promise.resolve([{ id: 1, name: 'test-env', uuid: 'env-uuid' }]),
 }));
+
+const mockGetMe = vi.fn<() => Promise<UserMeResponse>>();
+vi.mock('$/api/users', () => ({ getMe: () => mockGetMe() }));
+function makeMe(overrides: Partial<UserMeResponse> = {}): UserMeResponse {
+  return {
+    username: 'u', email: '', fullname: 'u', admin: false, user_admin: false, env_manager: false,
+    read_only_admin: false, alert_admin: false, service: false, uuid: 'aaaa',
+    token_expire: new Date(Date.now() + 86_400_000).toISOString(),
+    last_access: new Date().toISOString(), permissions: {}, preferred_language: '',
+    ...overrides,
+  };
+}
 
 vi.mock('$/api/features', () => ({
   getFeatures: (...args: unknown[]) => mockGetFeatures(...(args as [])),
@@ -233,6 +245,27 @@ describe('NodesTablePage', () => {
     mockGetNodeActivityTilesBatch.mockResolvedValue({
       'ABC12345-0000-0000-0000-000000000001': makeTileSeries(),
     });
+  });
+
+  it('hides the Tag action from a read-only admin', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue(makeMe({ read_only_admin: true }));
+    mockListNodes.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    await user.click(await screen.findByRole('checkbox', { name: 'Select node web-server-01' }));
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tag selected nodes' })).not.toBeInTheDocument();
+  });
+
+  it('shows the Tag action to an env admin', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue(
+      makeMe({ permissions: { 'env-uuid': { user: true, query: true, carve: true, admin: true } } }),
+    );
+    mockListNodes.mockResolvedValue(makeResponse());
+    renderWithProviders(makeTestRouter());
+    await user.click(await screen.findByRole('checkbox', { name: 'Select node web-server-01' }));
+    expect(await screen.findByRole('button', { name: 'Tag selected nodes' })).toBeInTheDocument();
   });
 
   it('renders node rows after loading', async () => {

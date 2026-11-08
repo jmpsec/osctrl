@@ -17,7 +17,8 @@ import { listSavedQueries } from '$/api/saved-queries';
 import { listEnvTags, tagNode } from '$/api/tags';
 import { listAlertRules } from '$/api/alerts';
 import type { NodePosture, NodeUptime, PostureScore } from '$/api/types';
-import { getMe } from '$/api/users';
+import { useMe } from '$/lib/useMe';
+import { canSeePage, canWritePage, envCaps } from '$/lib/access';
 import { listEnvironments } from '$/api/environments';
 import {
   getNodeActivity,
@@ -715,11 +716,7 @@ export function NodeDetailPage() {
   // requires AdminLevel on the env for DELETE; we mirror that gate
   // in the UI so non-admins don't see a button that would 403.
   // Super-admins bypass; env-scoped admins get it on their env(s).
-  const { data: me } = useQuery({
-    queryKey: ['users-me'],
-    queryFn: () => getMe(),
-    staleTime: 5 * 60_000,
-  });
+  const { data: me } = useMe();
   const { data: envs } = useQuery({
     queryKey: ['environments'],
     queryFn: () => listEnvironments(),
@@ -728,9 +725,8 @@ export function NodeDetailPage() {
   const envRow = envs?.find((e) => e.name === env);
   const envUuid = envRow?.uuid;
   const envID = envRow?.id;
-  const canAdminNode =
-    me?.admin === true ||
-    (envUuid !== undefined && me?.permissions?.[envUuid]?.admin === true);
+  const caps = envCaps(me, envUuid ?? '');
+  const canAdminNode = envUuid !== undefined && caps.manage;
   // Admin-only on the server (every denial is audited), so don't fire it for
   // other viewers. Shares its key with NodeConfigTab so saving/removing an
   // override updates the banner and tab dot immediately. An expired override
@@ -807,9 +803,8 @@ export function NodeDetailPage() {
     staleTime: 10_000,
   });
 
-  const envAccess = envUuid !== undefined ? me?.permissions?.[envUuid] : undefined;
-  const canQueryNode = canAdminNode || envAccess?.query === true;
-  const canCarveNode = canAdminNode || envAccess?.carve === true;
+  const canQueryNode = envUuid !== undefined && caps.query;
+  const canCarveNode = envUuid !== undefined && caps.carve;
 
   // Which alert rules would fire for this node. One unfiltered list is
   // enough for all three scopes (node / env / global) and is shared with
@@ -819,7 +814,7 @@ export function NodeDetailPage() {
   const { data: alertRules } = useQuery({
     queryKey: ['alert-rules', 'all'],
     queryFn: () => listAlertRules(),
-    enabled: alertsEnabled && me?.admin === true,
+    enabled: alertsEnabled && canSeePage(me, 'alerts'),
     staleTime: 60_000,
   });
   const coveringRules = useMemo(
@@ -1046,8 +1041,8 @@ export function NodeDetailPage() {
                   Carve File
                 </button>
               )}
-              {/* Alerts API is global-admin only; env-admins would get a 403. */}
-              {alertsEnabled && me?.admin === true && (
+              {/* Creating a rule needs alert-admin (or superuser). */}
+              {alertsEnabled && canWritePage(me, 'alerts') && (
                 <button
                   type="button"
                   aria-label="Create alert for this node"
@@ -1578,6 +1573,7 @@ export function NodeDetailPage() {
       {node && actionModal === 'alert' && (
         <NodeAlertModal
           envID={envID}
+          envUuid={envUuid}
           envName={env}
           uuid={node.uuid}
           hostname={node.hostname}

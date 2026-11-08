@@ -510,6 +510,10 @@ export interface AdminUser {
   fullname: string;
   token_expire: string;
   admin: boolean;
+  user_admin: boolean;
+  env_manager: boolean;
+  read_only_admin: boolean;
+  alert_admin: boolean;
   service: boolean;
   uuid: string;
   last_ip_address: string;
@@ -571,6 +575,10 @@ export interface UserMeResponse {
   email: string;
   fullname: string;
   admin: boolean;
+  user_admin: boolean;
+  env_manager: boolean;
+  read_only_admin: boolean;
+  alert_admin: boolean;
   service: boolean;
   uuid: string;
   token_expire: string;

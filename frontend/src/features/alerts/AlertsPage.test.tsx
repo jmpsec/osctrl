@@ -13,6 +13,20 @@ import {
 import { AlertsPage } from './AlertsPage';
 import type { AlertRule, AlertChannel, AlertChannelTypeSpec } from '$/api/alerts';
 import type { ServiceCommand } from '$/api/service-config';
+import type { UserMeResponse } from '$/api/types';
+
+const mockGetMe = vi.fn<() => Promise<UserMeResponse>>();
+vi.mock('$/api/users', () => ({ getMe: () => mockGetMe() }));
+function makeMe(overrides: Partial<UserMeResponse> = {}): UserMeResponse {
+  return {
+    username: 'u', email: '', fullname: 'u', admin: false, user_admin: false, env_manager: false,
+    read_only_admin: false, alert_admin: false, service: false, uuid: 'aaaa',
+    token_expire: new Date(Date.now() + 86_400_000).toISOString(),
+    last_access: new Date().toISOString(), permissions: {}, preferred_language: '',
+    ...overrides,
+  };
+}
+
 
 const mockListRules = vi.fn<(opts?: { env?: number }) => Promise<AlertRule[]>>();
 const mockCreateRule = vi.fn();
@@ -148,6 +162,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetMe.mockResolvedValue(makeMe({ admin: true }));
   mockGetFeatures.mockResolvedValue({
     posture: false,
     service_config: true,
@@ -478,5 +493,125 @@ describe('AlertsPage', () => {
     renderPage();
     await user.click(await screen.findByRole('button', { name: 'Apply changes' }));
     await waitFor(() => expect(mockApply).toHaveBeenCalled());
+  });
+
+  it('shows an access message to users who cannot see alerts', async () => {
+    mockGetMe.mockResolvedValue(makeMe());
+    renderPage();
+    expect(await screen.findByText("You don't have access to this page.")).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New rule' })).not.toBeInTheDocument();
+  });
+
+  it('hides write controls from a read-only admin', async () => {
+    mockGetMe.mockResolvedValue(makeMe({ read_only_admin: true }));
+    mockListRules.mockResolvedValue([makeRule()]);
+    renderPage();
+    expect(await screen.findByText('sudoers-write')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New rule' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Apply changes' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
+  const fullTier = { p: { user: true, query: true, carve: false, query_tier: 'full' as const, admin: false } };
+
+  it('offers an alert admin only allowed sources and creates with one of them', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue(makeMe({ alert_admin: true }));
+    mockCreateRule.mockResolvedValue(makeRule());
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New rule' }));
+    expect(screen.queryByRole('option', { name: 'Result logs' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Source')).toHaveValue('node_inactive');
+    expect(screen.queryByRole('button', { name: 'Errors reported' })).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Name'), 'inactive-nodes');
+    await user.click(screen.getByRole('button', { name: 'Create rule' }));
+    await waitFor(() =>
+      expect(mockCreateRule).toHaveBeenCalledWith(expect.objectContaining({ source: 'node_inactive' })),
+    );
+  });
+
+  it('offers log sources once the rule environment grants full query tier', async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue(makeMe({ alert_admin: true, permissions: fullTier }));
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New rule' }));
+    expect(screen.queryByRole('option', { name: 'Result logs' })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Environment', { selector: '#rule-env' }), '5');
+    expect(screen.getByRole('option', { name: 'Result logs' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Errors reported' })).toBeInTheDocument();
+  });
+
+  it('limits rule and channel row actions to what the server allows an alert admin', async () => {
+    mockGetMe.mockResolvedValue(makeMe({ alert_admin: true, permissions: fullTier }));
+    mockListEnvs.mockResolvedValue([
+      { id: 5, name: 'prod', uuid: 'p', environment_id: 5 },
+      { id: 6, name: 'dev', uuid: 'd', environment_id: 6 },
+    ]);
+    mockListRules.mockResolvedValue([
+      makeRule({ id: 1, name: 'prod-log', environment_id: 5, channel_ids: [1] }),
+      makeRule({ id: 2, name: 'dev-log', environment_id: 6, channel_ids: [1] }),
+      makeRule({ id: 3, name: 'inactive', source: 'node_inactive', environment_id: 6, channel_ids: [2] }),
+    ]);
+    mockListChannels.mockResolvedValue([
+      makeChannel({ id: 1, name: 'log-channel' }),
+      makeChannel({ id: 2, name: 'plain-channel' }),
+    ]);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('prod-log');
+    // prod-log (full tier) and inactive are editable; dev-log is not.
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2);
+    await user.click(screen.getByRole('tab', { name: 'Channels' }));
+    await screen.findByText('plain-channel');
+    // Channel 1 feeds log-content rules, so only channel 2 can be edited.
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
+  });
+
+  it('hides rule actions from a read-only admin even with full tier in the rule env', async () => {
+    mockGetMe.mockResolvedValue(
+      makeMe({
+        read_only_admin: true,
+        permissions: { p: { user: true, query: true, carve: true, query_tier: 'full', admin: true } },
+      }),
+    );
+    mockListRules.mockResolvedValue([makeRule({ name: 'prod-log', environment_id: 5 })]);
+    renderPage();
+    expect(await screen.findByText('prod-log')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a channel used by a log rule in another env locked while an env filter is active', async () => {
+    mockGetMe.mockResolvedValue(makeMe({ alert_admin: true }));
+    mockListEnvs.mockResolvedValue([
+      { id: 5, name: 'prod', uuid: 'p', environment_id: 5 },
+      { id: 6, name: 'dev', uuid: 'd', environment_id: 6 },
+    ]);
+    const devLog = makeRule({ id: 2, name: 'dev-log', environment_id: 6, channel_ids: [1] });
+    const prodInactive = makeRule({
+      id: 3, name: 'prod-inactive', source: 'node_inactive', environment_id: 5, channel_ids: [2],
+    });
+    mockListRules.mockImplementation(async (opts) =>
+      opts?.env === 5 ? [prodInactive] : [devLog, prodInactive],
+    );
+    mockListChannels.mockResolvedValue([
+      makeChannel({ id: 1, name: 'log-channel' }),
+      makeChannel({ id: 2, name: 'plain-channel' }),
+    ]);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('dev-log');
+    await user.selectOptions(screen.getByLabelText('Select environment whose alerts to show'), '5');
+    await waitFor(() => expect(screen.queryByText('dev-log')).not.toBeInTheDocument());
+    await user.click(screen.getByRole('tab', { name: 'Channels' }));
+    await screen.findByText('log-channel');
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
+  });
+
+  it('shows the history tab to an alert admin', async () => {
+    mockGetMe.mockResolvedValue(makeMe({ alert_admin: true }));
+    renderPage();
+    expect(await screen.findByRole('tab', { name: /history/i })).toBeInTheDocument();
   });
 });

@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save } from 'lucide-react';
 import { AuthError } from '$/api/client';
 import { resetEnvironmentInactiveHours, setEnvironmentInactiveHours } from '$/api/environments';
-import { getMe } from '$/api/users';
+import { useMe } from '$/lib/useMe';
+import { envCaps } from '$/lib/access';
 import { useInactiveHours, invalidateNodeStatusQueries } from '$/lib/node-status';
 import { buttonClasses } from '$/components/atoms/Button';
 import { appPath } from '$/lib/base-path'
@@ -11,8 +12,8 @@ import { appPath } from '$/lib/base-path'
 export function InactiveHoursSetting({ env, envUuid }: { env: string; envUuid: string }) {
   const qc = useQueryClient();
   const query = useInactiveHours(env);
-  const { data: me } = useQuery({ queryKey: ['users-me'], queryFn: getMe, staleTime: 60_000 });
-  const canEdit = me?.admin === true || me?.permissions?.[envUuid]?.admin === true;
+  const { data: me } = useMe();
+  const canEdit = envCaps(me, envUuid).manage;
   const [draft, setDraft] = useState<{ useGlobal: boolean; hours: string } | null>(null);
   const value = draft ?? {
     useGlobal: query.data?.override_hours == null,

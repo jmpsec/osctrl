@@ -16,7 +16,7 @@ function failing(src: VulnSyncState): boolean {
 }
 
 /** Feed status and "Sync now". Super admin only: the caller decides. */
-export function FeedsCard() {
+export function FeedsCard({ canWrite = false }: { canWrite?: boolean }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const feeds = useQuery({
@@ -37,10 +37,12 @@ export function FeedsCard() {
     <section className="overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)]">
       <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] bg-[color:var(--bg-2)] px-4 py-3">
         <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('vulns.feedsTitle')}</h2>
-        <Button type="button" variant="ghost" size="sm" disabled={sync.isPending || requested} onClick={() => sync.mutate()}>
-          <RefreshCw className={cn('h-3.5 w-3.5', sync.isPending && 'animate-spin')} aria-hidden="true" />
-          {t('vulns.syncNow')}
-        </Button>
+        {canWrite && (
+          <Button type="button" variant="ghost" size="sm" disabled={sync.isPending || requested} onClick={() => sync.mutate()}>
+            <RefreshCw className={cn('h-3.5 w-3.5', sync.isPending && 'animate-spin')} aria-hidden="true" />
+            {t('vulns.syncNow')}
+          </Button>
+        )}
       </div>
       {requested && (
         <p role="status" className="border-b border-[color:var(--border)] px-4 py-2 text-xs text-[color:var(--text-2)]">

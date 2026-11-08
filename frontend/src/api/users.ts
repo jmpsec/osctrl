@@ -154,6 +154,10 @@ export interface CreateUserBody {
   fullname?: string;
   admin?: boolean;
   service?: boolean;
+  user_admin?: boolean;
+  env_manager?: boolean;
+  read_only_admin?: boolean;
+  alert_admin?: boolean;
 }
 
 /** POST /api/v1/users/{username}/add — create a new operator (super-admin only).
@@ -175,6 +179,10 @@ export function createUser(body: CreateUserBody): Promise<{ data: string }> {
         fullname: body.fullname ?? '',
         admin: body.admin ?? false,
         service: body.service ?? false,
+        user_admin: body.user_admin ?? false,
+        env_manager: body.env_manager ?? false,
+        read_only_admin: body.read_only_admin ?? false,
+        alert_admin: body.alert_admin ?? false,
         environments: [],
       }),
     },
@@ -213,6 +221,26 @@ export function adminResetUserPassword(username: string, newPassword: string): P
       body: JSON.stringify({ username, password: newPassword }),
     },
   );
+}
+
+/** Role fields for the edit action. Omitted fields stay unchanged; the superuser
+ * flag changes only via `admin: true` (grant) or `not_admin: true` (clear). */
+export type RolePatch = {
+  admin?: boolean;
+  not_admin?: boolean;
+  user_admin?: boolean;
+  env_manager?: boolean;
+  read_only_admin?: boolean;
+  alert_admin?: boolean;
+};
+
+/** POST /api/v1/users/{username}/edit — change global roles. */
+export async function editUserRoles(username: string, roles: RolePatch): Promise<void> {
+  await apiFetch<{ data: string }>(`/api/v1/users/${encodeURIComponent(username)}/edit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, ...roles }),
+  });
 }
 
 /** POST /api/v1/users/{username}/token/refresh — mint a new API token. */

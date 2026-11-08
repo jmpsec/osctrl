@@ -4,6 +4,8 @@ import { ArrowUpCircle, ChevronDown, Cpu, HeartPulse, RefreshCw } from 'lucide-r
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { getHealthStatus, type HealthComponent, type HealthStatusValue } from '$/api/health';
+import { useMe } from '$/lib/useMe';
+import { canSeePage } from '$/lib/access';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { formatLocaleDateTime, formatLocaleNumber, useLocale } from '$/i18n/useLocale';
 import { StatusBadge } from '$/components/data/StatusBadge';
@@ -149,13 +151,20 @@ function RuntimeCard({ component }: { component: HealthComponent }) {
 export function HealthPage() {
   const { t } = useTranslation();
   usePageTitle(t('pageTitle.health'));
+  const { data: me, isLoading: meLoading } = useMe();
+  const allowed = canSeePage(me, 'health');
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['health-status'],
     queryFn: () => getHealthStatus(),
     staleTime: 15_000,
+    enabled: allowed,
   });
 
-  if (isLoading) {
+  if (!allowed && !meLoading) {
+    return <div className={PAGE_CLASS}>You don't have access to this page.</div>;
+  }
+
+  if (isLoading || meLoading) {
     return (
       <div className={PAGE_CLASS}>
         <Skeleton className="mx-auto h-28 w-64 max-w-full rounded-xl" />
