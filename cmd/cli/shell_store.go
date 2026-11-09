@@ -137,6 +137,7 @@ type tagRow struct {
 	TagType     string
 	CustomTag   string
 	AutoTag     bool
+	Sensitive   bool
 }
 
 type userRow struct {
@@ -171,7 +172,9 @@ type permRow struct {
 	Environment string
 	AccessType  string
 	AccessValue bool
-	GrantedBy   string
+	// Tier is set on query/carve rows; the "tags" tier lists its scope tags.
+	Tier      string
+	GrantedBy string
 }
 
 // runQueryReq captures the shared shape of "run query" and "run carve" forms.
@@ -439,7 +442,41 @@ func tagToRow(t tags.AdminTag) tagRow {
 		TagType:     tagTypeName(t.TagType),
 		CustomTag:   t.CustomTag,
 		AutoTag:     t.AutoTag,
+		Sensitive:   t.Sensitive,
 	}
+}
+
+// tierLabel is the tier shown for a query/carve permission row.
+func tierLabel(tier string, scope []uint, all []tags.AdminTag) string {
+	if tier == "" {
+		tier = users.TierNone.String()
+	}
+	if tier != users.TierTags.String() || len(scope) == 0 {
+		return tier
+	}
+	names := make(map[uint]string, len(all))
+	for _, t := range all {
+		names[t.ID] = t.Name
+	}
+	out := make([]string, 0, len(scope))
+	for _, id := range scope {
+		if n, ok := names[id]; ok {
+			out = append(out, n)
+		} else {
+			out = append(out, strconv.FormatUint(uint64(id), 10))
+		}
+	}
+	return tier + " (" + strings.Join(out, ",") + ")"
+}
+
+// scopeTagsUsed reports whether any environment has a tags-tier scope.
+func scopeTagsUsed(access map[string]users.EnvAccess) bool {
+	for _, a := range access {
+		if len(a.ScopeTags) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func userToRow(u users.AdminUser) userRow {
@@ -1201,14 +1238,28 @@ func (s *apiStore) Permissions(username string) ([]permRow, error) {
 		uuids = append(uuids, uuid)
 	}
 	sort.Strings(uuids)
+	access := make(map[string]users.EnvAccess, len(resp.Permissions))
+	for uuid, a := range resp.Permissions {
+		access[uuid] = users.EnvAccess{QueryTier: a.QueryTier, CarveTier: a.CarveTier, ScopeTags: a.ScopeTags}
+	}
+	var all []tags.AdminTag
+	if scopeTagsUsed(access) {
+		if all, err = s.api.GetAllTags(); err != nil {
+			return nil, err
+		}
+	}
 	var out []permRow
 	for _, uuid := range uuids {
 		a := resp.Permissions[uuid]
 		for _, l := range []struct {
-			name string
-			v    bool
-		}{{"user", a.User}, {"query", a.Query}, {"carve", a.Carve}, {"admin", a.Admin}} {
-			out = append(out, permRow{Username: username, Environment: uuid, AccessType: l.name, AccessValue: l.v})
+			name, tier string
+			v          bool
+		}{{"user", "", a.User}, {"query", a.QueryTier, a.Query}, {"carve", a.CarveTier, a.Carve}, {"admin", "", a.Admin}} {
+			row := permRow{Username: username, Environment: uuid, AccessType: l.name, AccessValue: l.v}
+			if l.name == "query" || l.name == "carve" {
+				row.Tier = tierLabel(l.tier, a.ScopeTags, all)
+			}
+			out = append(out, row)
 		}
 	}
 	return out, nil
@@ -1449,15 +1500,33 @@ func (s *dbStore) Permissions(username string) ([]permRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	access, err := adminUsers.GetAccess(username)
+	if err != nil {
+		return nil, err
+	}
+	var all []tags.AdminTag
+	if scopeTagsUsed(access) {
+		if all, err = tagsmgr.All(); err != nil {
+			return nil, err
+		}
+	}
 	out := make([]permRow, 0, len(ps))
 	for _, pr := range ps {
-		out = append(out, permRow{
+		row := permRow{
 			Username:    pr.Username,
 			Environment: pr.Environment,
 			AccessType:  accessTypeName(pr.AccessType),
 			AccessValue: pr.AccessValue,
 			GrantedBy:   pr.GrantedBy,
-		})
+		}
+		a := access[pr.Environment]
+		switch users.AccessLevel(pr.AccessType) {
+		case users.QueryLevel:
+			row.Tier = tierLabel(a.QueryTier, a.ScopeTags, all)
+		case users.CarveLevel:
+			row.Tier = tierLabel(a.CarveTier, a.ScopeTags, all)
+		}
+		out = append(out, row)
 	}
 	return out, nil
 }
@@ -1484,14 +1553,14 @@ func parseBoolStrict(v string) (bool, error) {
 
 // accessTypeName maps a users.AccessType int to a readable label.
 func accessTypeName(t int) string {
-	switch t {
-	case 0:
+	switch users.AccessLevel(t) {
+	case users.AdminLevel:
 		return "admin"
-	case 1:
+	case users.UserLevel:
 		return "user"
-	case 2:
+	case users.QueryLevel:
 		return "query"
-	case 3:
+	case users.CarveLevel:
 		return "carve"
 	default:
 		return strconv.Itoa(t)

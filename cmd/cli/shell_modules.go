@@ -505,10 +505,10 @@ func shTagsList(s *shellState, args []string) {
 	}
 	rows := make([][]string, 0)
 	for _, t := range ts {
-		rows = append(rows, []string{t.Name, t.TagType, t.CustomTag, t.Description, t.Color, t.CreatedBy, boolTag(t.AutoTag)})
+		rows = append(rows, []string{t.Name, t.TagType, t.CustomTag, t.Description, t.Color, t.CreatedBy, boolTag(t.AutoTag), boolTag(t.Sensitive)})
 	}
 	fmt.Printf("%d tags\n", len(rows))
-	printTable([]string{"Name", "Type", "Custom", "Description", "Color", "Creator", "Auto"}, rows)
+	printTable([]string{"Name", "Type", "Custom", "Description", "Color", "Creator", "Auto", "Sensitive"}, rows)
 	_ = env
 }
 
@@ -666,9 +666,9 @@ func shUsersPerms(s *shellState, args []string) {
 	}
 	rows := make([][]string, 0, len(ps))
 	for _, p := range ps {
-		rows = append(rows, []string{p.Username, p.Environment, p.AccessType, boolTag(p.AccessValue), p.GrantedBy})
+		rows = append(rows, []string{p.Username, p.Environment, p.AccessType, boolTag(p.AccessValue), p.Tier, p.GrantedBy})
 	}
-	printTable([]string{"Username", "Environment", "Access", "Granted", "GrantedBy"}, rows)
+	printTable([]string{"Username", "Environment", "Access", "Granted", "Tier", "GrantedBy"}, rows)
 }
 
 // ─────────────────────────────── audit ───────────────────────────────

@@ -151,3 +151,40 @@ func TestAPIStorePermissions(t *testing.T) {
 	_, err = (&apiStore{api: r.API}).Permissions("ghost")
 	require.Error(t, err)
 }
+
+// The shell's permission and tag views show RBAC tiers, scope tags and the
+// sensitive flag in both modes, so a tags-tier user doesn't read as full query.
+func TestShellStoreShowsTiersAndSensitive(t *testing.T) {
+	r := newParityRig(t)
+	env, err := r.Envs.Get("dev")
+	require.NoError(t, err)
+	mgr := tags.CreateTagManager(r.DB)
+	adminUsers, envs, tagsmgr = r.Users, r.Envs, mgr // restored by the rig
+	require.NoError(t, mgr.NewTag("web", "", "", "", "admin", env.ID, false, tags.TagTypeTag, ""))
+	require.NoError(t, mgr.NewTag("secret", "", "", "", "admin", env.ID, false, tags.TagTypeTag, ""))
+	web, err := mgr.Get("web", env.ID)
+	require.NoError(t, err)
+	secret, err := mgr.Get("secret", env.ID)
+	require.NoError(t, err)
+	require.NoError(t, mgr.ChangeSensitive(&secret, true))
+	r.SeedUser("bob", false)
+	require.NoError(t, r.Users.ChangeAccess("bob", env.UUID, users.EnvAccess{User: true, Query: true, QueryTier: "tags", Carve: true, CarveTier: "full"}))
+	require.NoError(t, r.Users.SetScopeTags("bob", env.UUID, "admin", []uint{web.ID}))
+	for mode, store := range map[string]DataStore{"db": &dbStore{}, "api": &apiStore{api: r.API}} {
+		rows, err := store.Permissions("bob")
+		require.NoError(t, err, mode)
+		tiers := map[string]string{}
+		for _, row := range rows {
+			tiers[row.AccessType] = row.Tier
+		}
+		require.Equal(t, map[string]string{"user": "", "query": "tags (web)", "carve": "full", "admin": ""}, tiers, mode)
+		ts, err := store.Tags()
+		require.NoError(t, err, mode)
+		sens := map[string]bool{}
+		for _, tg := range ts {
+			sens[tg.Name] = tg.Sensitive
+		}
+		require.True(t, sens["secret"], mode)
+		require.False(t, sens["web"], mode)
+	}
+}
