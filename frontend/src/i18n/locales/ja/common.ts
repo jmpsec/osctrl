@@ -546,7 +546,7 @@ export const ja: Messages = {
   usersPage: {
     addOperator: 'オペレーターを追加',
     noUsers: 'ユーザーがいません。',
-    superAdminView: 'スーパー管理者ビュー。環境ごとの権限と API トークン管理。',
+    superAdminView: '環境ごとの権限と API トークン管理。',
     deleteUsers: '選択したユーザーを削除',
     selectDeletable: '削除可能なユーザーをすべて選択',
     role: 'ロール',
@@ -613,7 +613,7 @@ export const ja: Messages = {
   environmentsPage: {
     createFirst: '最初の環境を作成',
     noEnvs: '環境はまだありません。',
-    superAdminView: 'スーパー管理者ビュー。osquery 環境を作成・管理。',
+    superAdminView: 'osquery 環境を作成・管理。',
     newEnv: '新しい環境',
     createEnv: '環境を作成',
     deleteEnv: '環境を削除',
@@ -635,7 +635,7 @@ export const ja: Messages = {
     fullConfiguration: '完全な構成',
   },
   alertsPage: {
-    superAdminView: 'スーパー管理者ビュー。アラートルール、チャンネル、配信履歴。',
+    superAdminView: 'アラートルール、チャンネル、配信履歴。',
     sections: 'アラートセクション',
     disabled: 'アラートは無効です',
     rulesTab: 'ルール',

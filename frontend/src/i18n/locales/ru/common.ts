@@ -546,7 +546,7 @@ export const ru: Messages = {
   usersPage: {
     addOperator: 'Добавить оператора',
     noUsers: 'Нет пользователей.',
-    superAdminView: 'Вид супер-администратора. Права по окружениям и управление API-токенами.',
+    superAdminView: 'Права по окружениям и управление API-токенами.',
     deleteUsers: 'Удалить выбранных пользователей',
     selectDeletable: 'Выбрать всех удаляемых пользователей',
     role: 'Роль',
@@ -613,7 +613,7 @@ export const ru: Messages = {
   environmentsPage: {
     createFirst: 'Создайте первое окружение',
     noEnvs: 'Окружений пока нет.',
-    superAdminView: 'Вид супер-администратора. Создание и управление окружениями osquery.',
+    superAdminView: 'Создание и управление окружениями osquery.',
     newEnv: 'Новое окружение',
     createEnv: 'Создать окружение',
     deleteEnv: 'Удалить окружение',
@@ -635,7 +635,7 @@ export const ru: Messages = {
     fullConfiguration: 'Полная конфигурация',
   },
   alertsPage: {
-    superAdminView: 'Вид супер-администратора. Правила оповещений, каналы и история отправок.',
+    superAdminView: 'Правила оповещений, каналы и история отправок.',
     sections: 'Разделы оповещений',
     disabled: 'Оповещения отключены',
     rulesTab: 'Правила',

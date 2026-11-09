@@ -546,7 +546,7 @@ export const uk: Messages = {
   usersPage: {
     addOperator: 'Додати оператора',
     noUsers: 'Користувачів немає.',
-    superAdminView: 'Вигляд супер-адміністратора. Права за середовищами та керування API-токенами.',
+    superAdminView: 'Права за середовищами та керування API-токенами.',
     deleteUsers: 'Видалити вибраних користувачів',
     selectDeletable: 'Вибрати всіх користувачів, яких можна видалити',
     role: 'Роль',
@@ -613,7 +613,7 @@ export const uk: Messages = {
   environmentsPage: {
     createFirst: 'Створіть своє перше середовище',
     noEnvs: 'Середовищ ще немає.',
-    superAdminView: 'Вигляд супер-адміністратора. Створення та керування середовищами osquery.',
+    superAdminView: 'Створення та керування середовищами osquery.',
     newEnv: 'Нове середовище',
     createEnv: 'Створити середовище',
     deleteEnv: 'Видалити середовище',
@@ -635,7 +635,7 @@ export const uk: Messages = {
     fullConfiguration: 'Повна конфігурація',
   },
   alertsPage: {
-    superAdminView: 'Вигляд супер-адміністратора. Правила оповіщень, канали та історія надсилань.',
+    superAdminView: 'Правила оповіщень, канали та історія надсилань.',
     sections: 'Розділи оповіщень',
     disabled: 'Оповіщення вимкнено',
     rulesTab: 'Правила',

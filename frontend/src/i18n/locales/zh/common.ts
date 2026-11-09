@@ -546,7 +546,7 @@ export const zh: Messages = {
   usersPage: {
     addOperator: '添加操作员',
     noUsers: '没有用户。',
-    superAdminView: '超级管理员视图。各环境权限与 API 令牌管理。',
+    superAdminView: '各环境权限与 API 令牌管理。',
     deleteUsers: '删除所选用户',
     selectDeletable: '选择所有可删除的用户',
     role: '角色',
@@ -613,7 +613,7 @@ export const zh: Messages = {
   environmentsPage: {
     createFirst: '创建您的第一个环境',
     noEnvs: '暂无环境。',
-    superAdminView: '超级管理员视图。创建和管理 osquery 环境。',
+    superAdminView: '创建和管理 osquery 环境。',
     newEnv: '新建环境',
     createEnv: '创建环境',
     deleteEnv: '删除环境',
@@ -635,7 +635,7 @@ export const zh: Messages = {
     fullConfiguration: '完整配置',
   },
   alertsPage: {
-    superAdminView: '超级管理员视图。警报规则、通道和分发历史。',
+    superAdminView: '警报规则、通道和分发历史。',
     sections: '警报分区',
     disabled: '警报功能已禁用',
     rulesTab: '规则',

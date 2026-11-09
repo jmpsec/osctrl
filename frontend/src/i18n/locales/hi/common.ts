@@ -546,7 +546,7 @@ export const hi: Messages = {
   usersPage: {
     addOperator: 'ऑपरेटर जोड़ें',
     noUsers: 'कोई उपयोगकर्ता नहीं।',
-    superAdminView: 'सुपर-एडमिन दृश्य। प्रति-वातावरण अनुमतियाँ और API टोकन प्रबंधन।',
+    superAdminView: 'प्रति-वातावरण अनुमतियाँ और API टोकन प्रबंधन।',
     deleteUsers: 'चयनित उपयोगकर्ता हटाएँ',
     selectDeletable: 'सभी हटाने योग्य उपयोगकर्ता चुनें',
     role: 'भूमिका',
@@ -613,7 +613,7 @@ export const hi: Messages = {
   environmentsPage: {
     createFirst: 'अपना पहला वातावरण बनाएँ',
     noEnvs: 'अभी तक कोई वातावरण नहीं।',
-    superAdminView: 'सुपर-एडमिन दृश्य। osquery वातावरण बनाएँ और प्रबंधित करें।',
+    superAdminView: 'osquery वातावरण बनाएँ और प्रबंधित करें।',
     newEnv: 'नया वातावरण',
     createEnv: 'वातावरण बनाएँ',
     deleteEnv: 'वातावरण हटाएँ',
@@ -635,7 +635,7 @@ export const hi: Messages = {
     fullConfiguration: 'पूर्ण कॉन्फ़िगरेशन',
   },
   alertsPage: {
-    superAdminView: 'सुपर-एडमिन दृश्य। अलर्ट नियम, चैनल और प्रेषण इतिहास।',
+    superAdminView: 'अलर्ट नियम, चैनल और प्रेषण इतिहास।',
     sections: 'अलर्ट अनुभाग',
     disabled: 'अलर्ट अक्षम हैं',
     rulesTab: 'नियम',

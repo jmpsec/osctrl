@@ -546,7 +546,7 @@ export const ca: Messages = {
   usersPage: {
     addOperator: 'Afegir operador',
     noUsers: 'Sense usuaris.',
-    superAdminView: 'Vista de superadministrador. Permisos per entorn i gestió de tokens API.',
+    superAdminView: 'Permisos per entorn i gestió de tokens API.',
     deleteUsers: 'Suprimir els usuaris seleccionats',
     selectDeletable: 'Seleccionar tots els usuaris suprimibles',
     role: 'Rol',
@@ -613,7 +613,7 @@ export const ca: Messages = {
   environmentsPage: {
     createFirst: 'Crea el teu primer entorn',
     noEnvs: 'Encara no hi ha entorns.',
-    superAdminView: 'Vista de superadministrador. Crea i gestiona entorns osquery.',
+    superAdminView: 'Crea i gestiona entorns osquery.',
     newEnv: 'Nou entorn',
     createEnv: 'Crear entorn',
     deleteEnv: 'Suprimir entorn',
@@ -635,7 +635,7 @@ export const ca: Messages = {
     fullConfiguration: 'Configuració completa',
   },
   alertsPage: {
-    superAdminView: 'Vista de superadministrador. Regles d\u2019alerta, canals i historial d\u2019enviaments.',
+    superAdminView: 'Regles d\u2019alerta, canals i historial d\u2019enviaments.',
     sections: 'Seccions d\u2019alertes',
     disabled: 'Les alertes estan desactivades',
     rulesTab: 'Regles',

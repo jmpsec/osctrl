@@ -546,7 +546,7 @@ export const ar: Messages = {
   usersPage: {
     addOperator: 'إضافة مشغّل',
     noUsers: 'لا مستخدمين.',
-    superAdminView: 'عرض المدير الأعلى. صلاحيات كل بيئة وإدارة رموز API.',
+    superAdminView: 'صلاحيات كل بيئة وإدارة رموز API.',
     deleteUsers: 'حذف المستخدمين المحددين',
     selectDeletable: 'تحديد كل المستخدمين القابلين للحذف',
     role: 'الدور',
@@ -613,7 +613,7 @@ export const ar: Messages = {
   environmentsPage: {
     createFirst: 'أنشئ بيئتك الأولى',
     noEnvs: 'لا بيئات بعد.',
-    superAdminView: 'عرض المدير الأعلى. إنشاء وإدارة بيئات osquery.',
+    superAdminView: 'إنشاء وإدارة بيئات osquery.',
     newEnv: 'بيئة جديدة',
     createEnv: 'إنشاء بيئة',
     deleteEnv: 'حذف البيئة',
@@ -635,7 +635,7 @@ export const ar: Messages = {
     fullConfiguration: 'التهيئة الكاملة',
   },
   alertsPage: {
-    superAdminView: 'عرض المدير الأعلى. قواعد التنبيه والقنوات وسجل الإرسال.',
+    superAdminView: 'قواعد التنبيه والقنوات وسجل الإرسال.',
     sections: 'أقسام التنبيهات',
     disabled: 'التنبيهات معطّلة',
     rulesTab: 'القواعد',

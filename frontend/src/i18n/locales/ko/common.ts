@@ -546,7 +546,7 @@ export const ko: Messages = {
   usersPage: {
     addOperator: '운영자 추가',
     noUsers: '사용자가 없습니다.',
-    superAdminView: '수퍼 관리자 보기. 환경별 권한 및 API 토큰 관리.',
+    superAdminView: '환경별 권한 및 API 토큰 관리.',
     deleteUsers: '선택한 사용자 삭제',
     selectDeletable: '삭제 가능한 사용자 모두 선택',
     role: '역할',
@@ -613,7 +613,7 @@ export const ko: Messages = {
   environmentsPage: {
     createFirst: '첫 환경 만들기',
     noEnvs: '아직 환경이 없습니다.',
-    superAdminView: '수퍼 관리자 보기. osquery 환경을 만들고 관리합니다.',
+    superAdminView: 'osquery 환경을 만들고 관리합니다.',
     newEnv: '새 환경',
     createEnv: '환경 만들기',
     deleteEnv: '환경 삭제',
@@ -635,7 +635,7 @@ export const ko: Messages = {
     fullConfiguration: '전체 구성',
   },
   alertsPage: {
-    superAdminView: '수퍼 관리자 보기. 알림 규칙, 채널 및 발송 기록.',
+    superAdminView: '알림 규칙, 채널 및 발송 기록.',
     sections: '알림 섹션',
     disabled: '알림이 비활성화되었습니다',
     rulesTab: '규칙',
