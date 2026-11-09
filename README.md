@@ -30,6 +30,7 @@ With **osctrl** you can:
 - Carve files and directories
 - Alert on log matches and node state through webhook or email channels
 - Track node posture, GeoIP country metadata, and node activity
+- Act as a sync server for [Santa](https://github.com/northpolesec/santa) on macOS: allow/block rules, execution events, and client mode
 - Check deployment health: database, Redis, services, workers, and upgrade status
 - Scale from hundreds to hundreds of thousands of nodes
 
@@ -53,6 +54,7 @@ Whether you’re running a small deployment or managing large fleets, **osctrl**
 - **Model Context Protocol**: A standalone `osctrl-mcp` stdio server and an optional hosted `/api/v1/mcp` endpoint expose permission-checked fleet inspection tools to MCP clients. Mutating tools are separately gated and disabled by default.
 - **Alerting**: Optional rule-based alerting on result/status/query logs and node state (inactive/recovered), scoped globally, per environment, or to a single node. Notifications fan out to webhook and email channels with Redis-backed cooldown/dedupe, dispatched history, and hot reload without a restart. Rules can be created straight from a node's page, and a node shows a marker when any rule covers it.
 - **Posture and enrichment hooks**: Optional posture ingestion and [device risk checks mapped to SOC 2 and ISO 27001 objectives](pkg/posture/README.md), optional MaxMind GeoIP country enrichment, Redis-backed activity tracking, and API-managed service configuration sections.
+- **Santa sync server**: Optional [Santa](https://github.com/northpolesec/santa) sync server behind `--santa-enabled` (disabled by default). `osctrl-tls` serves the Santa sync protocol for macOS nodes already enrolled in osquery, authenticated with a per-environment token. Environment admins manage allow/block rules scoped to the environment, a tag, or a node, review execution events and turn them into rules, see syncing machines, and switch clients between MONITOR and LOCKDOWN from the Santa page. See the [Santa guide](pkg/santa/README.md) for setup and macOS rollout.
 - **Health / system status**: Optional deployment health page behind `--health-enabled` (disabled by default), fusing a live database ping, a Redis PING, per-service runtime stats, an `osctrl-tls` heartbeat, and cached upgrade status.
 
 ## Documentation
@@ -96,6 +98,7 @@ osctrl/
 │   ├── posture/                 # Optional posture ingestion, storage, and scoring
 │   ├── queries/                 # Query management/scheduling/results/cache
 │   ├── ratelimit/               # HTTP rate limiting helpers
+│   ├── santa/                   # Optional Santa sync server: rules, machines, events, sync protocol
 │   ├── servicecommands/         # Service restart and hot-reload command handoff
 │   ├── serviceconfig/           # Persisted service configuration sections
 │   ├── settings/                # Runtime settings + Redis-backed cache

@@ -46,7 +46,42 @@ Set the keys in the `com.northpolesec.santa` payload of your MDM configuration p
 <true/>
 ```
 
-Leave `MachineIDKey` unset so the machine ID is the hardware UUID, which must match the osquery node UUID. The trailing slash on `SyncBaseURL` is required.
+Leave `MachineIDKey` unset so the machine ID is the hardware UUID, which must match the osquery node UUID. The trailing slash on `SyncBaseURL` is required. Leave `ClientMode` unset as well, so the mode chosen in osctrl applies.
+
+## Rolling out to a Mac
+
+### osctrl side
+
+1. Set `santaEnabled: true` on both `osctrl-tls` and `osctrl-api` and restart them.
+2. Enroll the Mac in osquery in the target environment. Santa syncs only as an existing node in that environment.
+3. In the UI, open the environment's **Santa** page, then **Settings**:
+   - set the mode to **MONITOR** to start, which logs what would be blocked without blocking anything;
+   - click **Rotate token** and copy the token, which is shown only once;
+   - copy the `SyncBaseURL` shown under client setup.
+
+### Mac side (through MDM)
+
+1. Install the Santa package from [North Pole Security's releases](https://github.com/northpolesec/santa/releases).
+2. Deploy the profiles that pre-approve Santa, so the user is not prompted and Santa can start:
+   - a system extension policy allowing Santa's Endpoint Security extension;
+   - a PPPC (TCC) profile granting Full Disk Access to the Santa daemon;
+   - optionally, notification settings for the Santa GUI.
+
+   Take the team ID and bundle identifiers from Santa's documentation and sample profiles.
+3. Deploy the configuration profile above with this environment's `SyncBaseURL` and token.
+4. Make sure the Mac trusts the certificate served by `osctrl-tls`. If it is issued by a private CA, deploy that CA with MDM, or pin it with Santa's server authentication keys.
+
+### Verify
+
+- On the Mac, run `santactl sync` and then `santactl status`.
+- In osctrl, the Mac appears under **Santa > Machines** with a last sync time.
+- Optionally enable the `santa_agent` posture check. It reports whether the Santa system extension is active on each macOS node.
+
+### Move to enforcement
+
+1. Run in MONITOR mode, review **Events**, and use **Allow** for legitimate binaries. Allowing by TEAMID covers a whole vendor and needs far fewer rules than allowing each binary hash.
+2. Use tag- or node-scoped rules for exceptions.
+3. When no new legitimate binaries show up in **Events**, switch the environment to **LOCKDOWN**. The mode applies to the whole environment, so a LOCKDOWN pilot group needs its own environment.
 
 ## Not implemented
 
