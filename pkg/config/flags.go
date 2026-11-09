@@ -328,6 +328,13 @@ func initServiceFlags(params *ServiceParameters) []cli.Flag {
 			Destination: &params.Service.VulnEnabled,
 		},
 		&cli.BoolFlag{
+			Name:        "santa-enabled",
+			Value:       false,
+			Usage:       "Enable the Santa sync server: osctrl-tls serves the Santa sync protocol and osctrl-api manages Santa rules and events. Disabled by default; when off no tables are created and no routes are registered. Requires a service restart to change.",
+			Sources:     cli.EnvVars("SERVICE_SANTA_ENABLED"),
+			Destination: &params.Service.SantaEnabled,
+		},
+		&cli.BoolFlag{
 			Name:        "service-config-enabled",
 			Value:       false,
 			Usage:       "Serve the service-config API and show the matching section in the SPA. Disabled by default: the YAML sections are still seeded into the database at every boot and resolved back at startup, but none of the /api/v1/service-config routes are registered — change the rows or the YAML file directly instead.",

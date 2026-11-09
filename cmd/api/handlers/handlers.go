@@ -26,6 +26,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -94,7 +95,8 @@ type HandlersApi struct {
 	GeoIP                *geoip.GeoIPResolver
 	Posture              *posture.PostureManager
 	PostureEnabled       bool
-	Vulns                *vulns.Reader // nil when --vuln-enabled is off
+	Vulns                *vulns.Reader  // nil when --vuln-enabled is off
+	Santa                *santa.Manager // nil when --santa-enabled is off
 	NodeConfig           *nodeconfig.Manager
 	FlagsOverrides       *nodeconfig.FlagsManager
 	Extensions           *extensions.Manager
@@ -343,6 +345,13 @@ func WithOsqueryVersions(m *osqueryversions.Manager) HandlersOption {
 func WithExtensions(m *extensions.Manager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Extensions = m
+	}
+}
+
+// WithSanta wires the Santa manager (nil when disabled).
+func WithSanta(m *santa.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Santa = m
 	}
 }
 

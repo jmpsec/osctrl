@@ -507,3 +507,23 @@ func TestMigrateNodePostureIsIdempotentDuringConcurrentStartup(t *testing.T) {
 		t.Fatal("unique index missing after concurrent migration")
 	}
 }
+
+func TestSantaAgentCheckSeededDisabled(t *testing.T) {
+	santa := map[string]bool{}
+	for _, check := range defaultChecks() {
+		if check.Category == "santa_agent" {
+			santa[check.ProfileID] = true
+			if check.ProfilePlatform != "darwin" {
+				t.Errorf("santa_agent seeded for %s profile %s", check.ProfilePlatform, check.ProfileID)
+			}
+		}
+		if want := check.Category != "santa_agent"; check.Enabled != want {
+			t.Errorf("%s/%s Enabled = %v, want %v", check.ProfileID, check.Category, check.Enabled, want)
+		}
+	}
+	for _, profile := range builtinProfiles() {
+		if profile.Platform == "darwin" && !santa[profile.ID] {
+			t.Errorf("darwin profile %s has no santa_agent check", profile.ID)
+		}
+	}
+}

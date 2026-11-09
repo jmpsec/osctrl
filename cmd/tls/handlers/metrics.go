@@ -77,6 +77,12 @@ var (
 		Name: "osctrld_auth_audit_dropped_total",
 		Help: "osctrld failed-secret audit entries dropped by the per-environment cap",
 	}, []string{"environment"})
+	// santaAuthAuditDropped counts failed Santa sync audit entries dropped by
+	// the per-environment audit cap.
+	santaAuthAuditDropped = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "santa_auth_audit_dropped_total",
+		Help: "Santa failed-sync audit entries dropped by the per-environment cap",
+	}, []string{"environment"})
 	// osctrldRollbacks counts rollback events reported by osctrld, once per
 	// event. Labels are the environment name and the validated stage.
 	osctrldRollbacks = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -115,6 +121,7 @@ func RegisterMetrics(reg prometheus.Registerer) {
 	reg.MustRegister(osctrldAuthFailures)
 	reg.MustRegister(osctrldRateLimited)
 	reg.MustRegister(osctrldAuthAuditDropped)
+	reg.MustRegister(santaAuthAuditDropped)
 	reg.MustRegister(osctrldRollbacks)
 	reg.MustRegister(osctrldUpgradeRollbacks)
 }

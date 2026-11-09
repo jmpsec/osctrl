@@ -232,6 +232,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
   const savedQueriesPath = `/_app/env/${currentEnv}/saved-queries`;
   const carvesPath = `/_app/env/${currentEnv}/carves`;
   const vulnerabilitiesPath = `/_app/env/${currentEnv}/vulnerabilities`;
+  const santaPath = `/_app/env/${currentEnv}/santa`;
   const tagsPath = `/_app/env/${currentEnv}/tags`;
   const enrollPath = `/_app/env/${currentEnv}/enroll`;
   const configPath = `/_app/env/${currentEnv}/config`;
@@ -241,6 +242,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
     pathname.startsWith(`/_app/env/${currentEnv}/queries`) && !isSavedQueriesActive;
   const isCarvesActive = pathname.startsWith(`/_app/env/${currentEnv}/carves`);
   const isVulnerabilitiesActive = pathname.startsWith(vulnerabilitiesPath);
+  const isSantaActive = pathname.startsWith(santaPath);
   const isTagsActive = pathname.startsWith(`/_app/env/${currentEnv}/tags`);
   const isEnrollActive = pathname.startsWith(`/_app/env/${currentEnv}/enroll`);
   const isConfigActive = pathname.startsWith(`/_app/env/${currentEnv}/config`);
@@ -460,6 +462,17 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             icon={<ShieldAlert size={14} strokeWidth={1.8} />}
           >
             {t('nav.vulnerabilities')}
+          </NavItem>
+        )}
+        {canManageEnv && features?.santa && (
+          <NavItem
+            collapsed={collapsed}
+            active={isSantaActive}
+            to={santaPath}
+            tone="rose"
+            icon={<ShieldCheck size={14} strokeWidth={1.8} />}
+          >
+            {t('nav.santa')}
           </NavItem>
         )}
         {canManageEnv && (

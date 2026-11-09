@@ -18,6 +18,8 @@ func TestSecuritySignals(t *testing.T) {
 		{"macos_firewall", `[{"global_state":"0"}]`, "fail"},
 		{"gatekeeper", `[{"assessments_enabled":true}]`, "pass"},
 		{"gatekeeper", `[{"assessments_enabled":false}]`, "fail"},
+		{"santa_agent", `[{"identifier":"com.northpolesec.santa.daemon","state":"activated_enabled"}]`, "pass"},
+		{"santa_agent", `[{"identifier":"com.google.santa.daemon","state":"activated_disabled"}]`, "fail"},
 		{"system_integrity", `[{"config_flag":"sip","enabled":"1"},{"config_flag":"allow_untrusted_kexts","enabled":"0"}]`, "pass"},
 		{"system_integrity", `[{"config_flag":"sip","enabled":"0"},{"config_flag":"allow_untrusted_kexts","enabled":"1"}]`, "fail"},
 		{"system_integrity", `[{"config_flag":"allow_untrusted_kexts","enabled":"1"}]`, "warn"},

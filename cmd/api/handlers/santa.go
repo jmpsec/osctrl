@@ -1,0 +1,351 @@
+package handlers
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+
+	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/santa"
+	"github.com/jmpsec/osctrl/pkg/users"
+	"github.com/jmpsec/osctrl/pkg/utils"
+	"gorm.io/gorm"
+)
+
+const santaMaxBody = 64 << 10
+
+// SantaConfigResponse is the environment config plus whether a token exists.
+type SantaConfigResponse struct {
+	santa.EnvConfig
+	TokenSet bool `json:"token_set"`
+}
+
+// SantaConfigRequest is the settable part of the config.
+type SantaConfigRequest struct {
+	ClientMode            string `json:"client_mode"`
+	BatchSize             uint32 `json:"batch_size"`
+	EnableTransitiveRules bool   `json:"enable_transitive_rules"`
+	BlockUSBMount         bool   `json:"block_usb_mount"`
+}
+
+// SantaTokenResponse carries the plaintext token, shown only once.
+type SantaTokenResponse struct {
+	Token string `json:"token"`
+}
+
+// SantaRuleRequest holds the user-settable rule fields.
+type SantaRuleRequest struct {
+	Identifier string `json:"identifier"`
+	RuleType   string `json:"rule_type"`
+	Policy     string `json:"policy"`
+	CELExpr    string `json:"cel_expr"`
+	CustomMsg  string `json:"custom_msg"`
+	CustomURL  string `json:"custom_url"`
+	Scope      string `json:"scope"`
+	ScopeValue string `json:"scope_value"`
+}
+
+// SantaEventsResponse is one page of events.
+type SantaEventsResponse struct {
+	Events []santa.Event `json:"events"`
+	Total  int64         `json:"total"`
+	Page   int           `json:"page"`
+}
+
+// santaEnvironment resolves {env}, requires environment admin and returns the
+// caller. It writes the error response itself.
+func (h *HandlersApi) santaEnvironment(w http.ResponseWriter, r *http.Request) (environments.TLSEnvironment, string, bool) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return environments.TLSEnvironment{}, "", false
+	}
+	if h.Santa == nil {
+		apiErrorResponse(w, "santa not enabled", http.StatusServiceUnavailable, nil)
+		return environments.TLSEnvironment{}, "", false
+	}
+	user := ctxVal.(ContextValue)[ctxUser]
+	envVar := r.PathValue("env")
+	if envVar == "" {
+		apiErrorResponse(w, "env required", http.StatusBadRequest, nil)
+		return environments.TLSEnvironment{}, "", false
+	}
+	env, err := h.Envs.Get(envVar)
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
+		return environments.TLSEnvironment{}, "", false
+	}
+	if !h.Users.CheckPermissionsContext(r.Context(), user, users.AdminLevel, env.UUID) {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
+		return environments.TLSEnvironment{}, "", false
+	}
+	return env, user, true
+}
+
+func (h *HandlersApi) santaAudit(user, action string, r *http.Request, env environments.TLSEnvironment) {
+	h.AuditLog.EnvAction(user, "santa: "+action, utils.GetIP(r), env.ID)
+}
+
+func scopeValueSuffix(v string) string {
+	if v == "" {
+		return ""
+	}
+	return " scope_value=" + v
+}
+
+// SantaConfigGetHandler — GET /api/v1/santa/{env}/config
+// @Summary Get the Santa sync configuration
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {object} SantaConfigResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/config [get]
+func (h *HandlersApi) SantaConfigGetHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	h.writeSantaConfig(w, env)
+}
+
+func (h *HandlersApi) writeSantaConfig(w http.ResponseWriter, env environments.TLSEnvironment) {
+	cfg, err := h.Santa.Config(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error getting config", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK,
+		SantaConfigResponse{EnvConfig: cfg, TokenSet: cfg.TokenHash != ""})
+}
+
+// SantaConfigPutHandler — PUT /api/v1/santa/{env}/config
+// @Summary Update the Santa sync configuration
+// @Tags santa
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param body body SantaConfigRequest true "Config"
+// @Success 200 {object} SantaConfigResponse
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/config [put]
+func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	var req SantaConfigRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&req); err != nil {
+		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
+		return
+	}
+	if !santa.ValidClientMode(req.ClientMode) {
+		apiErrorResponse(w, "invalid client mode", http.StatusBadRequest, nil)
+		return
+	}
+	if err := h.Santa.SaveConfig(santa.EnvConfig{
+		EnvironmentID: env.ID, ClientMode: req.ClientMode, BatchSize: req.BatchSize,
+		EnableTransitiveRules: req.EnableTransitiveRules, BlockUSBMount: req.BlockUSBMount,
+	}); err != nil {
+		apiErrorResponse(w, "error saving config", http.StatusInternalServerError, err)
+		return
+	}
+	h.santaAudit(user, "update config", r, env)
+	h.writeSantaConfig(w, env)
+}
+
+// SantaTokenHandler — POST /api/v1/santa/{env}/token
+// @Summary Rotate the Santa sync token
+// @Description The plaintext token is returned once; the previous token stops working immediately.
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {object} SantaTokenResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/token [post]
+func (h *HandlersApi) SantaTokenHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	token, err := h.Santa.RotateToken(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error rotating token", http.StatusInternalServerError, err)
+		return
+	}
+	h.santaAudit(user, "rotate token", r, env)
+	w.Header().Set("Cache-Control", "no-store")
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, SantaTokenResponse{Token: token})
+}
+
+// SantaRulesHandler — GET /api/v1/santa/{env}/rules
+// @Summary List Santa rules
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} santa.Rule
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/rules [get]
+func (h *HandlersApi) SantaRulesHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	rules, err := h.Santa.Rules(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error listing rules", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rules)
+}
+
+// SantaRuleCreateHandler — POST /api/v1/santa/{env}/rules
+// @Summary Create a Santa rule
+// @Tags santa
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param body body SantaRuleRequest true "Rule"
+// @Success 201 {object} santa.Rule
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 409 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/rules [post]
+func (h *HandlersApi) SantaRuleCreateHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	var req SantaRuleRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&req); err != nil {
+		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
+		return
+	}
+	rule := santa.Rule{
+		EnvironmentID: env.ID, CreatedBy: user,
+		Identifier: req.Identifier, RuleType: req.RuleType, Policy: req.Policy, CELExpr: req.CELExpr,
+		CustomMsg: req.CustomMsg, CustomURL: req.CustomURL, Scope: req.Scope, ScopeValue: req.ScopeValue,
+	}
+	err := h.Santa.CreateRule(&rule)
+	switch {
+	case errors.Is(err, santa.ErrInvalidRule):
+		apiErrorResponse(w, "invalid rule: "+err.Error(), http.StatusBadRequest, err)
+		return
+	case errors.Is(err, santa.ErrRuleExists):
+		apiErrorResponse(w, "rule already exists", http.StatusConflict, err)
+		return
+	case err != nil:
+		apiErrorResponse(w, "error creating rule", http.StatusInternalServerError, err)
+		return
+	}
+	h.santaAudit(user, fmt.Sprintf("create rule %d %s %s %s scope=%s", rule.ID, rule.RuleType, rule.Identifier, rule.Policy, rule.Scope)+scopeValueSuffix(rule.ScopeValue), r, env)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, rule)
+}
+
+// SantaRuleDeleteHandler — DELETE /api/v1/santa/{env}/rules/{id}
+// @Summary Delete a Santa rule
+// @Tags santa
+// @Param env path string true "Environment name or UUID"
+// @Param id path int true "Rule id"
+// @Success 204
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/rules/{id} [delete]
+func (h *HandlersApi) SantaRuleDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
+	if err != nil {
+		apiErrorResponse(w, "invalid rule id", http.StatusBadRequest, err)
+		return
+	}
+	rule, err := h.Santa.Rule(env.ID, uint(id))
+	if err == nil {
+		err = h.Santa.DeleteRule(env.ID, uint(id))
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		apiErrorResponse(w, "rule not found", http.StatusNotFound, err)
+		return
+	}
+	if err != nil {
+		apiErrorResponse(w, "error deleting rule", http.StatusInternalServerError, err)
+		return
+	}
+	h.santaAudit(user, fmt.Sprintf("delete rule %d %s %s %s scope=%s", id, rule.RuleType, rule.Identifier, rule.Policy, rule.Scope)+scopeValueSuffix(rule.ScopeValue), r, env)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// SantaMachinesHandler — GET /api/v1/santa/{env}/machines
+// @Summary List Santa machines
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} santa.Machine
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/machines [get]
+func (h *HandlersApi) SantaMachinesHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	machines, err := h.Santa.Machines(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error listing machines", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, machines)
+}
+
+// SantaEventsHandler — GET /api/v1/santa/{env}/events
+// @Summary List Santa execution events
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param page query int false "Page (1-based)"
+// @Param page_size query int false "Page size"
+// @Success 200 {object} SantaEventsResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/events [get]
+func (h *HandlersApi) SantaEventsHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	size, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+	evs, total, err := h.Santa.Events(env.ID, page, size)
+	if err != nil {
+		apiErrorResponse(w, "error listing events", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, SantaEventsResponse{Events: evs, Total: total, Page: max(page, 1)})
+}

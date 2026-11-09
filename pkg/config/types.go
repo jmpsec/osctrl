@@ -148,6 +148,9 @@ type YAMLConfigurationService struct {
 	// registers no /api/v1/vulnerabilities routes and starts no feed sync, and
 	// none of the vulnerability tables are created. Requires a restart.
 	VulnEnabled bool `yaml:"vulnEnabled"`
+	// SantaEnabled controls the Santa sync server. When false (default) no
+	// Santa routes are registered and no Santa tables are created. Requires a restart.
+	SantaEnabled bool `yaml:"santaEnabled"`
 	// VulnOSVURL is the base URL of the OSV data bucket, or of an internal
 	// mirror with the same layout. Consumed by osctrl-api only.
 	VulnOSVURL string `yaml:"vulnOSVURL"`

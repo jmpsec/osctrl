@@ -17,6 +17,10 @@ export interface Features {
    * /api/v1/vulnerabilities routes are absent and the SPA hides every
    * vulnerability surface. */
   vulnerabilities?: boolean;
+  /** Santa sync server (--santa-enabled). When false the /api/v1/santa
+   * routes are not registered (404; 503 only if the
+   * manager is nil while enabled) and the SPA hides the Santa page. */
+  santa?: boolean;
   /** osctrl-tls runs with --enable-osctrld. Absent on older APIs, which
    * the SPA treats as disabled. Gates Extensions and Osquery versions. */
   osctrld?: boolean;

@@ -22,6 +22,8 @@ import (
 	"github.com/jmpsec/osctrl/pkg/osqueryversions"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/ratelimit"
+	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/version"
@@ -76,6 +78,8 @@ type HandlersTLS struct {
 	ActivityWriter  *activityWriter
 	Posture         *posture.PostureManager
 	Vulns           *vulns.Inventory // nil when --vuln-enabled is off: osctrl:vuln: results are discarded
+	Santa           *santa.Manager   // nil when --santa-enabled is off: no Santa route is registered
+	santaAuditCap   *ratelimit.Limiter
 	OsqueryValues   *config.YAMLConfigurationOsquery
 	ConfigEndpoints *config.YAMLConfigurationEndpoints
 	DebugHTTP       *zerolog.Logger
@@ -233,6 +237,14 @@ func WithPosture(pm *posture.PostureManager) Option {
 func WithVulns(inv *vulns.Inventory) Option {
 	return func(h *HandlersTLS) {
 		h.Vulns = inv
+	}
+}
+
+// WithSanta wires the Santa sync manager (nil when disabled).
+func WithSanta(m *santa.Manager) Option {
+	return func(h *HandlersTLS) {
+		h.Santa = m
+		h.santaAuditCap = ratelimit.New(santaAuditPerHour, time.Hour, 2*time.Hour)
 	}
 }
 
