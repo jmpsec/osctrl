@@ -546,7 +546,7 @@ export const nl: Messages = {
   usersPage: {
     addOperator: 'Operator toevoegen',
     noUsers: 'Geen gebruikers.',
-    superAdminView: 'Superadmin-weergave. Per-omgeving rechten en API-tokenbeheer.',
+    superAdminView: 'Per-omgeving rechten en API-tokenbeheer.',
     deleteUsers: 'Geselecteerde gebruikers verwijderen',
     selectDeletable: 'Alle verwijderbare gebruikers selecteren',
     role: 'Rol',
@@ -613,7 +613,7 @@ export const nl: Messages = {
   environmentsPage: {
     createFirst: 'Maak je eerste omgeving',
     noEnvs: 'Nog geen omgevingen.',
-    superAdminView: 'Superadmin-weergave. osquery-omgevingen aanmaken en beheren.',
+    superAdminView: 'osquery-omgevingen aanmaken en beheren.',
     newEnv: 'Nieuwe omgeving',
     createEnv: 'Omgeving aanmaken',
     deleteEnv: 'Omgeving verwijderen',
@@ -635,7 +635,7 @@ export const nl: Messages = {
     fullConfiguration: 'Volledige configuratie',
   },
   alertsPage: {
-    superAdminView: 'Superadmin-weergave. Waarschuwingsregels, kanalen en verzendhistorie.',
+    superAdminView: 'Waarschuwingsregels, kanalen en verzendhistorie.',
     sections: 'Waarschuwingssecties',
     disabled: 'Waarschuwingen zijn uitgeschakeld',
     rulesTab: 'Regels',

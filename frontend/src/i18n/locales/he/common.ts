@@ -546,7 +546,7 @@ export const he: Messages = {
   usersPage: {
     addOperator: 'הוספת מפעיל',
     noUsers: 'אין משתמשים.',
-    superAdminView: 'תצוגת מנהל-על. הרשאות לכל סביבה וניהול אסימוני API.',
+    superAdminView: 'הרשאות לכל סביבה וניהול אסימוני API.',
     deleteUsers: 'מחיקת המשתמשים שנבחרו',
     selectDeletable: 'בחר את כל המשתמשים שניתן למחוק',
     role: 'תפקיד',
@@ -613,7 +613,7 @@ export const he: Messages = {
   environmentsPage: {
     createFirst: 'צור את הסביבה הראשונה שלך',
     noEnvs: 'אין עדיין סביבות.',
-    superAdminView: 'תצוגת מנהל-על. יצירה וניהול של סביבות osquery.',
+    superAdminView: 'יצירה וניהול של סביבות osquery.',
     newEnv: 'סביבה חדשה',
     createEnv: 'יצירת סביבה',
     deleteEnv: 'מחיקת סביבה',
@@ -635,7 +635,7 @@ export const he: Messages = {
     fullConfiguration: 'תצורה מלאה',
   },
   alertsPage: {
-    superAdminView: 'תצוגת מנהל-על. כללי התראה, ערוצים והיסטוריית שליחה.',
+    superAdminView: 'כללי התראה, ערוצים והיסטוריית שליחה.',
     sections: 'מקטעי התראות',
     disabled: 'ההתראות מושבתות',
     rulesTab: 'כללים',

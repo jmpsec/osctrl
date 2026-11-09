@@ -546,7 +546,7 @@ export const fa: Messages = {
   usersPage: {
     addOperator: 'افزودن اپراتور',
     noUsers: 'کاربری نیست.',
-    superAdminView: 'نمای ابرمدیر. دسترسی‌های هر محیط و مدیریت توکن API.',
+    superAdminView: 'دسترسی‌های هر محیط و مدیریت توکن API.',
     deleteUsers: 'حذف کاربران انتخاب‌شده',
     selectDeletable: 'انتخاب همه کاربران قابل حذف',
     role: 'نقش',
@@ -613,7 +613,7 @@ export const fa: Messages = {
   environmentsPage: {
     createFirst: 'اولین محیط خود را بسازید',
     noEnvs: 'هنوز محیطی نیست.',
-    superAdminView: 'نمای ابرمدیر. ساخت و مدیریت محیط‌های osquery.',
+    superAdminView: 'ساخت و مدیریت محیط‌های osquery.',
     newEnv: 'محیط جدید',
     createEnv: 'ایجاد محیط',
     deleteEnv: 'حذف محیط',
@@ -635,7 +635,7 @@ export const fa: Messages = {
     fullConfiguration: 'پیکربندی کامل',
   },
   alertsPage: {
-    superAdminView: 'نمای ابرمدیر. قواعد هشدار، کانال‌ها و تاریخچه ارسال.',
+    superAdminView: 'قواعد هشدار، کانال‌ها و تاریخچه ارسال.',
     sections: 'بخش‌های هشدار',
     disabled: 'هشدارها غیرفعال هستند',
     rulesTab: 'قواعد',

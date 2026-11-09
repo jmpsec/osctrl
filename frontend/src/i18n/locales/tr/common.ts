@@ -546,7 +546,7 @@ export const tr: Messages = {
   usersPage: {
     addOperator: 'Operatör ekle',
     noUsers: 'Kullanıcı yok.',
-    superAdminView: 'Süper yönetici görünümü. Ortam bazlı izinler ve API token yönetimi.',
+    superAdminView: 'Ortam bazlı izinler ve API token yönetimi.',
     deleteUsers: 'Seçili kullanıcıları sil',
     selectDeletable: 'Silinebilen tüm kullanıcıları seç',
     role: 'Rol',
@@ -613,7 +613,7 @@ export const tr: Messages = {
   environmentsPage: {
     createFirst: 'İlk ortamınızı oluşturun',
     noEnvs: 'Henüz ortam yok.',
-    superAdminView: 'Süper yönetici görünümü. osquery ortamları oluşturun ve yönetin.',
+    superAdminView: 'osquery ortamları oluşturun ve yönetin.',
     newEnv: 'Yeni ortam',
     createEnv: 'Ortam oluştur',
     deleteEnv: 'Ortamı sil',
@@ -635,7 +635,7 @@ export const tr: Messages = {
     fullConfiguration: 'Tam yapılandırma',
   },
   alertsPage: {
-    superAdminView: 'Süper yönetici görünümü. Uyarı kuralları, kanallar ve gönderim geçmişi.',
+    superAdminView: 'Uyarı kuralları, kanallar ve gönderim geçmişi.',
     sections: 'Uyarı bölümleri',
     disabled: 'Uyarılar devre dışı',
     rulesTab: 'Kurallar',

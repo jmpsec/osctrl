@@ -555,7 +555,7 @@ export const en = {
   usersPage: {
     addOperator: 'Add operator',
     noUsers: 'No users.',
-    superAdminView: 'Super-admin view. Per-env permissions and API token management.',
+    superAdminView: 'Per-env permissions and API token management.',
     deleteUsers: 'Delete selected users',
     selectDeletable: 'Select all deletable users',
     role: 'Role',
@@ -622,7 +622,7 @@ export const en = {
   environmentsPage: {
     createFirst: 'Create your first environment',
     noEnvs: 'No environments yet.',
-    superAdminView: 'Super-admin view. Create and manage osquery environments.',
+    superAdminView: 'Create and manage osquery environments.',
     newEnv: 'New environment',
     createEnv: 'Create environment',
     deleteEnv: 'Delete environment',
@@ -644,7 +644,7 @@ export const en = {
     fullConfiguration: 'Full Configuration',
   },
   alertsPage: {
-    superAdminView: 'Super-admin view. Alert rules, channels, and dispatch history.',
+    superAdminView: 'Alert rules, channels, and dispatch history.',
     sections: 'Alert sections',
     disabled: 'Alerting is disabled',
     rulesTab: 'Rules',

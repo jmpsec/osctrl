@@ -546,7 +546,7 @@ export const es: Messages = {
   usersPage: {
     addOperator: 'Añadir operador',
     noUsers: 'Sin usuarios.',
-    superAdminView: 'Vista de superadministrador. Permisos por entorno y gestión de tokens API.',
+    superAdminView: 'Permisos por entorno y gestión de tokens API.',
     deleteUsers: 'Eliminar usuarios seleccionados',
     selectDeletable: 'Seleccionar todos los usuarios eliminables',
     role: 'Rol',
@@ -613,7 +613,7 @@ export const es: Messages = {
   environmentsPage: {
     createFirst: 'Crea tu primer entorno',
     noEnvs: 'Aún no hay entornos.',
-    superAdminView: 'Vista de superadministrador. Crea y gestiona entornos osquery.',
+    superAdminView: 'Crea y gestiona entornos osquery.',
     newEnv: 'Nuevo entorno',
     createEnv: 'Crear entorno',
     deleteEnv: 'Eliminar entorno',
@@ -635,7 +635,7 @@ export const es: Messages = {
     fullConfiguration: 'Configuración completa',
   },
   alertsPage: {
-    superAdminView: 'Vista de superadministrador. Reglas de alerta, canales e historial de envíos.',
+    superAdminView: 'Reglas de alerta, canales e historial de envíos.',
     sections: 'Secciones de alertas',
     disabled: 'Las alertas están desactivadas',
     rulesTab: 'Reglas',

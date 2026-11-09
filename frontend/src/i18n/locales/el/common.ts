@@ -546,7 +546,7 @@ export const el: Messages = {
   usersPage: {
     addOperator: 'Προσθήκη χειριστή',
     noUsers: 'Δεν υπάρχουν χρήστες.',
-    superAdminView: 'Προβολή υπερ-διαχειριστή. Δικαιώματα ανά περιβάλλον και διαχείριση token API.',
+    superAdminView: 'Δικαιώματα ανά περιβάλλον και διαχείριση token API.',
     deleteUsers: 'Διαγραφή επιλεγμένων χρηστών',
     selectDeletable: 'Επιλογή όλων των διαγράψιμων χρηστών',
     role: 'Ρόλος',
@@ -613,7 +613,7 @@ export const el: Messages = {
   environmentsPage: {
     createFirst: 'Δημιουργήστε το πρώτο σας περιβάλλον',
     noEnvs: 'Δεν υπάρχουν ακόμα περιβάλλοντα.',
-    superAdminView: 'Προβολή υπερ-διαχειριστή. Δημιουργία και διαχείριση περιβαλλόντων osquery.',
+    superAdminView: 'Δημιουργία και διαχείριση περιβαλλόντων osquery.',
     newEnv: 'Νέο περιβάλλον',
     createEnv: 'Δημιουργία περιβάλλοντος',
     deleteEnv: 'Διαγραφή περιβάλλοντος',
@@ -635,7 +635,7 @@ export const el: Messages = {
     fullConfiguration: 'Πλήρης διαμόρφωση',
   },
   alertsPage: {
-    superAdminView: 'Προβολή υπερ-διαχειριστή. Κανόνες ειδοποίησης, κανάλια και ιστορικό αποστολών.',
+    superAdminView: 'Κανόνες ειδοποίησης, κανάλια και ιστορικό αποστολών.',
     sections: 'Ενότητες ειδοποιήσεων',
     disabled: 'Οι ειδοποιήσεις είναι απενεργοποιημένες',
     rulesTab: 'Κανόνες',
