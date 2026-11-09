@@ -18,6 +18,7 @@ import { envCarveNewRoute } from './routes/_app/env/$env/carves.new'
 import { envCarveDetailRoute } from './routes/_app/env/$env/carves.$name'
 import { envTagsRoute } from './routes/_app/env/$env/tags'
 import { envVulnerabilitiesRoute } from './routes/_app/env/$env/vulnerabilities'
+import { envSantaRoute } from './routes/_app/env/$env/santa'
 import { envConfigRoute } from './routes/_app/env/$env/config'
 import { envEnrollRoute } from './routes/_app/env/$env/enroll'
 import { usersRoute } from './routes/_app/users'
@@ -67,6 +68,7 @@ const routeTree = rootRoute.addChildren([
       envCarveDetailRoute,
       envTagsRoute,
       envVulnerabilitiesRoute,
+      envSantaRoute,
       envConfigRoute,
       envEnrollRoute,
     ]),

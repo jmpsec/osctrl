@@ -8568,6 +8568,372 @@ paths:
       summary: List query samples
       tags:
         - queries
+  "/api/v1/santa/{env}/config":
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaConfigResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get the Santa sync configuration
+      tags:
+        - santa
+    put:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaConfigRequest"
+        description: Config
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaConfigResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Update the Santa sync configuration
+      tags:
+        - santa
+  "/api/v1/santa/{env}/events":
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Page (1-based)
+          in: query
+          name: page
+          schema:
+            type: integer
+        - description: Page size
+          in: query
+          name: page_size
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaEventsResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List Santa execution events
+      tags:
+        - santa
+  "/api/v1/santa/{env}/machines":
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/santa.Machine"
+                type: array
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List Santa machines
+      tags:
+        - santa
+  "/api/v1/santa/{env}/rules":
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/santa.Rule"
+                type: array
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List Santa rules
+      tags:
+        - santa
+    post:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaRuleRequest"
+        description: Rule
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Rule"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Create a Santa rule
+      tags:
+        - santa
+  "/api/v1/santa/{env}/rules/{id}":
+    delete:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Rule id
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Delete a Santa rule
+      tags:
+        - santa
+  "/api/v1/santa/{env}/token":
+    post:
+      description: The plaintext token is returned once; the previous token stops
+        working immediately.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaTokenResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Rotate the Santa sync token
+      tags:
+        - santa
   "/api/v1/saved-queries/{env}":
     get:
       description: Returns paginated saved queries for an environment.
@@ -12095,6 +12461,9 @@ components:
           type: boolean
         posture:
           type: boolean
+        santa:
+          description: Santa gates the Santa pages in the SPA. Tied to --santa-enabled.
+          type: boolean
         service_config:
           description: >-
             ServiceConfig gates the whole Service Config section in the SPA.
@@ -12252,6 +12621,75 @@ components:
         type:
           type: string
         uuid:
+          type: string
+      type: object
+    handlers.SantaConfigRequest:
+      properties:
+        batch_size:
+          type: integer
+        block_usb_mount:
+          type: boolean
+        client_mode:
+          type: string
+        enable_transitive_rules:
+          type: boolean
+      type: object
+    handlers.SantaConfigResponse:
+      properties:
+        batch_size:
+          description: 0 means the Santa default (50)
+          type: integer
+        block_usb_mount:
+          type: boolean
+        client_mode:
+          description: MONITOR | LOCKDOWN
+          type: string
+        created_at:
+          type: string
+        enable_transitive_rules:
+          type: boolean
+        environment_id:
+          type: integer
+        id:
+          type: integer
+        token_set:
+          type: boolean
+        updated_at:
+          type: string
+      type: object
+    handlers.SantaEventsResponse:
+      properties:
+        events:
+          items:
+            $ref: "#/components/schemas/santa.Event"
+          type: array
+        page:
+          type: integer
+        total:
+          type: integer
+      type: object
+    handlers.SantaRuleRequest:
+      properties:
+        cel_expr:
+          type: string
+        custom_msg:
+          type: string
+        custom_url:
+          type: string
+        identifier:
+          type: string
+        policy:
+          type: string
+        rule_type:
+          type: string
+        scope:
+          type: string
+        scope_value:
+          type: string
+      type: object
+    handlers.SantaTokenResponse:
+      properties:
+        token:
           type: string
       type: object
     handlers.StatsResponse:
@@ -12747,6 +13185,115 @@ components:
         - PlatformLinux
         - PlatformDarwin
         - PlatformWindows
+    santa.Event:
+      properties:
+        bundle_id:
+          type: string
+        cd_hash:
+          type: string
+        created_at:
+          type: string
+        decision:
+          type: string
+        environment_id:
+          type: integer
+        executed_at:
+          type: string
+        executing_user:
+          type: string
+        file_name:
+          type: string
+        file_path:
+          type: string
+        file_sha256:
+          type: string
+        id:
+          type: integer
+        machine_id:
+          type: string
+        node_id:
+          type: integer
+        signing_id:
+          type: string
+        team_id:
+          type: string
+      type: object
+    santa.Machine:
+      properties:
+        applied_digest:
+          description: set at postflight
+          type: string
+        client_mode:
+          type: string
+        created_at:
+          type: string
+        environment_id:
+          type: integer
+        hostname:
+          type: string
+        id:
+          type: integer
+        last_preflight_at:
+          type: string
+        last_sync_at:
+          type: string
+        machine_id:
+          description: uppercase UUID
+          type: string
+        node_id:
+          type: integer
+        os_version:
+          type: string
+        pending_digest:
+          description: set at preflight
+          type: string
+        pending_sync_type:
+          description: NORMAL | CLEAN_RULES
+          type: string
+        primary_user:
+          type: string
+        rule_count:
+          type: integer
+        santa_version:
+          type: string
+        serial_number:
+          type: string
+        updated_at:
+          type: string
+      type: object
+    santa.Rule:
+      properties:
+        cel_expr:
+          type: string
+        created_at:
+          type: string
+        created_by:
+          type: string
+        custom_msg:
+          type: string
+        custom_url:
+          type: string
+        environment_id:
+          type: integer
+        id:
+          type: integer
+        identifier:
+          type: string
+        policy:
+          description: ALLOWLIST|ALLOWLIST_COMPILER|BLOCKLIST|SILENT_BLOCKLIST|CEL
+          type: string
+        rule_type:
+          description: BINARY|CERTIFICATE|TEAMID|SIGNINGID|CDHASH
+          type: string
+        scope:
+          description: env|tag|node
+          type: string
+        scope_value:
+          description: '""| tag name | node UUID (uppercase)'
+          type: string
+        updated_at:
+          type: string
+      type: object
     serviceconfig.ServiceConfig:
       properties:
         createdAt:

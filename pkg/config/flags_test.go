@@ -234,6 +234,28 @@ func TestServiceVulnEnabledFlagDefaultsOff(t *testing.T) {
 	}
 }
 
+func TestServiceSantaEnabledFlagDefaultsOff(t *testing.T) {
+	params := &ServiceParameters{Service: &YAMLConfigurationService{}}
+	flags := initServiceFlags(params)
+
+	var f *cli.BoolFlag
+	for _, flag := range flags {
+		if bf, ok := flag.(*cli.BoolFlag); ok && bf.Name == "santa-enabled" {
+			f = bf
+			break
+		}
+	}
+	if f == nil {
+		t.Fatal("missing santa-enabled service flag")
+	}
+	if f.Value {
+		t.Fatal("santa-enabled flag default: got true want false")
+	}
+	if f.Destination != &params.Service.SantaEnabled {
+		t.Fatal("santa-enabled flag destination does not wire Service.SantaEnabled")
+	}
+}
+
 // Feed settings only mean something to the API worker, so they live in
 // initVulnFlags, which only InitAPIFlags includes.
 func TestVulnFeedFlags(t *testing.T) {

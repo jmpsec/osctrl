@@ -1,0 +1,131 @@
+/**
+ * Santa sync-server API client. Routes need the environment admin
+ * permission. They are not registered (404) when the feature flag is off, and
+ * answer 503 only if the manager is missing while enabled; the SPA only calls
+ * them when features.santa is true.
+ */
+import { apiFetch } from './client';
+
+export type SantaClientMode = 'MONITOR' | 'LOCKDOWN';
+export type SantaRuleType = 'BINARY' | 'CERTIFICATE' | 'TEAMID' | 'SIGNINGID' | 'CDHASH';
+export type SantaPolicy = 'ALLOWLIST' | 'ALLOWLIST_COMPILER' | 'BLOCKLIST' | 'SILENT_BLOCKLIST' | 'CEL';
+export type SantaScope = 'env' | 'tag' | 'node';
+
+export const SANTA_RULE_TYPES: SantaRuleType[] = ['BINARY', 'CERTIFICATE', 'TEAMID', 'SIGNINGID', 'CDHASH'];
+export const SANTA_POLICIES: SantaPolicy[] = ['ALLOWLIST', 'ALLOWLIST_COMPILER', 'BLOCKLIST', 'SILENT_BLOCKLIST', 'CEL'];
+export const SANTA_SCOPES: SantaScope[] = ['env', 'tag', 'node'];
+export const SANTA_EVENTS_PAGE_SIZE = 50;
+/** Header the Santa client sends via SyncExtraHeaders. */
+export const SANTA_TOKEN_HEADER = 'X-Osctrl-Santa-Token';
+
+export interface SantaConfig {
+  client_mode: SantaClientMode;
+  batch_size: number;
+  enable_transitive_rules: boolean;
+  block_usb_mount: boolean;
+  /** The token itself is never returned, only whether one exists. */
+  token_set: boolean;
+}
+
+export type SantaConfigUpdate = Omit<SantaConfig, 'token_set'>;
+
+export interface SantaRuleInput {
+  identifier: string;
+  rule_type: SantaRuleType;
+  policy: SantaPolicy;
+  cel_expr: string;
+  custom_msg: string;
+  custom_url: string;
+  scope: SantaScope;
+  scope_value: string;
+}
+
+export interface SantaRule extends SantaRuleInput {
+  id: number;
+  created_at: string;
+  created_by: string;
+}
+
+export interface SantaMachine {
+  machine_id: string;
+  serial_number: string;
+  hostname: string;
+  os_version: string;
+  santa_version: string;
+  primary_user: string;
+  client_mode: string;
+  rule_count: number;
+  last_sync_at: string | null;
+}
+
+export interface SantaEvent {
+  id: number;
+  file_sha256: string;
+  file_path: string;
+  file_name: string;
+  executing_user: string;
+  decision: string;
+  team_id: string;
+  signing_id: string;
+  cd_hash: string;
+  bundle_id: string;
+  machine_id: string;
+  executed_at: string;
+}
+
+export interface SantaEventsPage {
+  events: SantaEvent[];
+  total: number;
+  page: number;
+}
+
+export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'machines' | 'events', ...rest: unknown[]) =>
+  ['santa', env, part, ...rest] as const;
+
+function envPath(env: string): string {
+  return `/api/v1/santa/${encodeURIComponent(env)}`;
+}
+
+function jsonInit(method: string, body: unknown): RequestInit {
+  return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+}
+
+/** GET /api/v1/santa/{env}/config */
+export function getSantaConfig(env: string): Promise<SantaConfig> {
+  return apiFetch<SantaConfig>(`${envPath(env)}/config`);
+}
+
+/** PUT /api/v1/santa/{env}/config */
+export function putSantaConfig(env: string, body: SantaConfigUpdate): Promise<SantaConfig> {
+  return apiFetch<SantaConfig>(`${envPath(env)}/config`, jsonInit('PUT', body));
+}
+
+/** POST /api/v1/santa/{env}/token — the plaintext token is returned once. */
+export function rotateSantaToken(env: string): Promise<{ token: string }> {
+  return apiFetch<{ token: string }>(`${envPath(env)}/token`, { method: 'POST' });
+}
+
+/** GET /api/v1/santa/{env}/rules */
+export function listSantaRules(env: string): Promise<SantaRule[]> {
+  return apiFetch<SantaRule[]>(`${envPath(env)}/rules`);
+}
+
+/** POST /api/v1/santa/{env}/rules — 409 when the rule already exists, 400 on invalid input. */
+export function createSantaRule(env: string, body: SantaRuleInput): Promise<SantaRule> {
+  return apiFetch<SantaRule>(`${envPath(env)}/rules`, jsonInit('POST', body));
+}
+
+/** DELETE /api/v1/santa/{env}/rules/{id} */
+export function deleteSantaRule(env: string, id: number): Promise<unknown> {
+  return apiFetch<unknown>(`${envPath(env)}/rules/${id}`, { method: 'DELETE' });
+}
+
+/** GET /api/v1/santa/{env}/machines */
+export function listSantaMachines(env: string): Promise<SantaMachine[]> {
+  return apiFetch<SantaMachine[]>(`${envPath(env)}/machines`);
+}
+
+/** GET /api/v1/santa/{env}/events */
+export function listSantaEvents(env: string, page = 1, pageSize = SANTA_EVENTS_PAGE_SIZE): Promise<SantaEventsPage> {
+  return apiFetch<SantaEventsPage>(`${envPath(env)}/events?page=${page}&page_size=${pageSize}`);
+}

@@ -42,6 +42,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
+	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -636,6 +637,15 @@ func osctrlAPIService() {
 	} else {
 		log.Info().Msg("Vulnerability monitoring disabled (enable with --vuln-enabled)")
 	}
+	// Santa sync server management (disabled by default); no tables otherwise.
+	var santaMgr *santa.Manager
+	if flagParams.Service.SantaEnabled {
+		santaMgr, err = santa.NewManager(db.Conn)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to initialize Santa")
+		}
+		log.Info().Msg("Santa enabled")
+	}
 	// Vulnerability findings count toward the posture risk score when both
 	// features are on (posture.EvidenceSource).
 	if posturemgr != nil && vulnReader != nil {
@@ -645,6 +655,23 @@ func osctrlAPIService() {
 	vulnCtx, stopVulns := context.WithCancel(context.Background())
 	if vulnWorker != nil {
 		go vulnWorker.Run(vulnCtx)
+	}
+	if santaMgr != nil {
+		go func() {
+			t := time.NewTicker(24 * time.Hour)
+			defer t.Stop()
+			for {
+				// shortcut: fixed 30-day retention, add a flag if operators ask
+				if _, err := santaMgr.PruneEvents(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
+					log.Err(err).Msg("error pruning santa events")
+				}
+				select {
+				case <-vulnCtx.Done():
+					return
+				case <-t.C:
+				}
+			}
+		}()
 	}
 	// Secondary indexes for the hot read paths, beyond the struct tags. Built
 	// in the background, so a large table does not hold up startup; osctrl-api
@@ -754,6 +781,7 @@ func osctrlAPIService() {
 		handlers.WithPosture(posturemgr),
 		handlers.WithPostureEnabled(flagParams.Service.PostureEnabled),
 		handlers.WithVulns(vulnReader),
+		handlers.WithSanta(santaMgr),
 		handlers.WithMFA(mfamgr, webAuthn, flagParams.Service.MFARequired, mfaIssuerName(flagParams)),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
@@ -1090,6 +1118,33 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiNodesPath)+"/{env}/node/{uuid}/vulnerabilities",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.VulnNodeHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	}
+	if flagParams.Service.SantaEnabled {
+		// API: Santa management
+		muxAPI.Handle(
+			"GET "+_apiPath("/santa")+"/{env}/config",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaConfigGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"PUT "+_apiPath("/santa")+"/{env}/config",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaConfigPutHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath("/santa")+"/{env}/token",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaTokenHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/santa")+"/{env}/rules",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRulesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath("/santa")+"/{env}/rules",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath("/santa")+"/{env}/rules/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/santa")+"/{env}/machines",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaMachinesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath("/santa")+"/{env}/events",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaEventsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// API: node logs
 	muxAPI.Handle(

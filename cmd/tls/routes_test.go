@@ -12,6 +12,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/extensions"
 	"github.com/jmpsec/osctrl/pkg/nodeconfig"
 	"github.com/jmpsec/osctrl/pkg/osqueryversions"
+	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -25,7 +26,7 @@ func TestRegisterRoutesAllEnabled(t *testing.T) {
 		ConfigEndpoints: &config.YAMLConfigurationEndpoints{{}},
 		Osctrld:         &config.YAMLConfigurationOsctrld{Enabled: true},
 	}
-	h := &handlers.HandlersTLS{Extensions: &extensions.Manager{}}
+	h := &handlers.HandlersTLS{Extensions: &extensions.Manager{}, Santa: &santa.Manager{}}
 	mux := http.NewServeMux()
 	require.NotPanics(t, func() { registerRoutes(mux, h, params, http.NotFoundHandler()) })
 
@@ -35,6 +36,7 @@ func TestRegisterRoutesAllEnabled(t *testing.T) {
 		env + environments.DefaultExtensionPath:                  "POST /{env}/" + environments.DefaultExtensionPath,
 		env + "secret/" + environments.DefaultConfigEndpointPath: "POST /{env}/{secret}/" + environments.DefaultConfigEndpointPath,
 		env + environments.DefaultFlagsPath:                      "POST /{env}/" + environments.DefaultFlagsPath,
+		env + "santa/sync/preflight/machine":                     "POST /{env}/santa/sync/{stage}/{machineid}",
 	} {
 		_, pattern := mux.Handler(httptest.NewRequest(http.MethodPost, path, nil))
 		require.Equal(t, want, pattern, path)

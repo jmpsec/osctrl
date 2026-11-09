@@ -77,6 +77,7 @@ Main runtime components:
 - `pkg/mcp`: MCP server registration, tool schemas, read tools, and separately enabled write tools shared by standalone and hosted transports.
 - `pkg/apiclient`: authenticated REST client used by `osctrl-cli` and standalone `osctrl-mcp`.
 - `pkg/posture`: optional posture ingestion, checks, and scoring.
+- `pkg/santa`: optional Santa sync server — per-environment token and config, tag/node/environment-scoped rules with a digest-based clean-sync rule, machines and execution events. See `pkg/santa/README.md`.
 - `pkg/vulns`: optional vulnerability monitoring — inventory ingestion (TLS), OSV/CISA KEV (and optional NVD) feed sync, matching and findings (API worker), read model. It also supplies posture score evidence and the advisory-feeds health component.
 - `pkg/serviceconfig`, `pkg/servicecommands`: persisted service sections and DB-mediated control requests between API and TLS processes.
 - `deploy`: Docker, nginx, systemd, osquery assets, sample YAML configs.
@@ -124,6 +125,7 @@ Representative routes (some are feature-gated):
   - `POST /{env}/write`
   - `POST /{env}/init`
   - `POST /{env}/block`
+  - `POST /{env}/santa/sync/{stage}/{machineid}` (only with `--santa-enabled`)
 - API routes in [`cmd/api/main.go`](./cmd/api/main.go):
   - `POST /api/v1/login`
   - `POST /api/v1/login/{env}`
@@ -433,7 +435,7 @@ Persistence is mostly direct GORM `AutoMigrate` plus CRUD. There is no separate 
 
 Primary database models/tables:
 
-Feature-owned tables are migrated only when their manager is initialized. In particular, posture, alert and vulnerability tables require those features to be enabled; osquery log tables require a DB logger.
+Feature-owned tables are migrated only when their manager is initialized. In particular, posture, alert, vulnerability and Santa tables require those features to be enabled; osquery log tables require a DB logger.
 
 - Environments:
   - `pkg/environments.TLSEnvironment` -> `tls_environments`
@@ -475,6 +477,11 @@ Feature-owned tables are migrated only when their manager is initialized. In par
 - Posture:
   - `pkg/posture.NodePosture` -> `node_posture`
   - `pkg/posture.PostureCheck` -> `posture_checks`
+- Santa (only with `--santa-enabled`):
+  - `pkg/santa.EnvConfig` -> `santa_env_configs`
+  - `pkg/santa.Rule` -> `santa_rules`
+  - `pkg/santa.Machine` -> `santa_machines`
+  - `pkg/santa.Event` -> `santa_events`
 - Vulnerabilities (only with `--vuln-enabled`):
   - `pkg/vulns.NodeSoftware` -> `node_software`
   - `pkg/vulns.NodeState` -> `vuln_node_state`

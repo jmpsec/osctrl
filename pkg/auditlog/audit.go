@@ -284,6 +284,19 @@ func (m *AuditLogManager) FailedEnroll(ip, envName, reason string, envID uint) {
 	}
 }
 
+// FailedSanta records a rejected Santa sync request: a missing or wrong
+// token, or a machine that is not a node of the environment. Severity
+// warning, like FailedEnroll.
+func (m *AuditLogManager) FailedSanta(ip, envName, reason string, envID uint) {
+	if !m.Enabled {
+		return
+	}
+	line := fmt.Sprintf("failed santa sync for env %s: %s", envName, reason)
+	if err := m.CreateNew("osctrl-tls", line, ip, LogTypeNode, SeverityWarning, envID); err != nil {
+		log.Err(err).Msg("error creating failed-santa audit log")
+	}
+}
+
 // FailedOsctrld records a rejected osctrld request for the env in the path:
 // a wrong environment secret, or an address blocked after too many of them.
 // Severity warning, like FailedEnroll.

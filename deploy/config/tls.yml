@@ -91,6 +91,9 @@ service:
   # vulnerability matching by osctrl-api. When false (default) those results
   # are discarded and no tables are created. Requires a restart.
   vulnEnabled: false
+  # Santa sync server. When false (default) no Santa routes are registered and
+  # no tables are created. Must match on osctrl-tls and osctrl-api. Requires a restart.
+  santaEnabled: false
   # DB health monitor. When enabled, osctrl-tls pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache and SettingsCache switch to

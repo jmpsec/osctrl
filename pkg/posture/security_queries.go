@@ -11,6 +11,7 @@ func withSecurityChecks(profile PostureProfile) PostureProfile {
 	case "darwin":
 		queries["macos_firewall"] = "SELECT global_state FROM alf"
 		queries["gatekeeper"] = "SELECT assessments_enabled FROM gatekeeper"
+		queries["santa_agent"] = "SELECT identifier, state FROM system_extensions WHERE identifier IN ('com.northpolesec.santa.daemon','com.google.santa.daemon')"
 		queries["system_integrity"] = "SELECT config_flag, enabled FROM sip_config WHERE config_flag = 'sip'"
 		queries["screen_lock"] = "SELECT enabled, grace_period FROM screenlock"
 	case "linux":

@@ -88,6 +88,28 @@ describe('SideNav vulnerabilities entry', () => {
   });
 });
 
+describe('SideNav santa entry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('is shown to environment admins when the feature is on', async () => {
+    mockGetFeatures.mockResolvedValue({ ...baseFeatures, santa: true });
+    mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
+    renderNav();
+    const link = await screen.findByRole('link', { name: 'Santa' });
+    expect(link).toHaveAttribute('href', '/_app/env/dev/santa');
+  });
+
+  it('is hidden while the feature is off', async () => {
+    mockGetFeatures.mockResolvedValue({ ...baseFeatures, santa: false });
+    mockGetMe.mockResolvedValue({ admin: true, permissions: {} });
+    renderNav();
+    await settle();
+    expect(screen.queryByRole('link', { name: 'Santa' })).not.toBeInTheDocument();
+  });
+});
+
 describe('SideNav extensions entry', () => {
   beforeEach(() => {
     vi.clearAllMocks();

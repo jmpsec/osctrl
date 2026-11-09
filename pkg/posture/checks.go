@@ -181,6 +181,10 @@ func (pm *PostureManager) Score(records []NodePosture) (PostureScore, error) {
 	return sc.Score(records), nil
 }
 
+// defaultDisabledCategories are seeded off so fleets without the tool lose no
+// score. Seeding never rewrites existing checks, so current installs are unaffected.
+var defaultDisabledCategories = map[string]bool{"santa_agent": true}
+
 func defaultChecks() []PostureCheck {
 	ruleByCategory := defaultRuleByCategory()
 	var checks []PostureCheck
@@ -200,7 +204,7 @@ func defaultChecks() []PostureCheck {
 				Interval:           query.Interval,
 				Platform:           query.Platform,
 				Snapshot:           query.Snapshot,
-				Enabled:            true,
+				Enabled:            !defaultDisabledCategories[category],
 				ScoringRule:        rule.RuleKey,
 				ControlID:          rule.ControlID,
 				Framework:          rule.Framework,

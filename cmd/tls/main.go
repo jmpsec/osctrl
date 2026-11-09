@@ -34,6 +34,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
+	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -311,6 +312,17 @@ func osctrlService() {
 	} else {
 		log.Info().Msg("Vulnerability monitoring disabled (enable with --vuln-enabled)")
 	}
+	var santaMgr *santa.Manager
+	if flagParams.Service.SantaEnabled {
+		sm, err := santa.NewManager(db.Conn)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to initialize Santa sync server")
+		}
+		santaMgr = sm
+		log.Info().Msg("Santa sync server enabled")
+	} else {
+		log.Info().Msg("Santa sync server disabled (enable with --santa-enabled)")
+	}
 	// Alerting subsystem (disabled by default). The nil matcher means
 	// the ingest path never evaluates rules — zero cost when the
 	// feature is off. When enabled: manager + rule snapshot + Redis
@@ -580,6 +592,7 @@ func osctrlService() {
 		handlers.WithActivityWriter(activityWriter),
 		handlers.WithPosture(posturemgr),  // nil when posture disabled
 		handlers.WithVulns(vulnInventory), // nil when vulnerability monitoring disabled
+		handlers.WithSanta(santaMgr),      // nil when Santa sync server disabled
 		handlers.WithOsqueryValues(flagParams.Osquery),
 		handlers.WithConfigEndpoints(flagParams.ConfigEndpoints),
 		handlers.WithDebugHTTP(flagParams.Debug),
@@ -1028,6 +1041,9 @@ func registerRoutes(mux *http.ServeMux, h *handlers.HandlersTLS, p *config.Servi
 	if p.Osquery.Carve {
 		mux.Handle("POST /{env}/"+environments.DefaultCarverInitPath, h.PrometheusMiddleware(http.HandlerFunc(h.CarveInitHandler)))
 		mux.Handle("POST /{env}/"+environments.DefaultCarverBlockPath, h.PrometheusMiddleware(http.HandlerFunc(h.CarveBlockHandler)))
+	}
+	if h.Santa != nil {
+		mux.Handle("POST /{env}/santa/sync/{stage}/{machineid}", h.PrometheusMiddleware(http.HandlerFunc(h.SantaHandler)))
 	}
 	// TLS: Quick enroll/remove script
 	mux.HandleFunc("GET /{env}/{secretpath}/{script}", h.QuickEnrollHandler)
