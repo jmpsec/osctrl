@@ -470,8 +470,8 @@ func defaultInt(value, def int) int {
 // ////////////////////////////////////////////////////////////////// conversion
 
 const (
-	defOsqueryVersion = "5.24.0"
-	defOsqueryTables  = "./data/5.24.0.json"
+	defOsqueryVersion = "5.24.1"
+	defOsqueryTables  = "./data/5.24.1.json"
 )
 
 func main() {

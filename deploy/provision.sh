@@ -164,7 +164,7 @@ BRANCH="main"
 SOURCE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST_PATH=/opt/osctrl
 ALL_HOST="127.0.0.1"
-OSQUERY_VERSION="5.24.0"
+OSQUERY_VERSION="5.24.1"
 
 # Backend values
 _DB_HOST="localhost"

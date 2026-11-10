@@ -250,9 +250,9 @@ osquery:
   # fleet leave it empty and set --osquery-sha256 on the node instead.
   sha256: ""
   # osquery schema version used for table metadata.
-  version: 5.24.0
+  version: 5.24.1
   # JSON schema file with osquery table metadata.
-  tablesFile: ./data/5.24.0.json
+  tablesFile: ./data/5.24.1.json
   # Enables POST /{env}/log.
   logger: true
   # Enables POST /{env}/config.
