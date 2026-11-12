@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"buf.build/gen/go/northpolesec/protos/protocolbuffers/go/syncv2"
+	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -81,19 +81,19 @@ func (h *HandlersTLS) SantaHandler(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, santa.MaxRawBody)
 	switch r.PathValue("stage") {
 	case "preflight":
-		err = santaStage(w, r, &syncv2.PreflightRequest{}, func(q *syncv2.PreflightRequest) (proto.Message, error) {
+		err = santaStage(w, r, &syncv1.PreflightRequest{}, func(q *syncv1.PreflightRequest) (proto.Message, error) {
 			return h.Santa.Preflight(sn, q)
 		})
 	case "eventupload":
-		err = santaStage(w, r, &syncv2.EventUploadRequest{}, func(q *syncv2.EventUploadRequest) (proto.Message, error) {
+		err = santaStage(w, r, &syncv1.EventUploadRequest{}, func(q *syncv1.EventUploadRequest) (proto.Message, error) {
 			return h.Santa.EventUpload(sn, q)
 		})
 	case "ruledownload":
-		err = santaStage(w, r, &syncv2.RuleDownloadRequest{}, func(q *syncv2.RuleDownloadRequest) (proto.Message, error) {
+		err = santaStage(w, r, &syncv1.RuleDownloadRequest{}, func(q *syncv1.RuleDownloadRequest) (proto.Message, error) {
 			return h.Santa.RuleDownload(sn, q)
 		})
 	case "postflight":
-		err = santaStage(w, r, &syncv2.PostflightRequest{}, func(q *syncv2.PostflightRequest) (proto.Message, error) {
+		err = santaStage(w, r, &syncv1.PostflightRequest{}, func(q *syncv1.PostflightRequest) (proto.Message, error) {
 			return h.Santa.Postflight(sn, q)
 		})
 	default:

@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"buf.build/gen/go/northpolesec/protos/protocolbuffers/go/syncv2"
+	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"gorm.io/gorm"
 )
 
@@ -51,13 +51,13 @@ func (m *Manager) effectiveDigest(n SyncNode) ([]Rule, string, error) {
 }
 
 // Preflight records the machine and decides between a normal and a clean rule sync.
-func (m *Manager) Preflight(n SyncNode, req *syncv2.PreflightRequest) (*syncv2.PreflightResponse, error) {
+func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.PreflightResponse, error) {
 	cfg, err := m.Config(n.EnvID)
 	if err != nil {
 		return nil, err
 	}
-	mode, ok := syncv2.ClientMode_value[cfg.ClientMode]
-	if !ok || mode == int32(syncv2.ClientMode_UNKNOWN_CLIENT_MODE) {
+	mode, ok := syncv1.ClientMode_value[cfg.ClientMode]
+	if !ok || mode == int32(syncv1.ClientMode_UNKNOWN_CLIENT_MODE) {
 		return nil, fmt.Errorf("santa: invalid configured client mode %q", cfg.ClientMode)
 	}
 	_, digest, err := m.effectiveDigest(n)
@@ -83,9 +83,9 @@ func (m *Manager) Preflight(n SyncNode, req *syncv2.PreflightRequest) (*syncv2.P
 	// Compiler and transitive counts overlap other types, so they are left out.
 	mc.RuleCount = req.GetBinaryRuleCount() + req.GetCertificateRuleCount() + req.GetTeamidRuleCount() +
 		req.GetSigningidRuleCount() + req.GetCdhashRuleCount()
-	syncType := syncv2.SyncType_NORMAL
+	syncType := syncv1.SyncType_NORMAL
 	if req.GetRequestCleanSync() || digest != mc.AppliedDigest {
-		syncType = syncv2.SyncType_CLEAN_RULES
+		syncType = syncv1.SyncType_CLEAN_RULES
 	}
 	mc.PendingSyncType = syncType.String()
 	mc.PendingDigest = digest
@@ -94,8 +94,8 @@ func (m *Manager) Preflight(n SyncNode, req *syncv2.PreflightRequest) (*syncv2.P
 		return nil, err
 	}
 
-	resp := &syncv2.PreflightResponse{
-		ClientMode:            syncv2.ClientMode(mode),
+	resp := &syncv1.PreflightResponse{
+		ClientMode:            syncv1.ClientMode(mode),
 		SyncType:              syncType.Enum(),
 		EnableTransitiveRules: &cfg.EnableTransitiveRules,
 		BlockUsbMount:         &cfg.BlockUSBMount, //nolint:staticcheck // deprecated field is still the one older Santa clients read
@@ -107,13 +107,13 @@ func (m *Manager) Preflight(n SyncNode, req *syncv2.PreflightRequest) (*syncv2.P
 }
 
 // RuleDownload returns one page of the node's effective rules for a clean sync.
-func (m *Manager) RuleDownload(n SyncNode, req *syncv2.RuleDownloadRequest) (*syncv2.RuleDownloadResponse, error) {
+func (m *Manager) RuleDownload(n SyncNode, req *syncv1.RuleDownloadRequest) (*syncv1.RuleDownloadResponse, error) {
 	mc, err := m.loadMachine(n)
 	if err != nil {
 		return nil, err
 	}
-	resp := &syncv2.RuleDownloadResponse{}
-	if mc.PendingSyncType != syncv2.SyncType_CLEAN_RULES.String() {
+	resp := &syncv1.RuleDownloadResponse{}
+	if mc.PendingSyncType != syncv1.SyncType_CLEAN_RULES.String() {
 		return resp, nil
 	}
 	rules, digest, err := m.effectiveDigest(n)
@@ -144,19 +144,19 @@ func (m *Manager) RuleDownload(n SyncNode, req *syncv2.RuleDownloadRequest) (*sy
 	return resp, nil
 }
 
-func toProtoRule(r Rule) (*syncv2.Rule, error) {
-	pol, ok := syncv2.Policy_value[r.Policy]
-	if !ok || pol == int32(syncv2.Policy_POLICY_UNKNOWN) {
+func toProtoRule(r Rule) (*syncv1.Rule, error) {
+	pol, ok := syncv1.Policy_value[r.Policy]
+	if !ok || pol == int32(syncv1.Policy_POLICY_UNKNOWN) {
 		return nil, fmt.Errorf("santa: rule %d has unmappable policy %q", r.ID, r.Policy)
 	}
-	rt, ok := syncv2.RuleType_value[r.RuleType]
-	if !ok || rt == int32(syncv2.RuleType_RULETYPE_UNKNOWN) {
+	rt, ok := syncv1.RuleType_value[r.RuleType]
+	if !ok || rt == int32(syncv1.RuleType_RULETYPE_UNKNOWN) {
 		return nil, fmt.Errorf("santa: rule %d has unmappable rule type %q", r.ID, r.RuleType)
 	}
-	return &syncv2.Rule{
+	return &syncv1.Rule{
 		Identifier: r.Identifier,
-		Policy:     syncv2.Policy(pol),
-		RuleType:   syncv2.RuleType(rt),
+		Policy:     syncv1.Policy(pol),
+		RuleType:   syncv1.RuleType(rt),
 		CustomMsg:  r.CustomMsg,
 		CustomUrl:  r.CustomURL,
 		CelExpr:    r.CELExpr,
@@ -164,7 +164,7 @@ func toProtoRule(r Rule) (*syncv2.Rule, error) {
 }
 
 // EventUpload stores execution events; other event kinds are ignored.
-func (m *Manager) EventUpload(n SyncNode, req *syncv2.EventUploadRequest) (*syncv2.EventUploadResponse, error) {
+func (m *Manager) EventUpload(n SyncNode, req *syncv1.EventUploadRequest) (*syncv1.EventUploadResponse, error) {
 	if _, err := m.loadMachine(n); err != nil {
 		return nil, err
 	}
@@ -192,11 +192,11 @@ func (m *Manager) EventUpload(n SyncNode, req *syncv2.EventUploadRequest) (*sync
 	if err := m.AddEvents(evs); err != nil {
 		return nil, err
 	}
-	return &syncv2.EventUploadResponse{}, nil
+	return &syncv1.EventUploadResponse{}, nil
 }
 
 // Postflight marks the preflight digest as applied.
-func (m *Manager) Postflight(n SyncNode, _ *syncv2.PostflightRequest) (*syncv2.PostflightResponse, error) {
+func (m *Manager) Postflight(n SyncNode, _ *syncv1.PostflightRequest) (*syncv1.PostflightResponse, error) {
 	mc, err := m.loadMachine(n)
 	if err != nil {
 		return nil, err
@@ -212,7 +212,7 @@ func (m *Manager) Postflight(n SyncNode, _ *syncv2.PostflightRequest) (*syncv2.P
 	if err := m.SaveMachine(&mc); err != nil {
 		return nil, err
 	}
-	return &syncv2.PostflightResponse{}, nil
+	return &syncv1.PostflightResponse{}, nil
 }
 
 // unixTime converts float unix seconds to UTC; non-finite or absurd values yield the zero time.

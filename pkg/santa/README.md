@@ -6,7 +6,7 @@ Tables (`santa_env_configs`, `santa_rules`, `santa_machines`, `santa_events`) ar
 
 ## Data flow
 
-- `osctrl-tls` serves the Santa sync protocol (v2): `POST /{env}/santa/sync/{stage}/{machineid}` with `stage` one of `preflight`, `eventupload`, `ruledownload`, `postflight`. `{env}` is the environment UUID, `{machineid}` the node UUID.
+- `osctrl-tls` serves the stable Santa sync protocol (v1, `santa.sync.v1`): `POST /{env}/santa/sync/{stage}/{machineid}` with `stage` one of `preflight`, `eventupload`, `ruledownload`, `postflight`. `{env}` is the environment UUID, `{machineid}` the node UUID.
 - `osctrl-api` manages configuration, the token, rules, and read views of machines and events under `/api/v1/santa/{env}/...` (`config`, `token`, `rules`, `machines`, `events`). The React UI (Santa page) calls these. JSON is snake_case.
 - Both share the SQL database. Rules are scoped to the environment, a tag, or a node. For each (rule type, identifier) the most specific scope wins (node over tag over environment).
 

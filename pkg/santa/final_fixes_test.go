@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"buf.build/gen/go/northpolesec/protos/protocolbuffers/go/syncv2"
+	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,6 +42,6 @@ func TestRuleDownloadRulesChangedMidSync(t *testing.T) {
 	n := testNode()
 	mustPreflight(t, m, n, false)
 	require.NoError(t, m.CreateRule(testRule(1)))
-	_, err := m.RuleDownload(n, &syncv2.RuleDownloadRequest{})
+	_, err := m.RuleDownload(n, &syncv1.RuleDownloadRequest{})
 	require.ErrorIs(t, err, ErrRulesChanged)
 }
