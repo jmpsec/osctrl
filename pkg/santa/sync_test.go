@@ -31,7 +31,7 @@ func mustPostflight(t *testing.T, m *Manager, n SyncNode) {
 
 func TestPreflightFirstSyncIsClean(t *testing.T) {
 	m := newTestManager(t)
-	require.NoError(t, m.SaveConfig(EnvConfig{EnvironmentID: 1, ClientMode: "LOCKDOWN", BatchSize: 25, EnableTransitiveRules: true, BlockUSBMount: true}))
+	require.NoError(t, m.SaveConfig(EnvConfig{EnvironmentID: 1, ClientMode: "LOCKDOWN", BatchSize: 25, EnableTransitiveRules: true, RemovableMedia: MediaBlock}))
 	resp := mustPreflight(t, m, testNode(), false)
 	require.Equal(t, syncv1.ClientMode_LOCKDOWN, resp.GetClientMode())
 	require.NotNil(t, resp.SyncType)

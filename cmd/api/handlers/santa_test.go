@@ -117,6 +117,37 @@ func TestSantaConfigPut(t *testing.T) {
 	require.Contains(t, rr.Body.String(), `"LOCKDOWN"`)
 }
 
+func TestSantaConfigPutRemovableMedia(t *testing.T) {
+	h, _, envA, _ := setupSantaHandlers(t)
+	p := map[string]string{"env": envA.Name}
+	tests := []struct {
+		name, body string
+		code       int
+		want       []string
+	}{
+		{"legacy block_usb_mount", `{"client_mode":"MONITOR","block_usb_mount":true}`, http.StatusOK,
+			[]string{`"removable_media":"BLOCK"`, `"block_usb_mount":true`}},
+		{"default allow", `{"client_mode":"MONITOR"}`, http.StatusOK,
+			[]string{`"removable_media":"ALLOW"`, `"block_usb_mount":false`, `"encrypted_removable_media":""`}},
+		{"remount", `{"client_mode":"MONITOR","removable_media":"REMOUNT","removable_media_flags":["RDONLY","noexec"],"encrypted_removable_media":"BLOCK"}`,
+			http.StatusOK, []string{`"removable_media_flags":["rdonly","noexec"]`, `"encrypted_removable_media":"BLOCK"`}},
+		{"explicit policy wins over legacy flag", `{"client_mode":"MONITOR","removable_media":"ALLOW","block_usb_mount":true}`,
+			http.StatusOK, []string{`"removable_media":"ALLOW"`}},
+		{"unknown flag", `{"client_mode":"MONITOR","removable_media":"REMOUNT","removable_media_flags":["rw"]}`, http.StatusBadRequest, nil},
+		{"remount without flags", `{"client_mode":"MONITOR","removable_media":"REMOUNT"}`, http.StatusBadRequest, nil},
+		{"unknown encrypted action", `{"client_mode":"MONITOR","encrypted_removable_media":"DENY"}`, http.StatusBadRequest, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := santaDo(h.SantaConfigPutHandler, "PUT", "alice", tt.body, p)
+			require.Equal(t, tt.code, rr.Code, rr.Body.String())
+			for _, s := range tt.want {
+				require.Contains(t, rr.Body.String(), s)
+			}
+		})
+	}
+}
+
 func TestSantaCreateRuleValidation(t *testing.T) {
 	h, _, envA, envB := setupSantaHandlers(t)
 	p := map[string]string{"env": envA.Name}

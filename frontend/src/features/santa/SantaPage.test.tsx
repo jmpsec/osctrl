@@ -18,6 +18,7 @@ const mockEvents = vi.fn<() => Promise<SantaEventsPage>>();
 const mockMachines = vi.fn<() => Promise<SantaMachine[]>>();
 const mockConfig = vi.fn<() => Promise<SantaConfig>>();
 const mockRotate = vi.fn<() => Promise<{ token: string }>>();
+const mockPutConfig = vi.fn<(env: string, body: unknown) => Promise<SantaConfig>>();
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -30,6 +31,7 @@ vi.mock('$/api/santa', async () => {
     listSantaMachines: () => mockMachines(),
     getSantaConfig: () => mockConfig(),
     rotateSantaToken: () => mockRotate(),
+    putSantaConfig: (env: string, body: unknown) => mockPutConfig(env, body),
   };
 });
 vi.mock('$/api/environments', () => ({
@@ -39,6 +41,11 @@ vi.mock('$/api/environments', () => ({
 const rule: SantaRule = {
   id: 7, created_at: '', created_by: 'admin', identifier: 'a'.repeat(64), rule_type: 'BINARY',
   policy: 'BLOCKLIST', cel_expr: '', custom_msg: '', custom_url: '', scope: 'env', scope_value: '',
+};
+
+const config: SantaConfig = {
+  client_mode: 'MONITOR', batch_size: 0, enable_transitive_rules: false, removable_media: 'ALLOW',
+  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, token_set: true,
 };
 
 function renderPage() {
@@ -77,9 +84,8 @@ describe('SantaPage', () => {
       machine_id: 'M1', serial_number: 'SER1', hostname: 'mac-01', os_version: '15', santa_version: '2025.1',
       primary_user: 'bob', client_mode: 'LOCKDOWN', rule_count: 3, last_sync_at: null,
     }]);
-    mockConfig.mockResolvedValue({
-      client_mode: 'MONITOR', batch_size: 0, enable_transitive_rules: false, block_usb_mount: false, token_set: true,
-    });
+    mockConfig.mockResolvedValue(config);
+    mockPutConfig.mockResolvedValue(config);
     mockRotate.mockResolvedValue({ token: 'SECRET-TOKEN-123' });
   });
 
@@ -144,6 +150,21 @@ describe('SantaPage', () => {
     await user.click(await screen.findByRole('tab', { name: 'Settings' }));
     expect(await screen.findByText('https://tls.example.com/ENV-UUID/santa/sync/')).toBeInTheDocument();
     expect(screen.getByText('X-Osctrl-Santa-Token: <token>')).toBeInTheDocument();
+  });
+
+  it('saves a remount policy with flags and leaves encrypted media inheriting', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    await user.selectOptions(await screen.findByLabelText('Removable media'), 'REMOUNT');
+    await user.click(screen.getByRole('checkbox', { name: 'rdonly' }));
+    await user.click(screen.getByRole('checkbox', { name: 'noexec' }));
+    expect(screen.getByLabelText('Encrypted removable media')).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({
+      removable_media: 'REMOUNT', removable_media_flags: ['rdonly', 'noexec'],
+      encrypted_removable_media: '', encrypted_removable_media_flags: [],
+    })));
   });
 
   it('asks for confirmation before rotating and cancel does not call the API', async () => {

@@ -6,8 +6,11 @@ import {
   putSantaConfig,
   rotateSantaToken,
   santaQueryKey,
+  SANTA_MEDIA_ACTIONS,
+  SANTA_REMOUNT_FLAGS,
   SANTA_TOKEN_HEADER,
   type SantaConfig,
+  type SantaMediaAction,
 } from '$/api/santa';
 import { getEnvironment } from '$/api/environments';
 import { Button } from '$/components/atoms/Button';
@@ -61,7 +64,10 @@ function ConfigForm({ env, config }: { env: string; config: SantaConfig }) {
         client_mode: form.client_mode,
         batch_size: form.batch_size,
         enable_transitive_rules: form.enable_transitive_rules,
-        block_usb_mount: form.block_usb_mount,
+        removable_media: form.removable_media,
+        removable_media_flags: form.removable_media === 'REMOUNT' ? form.removable_media_flags : [],
+        encrypted_removable_media: form.encrypted_removable_media,
+        encrypted_removable_media_flags: form.encrypted_removable_media === 'REMOUNT' ? form.encrypted_removable_media_flags : [],
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -106,20 +112,73 @@ function ConfigForm({ env, config }: { env: string; config: SantaConfig }) {
         />
         {t('santa.transitiveRules')}
       </label>
-      <label className="flex items-center gap-2 text-sm text-[color:var(--text-2)]">
-        <input
-          type="checkbox"
-          checked={form.block_usb_mount}
-          onChange={(e) => setForm({ ...form, block_usb_mount: e.target.checked })}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MediaPolicy
+          id="santa-media"
+          label={t('santa.removableMedia')}
+          action={form.removable_media}
+          flags={form.removable_media_flags}
+          onChange={(action, flags) => setForm({ ...form, removable_media: action || 'ALLOW', removable_media_flags: flags })}
         />
-        {t('santa.blockUsb')}
-      </label>
+        <MediaPolicy
+          id="santa-media-encrypted"
+          label={t('santa.encryptedRemovableMedia')}
+          action={form.encrypted_removable_media}
+          flags={form.encrypted_removable_media_flags}
+          inherit
+          onChange={(action, flags) => setForm({ ...form, encrypted_removable_media: action, encrypted_removable_media_flags: flags })}
+        />
+      </div>
       {save.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(save.error)}</p>}
       {save.isSuccess && <p role="status" className="text-sm text-[color:var(--text-3)]">{t('santa.saved')}</p>}
       <div className="flex justify-end">
         <Button type="submit" disabled={save.isPending}>{t('common.save')}</Button>
       </div>
     </form>
+  );
+}
+
+const MEDIA_LABEL = { ALLOW: 'santa.mediaAllow', BLOCK: 'santa.mediaBlock', REMOUNT: 'santa.mediaRemount' } as const;
+
+function MediaPolicy({ id, label, action, flags, inherit, onChange }: {
+  id: string;
+  label: string;
+  action: SantaMediaAction | '';
+  flags: string[] | null;
+  inherit?: boolean;
+  onChange: (action: SantaMediaAction | '', flags: string[]) => void;
+}) {
+  const { t } = useTranslation();
+  const selected = flags ?? [];
+  function toggle(flag: string, on: boolean) {
+    onChange(action, on ? [...selected, flag] : selected.filter((f) => f !== flag));
+  }
+  return (
+    <div>
+      <Label htmlFor={id}>{label}</Label>
+      <select
+        id={id}
+        value={action}
+        onChange={(e) => onChange(e.target.value as SantaMediaAction | '', selected)}
+        className="h-8 w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]"
+      >
+        {inherit && <option value="">{t('santa.mediaInherit')}</option>}
+        {SANTA_MEDIA_ACTIONS.map((a) => <option key={a} value={a}>{t(MEDIA_LABEL[a])}</option>)}
+      </select>
+      {action === 'REMOUNT' && (
+        <fieldset className="mt-2">
+          <legend className="mb-1 text-xs text-[color:var(--text-3)]">{t('santa.remountFlags')}</legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {SANTA_REMOUNT_FLAGS.map((f) => (
+              <label key={f} className="flex items-center gap-1.5 font-mono text-xs text-[color:var(--text-2)]">
+                <input type="checkbox" checked={selected.includes(f)} onChange={(e) => toggle(f, e.target.checked)} />
+                {f}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+    </div>
   );
 }
 

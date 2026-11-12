@@ -18,11 +18,20 @@ export const SANTA_EVENTS_PAGE_SIZE = 50;
 /** Header the Santa client sends via SyncExtraHeaders. */
 export const SANTA_TOKEN_HEADER = 'X-Osctrl-Santa-Token';
 
+export type SantaMediaAction = 'ALLOW' | 'BLOCK' | 'REMOUNT';
+export const SANTA_MEDIA_ACTIONS: SantaMediaAction[] = ['ALLOW', 'BLOCK', 'REMOUNT'];
+/** Mount options offered in the UI; the API also accepts async and -j. */
+export const SANTA_REMOUNT_FLAGS = ['rdonly', 'noexec', 'nosuid', 'nodev', 'nobrowse', 'noowners'];
+
 export interface SantaConfig {
   client_mode: SantaClientMode;
   batch_size: number;
   enable_transitive_rules: boolean;
-  block_usb_mount: boolean;
+  removable_media: SantaMediaAction;
+  removable_media_flags: string[] | null;
+  /** Empty means encrypted volumes follow removable_media. */
+  encrypted_removable_media: SantaMediaAction | '';
+  encrypted_removable_media_flags: string[] | null;
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }

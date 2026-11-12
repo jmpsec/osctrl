@@ -94,16 +94,38 @@ func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.P
 		return nil, err
 	}
 
+	block := cfg.RemovableMedia == MediaBlock || cfg.RemovableMedia == MediaRemount
 	resp := &syncv1.PreflightResponse{
 		ClientMode:            syncv1.ClientMode(mode),
 		SyncType:              syncType.Enum(),
 		EnableTransitiveRules: &cfg.EnableTransitiveRules,
-		BlockUsbMount:         &cfg.BlockUSBMount, //nolint:staticcheck // deprecated field is still the one older Santa clients read
+		RemovableMediaPolicy:  mediaPolicy(cfg.RemovableMedia, cfg.RemovableMediaFlags),
+		// Clients that predate removable_media_policy read these instead; newer ones ignore them.
+		BlockUsbMount: &block, //nolint:staticcheck // deprecated, kept for older clients
+	}
+	if cfg.RemovableMedia == MediaRemount {
+		resp.RemountUsbMode = cfg.RemovableMediaFlags //nolint:staticcheck // deprecated, kept for older clients
+	}
+	if cfg.EncryptedRemovableMedia != "" {
+		resp.EncryptedRemovableMediaPolicy = mediaPolicy(cfg.EncryptedRemovableMedia, cfg.EncryptedRemovableMediaFlags)
 	}
 	if cfg.BatchSize > 0 {
 		resp.BatchSize = cfg.BatchSize
 	}
 	return resp, nil
+}
+
+// mediaPolicy maps a stored removable media action to the v1 message; anything
+// unrecognized is sent as allow, matching the default config.
+func mediaPolicy(action string, flags []string) *syncv1.RemovableMediaPolicy {
+	switch action {
+	case MediaBlock:
+		return &syncv1.RemovableMediaPolicy{Action: &syncv1.RemovableMediaPolicy_Block{Block: true}}
+	case MediaRemount:
+		return &syncv1.RemovableMediaPolicy{Action: &syncv1.RemovableMediaPolicy_Remount{Remount: &syncv1.RemountPolicy{Flags: flags}}}
+	default:
+		return &syncv1.RemovableMediaPolicy{Action: &syncv1.RemovableMediaPolicy_Allow{Allow: true}}
+	}
 }
 
 // RuleDownload returns one page of the node's effective rules for a clean sync.

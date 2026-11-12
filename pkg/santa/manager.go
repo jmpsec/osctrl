@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -45,21 +44,22 @@ func (m *Manager) Config(envID uint) (EnvConfig, error) {
 		return EnvConfig{}, err
 	}
 	if len(rows) == 0 {
-		return EnvConfig{EnvironmentID: envID, ClientMode: "MONITOR"}, nil
+		return EnvConfig{EnvironmentID: envID, ClientMode: "MONITOR", RemovableMedia: MediaAllow}, nil
 	}
 	return rows[0], nil
 }
 
-// SaveConfig upserts the config by environment; TokenHash is never written.
+// SaveConfig validates and upserts the config by environment; TokenHash is never written.
 func (m *Manager) SaveConfig(cfg EnvConfig) error {
-	if !ValidClientMode(cfg.ClientMode) {
-		return fmt.Errorf("invalid client mode %q", cfg.ClientMode)
+	if err := ValidateConfig(&cfg); err != nil {
+		return err
 	}
 	cfg.ID = 0
 	cfg.TokenHash = ""
 	return m.DB.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "environment_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "batch_size", "enable_transitive_rules", "block_usb_mount", "updated_at"}),
+		Columns: []clause.Column{{Name: "environment_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "batch_size", "enable_transitive_rules", "block_usb_mount",
+			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "updated_at"}),
 	}).Create(&cfg).Error
 }
 
@@ -70,7 +70,7 @@ func (m *Manager) RotateToken(envID uint) (string, error) {
 		return "", err
 	}
 	token := base64.RawURLEncoding.EncodeToString(b)
-	cfg := EnvConfig{EnvironmentID: envID, ClientMode: "MONITOR", TokenHash: hashToken(token)}
+	cfg := EnvConfig{EnvironmentID: envID, ClientMode: "MONITOR", RemovableMedia: MediaAllow, TokenHash: hashToken(token)}
 	err := m.DB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "environment_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"token_hash", "updated_at"}),

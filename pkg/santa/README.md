@@ -16,6 +16,18 @@ At preflight osctrl computes the node's effective rules and an order-independent
 
 Events uploaded by clients are stored in `santa_events` (fields truncated to 255 characters). Retention is fixed at 30 days; `osctrl-api` prunes daily.
 
+### Removable media
+
+Each environment sets a removable media policy, sent at every preflight as `removable_media_policy`:
+
+- `ALLOW` (default): mounts are not touched.
+- `BLOCK`: mounts are denied.
+- `REMOUNT`: mounts that do not already use the chosen options are denied, then remounted with them. Options: `rdonly`, `noexec`, `nosuid`, `nodev`, `nobrowse`, `noowners`, `async`, `-j` (the UI offers the first six).
+
+An optional override for encrypted volumes (`encrypted_removable_media_policy`) takes the same values; when unset, encrypted volumes follow the main policy. Settings tab: **Removable media** and **Encrypted removable media**.
+
+Santa clients that predate `removable_media_policy` read the deprecated `block_usb_mount` and `remount_usb_mode`, which osctrl still sends, derived from the main policy. Those clients ignore the encrypted override. Configs saved before this setting existed are migrated at startup: `block_usb_mount: true` becomes `BLOCK`, otherwise `ALLOW`. The API still accepts `block_usb_mount` when `removable_media` is omitted.
+
 ## Authentication model
 
 - Each environment has one token, sent by Santa in the header `X-Osctrl-Santa-Token`. Only its SHA-256 is stored and it is compared in constant time. Generate or rotate it with `POST /api/v1/santa/{env}/token` (environment admin); the plaintext is returned once (`Cache-Control: no-store`) and the old token stops working immediately. Reading the config never returns the token.

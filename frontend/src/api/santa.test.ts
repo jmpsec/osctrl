@@ -30,7 +30,10 @@ describe('santa API client', () => {
   });
 
   it('sends JSON bodies and verbs for writes', async () => {
-    const cfg = { client_mode: 'LOCKDOWN' as const, batch_size: 0, enable_transitive_rules: true, block_usb_mount: false };
+    const cfg = {
+      client_mode: 'LOCKDOWN' as const, batch_size: 0, enable_transitive_rules: true,
+      removable_media: 'BLOCK' as const, removable_media_flags: [], encrypted_removable_media: '' as const, encrypted_removable_media_flags: [],
+    };
     await putSantaConfig('dev', cfg);
     expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/config', expect.objectContaining({ method: 'PUT', body: JSON.stringify(cfg) }));
     await rotateSantaToken('dev');

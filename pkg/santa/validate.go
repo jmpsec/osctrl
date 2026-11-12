@@ -20,6 +20,77 @@ var (
 // ValidClientMode reports whether m is a supported Santa client mode.
 func ValidClientMode(m string) bool { return m == "MONITOR" || m == "LOCKDOWN" }
 
+// Removable media actions.
+const (
+	MediaAllow   = "ALLOW"
+	MediaBlock   = "BLOCK"
+	MediaRemount = "REMOUNT"
+)
+
+// remountFlags are the mount options Santa accepts for a remount
+// (mountArgsToMask in SNTEndpointSecurityDeviceManager.mm).
+var remountFlags = map[string]bool{
+	"rdonly": true, "noexec": true, "nosuid": true, "nobrowse": true,
+	"noowners": true, "nodev": true, "async": true, "-j": true,
+}
+
+// normalizeMedia validates one removable media action and its remount flags,
+// returning the flags lowercased and deduplicated. inherit allows "" (use the
+// baseline policy).
+func normalizeMedia(action string, flags []string, inherit bool) ([]string, error) {
+	switch action {
+	case MediaAllow, MediaBlock:
+		if len(flags) > 0 {
+			return nil, fmt.Errorf("remount flags are only valid with %s", MediaRemount)
+		}
+		return nil, nil
+	case MediaRemount:
+	case "":
+		if inherit && len(flags) == 0 {
+			return nil, nil
+		}
+		fallthrough
+	default:
+		return nil, fmt.Errorf("invalid removable media action %q", action)
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, f := range flags {
+		f = strings.ToLower(strings.TrimSpace(f))
+		if !remountFlags[f] {
+			return nil, fmt.Errorf("invalid remount flag %q", f)
+		}
+		if !seen[f] {
+			seen[f] = true
+			out = append(out, f)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%s needs at least one remount flag", MediaRemount)
+	}
+	return out, nil
+}
+
+// ValidateConfig checks the settable config fields, normalizes remount flags
+// and derives the deprecated BlockUSBMount. An empty RemovableMedia means ALLOW.
+func ValidateConfig(c *EnvConfig) error {
+	if !ValidClientMode(c.ClientMode) {
+		return fmt.Errorf("invalid client mode %q", c.ClientMode)
+	}
+	if c.RemovableMedia == "" {
+		c.RemovableMedia = MediaAllow
+	}
+	var err error
+	if c.RemovableMediaFlags, err = normalizeMedia(c.RemovableMedia, c.RemovableMediaFlags, false); err != nil {
+		return err
+	}
+	if c.EncryptedRemovableMediaFlags, err = normalizeMedia(c.EncryptedRemovableMedia, c.EncryptedRemovableMediaFlags, true); err != nil {
+		return fmt.Errorf("encrypted: %w", err)
+	}
+	c.BlockUSBMount = c.RemovableMedia != MediaAllow // BLOCK or REMOUNT, validated above
+	return nil
+}
+
 func invalid(format string, a ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalidRule, fmt.Sprintf(format, a...))
 }
