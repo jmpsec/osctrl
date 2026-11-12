@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"buf.build/gen/go/northpolesec/protos/protocolbuffers/go/syncv2"
+	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -140,13 +140,13 @@ func TestSantaFullSyncJSON(t *testing.T) {
 	w := f.post(santaEnvUUID, "preflight", santaMachineID, f.token, []byte(`{"hostname":"h"}`))
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	require.Equal(t, "application/json", w.Header().Get("Content-Type"))
-	var pre syncv2.PreflightResponse
+	var pre syncv1.PreflightResponse
 	require.NoError(t, protojson.Unmarshal(w.Body.Bytes(), &pre))
-	require.Equal(t, syncv2.SyncType_CLEAN_RULES, pre.GetSyncType())
+	require.Equal(t, syncv1.SyncType_CLEAN_RULES, pre.GetSyncType())
 
 	w = f.post(santaEnvUUID, "ruledownload", santaMachineID, f.token, []byte(`{}`))
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	var rd syncv2.RuleDownloadResponse
+	var rd syncv1.RuleDownloadResponse
 	require.NoError(t, protojson.Unmarshal(w.Body.Bytes(), &rd))
 	require.Len(t, rd.GetRules(), 1)
 	require.Equal(t, strings.ToUpper(id), strings.ToUpper(rd.GetRules()[0].GetIdentifier()))

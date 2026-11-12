@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"buf.build/gen/go/northpolesec/protos/protocolbuffers/go/syncv2"
+	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -43,7 +43,7 @@ func gz(t *testing.T, b []byte) []byte {
 // accepts the proto name and the pinned JSON name, not lowerCamelCase.
 func TestDecodeJSONProtoAndJSONNames(t *testing.T) {
 	for _, body := range []string{`{"serial_number":"X"}`, `{"serial_num":"X"}`} {
-		var m syncv2.PreflightRequest
+		var m syncv1.PreflightRequest
 		enc, err := Decode(newReq(t, []byte(body), "application/json; charset=utf-8", ""), &m)
 		if err != nil || enc.Proto || m.GetSerialNumber() != "X" {
 			t.Fatalf("%s: enc=%+v err=%v sn=%q", body, enc, err, m.GetSerialNumber())
@@ -52,7 +52,7 @@ func TestDecodeJSONProtoAndJSONNames(t *testing.T) {
 }
 
 func TestDecodeProtoDeflate(t *testing.T) {
-	raw, err := proto.Marshal(&syncv2.PreflightRequest{MachineId: "X"})
+	raw, err := proto.Marshal(&syncv1.PreflightRequest{MachineId: "X"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestDecodeProtoDeflate(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, ct := range []string{"application/x-protobuf", "application/protobuf", "application/octet-stream"} {
-		var m syncv2.PreflightRequest
+		var m syncv1.PreflightRequest
 		enc, err := Decode(newReq(t, buf.Bytes(), ct, "deflate"), &m)
 		if err != nil || !enc.Proto || m.GetMachineId() != "X" {
 			t.Fatalf("%s: enc=%+v err=%v", ct, enc, err)
@@ -74,7 +74,7 @@ func TestDecodeProtoDeflate(t *testing.T) {
 }
 
 func TestDecodeGzipJSON(t *testing.T) {
-	var m syncv2.PreflightRequest
+	var m syncv1.PreflightRequest
 	_, err := Decode(newReq(t, gz(t, []byte(`{"machine_id":"X"}`)), "application/json", "gzip"), &m)
 	if err != nil || m.GetMachineId() != "X" {
 		t.Fatalf("err=%v id=%q", err, m.GetMachineId())
@@ -82,7 +82,7 @@ func TestDecodeGzipJSON(t *testing.T) {
 }
 
 func TestDecodeRejectsOversizedDecompressed(t *testing.T) {
-	var m syncv2.PreflightRequest
+	var m syncv1.PreflightRequest
 	_, err := Decode(newReq(t, gz(t, make([]byte, MaxDecodedBody+1)), "application/octet-stream", "gzip"), &m)
 	if !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("want ErrTooLarge, got %v", err)
@@ -90,7 +90,7 @@ func TestDecodeRejectsOversizedDecompressed(t *testing.T) {
 }
 
 func TestDecodeRejectsOversizedPlain(t *testing.T) {
-	var m syncv2.PreflightRequest
+	var m syncv1.PreflightRequest
 	body := []byte(`{"machine_id":"` + strings.Repeat("a", MaxDecodedBody) + `"}`)
 	if _, err := Decode(newReq(t, body, "application/json", ""), &m); !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("want ErrTooLarge, got %v", err)
@@ -113,7 +113,7 @@ func TestDecodeErrorsAreNotTooLarge(t *testing.T) {
 		{"missing type", `{}`, "", ""},
 	}
 	for _, c := range cases {
-		var m syncv2.PreflightRequest
+		var m syncv1.PreflightRequest
 		_, err := Decode(newReq(t, []byte(c.body), c.ct, c.ce), &m)
 		if err == nil || errors.Is(err, ErrTooLarge) {
 			t.Errorf("%s: got %v", c.name, err)
@@ -122,7 +122,7 @@ func TestDecodeErrorsAreNotTooLarge(t *testing.T) {
 }
 
 func TestDecodeUnknownFieldsIgnored(t *testing.T) {
-	var m syncv2.PreflightRequest
+	var m syncv1.PreflightRequest
 	if _, err := Decode(newReq(t, []byte(`{"machine_id":"X","bogus":1}`), "application/json", ""), &m); err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestDecodeUnknownFieldsIgnored(t *testing.T) {
 
 func TestEncodeUsesProtoNames(t *testing.T) {
 	w := httptest.NewRecorder()
-	resp := &syncv2.PreflightResponse{ClientMode: syncv2.ClientMode_LOCKDOWN}
+	resp := &syncv1.PreflightResponse{ClientMode: syncv1.ClientMode_LOCKDOWN}
 	if err := Encode(w, Encoding{}, resp); err != nil {
 		t.Fatal(err)
 	}
@@ -141,8 +141,8 @@ func TestEncodeUsesProtoNames(t *testing.T) {
 	if err := Encode(w, Encoding{Proto: true}, resp); err != nil {
 		t.Fatal(err)
 	}
-	var back syncv2.PreflightResponse
-	if err := proto.Unmarshal(w.Body.Bytes(), &back); err != nil || back.GetClientMode() != syncv2.ClientMode_LOCKDOWN ||
+	var back syncv1.PreflightResponse
+	if err := proto.Unmarshal(w.Body.Bytes(), &back); err != nil || back.GetClientMode() != syncv1.ClientMode_LOCKDOWN ||
 		w.Header().Get("Content-Type") != "application/x-protobuf" {
 		t.Fatalf("err=%v hdr=%v", err, w.Header())
 	}
