@@ -27,7 +27,16 @@ type SantaConfigRequest struct {
 	ClientMode            string `json:"client_mode"`
 	BatchSize             uint32 `json:"batch_size"`
 	EnableTransitiveRules bool   `json:"enable_transitive_rules"`
-	BlockUSBMount         bool   `json:"block_usb_mount"`
+	// Deprecated: use removable_media; only read when it is empty (true means BLOCK).
+	BlockUSBMount bool `json:"block_usb_mount"`
+	// ALLOW | BLOCK | REMOUNT; empty means ALLOW
+	RemovableMedia string `json:"removable_media"`
+	// Required with REMOUNT: rdonly, noexec, nosuid, nobrowse, noowners, nodev, async, -j
+	RemovableMediaFlags []string `json:"removable_media_flags"`
+	// Override for encrypted volumes: ALLOW | BLOCK | REMOUNT; empty uses removable_media
+	EncryptedRemovableMedia string `json:"encrypted_removable_media"`
+	// Required with encrypted REMOUNT; same values as removable_media_flags
+	EncryptedRemovableMediaFlags []string `json:"encrypted_removable_media_flags"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -148,14 +157,21 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
-	if !santa.ValidClientMode(req.ClientMode) {
-		apiErrorResponse(w, "invalid client mode", http.StatusBadRequest, nil)
+	media := req.RemovableMedia
+	if media == "" && req.BlockUSBMount {
+		media = santa.MediaBlock
+	}
+	cfg := santa.EnvConfig{
+		EnvironmentID: env.ID, ClientMode: req.ClientMode, BatchSize: req.BatchSize,
+		EnableTransitiveRules: req.EnableTransitiveRules,
+		RemovableMedia:        media, RemovableMediaFlags: req.RemovableMediaFlags,
+		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,
+	}
+	if err := santa.ValidateConfig(&cfg); err != nil {
+		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
 		return
 	}
-	if err := h.Santa.SaveConfig(santa.EnvConfig{
-		EnvironmentID: env.ID, ClientMode: req.ClientMode, BatchSize: req.BatchSize,
-		EnableTransitiveRules: req.EnableTransitiveRules, BlockUSBMount: req.BlockUSBMount,
-	}); err != nil {
+	if err := h.Santa.SaveConfig(cfg); err != nil {
 		apiErrorResponse(w, "error saving config", http.StatusInternalServerError, err)
 		return
 	}

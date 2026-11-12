@@ -16,7 +16,16 @@ type EnvConfig struct {
 	ClientMode            string    `gorm:"type:varchar(16)" json:"client_mode"` // MONITOR | LOCKDOWN
 	BatchSize             uint32    `json:"batch_size"`                          // 0 means the Santa default (50)
 	EnableTransitiveRules bool      `json:"enable_transitive_rules"`
-	BlockUSBMount         bool      `json:"block_usb_mount"`
+	// Deprecated: derived from removable_media, sent only for older Santa clients
+	BlockUSBMount bool `json:"block_usb_mount"`
+	// ALLOW | BLOCK | REMOUNT
+	RemovableMedia string `gorm:"type:varchar(16)" json:"removable_media"`
+	// Mount options used with REMOUNT
+	RemovableMediaFlags []string `gorm:"serializer:json;type:varchar(255)" json:"removable_media_flags"`
+	// Override for encrypted volumes: ALLOW | BLOCK | REMOUNT; empty uses removable_media
+	EncryptedRemovableMedia string `gorm:"type:varchar(16)" json:"encrypted_removable_media"`
+	// Mount options used with encrypted REMOUNT
+	EncryptedRemovableMediaFlags []string `gorm:"serializer:json;type:varchar(255)" json:"encrypted_removable_media_flags"`
 }
 
 // TableName for EnvConfig
@@ -89,7 +98,16 @@ type Event struct {
 // TableName for Event
 func (Event) TableName() string { return "santa_events" }
 
-// Migrate creates the Santa tables.
+// Migrate creates the Santa tables and fills RemovableMedia for configs saved
+// before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{})
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}); err != nil {
+		return err
+	}
+	const unset = "(removable_media = '' OR removable_media IS NULL)"
+	if err := db.Model(&EnvConfig{}).Where(unset+" AND block_usb_mount = ?", true).
+		UpdateColumn("removable_media", MediaBlock).Error; err != nil {
+		return err
+	}
+	return db.Model(&EnvConfig{}).Where(unset).UpdateColumn("removable_media", MediaAllow).Error
 }

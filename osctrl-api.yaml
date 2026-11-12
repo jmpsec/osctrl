@@ -12628,11 +12628,31 @@ components:
         batch_size:
           type: integer
         block_usb_mount:
+          description: "Deprecated: use removable_media; only read when it is empty (true
+            means BLOCK)."
           type: boolean
         client_mode:
           type: string
         enable_transitive_rules:
           type: boolean
+        encrypted_removable_media:
+          description: "Override for encrypted volumes: ALLOW | BLOCK | REMOUNT; empty
+            uses removable_media"
+          type: string
+        encrypted_removable_media_flags:
+          description: Required with encrypted REMOUNT; same values as removable_media_flags
+          items:
+            type: string
+          type: array
+        removable_media:
+          description: ALLOW | BLOCK | REMOUNT; empty means ALLOW
+          type: string
+        removable_media_flags:
+          description: "Required with REMOUNT: rdonly, noexec, nosuid, nobrowse, noowners,
+            nodev, async, -j"
+          items:
+            type: string
+          type: array
       type: object
     handlers.SantaConfigResponse:
       properties:
@@ -12640,6 +12660,8 @@ components:
           description: 0 means the Santa default (50)
           type: integer
         block_usb_mount:
+          description: "Deprecated: derived from removable_media, sent only for older
+            Santa clients"
           type: boolean
         client_mode:
           description: MONITOR | LOCKDOWN
@@ -12648,10 +12670,27 @@ components:
           type: string
         enable_transitive_rules:
           type: boolean
+        encrypted_removable_media:
+          description: "Override for encrypted volumes: ALLOW | BLOCK | REMOUNT; empty
+            uses removable_media"
+          type: string
+        encrypted_removable_media_flags:
+          description: Mount options used with encrypted REMOUNT
+          items:
+            type: string
+          type: array
         environment_id:
           type: integer
         id:
           type: integer
+        removable_media:
+          description: ALLOW | BLOCK | REMOUNT
+          type: string
+        removable_media_flags:
+          description: Mount options used with REMOUNT
+          items:
+            type: string
+          type: array
         token_set:
           type: boolean
         updated_at:
