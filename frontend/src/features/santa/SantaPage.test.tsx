@@ -6,7 +6,7 @@ import {
   createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider,
 } from '@tanstack/react-router';
 import type {
-  SantaConfig, SantaEventsPage, SantaMachine, SantaModeOverride, SantaRule, SantaRuleInput,
+  SantaConfig, SantaEventsPage, SantaImportResult, SantaMachine, SantaModeOverride, SantaRule, SantaRuleInput,
 } from '$/api/santa';
 import { ApiError } from '$/api/client';
 import { SantaPage } from './SantaPage';
@@ -20,6 +20,7 @@ const mockMachines = vi.fn<() => Promise<SantaMachine[]>>();
 const mockConfig = vi.fn<() => Promise<SantaConfig>>();
 const mockRotate = vi.fn<() => Promise<{ token: string }>>();
 const mockPutConfig = vi.fn<(env: string, body: unknown) => Promise<SantaConfig>>();
+const mockImport = vi.fn<(env: string, rules: unknown[], dryRun: boolean) => Promise<SantaImportResult>>();
 const mockModes = vi.fn<() => Promise<SantaModeOverride[]>>();
 const mockSetMode = vi.fn<(env: string, body: unknown) => Promise<unknown>>();
 const mockDeleteMode = vi.fn<(env: string, id: number) => Promise<unknown>>();
@@ -32,6 +33,7 @@ vi.mock('$/api/santa', async () => {
     deleteSantaRule: (env: string, id: number) => mockDelete(env, id),
     createSantaRule: (env: string, body: SantaRuleInput) => mockCreate(env, body),
     updateSantaRule: (env: string, id: number, body: SantaRuleInput) => mockUpdate(env, id, body),
+    importSantaRules: (env: string, rules: unknown[], dryRun: boolean) => mockImport(env, rules, dryRun),
     listSantaEvents: () => mockEvents(),
     listSantaMachines: () => mockMachines(),
     getSantaConfig: () => mockConfig(),
@@ -112,6 +114,57 @@ describe('SantaPage', () => {
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('dev', 7));
     expect(confirmSpy.mock.calls[0][0]).toContain(rule.identifier);
     confirmSpy.mockRestore();
+  });
+
+  it('previews an import and applies it only when confirmed', async () => {
+    const spec = { identifier: 'EQHXZ8M8AV', rule_type: 'TEAMID', policy: 'ALLOWLIST', scope: 'env' };
+    mockImport.mockImplementation((_env, _rules, dryRun) =>
+      Promise.resolve({ new: 1, duplicate: 2, conflicts: [], invalid: [], applied: !dryRun }));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText(rule.identifier);
+    await user.upload(screen.getByLabelText('Import rules'), new File([JSON.stringify([spec])], 'rules.json', { type: 'application/json' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(mockImport).toHaveBeenCalledWith('dev', [spec], true);
+    expect(within(dialog).getByText('Already present (skipped)').nextSibling).toHaveTextContent('2');
+    expect(mockImport).toHaveBeenCalledTimes(1);
+    await user.click(within(dialog).getByRole('button', { name: 'Import 1 rules' }));
+    await waitFor(() => expect(mockImport).toHaveBeenCalledWith('dev', [spec], false));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('blocks an import with conflicting rules and rejects a file that is not a rule list', async () => {
+    mockImport.mockResolvedValue({
+      new: 1, duplicate: 0, applied: false, invalid: [],
+      conflicts: [{ index: 0, rule: { identifier: 'EQHXZ8M8AV', rule_type: 'TEAMID' }, reason: 'already has policy BLOCKLIST' }],
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText(rule.identifier);
+    const input = screen.getByLabelText('Import rules');
+    await user.upload(input, new File(['{"not":"a list"}'], 'bad.json', { type: 'application/json' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('JSON list of rules');
+    expect(mockImport).not.toHaveBeenCalled();
+
+    await user.upload(input, new File(['[{}]'], 'rules.json', { type: 'application/json' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('already has policy BLOCKLIST')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Import 1 rules' })).toBeDisabled();
+  });
+
+  it('exports the rules as a JSON file without server fields', async () => {
+    const blobs: Blob[] = [];
+    const create = vi.fn((b: Blob) => { blobs.push(b); return 'blob:x'; });
+    Object.assign(URL, { createObjectURL: create, revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText(rule.identifier);
+    await user.click(screen.getByRole('button', { name: 'Export' }));
+    expect(click).toHaveBeenCalled();
+    const { id: _id, created_at: _at, created_by: _by, ...spec } = rule;
+    expect(JSON.parse(await blobs[0].text())).toEqual([spec]);
+    click.mockRestore();
   });
 
   it('edits a rule in place', async () => {

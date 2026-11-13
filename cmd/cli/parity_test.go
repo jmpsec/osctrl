@@ -32,6 +32,7 @@ package main
 //   - settings: list, by service, by service+env, PATCH
 //   - carves: complete/delete/expire action
 //   - alerts: rules and channels CRUD, channel types/test, history, apply
+//   - santa: rules list and import
 
 import (
 	"bytes"
@@ -57,6 +58,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/mfa"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
@@ -118,7 +120,10 @@ func newParityRig(t *testing.T) *parityRig {
 	r.Envs = environments.CreateEnvironment(r.DB)
 	audit, err := auditlog.CreateAuditLogManager(r.DB, "osctrl-api", true)
 	require.NoError(t, err)
+	santaMgr, err := santa.NewManager(r.DB)
+	require.NoError(t, err)
 	h := handlers.CreateHandlersApi(
+		handlers.WithSanta(santaMgr),
 		handlers.WithDB(r.DB),
 		handlers.WithUsers(r.Users),
 		handlers.WithEnvs(r.Envs),
@@ -374,6 +379,9 @@ var parityRoutes = []struct{ pattern, handler string }{
 	{"POST /api/v1/carves/{env}/{action}/{name}", "CarvesActionHandler"},
 	// audit logs
 	{"GET /api/v1/audit-logs", "AuditLogsHandler"},
+	// santa (the --santa-enabled gate is not applied)
+	{"GET /api/v1/santa/{env}/rules", "SantaRulesHandler"},
+	{"POST /api/v1/santa/{env}/rules/import", "SantaRulesImportHandler"},
 }
 
 func TestParityRigRunsSameCommandBothModes(t *testing.T) {

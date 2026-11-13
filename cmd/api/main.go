@@ -128,6 +128,8 @@ const (
 	// API log sinks path
 	apiLogSinksPath = "/log-sinks"
 	apiAlertsPath   = "/alerts"
+	// API Santa sync server management path
+	apiSantaPath = "/santa"
 	// API osquery extensions library path
 	apiExtensionsPath = "/extensions"
 	// API health / system status path
@@ -1122,40 +1124,43 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 	if flagParams.Service.SantaEnabled {
 		// API: Santa management
 		muxAPI.Handle(
-			"GET "+_apiPath("/santa")+"/{env}/config",
+			"GET "+_apiPath(apiSantaPath)+"/{env}/config",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaConfigGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"PUT "+_apiPath("/santa")+"/{env}/config",
+			"PUT "+_apiPath(apiSantaPath)+"/{env}/config",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaConfigPutHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"POST "+_apiPath("/santa")+"/{env}/token",
+			"POST "+_apiPath(apiSantaPath)+"/{env}/token",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaTokenHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"GET "+_apiPath("/santa")+"/{env}/rules",
+			"GET "+_apiPath(apiSantaPath)+"/{env}/rules",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRulesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"POST "+_apiPath("/santa")+"/{env}/rules",
+			"POST "+_apiPath(apiSantaPath)+"/{env}/rules",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"PUT "+_apiPath("/santa")+"/{env}/rules/{id}",
+			"POST "+_apiPath(apiSantaPath)+"/{env}/rules/import",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRulesImportHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"PUT "+_apiPath(apiSantaPath)+"/{env}/rules/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"DELETE "+_apiPath("/santa")+"/{env}/rules/{id}",
+			"DELETE "+_apiPath(apiSantaPath)+"/{env}/rules/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"GET "+_apiPath("/santa")+"/{env}/modes",
+			"GET "+_apiPath(apiSantaPath)+"/{env}/modes",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaModeOverridesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"PUT "+_apiPath("/santa")+"/{env}/modes",
+			"PUT "+_apiPath(apiSantaPath)+"/{env}/modes",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaModeOverrideSetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"DELETE "+_apiPath("/santa")+"/{env}/modes/{id}",
+			"DELETE "+_apiPath(apiSantaPath)+"/{env}/modes/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaModeOverrideDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"GET "+_apiPath("/santa")+"/{env}/machines",
+			"GET "+_apiPath(apiSantaPath)+"/{env}/machines",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaMachinesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
-			"GET "+_apiPath("/santa")+"/{env}/events",
+			"GET "+_apiPath(apiSantaPath)+"/{env}/events",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaEventsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// API: node logs
