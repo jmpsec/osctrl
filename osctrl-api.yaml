@@ -8677,6 +8677,21 @@ paths:
           name: page_size
           schema:
             type: integer
+        - description: Only events of this machine (node UUID)
+          in: query
+          name: machine_id
+          schema:
+            type: string
+        - description: Decision name or prefix, for example BLOCK
+          in: query
+          name: decision
+          schema:
+            type: string
+        - description: Only events of this file hash
+          in: query
+          name: sha256
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -8684,6 +8699,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/handlers.SantaEventsResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
         "403":
           description: Forbidden
           content:
@@ -8746,6 +8767,54 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: List Santa machines
+      tags:
+        - santa
+  "/api/v1/santa/{env}/machines/{machineid}/rules":
+    get:
+      description: The rules a node receives after scope resolution (node over tag
+        over environment), and its client mode. The node does not need to have
+        synced yet.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Node UUID
+          in: path
+          name: machineid
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaEffectiveRulesResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List the Santa rules and client mode that apply to one node
       tags:
         - santa
   "/api/v1/santa/{env}/modes":
@@ -12961,6 +13030,17 @@ components:
           type: boolean
         updated_at:
           type: string
+      type: object
+    handlers.SantaEffectiveRulesResponse:
+      properties:
+        client_mode:
+          type: string
+        mode_source:
+          type: string
+        rules:
+          items:
+            $ref: "#/components/schemas/santa.Rule"
+          type: array
       type: object
     handlers.SantaEventsResponse:
       properties:

@@ -264,8 +264,23 @@ func (m *Manager) AddEvents(evs []Event) error {
 	return m.DB.CreateInBatches(&evs, 200).Error
 }
 
-// Events returns a newest-first page (1-based) and the total count.
-func (m *Manager) Events(envID uint, page, pageSize int) ([]Event, int64, error) {
+// EventFilter narrows an event listing; empty fields do not filter.
+type EventFilter struct {
+	// MachineID is the machine (node) UUID, matched without case.
+	MachineID string
+	// Decision is a prefix of the decision name: "BLOCK" matches BLOCK_BINARY,
+	// BLOCK_TEAMID and so on. Only letters and underscores are valid.
+	Decision string
+	// SHA256 is the file hash, matched without case.
+	SHA256 string
+}
+
+// ErrInvalidEventFilter is returned for a decision that is not a decision name prefix.
+var ErrInvalidEventFilter = errors.New("santa: invalid event filter")
+
+// Events returns a newest-first page (1-based) of the events matching f, and
+// their total count.
+func (m *Manager) Events(envID uint, page, pageSize int, f EventFilter) ([]Event, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -273,6 +288,20 @@ func (m *Manager) Events(envID uint, page, pageSize int) ([]Event, int64, error)
 		pageSize = maxPageSize
 	}
 	q := m.DB.Model(&Event{}).Where("environment_id = ?", envID)
+	if f.MachineID != "" {
+		q = q.Where("machine_id = ?", strings.ToUpper(f.MachineID))
+	}
+	if f.Decision != "" {
+		d := strings.ToUpper(f.Decision)
+		// Letters and underscores only, so the value cannot widen the LIKE.
+		if len(d) > 32 || strings.Trim(d, "ABCDEFGHIJKLMNOPQRSTUVWXYZ_") != "" {
+			return nil, 0, ErrInvalidEventFilter
+		}
+		q = q.Where("decision LIKE ?", d+"%")
+	}
+	if f.SHA256 != "" {
+		q = q.Where("LOWER(file_sha256) = ?", strings.ToLower(f.SHA256))
+	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err

@@ -109,7 +109,7 @@ func TestAddEventsLarge(t *testing.T) {
 		evs[i] = Event{EnvironmentID: 1, FileName: "f"}
 	}
 	require.NoError(t, m.AddEvents(evs))
-	_, total, err := m.Events(1, 1, 1)
+	_, total, err := m.Events(1, 1, 1, EventFilter{})
 	require.NoError(t, err)
 	require.Equal(t, int64(3000), total)
 }
@@ -123,21 +123,21 @@ func TestEventsPagingAndPrune(t *testing.T) {
 	}
 	require.NoError(t, m.AddEvents(evs))
 	require.NoError(t, m.AddEvents(nil))
-	page, total, err := m.Events(1, 1, 2)
+	page, total, err := m.Events(1, 1, 2, EventFilter{})
 	require.NoError(t, err)
 	require.Equal(t, int64(5), total)
 	require.Len(t, page, 2)
 	require.Equal(t, "e", page[0].FileName)
-	page, _, _ = m.Events(1, 3, 2)
+	page, _, _ = m.Events(1, 3, 2, EventFilter{})
 	require.Len(t, page, 1)
 	require.Equal(t, "a", page[0].FileName)
-	_, _, err = m.Events(1, 1, 100000)
+	_, _, err = m.Events(1, 1, 100000, EventFilter{})
 	require.NoError(t, err)
 
 	n, err := m.PruneEvents(base.Add(2 * time.Hour))
 	require.NoError(t, err)
 	require.Equal(t, int64(2), n)
-	_, total, _ = m.Events(1, 1, 10)
+	_, total, _ = m.Events(1, 1, 10, EventFilter{})
 	require.Equal(t, int64(3), total)
 }
 
