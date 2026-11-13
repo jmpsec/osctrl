@@ -62,9 +62,24 @@ export interface SantaMachine {
   os_version: string;
   santa_version: string;
   primary_user: string;
+  /** Mode the client reported at its last preflight. */
   client_mode: string;
+  /** Mode osctrl sent at the last preflight; empty for machines that synced before overrides existed. */
+  assigned_mode: string;
+  mode_source: 'env' | 'tag' | 'node' | '';
   rule_count: number;
   last_sync_at: string | null;
+}
+
+export interface SantaModeOverrideInput {
+  scope: 'tag' | 'node';
+  scope_value: string;
+  client_mode: SantaClientMode;
+}
+
+export interface SantaModeOverride extends SantaModeOverrideInput {
+  id: number;
+  created_by: string;
 }
 
 export interface SantaEvent {
@@ -88,7 +103,7 @@ export interface SantaEventsPage {
   page: number;
 }
 
-export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'machines' | 'events', ...rest: unknown[]) =>
+export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events', ...rest: unknown[]) =>
   ['santa', env, part, ...rest] as const;
 
 function envPath(env: string): string {
@@ -132,6 +147,21 @@ export function updateSantaRule(env: string, id: number, body: SantaRuleInput): 
 /** DELETE /api/v1/santa/{env}/rules/{id} */
 export function deleteSantaRule(env: string, id: number): Promise<unknown> {
   return apiFetch<unknown>(`${envPath(env)}/rules/${id}`, { method: 'DELETE' });
+}
+
+/** GET /api/v1/santa/{env}/modes */
+export function listSantaModeOverrides(env: string): Promise<SantaModeOverride[]> {
+  return apiFetch<SantaModeOverride[]>(`${envPath(env)}/modes`);
+}
+
+/** PUT /api/v1/santa/{env}/modes — creates the override or replaces the mode for the same tag or node. */
+export function setSantaModeOverride(env: string, body: SantaModeOverrideInput): Promise<SantaModeOverride> {
+  return apiFetch<SantaModeOverride>(`${envPath(env)}/modes`, jsonInit('PUT', body));
+}
+
+/** DELETE /api/v1/santa/{env}/modes/{id} */
+export function deleteSantaModeOverride(env: string, id: number): Promise<unknown> {
+  return apiFetch<unknown>(`${envPath(env)}/modes/${id}`, { method: 'DELETE' });
 }
 
 /** GET /api/v1/santa/{env}/machines */

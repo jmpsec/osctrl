@@ -71,7 +71,9 @@ func TestSantaRoutesRequireEnvAdmin(t *testing.T) {
 		"config get": {h.SantaConfigGetHandler, "GET"}, "config put": {h.SantaConfigPutHandler, "PUT"},
 		"token": {h.SantaTokenHandler, "POST"}, "rules": {h.SantaRulesHandler, "GET"},
 		"rule create": {h.SantaRuleCreateHandler, "POST"}, "rule update": {h.SantaRuleUpdateHandler, "PUT"}, "rule delete": {h.SantaRuleDeleteHandler, "DELETE"},
-		"machines": {h.SantaMachinesHandler, "GET"}, "events": {h.SantaEventsHandler, "GET"},
+		"modes": {h.SantaModeOverridesHandler, "GET"}, "mode set": {h.SantaModeOverrideSetHandler, "PUT"},
+		"mode delete": {h.SantaModeOverrideDeleteHandler, "DELETE"},
+		"machines":    {h.SantaMachinesHandler, "GET"}, "events": {h.SantaEventsHandler, "GET"},
 	}
 	for name, rt := range routes {
 		require.Equal(t, http.StatusForbidden, santaDo(rt.fn, rt.method, "carol", validRule, p).Code, name)
@@ -228,6 +230,62 @@ func TestSantaUpdateRule(t *testing.T) {
 	require.NoError(t, db.Model(&auditlog.AuditLog{}).Pluck("line", &lines).Error)
 	require.Contains(t, strings.Join(lines, "\n"),
 		"santa: update rule "+strconv.Itoa(int(rule.ID))+" TEAMID EQHXZ8M8AV ALLOWLIST scope=env -> TEAMID EQHXZ8M8AV BLOCKLIST scope=env")
+}
+
+func TestSantaModeOverrides(t *testing.T) {
+	h, db, envA, envB := setupSantaHandlers(t)
+	p := map[string]string{"env": envA.Name}
+	const node = "11111111-2222-3333-4444-555555555555"
+
+	for name, body := range map[string]string{
+		"bad json": `{`, "env scope": `{"scope":"env","client_mode":"LOCKDOWN"}`,
+		"bad mode":  `{"scope":"tag","scope_value":"pilot","client_mode":"OFF"}`,
+		"empty tag": `{"scope":"tag","client_mode":"LOCKDOWN"}`,
+		"bad uuid":  `{"scope":"node","scope_value":"nope","client_mode":"LOCKDOWN"}`,
+	} {
+		require.Equal(t, http.StatusBadRequest, santaDo(h.SantaModeOverrideSetHandler, "PUT", "alice", body, p).Code, name)
+	}
+
+	// body-supplied environment_id and created_by are ignored; the node UUID is uppercased
+	rr := santaDo(h.SantaModeOverrideSetHandler, "PUT", "alice",
+		`{"scope":"node","scope_value":"`+node+`","client_mode":"LOCKDOWN","created_by":"mallory","environment_id":`+strconv.Itoa(int(envB.ID))+`}`, p)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	var o santa.ModeOverride
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &o))
+	require.Equal(t, envA.ID, o.EnvironmentID)
+	require.Equal(t, "alice", o.CreatedBy)
+	require.Equal(t, strings.ToUpper(node), o.ScopeValue)
+
+	// setting the same node again replaces the mode instead of adding a row
+	rr = santaDo(h.SantaModeOverrideSetHandler, "PUT", "alice", `{"scope":"node","scope_value":"`+node+`","client_mode":"MONITOR"}`, p)
+	require.Equal(t, http.StatusOK, rr.Code)
+	var again santa.ModeOverride
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &again))
+	require.Equal(t, o.ID, again.ID)
+	require.Equal(t, "MONITOR", again.ClientMode)
+	rr = santaDo(h.SantaModeOverridesHandler, "GET", "alice", "", p)
+	var list []santa.ModeOverride
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &list))
+	require.Len(t, list, 1)
+
+	// an override in env B is not reachable through env A
+	inB := santa.ModeOverride{EnvironmentID: envB.ID, Scope: "tag", ScopeValue: "pilot", ClientMode: "LOCKDOWN"}
+	require.NoError(t, db.Create(&inB).Error)
+	del := func(id string) int {
+		return santaDo(h.SantaModeOverrideDeleteHandler, "DELETE", "alice", "", map[string]string{"env": envA.Name, "id": id}).Code
+	}
+	require.Equal(t, http.StatusNotFound, del(strconv.Itoa(int(inB.ID))))
+	require.Equal(t, http.StatusBadRequest, del("x"))
+	require.Equal(t, http.StatusNoContent, del(strconv.Itoa(int(o.ID))))
+	var n int64
+	require.NoError(t, db.Model(&santa.ModeOverride{}).Count(&n).Error)
+	require.EqualValues(t, 1, n)
+
+	var lines []string
+	require.NoError(t, db.Model(&auditlog.AuditLog{}).Pluck("line", &lines).Error)
+	all := strings.Join(lines, "\n")
+	require.Contains(t, all, "santa: set mode override LOCKDOWN scope=node scope_value="+strings.ToUpper(node))
+	require.Contains(t, all, "santa: delete mode override MONITOR scope=node scope_value="+strings.ToUpper(node))
 }
 
 func TestSantaMutationsAudited(t *testing.T) {

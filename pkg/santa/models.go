@@ -64,7 +64,9 @@ type Machine struct {
 	OSVersion       string     `json:"os_version"`
 	SantaVersion    string     `json:"santa_version"`
 	PrimaryUser     string     `json:"primary_user"`
-	ClientMode      string     `json:"client_mode"`
+	ClientMode      string     `json:"client_mode"`   // reported by the client
+	AssignedMode    string     `json:"assigned_mode"` // sent at the last preflight
+	ModeSource      string     `json:"mode_source"`   // env | tag | node
 	RuleCount       uint32     `json:"rule_count"`
 	AppliedDigest   string     `json:"applied_digest"`    // set at postflight
 	PendingDigest   string     `json:"pending_digest"`    // set at preflight
@@ -75,6 +77,21 @@ type Machine struct {
 
 // TableName for Machine
 func (Machine) TableName() string { return "santa_machines" }
+
+// ModeOverride sets the client mode for a tag or a node, overriding the environment's.
+type ModeOverride struct {
+	ID            uint      `gorm:"primarykey" json:"id"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	EnvironmentID uint      `gorm:"uniqueIndex:idx_santa_mode_unique" json:"environment_id"`
+	Scope         string    `gorm:"type:varchar(8);uniqueIndex:idx_santa_mode_unique" json:"scope"`         // tag|node
+	ScopeValue    string    `gorm:"type:varchar(255);uniqueIndex:idx_santa_mode_unique" json:"scope_value"` // tag name | node UUID (uppercase)
+	ClientMode    string    `gorm:"type:varchar(16)" json:"client_mode"`                                    // MONITOR | LOCKDOWN
+	CreatedBy     string    `gorm:"type:varchar(255)" json:"created_by"`
+}
+
+// TableName for ModeOverride
+func (ModeOverride) TableName() string { return "santa_mode_overrides" }
 
 // Event is an execution event uploaded by a Santa client.
 type Event struct {
@@ -101,7 +118,7 @@ func (Event) TableName() string { return "santa_events" }
 // Migrate creates the Santa tables and fills RemovableMedia for configs saved
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}); err != nil {
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}); err != nil {
 		return err
 	}
 	const unset = "(removable_media = '' OR removable_media IS NULL)"

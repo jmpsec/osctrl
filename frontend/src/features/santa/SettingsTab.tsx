@@ -2,7 +2,10 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  deleteSantaModeOverride,
   getSantaConfig,
+  listSantaModeOverrides,
+  setSantaModeOverride,
   putSantaConfig,
   rotateSantaToken,
   santaQueryKey,
@@ -11,6 +14,7 @@ import {
   SANTA_TOKEN_HEADER,
   type SantaConfig,
   type SantaMediaAction,
+  type SantaModeOverrideInput,
 } from '$/api/santa';
 import { getEnvironment } from '$/api/environments';
 import { Button } from '$/components/atoms/Button';
@@ -18,7 +22,7 @@ import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { Skeleton } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
-import { errorText } from './table';
+import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
 const CARD = 'space-y-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4';
 const CODE = 'block rounded-md bg-[color:var(--bg-3)] px-2 py-1.5 font-mono text-xs text-[color:var(--text-1)] [overflow-wrap:anywhere]';
@@ -37,6 +41,7 @@ export function SettingsTab({ env }: { env: string }) {
   return (
     <div className="space-y-4">
       <ConfigForm env={env} config={config.data} />
+      <ModeOverridesCard env={env} />
       <TokenCard env={env} tokenSet={config.data.token_set} />
       <section className={CARD}>
         <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('santa.clientSetup')}</h2>
@@ -135,6 +140,121 @@ function ConfigForm({ env, config }: { env: string; config: SantaConfig }) {
         <Button type="submit" disabled={save.isPending}>{t('common.save')}</Button>
       </div>
     </form>
+  );
+}
+
+const SELECT =
+  'h-8 w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]';
+const EMPTY_OVERRIDE: SantaModeOverrideInput = { scope: 'tag', scope_value: '', client_mode: 'LOCKDOWN' };
+
+function ModeOverridesCard({ env }: { env: string }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const key = santaQueryKey(env, 'modes');
+  const overrides = useQuery({ queryKey: key, queryFn: () => listSantaModeOverrides(env) });
+  const [form, setForm] = useState(EMPTY_OVERRIDE);
+  const refresh = () => qc.invalidateQueries({ queryKey: key });
+  const save = useMutation({
+    mutationFn: () => setSantaModeOverride(env, form),
+    onSuccess: () => {
+      setForm(EMPTY_OVERRIDE);
+      return refresh();
+    },
+  });
+  const remove = useMutation({ mutationFn: (id: number) => deleteSantaModeOverride(env, id), onSuccess: refresh });
+  const rows = overrides.data ?? [];
+  const error = save.error ?? remove.error ?? overrides.error;
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    save.mutate();
+  }
+
+  return (
+    <section className={CARD}>
+      <div>
+        <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('santa.modeOverrides')}</h2>
+        <p className="text-xs text-[color:var(--text-3)]">{t('santa.modeOverridesHint')}</p>
+      </div>
+      {rows.length === 0 ? (
+        !overrides.isLoading && !overrides.isError && <p className="text-sm text-[color:var(--text-3)]">{t('santa.noOverrides')}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className={TABLE}>
+            <thead>
+              <tr className="border-b border-[color:var(--border)]">
+                <th scope="col" className={TH}>{t('santa.scope')}</th>
+                <th scope="col" className={TH}>{t('santa.scopeValue')}</th>
+                <th scope="col" className={TH}>{t('santa.mode')}</th>
+                <th scope="col" className={TH}>{t('santa.createdBy')}</th>
+                <th scope="col" className={TH}><span className="sr-only">{t('santa.actions')}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((o) => (
+                <tr key={o.id} className={ROW}>
+                  <td className={TD}>{t(`santa.scopes.${o.scope}`)}</td>
+                  <td className={`${TD} ${MONO}`}>{o.scope_value}</td>
+                  <td className={TD}>{o.client_mode}</td>
+                  <td className={TD}>{o.created_by}</td>
+                  <td className={`${TD} text-end`}>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={remove.isPending}
+                      aria-label={`${t('santa.delete')} ${o.scope_value}`}
+                      onClick={() => {
+                        if (confirm(t('santa.confirmDeleteOverride', { value: o.scope_value }))) remove.mutate(o.id);
+                      }}
+                    >
+                      {t('santa.delete')}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <form onSubmit={submit} className="grid items-end gap-3 sm:grid-cols-[8rem_1fr_9rem_auto]">
+        <div>
+          <Label htmlFor="santa-override-scope">{t('santa.scope')}</Label>
+          <select
+            id="santa-override-scope"
+            className={SELECT}
+            value={form.scope}
+            onChange={(e) => setForm({ ...form, scope: e.target.value as SantaModeOverrideInput['scope'] })}
+          >
+            <option value="tag">{t('santa.scopes.tag')}</option>
+            <option value="node">{t('santa.scopes.node')}</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="santa-override-value" required>{t('santa.scopeValue')}</Label>
+          <Input
+            id="santa-override-value"
+            required
+            value={form.scope_value}
+            placeholder={form.scope === 'node' ? 'UUID' : undefined}
+            onChange={(e) => setForm({ ...form, scope_value: e.target.value.trim() })}
+          />
+        </div>
+        <div>
+          <Label htmlFor="santa-override-mode">{t('santa.mode')}</Label>
+          <select
+            id="santa-override-mode"
+            className={SELECT}
+            value={form.client_mode}
+            onChange={(e) => setForm({ ...form, client_mode: e.target.value as SantaModeOverrideInput['client_mode'] })}
+          >
+            <option value="MONITOR">MONITOR</option>
+            <option value="LOCKDOWN">LOCKDOWN</option>
+          </select>
+        </div>
+        <Button type="submit" disabled={save.isPending}>{t('santa.addOverride')}</Button>
+      </form>
+      {error && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(error)}</p>}
+    </section>
   );
 }
 

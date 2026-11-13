@@ -181,3 +181,63 @@ func TestUpdateRule(t *testing.T) {
 	bad.Policy = "NOPE"
 	require.ErrorIs(t, m.UpdateRule(&bad), ErrInvalidRule)
 }
+
+func TestEffectiveMode(t *testing.T) {
+	const node = "11111111-2222-3333-4444-555555555555"
+	set := func(t *testing.T, m *Manager, env uint, scope, value, mode string) {
+		t.Helper()
+		require.NoError(t, m.SetModeOverride(&ModeOverride{EnvironmentID: env, Scope: scope, ScopeValue: value, ClientMode: mode}))
+	}
+	tests := []struct {
+		name       string
+		setup      func(t *testing.T, m *Manager)
+		tags       []string
+		mode, from string
+	}{
+		{"environment default", func(*testing.T, *Manager) {}, []string{"pilot"}, "MONITOR", "env"},
+		{"tag override", func(t *testing.T, m *Manager) { set(t, m, 1, "tag", "pilot", "LOCKDOWN") }, []string{"pilot"}, "LOCKDOWN", "tag"},
+		{"tag the node does not have", func(t *testing.T, m *Manager) { set(t, m, 1, "tag", "pilot", "LOCKDOWN") }, []string{"other"}, "MONITOR", "env"},
+		{"node beats tag", func(t *testing.T, m *Manager) {
+			set(t, m, 1, "node", node, "MONITOR")
+			set(t, m, 1, "tag", "pilot", "LOCKDOWN")
+		}, []string{"pilot"}, "MONITOR", "node"},
+		{"conflicting tags: lockdown wins", func(t *testing.T, m *Manager) {
+			set(t, m, 1, "tag", "a", "LOCKDOWN")
+			set(t, m, 1, "tag", "b", "MONITOR")
+		}, []string{"a", "b"}, "LOCKDOWN", "tag"},
+		{"other environment's override is ignored", func(t *testing.T, m *Manager) { set(t, m, 2, "node", node, "LOCKDOWN") }, nil, "MONITOR", "env"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newTestManager(t)
+			tt.setup(t, m)
+			mode, from, err := m.EffectiveMode(1, node, tt.tags)
+			require.NoError(t, err)
+			require.Equal(t, tt.mode, mode)
+			require.Equal(t, tt.from, from)
+		})
+	}
+}
+
+func TestPreflightModeOverride(t *testing.T) {
+	m := newTestManager(t)
+	n := testNode()
+	require.Equal(t, "MONITOR", mustPreflight(t, m, n, false).GetClientMode().String())
+
+	o := ModeOverride{EnvironmentID: n.EnvID, Scope: "node", ScopeValue: n.UUID, ClientMode: "LOCKDOWN"}
+	require.NoError(t, m.SetModeOverride(&o))
+	require.Equal(t, "LOCKDOWN", mustPreflight(t, m, n, false).GetClientMode().String())
+	mc, err := m.Machine(n.EnvID, n.machineID())
+	require.NoError(t, err)
+	require.Equal(t, "LOCKDOWN", mc.AssignedMode)
+	require.Equal(t, "node", mc.ModeSource)
+
+	// Removing the override reverts on the next sync.
+	_, err = m.DeleteModeOverride(n.EnvID+1, o.ID)
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	_, err = m.DeleteModeOverride(n.EnvID, o.ID)
+	require.NoError(t, err)
+	require.Equal(t, "MONITOR", mustPreflight(t, m, n, false).GetClientMode().String())
+	mc, _ = m.Machine(n.EnvID, n.machineID())
+	require.Equal(t, "env", mc.ModeSource)
+}

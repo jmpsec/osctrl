@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"slices"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -165,6 +167,65 @@ func (m *Manager) DeleteRule(envID, id uint) error {
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+// ModeOverrides lists the environment's client mode overrides ordered by ID.
+func (m *Manager) ModeOverrides(envID uint) ([]ModeOverride, error) {
+	var os []ModeOverride
+	err := m.DB.Where("environment_id = ?", envID).Order("id").Find(&os).Error
+	return os, err
+}
+
+// SetModeOverride validates o and upserts it by (environment, scope, scope value),
+// then reloads it so o carries the stored ID.
+func (m *Manager) SetModeOverride(o *ModeOverride) error {
+	if err := ValidateModeOverride(o); err != nil {
+		return err
+	}
+	o.ID = 0
+	if err := m.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "environment_id"}, {Name: "scope"}, {Name: "scope_value"}},
+		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "created_by", "updated_at"}),
+	}).Create(o).Error; err != nil {
+		return err
+	}
+	return m.DB.Where("environment_id = ? AND scope = ? AND scope_value = ?", o.EnvironmentID, o.Scope, o.ScopeValue).First(o).Error
+}
+
+// DeleteModeOverride removes an override and returns it, or
+// gorm.ErrRecordNotFound if it is not in envID.
+func (m *Manager) DeleteModeOverride(envID, id uint) (ModeOverride, error) {
+	var o ModeOverride
+	if err := m.DB.Where("environment_id = ? AND id = ?", envID, id).First(&o).Error; err != nil {
+		return o, err
+	}
+	return o, m.DB.Delete(&o).Error
+}
+
+// EffectiveMode returns the client mode for a node and where it comes from
+// ("node", "tag" or "env"). A node override beats tag overrides, which beat the
+// environment mode; when the node's tags disagree, LOCKDOWN wins.
+func (m *Manager) EffectiveMode(envID uint, nodeUUID string, tags []string) (mode, source string, err error) {
+	cfg, err := m.Config(envID)
+	if err != nil {
+		return "", "", err
+	}
+	overrides, err := m.ModeOverrides(envID)
+	if err != nil {
+		return "", "", err
+	}
+	mode, source = cfg.ClientMode, "env"
+	for _, o := range overrides {
+		switch {
+		case o.Scope == "node" && strings.EqualFold(o.ScopeValue, nodeUUID):
+			return o.ClientMode, "node", nil
+		case o.Scope == "tag" && slices.Contains(tags, o.ScopeValue):
+			if source != "tag" || o.ClientMode == "LOCKDOWN" {
+				mode, source = o.ClientMode, "tag"
+			}
+		}
+	}
+	return mode, source, nil
 }
 
 // Machine returns one machine, gorm.ErrRecordNotFound if unknown.

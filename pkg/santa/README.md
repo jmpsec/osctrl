@@ -2,12 +2,12 @@
 
 Optional Santa (North Pole Security, macOS) sync server. Disabled by default; enable with `--santa-enabled` (env `SERVICE_SANTA_ENABLED`, YAML `service.santaEnabled`) on both `osctrl-tls` and `osctrl-api`. Requires a restart. When off, no tables are migrated, no TLS or API routes are registered and `/api/v1/features` reports `santa: false`.
 
-Tables (`santa_env_configs`, `santa_rules`, `santa_machines`, `santa_events`) are migrated only when `santa.NewManager` is constructed.
+Tables (`santa_env_configs`, `santa_rules`, `santa_mode_overrides`, `santa_machines`, `santa_events`) are migrated only when `santa.NewManager` is constructed.
 
 ## Data flow
 
 - `osctrl-tls` serves the stable Santa sync protocol (v1, `santa.sync.v1`): `POST /{env}/santa/sync/{stage}/{machineid}` with `stage` one of `preflight`, `eventupload`, `ruledownload`, `postflight`. `{env}` is the environment UUID, `{machineid}` the node UUID.
-- `osctrl-api` manages configuration, the token, rules, and read views of machines and events under `/api/v1/santa/{env}/...` (`config`, `token`, `rules`, `machines`, `events`). The React UI (Santa page) calls these. JSON is snake_case.
+- `osctrl-api` manages configuration, the token, rules, and read views of machines and events under `/api/v1/santa/{env}/...` (`config`, `token`, `rules`, `modes`, `machines`, `events`). The React UI (Santa page) calls these. JSON is snake_case.
 - Both share the SQL database. Rules are scoped to the environment, a tag, or a node. For each (rule type, identifier) the most specific scope wins (node over tag over environment).
 
 ### Digest-based clean sync
@@ -15,6 +15,17 @@ Tables (`santa_env_configs`, `santa_rules`, `santa_machines`, `santa_events`) ar
 At preflight osctrl computes the node's effective rules and an order-independent SHA-256 digest of their synced fields. The digest is stored on the machine as `pending_digest`. If it differs from the `applied_digest` (or the client asked for a clean sync) osctrl answers `CLEAN_RULES`, and the client downloads the full set (500 rules per `ruledownload` page); otherwise `NORMAL`. At postflight `pending_digest` becomes `applied_digest`. The preflight digest is the one stored, so rule or tag changes between preflight and postflight are picked up by the next sync rather than being recorded as applied.
 
 Events uploaded by clients are stored in `santa_events` (fields truncated to 255 characters). Retention is fixed at 30 days; `osctrl-api` prunes daily.
+
+### Client mode overrides
+
+The environment sets the default client mode (MONITOR or LOCKDOWN). A tag or a single node can be given a different mode:
+
+- `PUT /api/v1/santa/{env}/modes` with `scope` (`tag` or `node`), `scope_value` (tag name or node UUID) and `client_mode`. Setting the same tag or node again replaces its mode.
+- `GET /api/v1/santa/{env}/modes` lists the overrides and `DELETE /api/v1/santa/{env}/modes/{id}` removes one.
+
+At preflight the node gets the most specific mode: a node override wins over a tag override, which wins over the environment mode. If the node has several tags with different modes, LOCKDOWN wins. A change takes effect on the client's next sync; it does not force a clean rule sync, because the mode is not part of the rule digest.
+
+Each machine records the mode osctrl sent at its last preflight (`assigned_mode`) and where it came from (`mode_source`: `env`, `tag` or `node`). The Machines tab shows both. Settings tab: **Mode overrides**.
 
 ### Removable media
 
@@ -94,7 +105,8 @@ Leave `MachineIDKey` unset so the machine ID is the hardware UUID, which must ma
 
 1. Run in MONITOR mode, review **Events**, and use **Allow** for legitimate binaries. Allowing by TEAMID covers a whole vendor and needs far fewer rules than allowing each binary hash.
 2. Use tag- or node-scoped rules for exceptions.
-3. When no new legitimate binaries show up in **Events**, switch the environment to **LOCKDOWN**. The mode applies to the whole environment, so a LOCKDOWN pilot group needs its own environment.
+3. Pilot enforcement on a few Macs first: under **Settings > Mode overrides**, set **LOCKDOWN** for a tag (or a single node) while the environment stays in MONITOR.
+4. When no new legitimate binaries show up in **Events**, switch the environment to **LOCKDOWN** and remove the pilot override.
 
 ## Not implemented
 
