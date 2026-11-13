@@ -56,9 +56,13 @@ func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.P
 	if err != nil {
 		return nil, err
 	}
-	mode, ok := syncv1.ClientMode_value[cfg.ClientMode]
+	modeName, modeSource, err := m.EffectiveMode(n.EnvID, n.UUID, n.Tags)
+	if err != nil {
+		return nil, err
+	}
+	mode, ok := syncv1.ClientMode_value[modeName]
 	if !ok || mode == int32(syncv1.ClientMode_UNKNOWN_CLIENT_MODE) {
-		return nil, fmt.Errorf("santa: invalid configured client mode %q", cfg.ClientMode)
+		return nil, fmt.Errorf("santa: invalid configured client mode %q", modeName)
 	}
 	_, digest, err := m.effectiveDigest(n)
 	if err != nil {
@@ -80,6 +84,7 @@ func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.P
 	mc.SantaVersion = req.GetSantaVersion()
 	mc.PrimaryUser = req.GetPrimaryUser()
 	mc.ClientMode = req.GetClientMode().String()
+	mc.AssignedMode, mc.ModeSource = modeName, modeSource
 	// Compiler and transitive counts overlap other types, so they are left out.
 	mc.RuleCount = req.GetBinaryRuleCount() + req.GetCertificateRuleCount() + req.GetTeamidRuleCount() +
 		req.GetSigningidRuleCount() + req.GetCdhashRuleCount()

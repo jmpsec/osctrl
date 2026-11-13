@@ -6,7 +6,7 @@ import {
   createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider,
 } from '@tanstack/react-router';
 import type {
-  SantaConfig, SantaEventsPage, SantaMachine, SantaRule, SantaRuleInput,
+  SantaConfig, SantaEventsPage, SantaMachine, SantaModeOverride, SantaRule, SantaRuleInput,
 } from '$/api/santa';
 import { ApiError } from '$/api/client';
 import { SantaPage } from './SantaPage';
@@ -20,6 +20,9 @@ const mockMachines = vi.fn<() => Promise<SantaMachine[]>>();
 const mockConfig = vi.fn<() => Promise<SantaConfig>>();
 const mockRotate = vi.fn<() => Promise<{ token: string }>>();
 const mockPutConfig = vi.fn<(env: string, body: unknown) => Promise<SantaConfig>>();
+const mockModes = vi.fn<() => Promise<SantaModeOverride[]>>();
+const mockSetMode = vi.fn<(env: string, body: unknown) => Promise<unknown>>();
+const mockDeleteMode = vi.fn<(env: string, id: number) => Promise<unknown>>();
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -34,6 +37,9 @@ vi.mock('$/api/santa', async () => {
     getSantaConfig: () => mockConfig(),
     rotateSantaToken: () => mockRotate(),
     putSantaConfig: (env: string, body: unknown) => mockPutConfig(env, body),
+    listSantaModeOverrides: () => mockModes(),
+    setSantaModeOverride: (env: string, body: unknown) => mockSetMode(env, body),
+    deleteSantaModeOverride: (env: string, id: number) => mockDeleteMode(env, id),
   };
 });
 vi.mock('$/api/environments', () => ({
@@ -85,8 +91,11 @@ describe('SantaPage', () => {
     });
     mockMachines.mockResolvedValue([{
       machine_id: 'M1', serial_number: 'SER1', hostname: 'mac-01', os_version: '15', santa_version: '2025.1',
-      primary_user: 'bob', client_mode: 'LOCKDOWN', rule_count: 3, last_sync_at: null,
+      primary_user: 'bob', client_mode: 'MONITOR', assigned_mode: 'LOCKDOWN', mode_source: 'tag', rule_count: 3, last_sync_at: null,
     }]);
+    mockModes.mockResolvedValue([{ id: 4, scope: 'tag', scope_value: 'pilot', client_mode: 'LOCKDOWN', created_by: 'admin' }]);
+    mockSetMode.mockResolvedValue({});
+    mockDeleteMode.mockResolvedValue({});
     mockConfig.mockResolvedValue(config);
     mockPutConfig.mockResolvedValue(config);
     mockRotate.mockResolvedValue({ token: 'SECRET-TOKEN-123' });
@@ -192,6 +201,33 @@ describe('SantaPage', () => {
       removable_media: 'REMOUNT', removable_media_flags: ['rdonly', 'noexec'],
       encrypted_removable_media: '', encrypted_removable_media_flags: [],
     })));
+  });
+
+  it('adds and removes a mode override', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    expect(await screen.findByText('pilot')).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Scope'), 'node');
+    await user.type(screen.getByLabelText(/Scope value/), '11111111-2222-3333-4444-555555555555');
+    await user.selectOptions(screen.getAllByLabelText('Mode')[1], 'MONITOR');
+    await user.click(screen.getByRole('button', { name: 'Add override' }));
+    await waitFor(() => expect(mockSetMode).toHaveBeenCalledWith('dev', {
+      scope: 'node', scope_value: '11111111-2222-3333-4444-555555555555', client_mode: 'MONITOR',
+    }));
+    await user.click(screen.getByRole('button', { name: 'Delete pilot' }));
+    await waitFor(() => expect(mockDeleteMode).toHaveBeenCalledWith('dev', 4));
+    confirmSpy.mockRestore();
+  });
+
+  it('shows the assigned mode and where it comes from', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Machines' }));
+    const row = (await screen.findByText('mac-01')).closest('tr')!;
+    expect(within(row).getByText('LOCKDOWN')).toBeInTheDocument();
+    expect(within(row).getByText('Tag override')).toBeInTheDocument();
   });
 
   it('asks for confirmation before rotating and cancel does not call the API', async () => {

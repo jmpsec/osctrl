@@ -40,7 +40,12 @@ export function MachinesTab({ env }: { env: string }) {
                     <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{m.hostname}</div>
                     <div className={`${MONO} text-xs text-[color:var(--text-3)]`}>{m.serial_number || m.machine_id}</div>
                   </td>
-                  <td className={TD}>{m.client_mode}</td>
+                  <td className={TD}>
+                    {m.assigned_mode || m.client_mode}
+                    {(m.mode_source === 'tag' || m.mode_source === 'node') && (
+                      <div className="text-xs text-[color:var(--text-3)]">{t(`santa.modeFrom.${m.mode_source}`)}</div>
+                    )}
+                  </td>
                   <td className={TD}>{m.rule_count}</td>
                   <td className={TD}>{m.santa_version}</td>
                   <td className={`${TD} whitespace-nowrap`}>

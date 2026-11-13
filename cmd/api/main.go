@@ -1143,6 +1143,15 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 			"DELETE "+_apiPath("/santa")+"/{env}/rules/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"GET "+_apiPath("/santa")+"/{env}/modes",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaModeOverridesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"PUT "+_apiPath("/santa")+"/{env}/modes",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaModeOverrideSetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath("/santa")+"/{env}/modes/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaModeOverrideDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"GET "+_apiPath("/santa")+"/{env}/machines",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaMachinesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(

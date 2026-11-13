@@ -56,6 +56,16 @@ type SantaRuleRequest struct {
 	ScopeValue string `json:"scope_value"`
 }
 
+// SantaModeOverrideRequest sets the client mode for a tag or a node.
+type SantaModeOverrideRequest struct {
+	// tag | node
+	Scope string `json:"scope"`
+	// Tag name or node UUID
+	ScopeValue string `json:"scope_value"`
+	// MONITOR | LOCKDOWN
+	ClientMode string `json:"client_mode"`
+}
+
 // SantaEventsResponse is one page of events.
 type SantaEventsResponse struct {
 	Events []santa.Event `json:"events"`
@@ -377,6 +387,104 @@ func (h *HandlersApi) SantaRuleDeleteHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	h.santaAudit(user, fmt.Sprintf("delete rule %d %s", id, ruleAuditString(rule)), r, env)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// SantaModeOverridesHandler — GET /api/v1/santa/{env}/modes
+// @Summary List Santa client mode overrides
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {array} santa.ModeOverride
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/modes [get]
+func (h *HandlersApi) SantaModeOverridesHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	overrides, err := h.Santa.ModeOverrides(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error listing mode overrides", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, overrides)
+}
+
+// SantaModeOverrideSetHandler — PUT /api/v1/santa/{env}/modes
+// @Summary Set the Santa client mode for a tag or a node
+// @Description Creates the override, or replaces the mode of the existing one for the same tag or node.
+// @Tags santa
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param body body SantaModeOverrideRequest true "Override"
+// @Success 200 {object} santa.ModeOverride
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/modes [put]
+func (h *HandlersApi) SantaModeOverrideSetHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	var req SantaModeOverrideRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&req); err != nil {
+		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
+		return
+	}
+	o := santa.ModeOverride{EnvironmentID: env.ID, CreatedBy: user, Scope: req.Scope, ScopeValue: req.ScopeValue, ClientMode: req.ClientMode}
+	err := h.Santa.SetModeOverride(&o)
+	if errors.Is(err, santa.ErrInvalidOverride) {
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+		return
+	}
+	if err != nil {
+		apiErrorResponse(w, "error saving mode override", http.StatusInternalServerError, err)
+		return
+	}
+	h.santaAudit(user, fmt.Sprintf("set mode override %s scope=%s scope_value=%s", o.ClientMode, o.Scope, o.ScopeValue), r, env)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, o)
+}
+
+// SantaModeOverrideDeleteHandler — DELETE /api/v1/santa/{env}/modes/{id}
+// @Summary Delete a Santa client mode override
+// @Tags santa
+// @Param env path string true "Environment name or UUID"
+// @Param id path int true "Override id"
+// @Success 204
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/modes/{id} [delete]
+func (h *HandlersApi) SantaModeOverrideDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
+	if err != nil {
+		apiErrorResponse(w, "invalid override id", http.StatusBadRequest, err)
+		return
+	}
+	o, err := h.Santa.DeleteModeOverride(env.ID, uint(id))
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		apiErrorResponse(w, "mode override not found", http.StatusNotFound, err)
+		return
+	}
+	if err != nil {
+		apiErrorResponse(w, "error deleting mode override", http.StatusInternalServerError, err)
+		return
+	}
+	h.santaAudit(user, fmt.Sprintf("delete mode override %s scope=%s scope_value=%s", o.ClientMode, o.Scope, o.ScopeValue), r, env)
 	w.WriteHeader(http.StatusNoContent)
 }
 

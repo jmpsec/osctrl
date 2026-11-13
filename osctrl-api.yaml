@@ -8748,6 +8748,147 @@ paths:
       summary: List Santa machines
       tags:
         - santa
+  "/api/v1/santa/{env}/modes":
+    get:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/santa.ModeOverride"
+                type: array
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List Santa client mode overrides
+      tags:
+        - santa
+    put:
+      description: Creates the override, or replaces the mode of the existing one for
+        the same tag or node.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaModeOverrideRequest"
+        description: Override
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.ModeOverride"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Set the Santa client mode for a tag or a node
+      tags:
+        - santa
+  "/api/v1/santa/{env}/modes/{id}":
+    delete:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Override id
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Delete a Santa client mode override
+      tags:
+        - santa
   "/api/v1/santa/{env}/rules":
     get:
       parameters:
@@ -12767,6 +12908,18 @@ components:
         total:
           type: integer
       type: object
+    handlers.SantaModeOverrideRequest:
+      properties:
+        client_mode:
+          description: MONITOR | LOCKDOWN
+          type: string
+        scope:
+          description: tag | node
+          type: string
+        scope_value:
+          description: Tag name or node UUID
+          type: string
+      type: object
     handlers.SantaRuleRequest:
       properties:
         cel_expr:
@@ -13322,7 +13475,11 @@ components:
         applied_digest:
           description: set at postflight
           type: string
+        assigned_mode:
+          description: sent at the last preflight
+          type: string
         client_mode:
+          description: reported by the client
           type: string
         created_at:
           type: string
@@ -13338,6 +13495,9 @@ components:
           type: string
         machine_id:
           description: uppercase UUID
+          type: string
+        mode_source:
+          description: env | tag | node
           type: string
         node_id:
           type: integer
@@ -13356,6 +13516,28 @@ components:
         santa_version:
           type: string
         serial_number:
+          type: string
+        updated_at:
+          type: string
+      type: object
+    santa.ModeOverride:
+      properties:
+        client_mode:
+          description: MONITOR | LOCKDOWN
+          type: string
+        created_at:
+          type: string
+        created_by:
+          type: string
+        environment_id:
+          type: integer
+        id:
+          type: integer
+        scope:
+          description: tag|node
+          type: string
+        scope_value:
+          description: tag name | node UUID (uppercase)
           type: string
         updated_at:
           type: string

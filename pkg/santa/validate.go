@@ -91,6 +91,31 @@ func ValidateConfig(c *EnvConfig) error {
 	return nil
 }
 
+// ErrInvalidOverride wraps every ValidateModeOverride failure.
+var ErrInvalidOverride = errors.New("invalid santa mode override")
+
+// ValidateModeOverride checks o and uppercases a node UUID, like ValidateRule.
+func ValidateModeOverride(o *ModeOverride) error {
+	bad := func(msg string) error { return fmt.Errorf("%w: %s", ErrInvalidOverride, msg) }
+	if !ValidClientMode(o.ClientMode) {
+		return bad("mode must be MONITOR or LOCKDOWN")
+	}
+	switch o.Scope {
+	case "tag":
+		if o.ScopeValue == "" || len(o.ScopeValue) > 255 {
+			return bad("tag scope requires a tag name of at most 255 characters")
+		}
+	case "node":
+		if !uuidRe.MatchString(o.ScopeValue) {
+			return bad("node scope requires a UUID")
+		}
+		o.ScopeValue = strings.ToUpper(o.ScopeValue)
+	default:
+		return bad("scope must be tag or node")
+	}
+	return nil
+}
+
 func invalid(format string, a ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalidRule, fmt.Sprintf(format, a...))
 }
