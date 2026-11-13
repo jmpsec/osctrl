@@ -48,6 +48,8 @@ func (m *recordingMatcher) MatchQueryResult(envID uint, environment, queryName s
 	m.lastEnvName = environment
 }
 
+func (m *recordingMatcher) MatchSantaEvents(uint, string, string, []map[string]string) {}
+
 // TestProcessLogsAlertHookResult verifies the result-log alert tap: the
 // matcher sees the decoded batch with env context, before dispatch.
 func TestProcessLogsAlertHookResult(t *testing.T) {

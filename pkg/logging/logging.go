@@ -25,6 +25,9 @@ type AlertMatcher interface {
 	MatchStatusLogs(envID uint, environment, nodeUUID string, logs []types.LogStatusData)
 	// MatchQueryResult is called per query in ProcessLogQueryResult.
 	MatchQueryResult(envID uint, environment, queryName string, result json.RawMessage, status int, message string)
+	// MatchSantaEvents is called by the Santa sync endpoint with the stored
+	// events of one upload, each as lowercase field name to value.
+	MatchSantaEvents(envID uint, environment, nodeUUID string, events []map[string]string)
 }
 
 // LoggerTLS will be used to handle logging for the TLS endpoint.

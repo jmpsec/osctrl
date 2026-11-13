@@ -281,7 +281,7 @@ func init() {
 					Usage:   "Create an alert rule",
 					Flags: []cli.Flag{
 						&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "Rule name"},
-						&cli.StringFlag{Name: "source", Aliases: []string{"s"}, Usage: "Source: result_log | status_log | query_log | node_inactive | node_recovered | vuln_finding"},
+						&cli.StringFlag{Name: "source", Aliases: []string{"s"}, Usage: "Source: result_log | status_log | query_log | node_inactive | node_recovered | vuln_finding | santa_event"},
 						&cli.StringFlag{Name: "match-type", Aliases: []string{"m"}, Value: "substring", Usage: "Match type: substring | regex"},
 						&cli.StringFlag{Name: "match-field", Usage: "Field to match (empty = any field)"},
 						&cli.StringFlag{Name: "match-value", Aliases: []string{"v"}, Usage: "Pattern to match"},

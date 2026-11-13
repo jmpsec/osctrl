@@ -121,7 +121,9 @@ func (h *HandlersApi) requireAlertsWrite(w http.ResponseWriter, r *http.Request)
 	return h.requireAlertsRole(w, r, users.RoleAlertAdmin)
 }
 
-var logContentSources = []string{alerts.SourceResultLog, alerts.SourceQueryLog, alerts.SourceStatusLog}
+// Santa events carry file paths and user names from the endpoints, so their
+// rules are gated like log content.
+var logContentSources = []string{alerts.SourceResultLog, alerts.SourceQueryLog, alerts.SourceStatusLog, alerts.SourceSantaEvent}
 
 func isLogContentSource(source string) bool {
 	for _, s := range logContentSources {

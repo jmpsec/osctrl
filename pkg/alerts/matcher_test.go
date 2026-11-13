@@ -30,6 +30,8 @@ func compileForTest(t *testing.T, rules ...AlertRule) *RuleSet {
 			rs.status = append(rs.status, cr)
 		case SourceQueryLog:
 			rs.query = append(rs.query, cr)
+		case SourceSantaEvent:
+			rs.santa = append(rs.santa, cr)
 		}
 	}
 	return rs

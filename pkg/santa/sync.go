@@ -192,6 +192,15 @@ func toProtoRule(r Rule) (*syncv1.Rule, error) {
 
 // EventUpload stores execution events; other event kinds are ignored.
 func (m *Manager) EventUpload(n SyncNode, req *syncv1.EventUploadRequest) (*syncv1.EventUploadResponse, error) {
+	if _, err := m.StoreEvents(n, req); err != nil {
+		return nil, err
+	}
+	return &syncv1.EventUploadResponse{}, nil
+}
+
+// StoreEvents stores the execution events of an upload and returns them as
+// stored, for forwarding to log sinks and alert rules.
+func (m *Manager) StoreEvents(n SyncNode, req *syncv1.EventUploadRequest) ([]Event, error) {
 	if _, err := m.loadMachine(n); err != nil {
 		return nil, err
 	}
@@ -219,7 +228,23 @@ func (m *Manager) EventUpload(n SyncNode, req *syncv1.EventUploadRequest) (*sync
 	if err := m.AddEvents(evs); err != nil {
 		return nil, err
 	}
-	return &syncv1.EventUploadResponse{}, nil
+	return evs, nil
+}
+
+// AlertFields returns the fields alert rules can match, keyed by their JSON
+// names. Every value is written by the Santa client.
+func (e Event) AlertFields() map[string]string {
+	return map[string]string{
+		"decision":       e.Decision,
+		"file_sha256":    e.FileSHA256,
+		"file_path":      e.FilePath,
+		"file_name":      e.FileName,
+		"executing_user": e.ExecutingUser,
+		"team_id":        e.TeamID,
+		"signing_id":     e.SigningID,
+		"cd_hash":        e.CDHash,
+		"bundle_id":      e.BundleID,
+	}
 }
 
 // Postflight marks the preflight digest as applied.

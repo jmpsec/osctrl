@@ -517,6 +517,11 @@ func TestAlertAdminCannotCreateLogContentRule(t *testing.T) {
 	rr := callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, ruleBody(), 0)
 	require.Equal(t, http.StatusForbidden, rr.Code)
 	require.Contains(t, rr.Body.String(), "log-content alert rules require full query tier")
+	// Santa events carry endpoint data too, so their rules are gated the same.
+	santaRule := ruleBody()
+	santaRule["source"] = "santa_event"
+	rr = callAlertsAs(t, h.AlertRulesCreateHandler, "alerty", http.MethodPost, santaRule, 0)
+	require.Equal(t, http.StatusForbidden, rr.Code)
 	rr = callAlertsAs(t, h.AlertRulesCreateHandler, "alice", http.MethodPost, ruleBody(), 0)
 	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
 }

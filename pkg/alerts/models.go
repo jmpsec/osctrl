@@ -50,6 +50,9 @@ const (
 	// confirmed finding at or above the rule's VulnMinSeverity. Evaluated
 	// by the vulnerability watcher, not the ingest path.
 	SourceVulnFinding = "vuln_finding"
+	// SourceSantaEvent watches Santa execution events uploaded to the Santa
+	// sync endpoint. Matched like log text, on the event's fields.
+	SourceSantaEvent = "santa_event"
 )
 
 // Match types. Substring is the operator default — regex is opt-in

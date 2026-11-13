@@ -184,6 +184,28 @@ describe('AlertsPage', () => {
     renderPage();
     await user.click(await screen.findByRole('button', { name: 'New rule' }));
     expect(screen.queryByRole('option', { name: 'New vulnerability findings' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Santa events' })).not.toBeInTheDocument();
+  });
+
+  it('creates a Santa event rule with a field and pattern', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({
+      posture: false, service_config: true, log_sinks: true, alerts: true,
+      accelerated: false, file_explorer: false, vulnerabilities: false, santa: true,
+    });
+    mockCreateRule.mockResolvedValue(makeRule({ source: 'santa_event' }));
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New rule' }));
+    await user.type(screen.getByLabelText('Name'), 'santa-blocks');
+    await user.selectOptions(screen.getByLabelText('Source'), 'santa_event');
+    await user.type(screen.getByLabelText(/^Field/), 'decision');
+    await user.type(screen.getByLabelText(/^Pattern/), 'BLOCK');
+    await user.click(screen.getByRole('button', { name: 'Create rule' }));
+    await waitFor(() => {
+      expect(mockCreateRule).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'santa_event', match_field: 'decision', match_value: 'BLOCK' }),
+      );
+    });
   });
 
   it('creates a vulnerability rule without a pattern', async () => {

@@ -10,6 +10,9 @@ const (
 	StatusLog string = "status"
 	ResultLog string = "result"
 	QueryLog  string = "query"
+	// SantaLog is a batch of Santa execution events. It is produced by the
+	// Santa sync endpoint, never by osquery.
+	SantaLog string = "santa"
 )
 
 // OSVersionTable provided on enrollment, table os_version
