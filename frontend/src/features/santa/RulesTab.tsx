@@ -7,9 +7,11 @@ import {
   deleteSantaRule,
   listSantaRules,
   santaQueryKey,
+  updateSantaRule,
   SANTA_POLICIES,
   SANTA_RULE_TYPES,
   SANTA_SCOPES,
+  type SantaRule,
   type SantaRuleInput,
 } from '$/api/santa';
 import { ApiError } from '$/api/client';
@@ -32,10 +34,18 @@ export const EMPTY_RULE: SantaRuleInput = {
   scope_value: '',
 };
 
+/** Form state; id is set when editing an existing rule. */
+export type RuleDraft = SantaRuleInput & { id?: number };
+
+function toDraft(r: SantaRule): RuleDraft {
+  const { id, identifier, rule_type, policy, cel_expr, custom_msg, custom_url, scope, scope_value } = r;
+  return { id, identifier, rule_type, policy, cel_expr, custom_msg, custom_url, scope, scope_value };
+}
+
 const SELECT =
   'h-8 w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]';
 
-export function RulesTab({ env, onAdd }: { env: string; onAdd: () => void }) {
+export function RulesTab({ env, onAdd, onEdit }: { env: string; onAdd: () => void; onEdit: (r: RuleDraft) => void }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const rules = useQuery({ queryKey: santaQueryKey(env, 'rules'), queryFn: () => listSantaRules(env) });
@@ -81,13 +91,24 @@ export function RulesTab({ env, onAdd }: { env: string; onAdd: () => void }) {
                     <td className={TD}>{r.policy}</td>
                     <td className={TD}>{r.scope === 'env' ? r.scope : `${r.scope}: ${r.scope_value}`}</td>
                     <td className={TD}>{r.created_by}</td>
-                    <td className={`${TD} text-end`}>
+                    <td className={`${TD} whitespace-nowrap text-end`}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="me-2"
+                        aria-label={`${t('santa.edit')} ${r.identifier}`}
+                        onClick={() => onEdit(toDraft(r))}
+                      >
+                        {t('santa.edit')}
+                      </Button>
                       <Button
                         size="sm"
                         variant="danger"
                         disabled={remove.isPending}
                         aria-label={`${t('santa.delete')} ${r.identifier}`}
-                        onClick={() => remove.mutate(r.id)}
+                        onClick={() => {
+                          if (confirm(t('santa.confirmDelete', { identifier: r.identifier }))) remove.mutate(r.id);
+                        }}
                       >
                         {t('santa.delete')}
                       </Button>
@@ -109,37 +130,40 @@ export function RuleFormModal({
   onClose,
 }: {
   env: string;
-  initial: SantaRuleInput;
+  initial: RuleDraft;
   /** Must be stable (useCallback): ModalShell re-runs its focus effect on change. */
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const [form, setForm] = useState<SantaRuleInput>(initial);
-  const create = useMutation({
+  const { id, ...rest } = initial;
+  const [form, setForm] = useState<SantaRuleInput>(rest);
+  const save = useMutation({
     // Backstop: fields hidden by the current scope/policy are never posted.
-    mutationFn: () =>
-      createSantaRule(env, {
+    mutationFn: () => {
+      const body = {
         ...form,
         scope_value: form.scope === 'env' ? '' : form.scope_value,
         cel_expr: form.policy === 'CEL' ? form.cel_expr : '',
-      }),
+      };
+      return id === undefined ? createSantaRule(env, body) : updateSantaRule(env, id, body);
+    },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: santaQueryKey(env, 'rules') });
       onClose();
     },
   });
   const set = <K extends keyof SantaRuleInput>(key: K, value: SantaRuleInput[K]) => setForm((f) => ({ ...f, [key]: value }));
-  const error = create.error;
+  const error = save.error;
   const message = error instanceof ApiError && error.status === 409 ? t('santa.ruleExists') : errorText(error);
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    create.mutate();
+    save.mutate();
   }
 
   return (
-    <ModalShell title={t('santa.addRule')} titleId="santa-rule-title" onClose={onClose} bodyClassName="max-h-[70vh] overflow-y-auto">
+    <ModalShell title={id === undefined ? t('santa.addRule') : t('santa.editRule')} titleId="santa-rule-title" onClose={onClose} bodyClassName="max-h-[70vh] overflow-y-auto">
       <form onSubmit={submit} className="space-y-3">
         <div>
           <Label htmlFor="santa-identifier" required>{t('santa.identifier')}</Label>
@@ -201,7 +225,7 @@ export function RuleFormModal({
         {message && <p role="alert" className="text-sm text-[color:var(--danger)]">{message}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button type="submit" disabled={create.isPending}>{t('common.save')}</Button>
+          <Button type="submit" disabled={save.isPending}>{t('common.save')}</Button>
         </div>
       </form>
     </ModalShell>

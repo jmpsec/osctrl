@@ -1137,6 +1137,9 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 			"POST "+_apiPath("/santa")+"/{env}/rules",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"PUT "+_apiPath("/santa")+"/{env}/rules/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleUpdateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"DELETE "+_apiPath("/santa")+"/{env}/rules/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRuleDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(

@@ -140,3 +140,44 @@ func TestEventsPagingAndPrune(t *testing.T) {
 	_, total, _ = m.Events(1, 1, 10)
 	require.Equal(t, int64(3), total)
 }
+
+func TestUpdateRule(t *testing.T) {
+	m := newTestManager(t)
+	r := testRule(1)
+	r.CustomMsg = "old"
+	r.CreatedBy = "alice"
+	require.NoError(t, m.CreateRule(r))
+	other := testRule(1)
+	other.Identifier = strings.Repeat("cd", 32)
+	require.NoError(t, m.CreateRule(other))
+	digest := func() string {
+		rs, err := m.EffectiveRules(1, "", nil)
+		require.NoError(t, err)
+		return RulesDigest(rs)
+	}
+	before := digest()
+
+	// Normalizes like create, clears an emptied message, keeps CreatedBy.
+	upd := *r
+	upd.Identifier = strings.ToUpper(upd.Identifier)
+	upd.Policy = "ALLOWLIST"
+	upd.CustomMsg = ""
+	require.NoError(t, m.UpdateRule(&upd))
+	got, err := m.Rule(1, r.ID)
+	require.NoError(t, err)
+	require.Equal(t, r.Identifier, got.Identifier)
+	require.Equal(t, "ALLOWLIST", got.Policy)
+	require.Empty(t, got.CustomMsg)
+	require.Equal(t, "alice", got.CreatedBy)
+	require.NotEqual(t, before, digest(), "edit must change the digest so clients clean sync")
+
+	dup := got
+	dup.Identifier = other.Identifier
+	require.ErrorIs(t, m.UpdateRule(&dup), ErrRuleExists)
+	wrongEnv := got
+	wrongEnv.EnvironmentID = 2
+	require.ErrorIs(t, m.UpdateRule(&wrongEnv), gorm.ErrRecordNotFound)
+	bad := got
+	bad.Policy = "NOPE"
+	require.ErrorIs(t, m.UpdateRule(&bad), ErrInvalidRule)
+}

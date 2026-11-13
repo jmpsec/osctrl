@@ -14,6 +14,7 @@ import { SantaPage } from './SantaPage';
 const mockRules = vi.fn<() => Promise<SantaRule[]>>();
 const mockDelete = vi.fn<(env: string, id: number) => Promise<unknown>>();
 const mockCreate = vi.fn<(env: string, body: SantaRuleInput) => Promise<unknown>>();
+const mockUpdate = vi.fn<(env: string, id: number, body: SantaRuleInput) => Promise<unknown>>();
 const mockEvents = vi.fn<() => Promise<SantaEventsPage>>();
 const mockMachines = vi.fn<() => Promise<SantaMachine[]>>();
 const mockConfig = vi.fn<() => Promise<SantaConfig>>();
@@ -27,6 +28,7 @@ vi.mock('$/api/santa', async () => {
     listSantaRules: () => mockRules(),
     deleteSantaRule: (env: string, id: number) => mockDelete(env, id),
     createSantaRule: (env: string, body: SantaRuleInput) => mockCreate(env, body),
+    updateSantaRule: (env: string, id: number, body: SantaRuleInput) => mockUpdate(env, id, body),
     listSantaEvents: () => mockEvents(),
     listSantaMachines: () => mockMachines(),
     getSantaConfig: () => mockConfig(),
@@ -72,6 +74,7 @@ describe('SantaPage', () => {
     mockRules.mockResolvedValue([rule]);
     mockDelete.mockResolvedValue({});
     mockCreate.mockResolvedValue({});
+    mockUpdate.mockResolvedValue({});
     mockEvents.mockResolvedValue({
       events: [{
         id: 1, file_sha256: 'b'.repeat(64), file_path: '/tmp/bad', file_name: 'bad', executing_user: 'bob',
@@ -89,12 +92,36 @@ describe('SantaPage', () => {
     mockRotate.mockResolvedValue({ token: 'SECRET-TOKEN-123' });
   });
 
-  it('lists rules and deletes one', async () => {
+  it('lists rules and deletes one after confirmation', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     const user = userEvent.setup();
     renderPage();
     expect(await screen.findByText(rule.identifier)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /^Delete/ }));
+    expect(mockDelete).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /^Delete/ }));
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith('dev', 7));
+    expect(confirmSpy.mock.calls[0][0]).toContain(rule.identifier);
+    confirmSpy.mockRestore();
+  });
+
+  it('edits a rule in place', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: /^Edit/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit rule' });
+    expect(within(dialog).getByLabelText(/Identifier/)).toHaveValue(rule.identifier);
+    expect(within(dialog).getByLabelText('Policy')).toHaveValue('BLOCKLIST');
+    await user.selectOptions(within(dialog).getByLabelText('Policy'), 'ALLOWLIST');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+    expect(mockCreate).not.toHaveBeenCalled();
+    const [env, id, body] = mockUpdate.mock.calls[0];
+    expect([env, id]).toEqual(['dev', 7]);
+    expect(body).toEqual({
+      identifier: rule.identifier, rule_type: 'BINARY', policy: 'ALLOWLIST', cel_expr: '',
+      custom_msg: '', custom_url: '', scope: 'env', scope_value: '',
+    });
   });
 
   it('shows a friendly message when the rule already exists', async () => {

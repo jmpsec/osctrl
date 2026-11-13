@@ -36,6 +36,7 @@ Santa clients that predate `removable_media_policy` read the deprecated `block_u
 - Requests are not IP rate limited (that would throttle fleets behind one NAT). Failed authentications are written to the audit log, capped at 60 per hour per environment; drops are counted in the Prometheus metric `santa_auth_audit_dropped_total`.
 - Bodies: JSON or protobuf, optionally gzip or zlib compressed; the raw body is capped at 10 MiB and the decompressed body at 20 MiB (`413` past either limit). Responses use the request's encoding.
 - Management routes require environment admin permission and write an audit line (`santa: <action>`). Creating a duplicate rule returns `409`.
+- Rules are edited in place with `PUT /api/v1/santa/{env}/rules/{id}`. It applies the same validation as create, returns `409` if the edit duplicates another rule and `404` for a rule in another environment. `created_by` is kept, and the audit line records the rule before and after. An edit changes the rule digest, so clients get a clean sync on their next sync.
 
 ### Trust model limits
 
