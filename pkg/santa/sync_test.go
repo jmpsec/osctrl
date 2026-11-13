@@ -208,7 +208,7 @@ func TestEventUploadStoresBlockedEvent(t *testing.T) {
 	}}})
 	require.NoError(t, err)
 
-	evs, total, err := m.Events(1, 1, 10)
+	evs, total, err := m.Events(1, 1, 10, EventFilter{})
 	require.NoError(t, err)
 	require.Equal(t, int64(1), total)
 	e := evs[0]

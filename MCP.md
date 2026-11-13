@@ -3,7 +3,8 @@
 osctrl exposes its read surface over the [Model Context
 Protocol](https://modelcontextprotocol.io), so an MCP client — Claude Code,
 Claude Desktop, or any other — can inspect a fleet: environments, enrolled
-nodes, the osquery schema, and distributed query results.
+nodes, the osquery schema, distributed query results, and Santa rules,
+machines and events.
 
 There are two ways to run it, serving the same tools:
 
@@ -156,6 +157,14 @@ Always available. Nothing here mutates anything.
 | `list_queries` | Distributed queries and how many nodes have answered, newest first. Capped by `limit` (default 50, maximum 200); check the `truncated` flag. It works against the API and no longer returns an unbounded list. |
 | `list_saved_queries` | Stored, reusable query templates. |
 | `get_query_results` | Rows collected so far for a query. Requires query-level permission. |
+| `list_santa_rules` | Santa rules of an environment, filtered by rule type, policy, or identifier substring. Capped by `limit` (default 100, maximum 500). |
+| `list_santa_machines` | Macs that sync Santa with osctrl: version, client mode, last sync, and whether their rules are up to date. Same cap. |
+| `list_santa_events` | Santa execution events, newest first, filtered by machine, decision (name or prefix, such as `BLOCK`), or file hash. Paged (default 50, maximum 200 per page). |
+| `get_santa_node_rules` | The rules and client mode that apply to one Mac after scope resolution (node over tag over environment). |
+
+The four Santa tools need admin permission on the environment, like the Santa
+page. They are always listed; where Santa is not enabled (`--santa-enabled`)
+they return the API's "santa not enabled" error.
 
 ### Write tools
 
@@ -170,6 +179,8 @@ agent the fleet.
 | `expire_query` | Stop handing a query to more nodes. Collected results stay readable. |
 | `complete_query` | Mark a query complete so osctrl stops waiting on silent nodes. |
 | `tag_node` | Apply an existing tag to a node. Requires admin permission. |
+| `create_santa_rule` | Create one Santa allow or block rule. Requires admin permission. |
+| `delete_santa_rule` | Delete one Santa rule by id. Requires admin permission. |
 
 Four constraints `run_query` applies on top of osctrl's own permission checks:
 
@@ -188,6 +199,21 @@ Four constraints `run_query` applies on top of osctrl's own permission checks:
 
 `tag_node` only ever writes custom tags; environment and platform tags are
 osctrl's own derived values and are not forgeable through MCP.
+
+Santa rules decide what software runs on Macs, so `create_santa_rule` is
+narrower than the REST endpoint:
+
+- **A scope is required.** `env` puts the rule on every Mac in the
+  environment, so it has to be stated, not defaulted.
+- **CEL rules and custom URLs are not offered.** A CEL expression runs on
+  every execution, and a custom URL is opened from the block dialog on the
+  user's Mac. Create those from the Santa page.
+- **There is no update or bulk import.** An agent changes one rule at a time,
+  and each change is one audit line.
+
+Santa events are written by the Macs themselves. With writes on, the server
+instructions tell the model that a blocked binary's path, name or signer is
+never a reason to allow it.
 
 ### Two things the tools tell the model, and why
 

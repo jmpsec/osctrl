@@ -25,6 +25,12 @@ After an upload is stored, `osctrl-tls` forwards its events to the log sinks and
 - Event fields are written by the Santa client and are untrusted. The notification detail is one line (`DECISION path sha256=... user=...`) with control characters removed and at most 1024 bytes.
 - The osquery log endpoint rejects the log type `santa`, so an osquery node cannot forge Santa events into the sinks.
 
+### Event filters, effective rules and MCP tools
+
+- `GET /api/v1/santa/{env}/events` takes optional filters: `machine_id` (node UUID), `decision` (a decision name or a prefix of one, so `BLOCK` matches every block decision; letters and underscores only, anything else is `400`) and `sha256`.
+- `GET /api/v1/santa/{env}/machines/{machineid}/rules` returns the rules a node gets after scope resolution, with its client mode and where the mode comes from. The node must be enrolled in the environment; it does not need to have synced yet.
+- The MCP server has four read tools (`list_santa_rules`, `list_santa_machines`, `list_santa_events`, `get_santa_node_rules`) and, behind the MCP write opt-in, `create_santa_rule` and `delete_santa_rule`. They call the routes above, so they need environment admin and write the same audit lines. See [MCP.md](../../MCP.md).
+
 ### Bulk import and export
 
 Rule sets can be moved between environments or kept in git.
@@ -143,4 +149,4 @@ Leave `MachineIDKey` unset so the machine ID is the hardware UUID, which must ma
 
 ## Not implemented
 
-The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; file-access, network-flow and telemetry rules; bundle uploads; MCP tools.
+The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; file-access, network-flow and telemetry rules; bundle uploads.

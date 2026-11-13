@@ -197,6 +197,7 @@ func TestAllToolsRegistered(t *testing.T) {
 		"search_nodes", "get_node",
 		"list_osquery_tables", "get_table_schema",
 		"list_queries", "list_saved_queries", "get_query_results",
+		"list_santa_rules", "list_santa_machines", "list_santa_events", "get_santa_node_rules",
 	}
 	for _, w := range want {
 		if !got[w] {

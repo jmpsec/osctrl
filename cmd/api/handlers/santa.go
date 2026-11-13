@@ -560,7 +560,11 @@ func (h *HandlersApi) SantaMachinesHandler(w http.ResponseWriter, r *http.Reques
 // @Param env path string true "Environment name or UUID"
 // @Param page query int false "Page (1-based)"
 // @Param page_size query int false "Page size"
+// @Param machine_id query string false "Only events of this machine (node UUID)"
+// @Param decision query string false "Decision name or prefix, for example BLOCK"
+// @Param sha256 query string false "Only events of this file hash"
 // @Success 200 {object} SantaEventsResponse
+// @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
 // @Failure 503 {object} types.ApiErrorResponse
@@ -573,10 +577,74 @@ func (h *HandlersApi) SantaEventsHandler(w http.ResponseWriter, r *http.Request)
 	}
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	size, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
-	evs, total, err := h.Santa.Events(env.ID, page, size)
+	q := r.URL.Query()
+	evs, total, err := h.Santa.Events(env.ID, page, size, santa.EventFilter{
+		MachineID: q.Get("machine_id"), Decision: q.Get("decision"), SHA256: q.Get("sha256"),
+	})
+	if errors.Is(err, santa.ErrInvalidEventFilter) {
+		apiErrorResponse(w, "invalid decision filter", http.StatusBadRequest, err)
+		return
+	}
 	if err != nil {
 		apiErrorResponse(w, "error listing events", http.StatusInternalServerError, err)
 		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, SantaEventsResponse{Events: evs, Total: total, Page: max(page, 1)})
+}
+
+// SantaEffectiveRulesResponse is what a machine gets at its next sync.
+type SantaEffectiveRulesResponse struct {
+	Rules      []santa.Rule `json:"rules"`
+	ClientMode string       `json:"client_mode"`
+	ModeSource string       `json:"mode_source"`
+}
+
+// SantaEffectiveRulesHandler — GET /api/v1/santa/{env}/machines/{machineid}/rules
+// @Summary List the Santa rules and client mode that apply to one node
+// @Description The rules a node receives after scope resolution (node over tag over environment), and its client mode. The node does not need to have synced yet.
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param machineid path string true "Node UUID"
+// @Success 200 {object} SantaEffectiveRulesResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/machines/{machineid}/rules [get]
+func (h *HandlersApi) SantaEffectiveRulesHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	node, err := h.Nodes.GetByUUIDEnv(r.PathValue("machineid"), env.ID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		apiErrorResponse(w, "node not found", http.StatusNotFound, err)
+		return
+	}
+	if err != nil {
+		apiErrorResponse(w, "error getting node", http.StatusInternalServerError, err)
+		return
+	}
+	nodeTags, err := h.Tags.GetTagsByNodeIDs([]uint{node.ID})
+	if err != nil {
+		apiErrorResponse(w, "error getting node tags", http.StatusInternalServerError, err)
+		return
+	}
+	var names []string
+	for _, t := range nodeTags[node.ID] {
+		names = append(names, t.Name)
+	}
+	rules, err := h.Santa.EffectiveRules(env.ID, node.UUID, names)
+	if err != nil {
+		apiErrorResponse(w, "error listing rules", http.StatusInternalServerError, err)
+		return
+	}
+	mode, source, err := h.Santa.EffectiveMode(env.ID, node.UUID, names)
+	if err != nil {
+		apiErrorResponse(w, "error getting client mode", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK,
+		SantaEffectiveRulesResponse{Rules: rules, ClientMode: mode, ModeSource: source})
 }

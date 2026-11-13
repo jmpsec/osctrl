@@ -307,14 +307,17 @@ func TestHostedWriteToolsGated(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ListTools: %v", err)
 			}
-			var found bool
+			found := map[string]bool{}
 			for _, tool := range tools.Tools {
-				if tool.Name == "run_query" {
-					found = true
+				found[tool.Name] = true
+			}
+			for _, name := range []string{"run_query", "create_santa_rule", "delete_santa_rule"} {
+				if found[name] != tc.want {
+					t.Errorf("%s present = %v, want %v", name, found[name], tc.want)
 				}
 			}
-			if found != tc.want {
-				t.Errorf("run_query present = %v, want %v", found, tc.want)
+			if !found["list_santa_events"] {
+				t.Error("read tool list_santa_events missing")
 			}
 		})
 	}

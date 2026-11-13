@@ -81,7 +81,7 @@ func toolNames(t *testing.T, s *sdk.ClientSession) map[string]bool {
 	return out
 }
 
-var writeTools = []string{"run_query", "expire_query", "complete_query", "tag_node"}
+var writeTools = []string{"run_query", "expire_query", "complete_query", "tag_node", "create_santa_rule", "delete_santa_rule"}
 
 // The whole safety model is that writes are opt-in by construction. If this
 // ever fails, a read-only deployment is handing an agent the fleet.

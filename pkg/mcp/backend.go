@@ -33,6 +33,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
+	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/types"
 )
 
@@ -58,6 +59,13 @@ type Backend interface {
 	GetQueriesLimited(target, env string, maxItems int) ([]queries.DistributedQuery, bool, error)
 	GetQueryResults(env, name string, page, pageSize int) (types.QueryResultsResponse, error)
 	GetSavedQueries(env string) ([]types.SavedQueryView, error)
+
+	// Santa (macOS binary authorization). All four need AdminLevel on the
+	// environment, and answer 503 when Santa is not enabled.
+	GetSantaRules(env string) ([]santa.Rule, error)
+	GetSantaMachines(env string) ([]santa.Machine, error)
+	GetSantaEvents(env string, f santa.EventFilter, page, pageSize int) (apiclient.SantaEvents, error)
+	GetSantaEffectiveRules(env, machineID string) (apiclient.SantaEffectiveRules, error)
 }
 
 // Compile-time proof that the HTTP client is a valid Backend. If a method
@@ -77,6 +85,10 @@ type WriteBackend interface {
 	ExpireQuery(env, name string) (types.ApiGenericResponse, error)
 	CompleteQuery(env, name string) (types.ApiGenericResponse, error)
 	TagNode(env, identifier, tag string, tagType uint, custom string) error
+
+	// Santa rule changes need AdminLevel on the environment.
+	CreateSantaRule(env string, spec santa.RuleSpec) (santa.Rule, error)
+	DeleteSantaRule(env string, id uint) error
 }
 
 var _ WriteBackend = (*apiclient.OsctrlAPI)(nil)

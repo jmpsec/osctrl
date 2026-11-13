@@ -11,7 +11,9 @@ import (
 
 	"github.com/jmpsec/osctrl/pkg/auditlog"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/santa"
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
@@ -43,7 +45,8 @@ func setupSantaHandlers(t *testing.T) (*HandlersApi, *gorm.DB, environments.TLSE
 	require.NoError(t, userManager.CreatePermission(users.UserPermission{
 		Username: "carol", AccessType: int(users.UserLevel), AccessValue: true, Environment: envA.UUID, EnvironmentID: envA.ID,
 	}))
-	h := CreateHandlersApi(WithDB(db), WithEnvs(envs), WithUsers(userManager), WithAuditLog(auditLog), WithSanta(mgr))
+	h := CreateHandlersApi(WithDB(db), WithEnvs(envs), WithUsers(userManager), WithAuditLog(auditLog), WithSanta(mgr),
+		WithNodes(nodes.CreateNodes(db)), WithTags(tags.CreateTagManager(db)))
 	return h, db, envA, envB
 }
 
@@ -78,9 +81,80 @@ func TestSantaRoutesRequireEnvAdmin(t *testing.T) {
 		"modes": {h.SantaModeOverridesHandler, "GET"}, "mode set": {h.SantaModeOverrideSetHandler, "PUT"},
 		"mode delete": {h.SantaModeOverrideDeleteHandler, "DELETE"}, "rules import": {h.SantaRulesImportHandler, "POST"},
 		"machines": {h.SantaMachinesHandler, "GET"}, "events": {h.SantaEventsHandler, "GET"},
+		"effective rules": {h.SantaEffectiveRulesHandler, "GET"},
 	}
 	for name, rt := range routes {
 		require.Equal(t, http.StatusForbidden, santaDo(rt.fn, rt.method, "carol", validRule, p).Code, name)
+	}
+}
+
+func TestSantaEventsFilters(t *testing.T) {
+	h, _, envA, envB := setupSantaHandlers(t)
+	sha := strings.Repeat("ab", 32)
+	require.NoError(t, h.Santa.AddEvents([]santa.Event{
+		{EnvironmentID: envA.ID, MachineID: "M-1", Decision: "BLOCK_BINARY", FileSHA256: sha},
+		{EnvironmentID: envA.ID, MachineID: "M-1", Decision: "ALLOW_TEAMID", FileSHA256: "cd"},
+		{EnvironmentID: envA.ID, MachineID: "M-2", Decision: "BLOCK_TEAMID", FileSHA256: "ef"},
+		{EnvironmentID: envB.ID, MachineID: "M-1", Decision: "BLOCK_BINARY", FileSHA256: sha},
+	}))
+	tests := []struct {
+		query string
+		code  int
+		total int64
+	}{
+		{"", http.StatusOK, 3},
+		{"decision=block", http.StatusOK, 2},
+		{"decision=BLOCK_BINARY", http.StatusOK, 1},
+		{"machine_id=m-1", http.StatusOK, 2},
+		{"machine_id=M-1&decision=BLOCK", http.StatusOK, 1},
+		{"sha256=" + strings.ToUpper(sha), http.StatusOK, 1},
+		{"decision=NOPE", http.StatusOK, 0},
+		{"decision=BLOCK%25", http.StatusBadRequest, 0},
+		{"decision=%25", http.StatusBadRequest, 0},
+	}
+	for _, tt := range tests {
+		rr := santaDoURL(h.SantaEventsHandler, "GET", "/x?"+tt.query, "alice", "", map[string]string{"env": envA.Name})
+		require.Equal(t, tt.code, rr.Code, tt.query)
+		if tt.code != http.StatusOK {
+			continue
+		}
+		var res SantaEventsResponse
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &res))
+		require.Equal(t, tt.total, res.Total, tt.query)
+	}
+}
+
+func TestSantaEffectiveRules(t *testing.T) {
+	h, db, envA, envB := setupSantaHandlers(t)
+	uuid := "22222222-2222-4222-8222-222222222222"
+	node := nodes.OsqueryNode{UUID: strings.ToUpper(uuid), EnvironmentID: envA.ID}
+	require.NoError(t, db.Create(&node).Error)
+	require.NoError(t, db.Create(&nodes.OsqueryNode{UUID: "33333333-3333-4333-8333-333333333333", EnvironmentID: envB.ID}).Error)
+	require.NoError(t, h.Tags.TagNode("pilot", node, "alice", false, tags.TagTypeTag, ""))
+	sha := strings.Repeat("ab", 32)
+	for _, r := range []santa.Rule{
+		{RuleType: "BINARY", Identifier: sha, Policy: "BLOCKLIST", Scope: "env"},
+		{RuleType: "BINARY", Identifier: sha, Policy: "ALLOWLIST", Scope: "tag", ScopeValue: "pilot"},
+		{RuleType: "TEAMID", Identifier: "EQHXZ8M8AV", Policy: "ALLOWLIST", Scope: "tag", ScopeValue: "other"},
+	} {
+		r.EnvironmentID = envA.ID
+		require.NoError(t, h.Santa.CreateRule(&r))
+	}
+	require.NoError(t, h.Santa.SetModeOverride(&santa.ModeOverride{EnvironmentID: envA.ID, Scope: "tag", ScopeValue: "pilot", ClientMode: "LOCKDOWN"}))
+
+	rr := santaDo(h.SantaEffectiveRulesHandler, "GET", "alice", "", map[string]string{"env": envA.Name, "machineid": uuid})
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	var res SantaEffectiveRulesResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &res))
+	require.Len(t, res.Rules, 1, "the tag rule wins over the env rule; the other tag does not apply")
+	require.Equal(t, "ALLOWLIST", res.Rules[0].Policy)
+	require.Equal(t, "LOCKDOWN", res.ClientMode)
+	require.Equal(t, "tag", res.ModeSource)
+
+	// Unknown nodes and nodes of another environment are not found.
+	for _, id := range []string{"44444444-4444-4444-8444-444444444444", "33333333-3333-4333-8333-333333333333"} {
+		rr = santaDo(h.SantaEffectiveRulesHandler, "GET", "alice", "", map[string]string{"env": envA.Name, "machineid": id})
+		require.Equal(t, http.StatusNotFound, rr.Code, id)
 	}
 }
 
