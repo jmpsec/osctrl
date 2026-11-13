@@ -9087,6 +9087,71 @@ paths:
       summary: Update a Santa rule
       tags:
         - santa
+  "/api/v1/santa/{env}/rules/import":
+    post:
+      description: Classifies each rule as new, duplicate, conflicting or invalid. New
+        rules are stored in one transaction, and only when no rule is
+        conflicting or invalid; existing rules are never changed. With
+        dry_run=true nothing is stored. The body is limited to 4 MiB. The export
+        format is the list of rules from GET rules; extra fields such as id are
+        ignored.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Report only, store nothing
+          in: query
+          name: dry_run
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              items:
+                $ref: "#/components/schemas/santa.RuleSpec"
+              type: array
+        description: Rules
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.ImportResult"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Import Santa rules in bulk
+      tags:
+        - santa
   "/api/v1/santa/{env}/token":
     post:
       description: The plaintext token is returned once; the previous token stops
@@ -13470,6 +13535,44 @@ components:
         team_id:
           type: string
       type: object
+    santa.ImportIssue:
+      properties:
+        index:
+          description: Position of the rule in the import, starting at 0
+          type: integer
+        reason:
+          type: string
+        rule:
+          $ref: "#/components/schemas/santa.RuleSpec"
+      type: object
+    santa.ImportResult:
+      properties:
+        applied:
+          description: >-
+            True when the import was applied (also when there was nothing new to
+            store);
+
+            false on a dry run and when conflicts or invalid rules blocked it
+          type: boolean
+        conflicts:
+          description: Same type, identifier and scope as another rule, but different
+            content
+          items:
+            $ref: "#/components/schemas/santa.ImportIssue"
+          type: array
+        duplicate:
+          description: Rules identical to an existing rule or to an earlier rule in the
+            import; skipped
+          type: integer
+        invalid:
+          description: Rules that fail validation
+          items:
+            $ref: "#/components/schemas/santa.ImportIssue"
+          type: array
+        new:
+          description: Rules that do not exist yet
+          type: integer
+      type: object
     santa.Machine:
       properties:
         applied_digest:
@@ -13573,6 +13676,25 @@ components:
           description: '""| tag name | node UUID (uppercase)'
           type: string
         updated_at:
+          type: string
+      type: object
+    santa.RuleSpec:
+      properties:
+        cel_expr:
+          type: string
+        custom_msg:
+          type: string
+        custom_url:
+          type: string
+        identifier:
+          type: string
+        policy:
+          type: string
+        rule_type:
+          type: string
+        scope:
+          type: string
+        scope_value:
           type: string
       type: object
     serviceconfig.ServiceConfig:

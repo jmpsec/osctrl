@@ -342,6 +342,31 @@ func init() {
 			},
 		},
 		{
+			Name:  "santa",
+			Usage: "Commands for the Santa sync server",
+			Commands: []*cli.Command{
+				{
+					Name:  "rules-export",
+					Usage: "Export the Santa rules of an environment as JSON",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "environment", Aliases: []string{"e"}, Usage: "Environment name or UUID"},
+						&cli.StringFlag{Name: "file", Aliases: []string{"f"}, Usage: "File to write (default: standard output)"},
+					},
+					Action: cliWrapper(santaRulesExport),
+				},
+				{
+					Name:  "rules-import",
+					Usage: "Import Santa rules from a JSON export; nothing is imported if a rule is conflicting or invalid",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "environment", Aliases: []string{"e"}, Usage: "Environment name or UUID"},
+						&cli.StringFlag{Name: "file", Aliases: []string{"f"}, Usage: "JSON file with the rules"},
+						&cli.BoolFlag{Name: "dry-run", Usage: "Report new, duplicate, conflicting and invalid rules without importing"},
+					},
+					Action: cliWrapper(santaRulesImport),
+				},
+			},
+		},
+		{
 			Name:  "carve",
 			Usage: "Commands for file carves",
 			Commands: []*cli.Command{

@@ -55,6 +55,21 @@ export interface SantaRule extends SantaRuleInput {
   created_by: string;
 }
 
+export interface SantaImportIssue {
+  /** Position of the rule in the imported list, starting at 0. */
+  index: number;
+  rule: Partial<SantaRuleInput>;
+  reason: string;
+}
+
+export interface SantaImportResult {
+  new: number;
+  duplicate: number;
+  conflicts: SantaImportIssue[];
+  invalid: SantaImportIssue[];
+  applied: boolean;
+}
+
 export interface SantaMachine {
   machine_id: string;
   serial_number: string;
@@ -142,6 +157,14 @@ export function createSantaRule(env: string, body: SantaRuleInput): Promise<Sant
 /** PUT /api/v1/santa/{env}/rules/{id} — 409 when the edit duplicates another rule, 400 on invalid input. */
 export function updateSantaRule(env: string, id: number, body: SantaRuleInput): Promise<SantaRule> {
   return apiFetch<SantaRule>(`${envPath(env)}/rules/${id}`, jsonInit('PUT', body));
+}
+
+/**
+ * POST /api/v1/santa/{env}/rules/import — nothing is stored on a dry run, or when
+ * any rule is conflicting or invalid (applied is false). Existing rules are never changed.
+ */
+export function importSantaRules(env: string, rules: unknown[], dryRun: boolean): Promise<SantaImportResult> {
+  return apiFetch<SantaImportResult>(`${envPath(env)}/rules/import${dryRun ? '?dry_run=true' : ''}`, jsonInit('POST', rules));
 }
 
 /** DELETE /api/v1/santa/{env}/rules/{id} */

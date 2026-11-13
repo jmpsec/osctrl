@@ -1,16 +1,18 @@
-import { useState, type FormEvent } from 'react';
+import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import {
   createSantaRule,
   deleteSantaRule,
+  importSantaRules,
   listSantaRules,
   santaQueryKey,
   updateSantaRule,
   SANTA_POLICIES,
   SANTA_RULE_TYPES,
   SANTA_SCOPES,
+  type SantaImportResult,
   type SantaRule,
   type SantaRuleInput,
 } from '$/api/santa';
@@ -45,6 +47,30 @@ function toDraft(r: SantaRule): RuleDraft {
 const SELECT =
   'h-8 w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]';
 
+/** Downloads the rules in the format the import reads, in a stable order so the file diffs cleanly. */
+function exportRules(env: string, rules: SantaRule[]) {
+  const sortKey = (r: SantaRuleInput) => [r.rule_type, r.identifier, r.scope, r.scope_value].join('\u0000');
+  const specs = rules
+    .map((r): SantaRuleInput => {
+      const { id: _id, ...spec } = toDraft(r);
+      return spec;
+    })
+    .sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : sortKey(a) > sortKey(b) ? 1 : 0));
+  const url = URL.createObjectURL(new Blob([`${JSON.stringify(specs, null, 2)}\n`], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `santa-rules-${env}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+interface ImportPreview {
+  rules: unknown[];
+  result: SantaImportResult;
+}
+
 export function RulesTab({ env, onAdd, onEdit }: { env: string; onAdd: () => void; onEdit: (r: RuleDraft) => void }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -54,12 +80,40 @@ export function RulesTab({ env, onAdd, onEdit }: { env: string; onAdd: () => voi
     onSuccess: () => qc.invalidateQueries({ queryKey: santaQueryKey(env, 'rules') }),
   });
   const rows = rules.data ?? [];
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const closePreview = useCallback(() => setPreview(null), []);
+  // The file is only checked here; nothing is stored until the preview is confirmed.
+  const check = useMutation({
+    mutationFn: async (file: File) => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(await file.text());
+      } catch {
+        parsed = null;
+      }
+      if (!Array.isArray(parsed)) throw new Error(t('santa.importBadFile'));
+      return { rules: parsed, result: await importSantaRules(env, parsed, true) };
+    },
+    onSuccess: setPreview,
+  });
+
+  function pickFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // so picking the same file again fires a change
+    if (file) check.mutate(file);
+  }
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" aria-label={t('santa.importTitle')} onChange={pickFile} />
+        <Button size="sm" variant="ghost" disabled={check.isPending} onClick={() => fileInput.current?.click()}>{t('santa.import')}</Button>
+        <Button size="sm" variant="ghost" disabled={rows.length === 0} onClick={() => exportRules(env, rows)}>{t('santa.export')}</Button>
         <Button size="sm" onClick={onAdd}>{t('santa.addRule')}</Button>
       </div>
+      {check.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(check.error)}</p>}
+      {preview && <ImportModal env={env} preview={preview} onClose={closePreview} />}
       {remove.isError && (
         <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(remove.error) ?? t('santa.deleteError')}</p>
       )}
@@ -121,6 +175,68 @@ export function RulesTab({ env, onAdd, onEdit }: { env: string; onAdd: () => voi
         )}
       </section>
     </div>
+  );
+}
+
+function ImportModal({ env, preview, onClose }: { env: string; preview: ImportPreview; onClose: () => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const { result } = preview;
+  const issues = [...result.conflicts, ...result.invalid];
+  const apply = useMutation({
+    mutationFn: async () => {
+      const res = await importSantaRules(env, preview.rules, false);
+      // The rules changed between the preview and now.
+      if (!res.applied) throw new Error(t('santa.importBlocked'));
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: santaQueryKey(env, 'rules') });
+      onClose();
+    },
+  });
+  const counts: [string, number][] = [
+    [t('santa.importNew'), result.new],
+    [t('santa.importDuplicate'), result.duplicate],
+    [t('santa.importConflicts'), result.conflicts.length],
+    [t('santa.importInvalid'), result.invalid.length],
+  ];
+
+  return (
+    <ModalShell title={t('santa.importTitle')} titleId="santa-import-title" onClose={onClose} bodyClassName="max-h-[70vh] overflow-y-auto">
+      <div className="space-y-3">
+        <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+          {counts.map(([label, n]) => (
+            <div key={label} className="contents">
+              <dt className="text-[color:var(--text-2)]">{label}</dt>
+              <dd className="text-end tabular-nums text-[color:var(--text-1)]">{n}</dd>
+            </div>
+          ))}
+        </dl>
+        {issues.length > 0 && (
+          <>
+            <p role="alert" className="text-sm text-[color:var(--danger)]">{t('santa.importBlocked')}</p>
+            <ul className="space-y-2 text-sm">
+              {issues.map((i) => (
+                <li key={i.index}>
+                  <span className={`${MONO} break-all text-[color:var(--text-1)]`}>
+                    #{i.index + 1} {i.rule.rule_type} {i.rule.identifier}
+                  </span>
+                  <div className="text-xs text-[color:var(--text-3)]">{i.reason}</div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {issues.length === 0 && result.new === 0 && <p className="text-sm text-[color:var(--text-3)]">{t('santa.importNothing')}</p>}
+        {apply.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(apply.error)}</p>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="button" disabled={issues.length > 0 || result.new === 0 || apply.isPending} onClick={() => apply.mutate()}>
+            {t('santa.importApply', { n: result.new })}
+          </Button>
+        </div>
+      </div>
+    </ModalShell>
   );
 }
 

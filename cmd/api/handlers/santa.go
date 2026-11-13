@@ -14,7 +14,10 @@ import (
 	"gorm.io/gorm"
 )
 
-const santaMaxBody = 64 << 10
+const (
+	santaMaxBody       = 64 << 10
+	santaImportMaxBody = 4 << 20
+)
 
 // SantaConfigResponse is the environment config plus whether a token exists.
 type SantaConfigResponse struct {
@@ -388,6 +391,44 @@ func (h *HandlersApi) SantaRuleDeleteHandler(w http.ResponseWriter, r *http.Requ
 	}
 	h.santaAudit(user, fmt.Sprintf("delete rule %d %s", id, ruleAuditString(rule)), r, env)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// SantaRulesImportHandler — POST /api/v1/santa/{env}/rules/import
+// @Summary Import Santa rules in bulk
+// @Description Classifies each rule as new, duplicate, conflicting or invalid. New rules are stored in one transaction, and only when no rule is conflicting or invalid; existing rules are never changed. With dry_run=true nothing is stored. The body is limited to 4 MiB. The export format is the list of rules from GET rules; extra fields such as id are ignored.
+// @Tags santa
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param dry_run query bool false "Report only, store nothing"
+// @Param body body []santa.RuleSpec true "Rules"
+// @Success 200 {object} santa.ImportResult
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/rules/import [post]
+func (h *HandlersApi) SantaRulesImportHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	var specs []santa.RuleSpec
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaImportMaxBody)).Decode(&specs); err != nil {
+		apiErrorResponse(w, "invalid request: expected a JSON list of rules of at most 4 MiB", http.StatusBadRequest, err)
+		return
+	}
+	dryRun, _ := strconv.ParseBool(r.URL.Query().Get("dry_run"))
+	res, err := h.Santa.ImportRules(env.ID, user, specs, !dryRun)
+	if err != nil {
+		apiErrorResponse(w, "error importing rules", http.StatusInternalServerError, err)
+		return
+	}
+	if res.Applied {
+		h.santaAudit(user, fmt.Sprintf("import rules new=%d duplicate=%d", res.New, res.Duplicate), r, env)
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, res)
 }
 
 // SantaModeOverridesHandler — GET /api/v1/santa/{env}/modes

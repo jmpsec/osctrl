@@ -48,7 +48,11 @@ func setupSantaHandlers(t *testing.T) (*HandlersApi, *gorm.DB, environments.TLSE
 }
 
 func santaDo(h http.HandlerFunc, method, user, body string, path map[string]string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(method, "/x", strings.NewReader(body))
+	return santaDoURL(h, method, "/x", user, body, path)
+}
+
+func santaDoURL(h http.HandlerFunc, method, url, user, body string, path map[string]string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, url, strings.NewReader(body))
 	req.RemoteAddr = "127.0.0.1:1234"
 	for k, v := range path {
 		req.SetPathValue(k, v)
@@ -72,8 +76,8 @@ func TestSantaRoutesRequireEnvAdmin(t *testing.T) {
 		"token": {h.SantaTokenHandler, "POST"}, "rules": {h.SantaRulesHandler, "GET"},
 		"rule create": {h.SantaRuleCreateHandler, "POST"}, "rule update": {h.SantaRuleUpdateHandler, "PUT"}, "rule delete": {h.SantaRuleDeleteHandler, "DELETE"},
 		"modes": {h.SantaModeOverridesHandler, "GET"}, "mode set": {h.SantaModeOverrideSetHandler, "PUT"},
-		"mode delete": {h.SantaModeOverrideDeleteHandler, "DELETE"},
-		"machines":    {h.SantaMachinesHandler, "GET"}, "events": {h.SantaEventsHandler, "GET"},
+		"mode delete": {h.SantaModeOverrideDeleteHandler, "DELETE"}, "rules import": {h.SantaRulesImportHandler, "POST"},
+		"machines": {h.SantaMachinesHandler, "GET"}, "events": {h.SantaEventsHandler, "GET"},
 	}
 	for name, rt := range routes {
 		require.Equal(t, http.StatusForbidden, santaDo(rt.fn, rt.method, "carol", validRule, p).Code, name)
@@ -230,6 +234,61 @@ func TestSantaUpdateRule(t *testing.T) {
 	require.NoError(t, db.Model(&auditlog.AuditLog{}).Pluck("line", &lines).Error)
 	require.Contains(t, strings.Join(lines, "\n"),
 		"santa: update rule "+strconv.Itoa(int(rule.ID))+" TEAMID EQHXZ8M8AV ALLOWLIST scope=env -> TEAMID EQHXZ8M8AV BLOCKLIST scope=env")
+}
+
+func TestSantaRulesImport(t *testing.T) {
+	h, db, envA, envB := setupSantaHandlers(t)
+	p := map[string]string{"env": envA.Name}
+	require.Equal(t, http.StatusCreated, santaDo(h.SantaRuleCreateHandler, "POST", "alice", validRule, p).Code)
+	count := func(env uint) (n int64) {
+		require.NoError(t, db.Model(&santa.Rule{}).Where("environment_id = ?", env).Count(&n).Error)
+		return n
+	}
+	do := func(url, body string) (int, santa.ImportResult) {
+		rr := santaDoURL(h.SantaRulesImportHandler, "POST", url, "alice", body, p)
+		var res santa.ImportResult
+		if rr.Code == http.StatusOK {
+			require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &res))
+		}
+		return rr.Code, res
+	}
+
+	for name, body := range map[string]string{"bad json": `[`, "not a list": validRule, "too large": `["` + strings.Repeat("a", santaImportMaxBody) + `"]`} {
+		code, _ := do("/x", body)
+		require.Equal(t, http.StatusBadRequest, code, name)
+	}
+
+	// body-supplied id, environment_id and created_by are ignored
+	fresh := `{"id":99,"environment_id":` + strconv.Itoa(int(envB.ID)) + `,"created_by":"mallory","identifier":"ABCDE12345","rule_type":"TEAMID","policy":"ALLOWLIST","scope":"env"}`
+	conflict := `{"identifier":"EQHXZ8M8AV","rule_type":"TEAMID","policy":"BLOCKLIST","scope":"env"}`
+
+	// a conflicting rule is reported and blocks the whole import
+	code, res := do("/x", `[`+fresh+`,`+conflict+`]`)
+	require.Equal(t, http.StatusOK, code)
+	require.False(t, res.Applied)
+	require.Equal(t, 1, res.New)
+	require.Len(t, res.Conflicts, 1)
+	require.EqualValues(t, 1, count(envA.ID))
+
+	code, res = do("/x?dry_run=true", `[`+fresh+`,`+validRule+`]`)
+	require.Equal(t, http.StatusOK, code)
+	require.Equal(t, santa.ImportResult{New: 1, Duplicate: 1, Conflicts: []santa.ImportIssue{}, Invalid: []santa.ImportIssue{}}, res)
+	require.EqualValues(t, 1, count(envA.ID))
+
+	code, res = do("/x", `[`+fresh+`,`+validRule+`]`)
+	require.Equal(t, http.StatusOK, code)
+	require.True(t, res.Applied)
+	require.EqualValues(t, 2, count(envA.ID))
+	require.EqualValues(t, 0, count(envB.ID))
+	var stored santa.Rule
+	require.NoError(t, db.Where("identifier = ?", "ABCDE12345").First(&stored).Error)
+	require.Equal(t, "alice", stored.CreatedBy)
+	require.NotEqualValues(t, 99, stored.ID)
+
+	var lines []string
+	require.NoError(t, db.Model(&auditlog.AuditLog{}).Where("line LIKE ?", "%santa: import%").Pluck("line", &lines).Error)
+	require.Len(t, lines, 1, "one audit line, only for the applied import")
+	require.Contains(t, lines[0], "santa: import rules new=1 duplicate=1")
 }
 
 func TestSantaModeOverrides(t *testing.T) {

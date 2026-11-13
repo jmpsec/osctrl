@@ -16,6 +16,30 @@ At preflight osctrl computes the node's effective rules and an order-independent
 
 Events uploaded by clients are stored in `santa_events` (fields truncated to 255 characters). Retention is fixed at 30 days; `osctrl-api` prunes daily.
 
+### Bulk import and export
+
+Rule sets can be moved between environments or kept in git.
+
+- **Export:** the rule list as JSON, holding only the portable fields (`identifier`, `rule_type`, `policy`, `cel_expr`, `custom_msg`, `custom_url`, `scope`, `scope_value`), sorted by type, identifier and scope so the file diffs cleanly. The Rules tab has an **Export** button; `GET /api/v1/santa/{env}/rules` returns the same rules with their server fields, which the import ignores.
+- **Import:** `POST /api/v1/santa/{env}/rules/import` with a JSON list of rules (at most 4 MiB). Each rule is classified after normalization:
+  - **new**: no rule with the same type, identifier and scope exists;
+  - **duplicate**: an identical rule exists, or appears earlier in the file; skipped;
+  - **conflict**: a rule with the same type, identifier and scope exists with a different policy, message, URL or CEL expression;
+  - **invalid**: the rule fails the same validation as a single create.
+- With `?dry_run=true` the report is returned and nothing is stored. Without it the new rules are stored in one transaction, but only when no rule is conflicting or invalid: one bad rule blocks the whole import (`applied: false`), and existing rules are never changed. Resolve a conflict by editing the file or the existing rule.
+- Re-importing an export is a no-op. An applied import writes one audit line with the counts.
+- The Rules tab **Import** button runs the dry run first and shows the report before anything is stored.
+
+From the CLI, in API or DB mode:
+
+```sh
+osctrl-cli santa rules-export -e ENV -f rules.json
+osctrl-cli santa rules-import -e ENV -f rules.json --dry-run
+osctrl-cli santa rules-import -e ENV -f rules.json
+```
+
+`rules-import` exits non-zero when a rule is conflicting or invalid, dry run included, so the dry run can gate a review pipeline. In DB mode the first `santa` command creates the Santa tables if they do not exist yet.
+
 ### Client mode overrides
 
 The environment sets the default client mode (MONITOR or LOCKDOWN). A tag or a single node can be given a different mode:
