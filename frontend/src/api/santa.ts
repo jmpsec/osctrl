@@ -124,6 +124,11 @@ export function createSantaRule(env: string, body: SantaRuleInput): Promise<Sant
   return apiFetch<SantaRule>(`${envPath(env)}/rules`, jsonInit('POST', body));
 }
 
+/** PUT /api/v1/santa/{env}/rules/{id} — 409 when the edit duplicates another rule, 400 on invalid input. */
+export function updateSantaRule(env: string, id: number, body: SantaRuleInput): Promise<SantaRule> {
+  return apiFetch<SantaRule>(`${envPath(env)}/rules/${id}`, jsonInit('PUT', body));
+}
+
 /** DELETE /api/v1/santa/{env}/rules/{id} */
 export function deleteSantaRule(env: string, id: number): Promise<unknown> {
   return apiFetch<unknown>(`${envPath(env)}/rules/${id}`, { method: 'DELETE' });

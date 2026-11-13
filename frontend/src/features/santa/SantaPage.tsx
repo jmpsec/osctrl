@@ -2,12 +2,11 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from '@tanstack/react-router';
 import { ShieldCheck } from 'lucide-react';
-import type { SantaRuleInput } from '$/api/santa';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { StatusTabs } from '$/components/data/StatusTabs';
 import { EventsTab } from './EventsTab';
 import { MachinesTab } from './MachinesTab';
-import { EMPTY_RULE, RuleFormModal, RulesTab } from './RulesTab';
+import { EMPTY_RULE, RuleFormModal, RulesTab, type RuleDraft } from './RulesTab';
 import { SettingsTab } from './SettingsTab';
 
 type Tab = 'rules' | 'events' | 'machines' | 'settings';
@@ -17,8 +16,8 @@ export function SantaPage() {
   usePageTitle(t('pageTitle.santa'));
   const { env } = useParams({ from: '/_app/env/$env/santa' });
   const [tab, setTab] = useState<Tab>('rules');
-  // One rule form for both entry points: "Add rule" and the Allow/Block shortcuts on events.
-  const [draft, setDraft] = useState<SantaRuleInput | null>(null);
+  // One rule form for every entry point: "Add rule", Edit, and the Allow/Block shortcuts on events.
+  const [draft, setDraft] = useState<RuleDraft | null>(null);
   const closeDraft = useCallback(() => setDraft(null), []);
 
   const tabs: { value: Tab; label: string }[] = [
@@ -40,7 +39,7 @@ export function SantaPage() {
 
       <StatusTabs tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab === 'rules' && <RulesTab env={env} onAdd={() => setDraft(EMPTY_RULE)} />}
+      {tab === 'rules' && <RulesTab env={env} onAdd={() => setDraft(EMPTY_RULE)} onEdit={setDraft} />}
       {tab === 'events' && <EventsTab env={env} onRule={setDraft} />}
       {tab === 'machines' && <MachinesTab env={env} />}
       {tab === 'settings' && <SettingsTab env={env} />}

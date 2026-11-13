@@ -272,8 +272,74 @@ func (h *HandlersApi) SantaRuleCreateHandler(w http.ResponseWriter, r *http.Requ
 		apiErrorResponse(w, "error creating rule", http.StatusInternalServerError, err)
 		return
 	}
-	h.santaAudit(user, fmt.Sprintf("create rule %d %s %s %s scope=%s", rule.ID, rule.RuleType, rule.Identifier, rule.Policy, rule.Scope)+scopeValueSuffix(rule.ScopeValue), r, env)
+	h.santaAudit(user, fmt.Sprintf("create rule %d %s", rule.ID, ruleAuditString(rule)), r, env)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusCreated, rule)
+}
+
+func ruleAuditString(r santa.Rule) string {
+	return fmt.Sprintf("%s %s %s scope=%s", r.RuleType, r.Identifier, r.Policy, r.Scope) + scopeValueSuffix(r.ScopeValue)
+}
+
+// SantaRuleUpdateHandler — PUT /api/v1/santa/{env}/rules/{id}
+// @Summary Update a Santa rule
+// @Tags santa
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param id path int true "Rule id"
+// @Param body body SantaRuleRequest true "Rule"
+// @Success 200 {object} santa.Rule
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 409 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/rules/{id} [put]
+func (h *HandlersApi) SantaRuleUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
+	if err != nil {
+		apiErrorResponse(w, "invalid rule id", http.StatusBadRequest, err)
+		return
+	}
+	var req SantaRuleRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&req); err != nil {
+		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
+		return
+	}
+	before, err := h.Santa.Rule(env.ID, uint(id))
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		apiErrorResponse(w, "rule not found", http.StatusNotFound, err)
+		return
+	}
+	if err != nil {
+		apiErrorResponse(w, "error getting rule", http.StatusInternalServerError, err)
+		return
+	}
+	rule := before
+	rule.Identifier, rule.RuleType, rule.Policy, rule.CELExpr = req.Identifier, req.RuleType, req.Policy, req.CELExpr
+	rule.CustomMsg, rule.CustomURL, rule.Scope, rule.ScopeValue = req.CustomMsg, req.CustomURL, req.Scope, req.ScopeValue
+	err = h.Santa.UpdateRule(&rule)
+	switch {
+	case errors.Is(err, santa.ErrInvalidRule):
+		apiErrorResponse(w, "invalid rule: "+err.Error(), http.StatusBadRequest, err)
+		return
+	case errors.Is(err, santa.ErrRuleExists):
+		apiErrorResponse(w, "rule already exists", http.StatusConflict, err)
+		return
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		apiErrorResponse(w, "rule not found", http.StatusNotFound, err)
+		return
+	case err != nil:
+		apiErrorResponse(w, "error updating rule", http.StatusInternalServerError, err)
+		return
+	}
+	h.santaAudit(user, fmt.Sprintf("update rule %d %s -> %s", id, ruleAuditString(before), ruleAuditString(rule)), r, env)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rule)
 }
 
 // SantaRuleDeleteHandler — DELETE /api/v1/santa/{env}/rules/{id}
@@ -310,7 +376,7 @@ func (h *HandlersApi) SantaRuleDeleteHandler(w http.ResponseWriter, r *http.Requ
 		apiErrorResponse(w, "error deleting rule", http.StatusInternalServerError, err)
 		return
 	}
-	h.santaAudit(user, fmt.Sprintf("delete rule %d %s %s %s scope=%s", id, rule.RuleType, rule.Identifier, rule.Policy, rule.Scope)+scopeValueSuffix(rule.ScopeValue), r, env)
+	h.santaAudit(user, fmt.Sprintf("delete rule %d %s", id, ruleAuditString(rule)), r, env)
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -70,7 +70,7 @@ func TestSantaRoutesRequireEnvAdmin(t *testing.T) {
 	}{
 		"config get": {h.SantaConfigGetHandler, "GET"}, "config put": {h.SantaConfigPutHandler, "PUT"},
 		"token": {h.SantaTokenHandler, "POST"}, "rules": {h.SantaRulesHandler, "GET"},
-		"rule create": {h.SantaRuleCreateHandler, "POST"}, "rule delete": {h.SantaRuleDeleteHandler, "DELETE"},
+		"rule create": {h.SantaRuleCreateHandler, "POST"}, "rule update": {h.SantaRuleUpdateHandler, "PUT"}, "rule delete": {h.SantaRuleDeleteHandler, "DELETE"},
 		"machines": {h.SantaMachinesHandler, "GET"}, "events": {h.SantaEventsHandler, "GET"},
 	}
 	for name, rt := range routes {
@@ -178,6 +178,56 @@ func TestSantaDeleteRuleCrossEnv(t *testing.T) {
 	var n int64
 	require.NoError(t, db.Model(&santa.Rule{}).Count(&n).Error)
 	require.EqualValues(t, 1, n)
+}
+
+func TestSantaUpdateRule(t *testing.T) {
+	h, db, envA, envB := setupSantaHandlers(t)
+	p := map[string]string{"env": envA.Name}
+	rr := santaDo(h.SantaRuleCreateHandler, "POST", "alice", validRule, p)
+	require.Equal(t, http.StatusCreated, rr.Code)
+	var rule santa.Rule
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &rule))
+	require.Equal(t, http.StatusCreated, santaDo(h.SantaRuleCreateHandler, "POST", "alice",
+		`{"identifier":"ABCDE12345","rule_type":"TEAMID","policy":"ALLOWLIST","scope":"env"}`, p).Code)
+	pid := map[string]string{"env": envA.Name, "id": strconv.Itoa(int(rule.ID))}
+
+	rr = santaDo(h.SantaRuleUpdateHandler, "PUT", "alice",
+		`{"identifier":"eqhxz8m8av","rule_type":"TEAMID","policy":"BLOCKLIST","custom_msg":"no","scope":"env","created_by":"mallory"}`, pid)
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	var got santa.Rule
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &got))
+	require.Equal(t, rule.ID, got.ID)
+	require.Equal(t, "EQHXZ8M8AV", got.Identifier)
+	require.Equal(t, "BLOCKLIST", got.Policy)
+	require.Equal(t, "alice", got.CreatedBy)
+	require.Equal(t, envA.ID, got.EnvironmentID)
+
+	cases := map[string]struct {
+		body string
+		path map[string]string
+		code int
+	}{
+		"duplicate":  {`{"identifier":"ABCDE12345","rule_type":"TEAMID","policy":"ALLOWLIST","scope":"env"}`, pid, http.StatusConflict},
+		"invalid":    {`{"identifier":"SHORT","rule_type":"TEAMID","policy":"ALLOWLIST","scope":"env"}`, pid, http.StatusBadRequest},
+		"bad json":   {`{`, pid, http.StatusBadRequest},
+		"bad id":     {validRule, map[string]string{"env": envA.Name, "id": "x"}, http.StatusBadRequest},
+		"missing id": {validRule, map[string]string{"env": envA.Name, "id": "9999"}, http.StatusNotFound},
+		"other env":  {validRule, map[string]string{"env": envB.Name, "id": strconv.Itoa(int(rule.ID))}, http.StatusForbidden},
+	}
+	for name, tc := range cases {
+		require.Equal(t, tc.code, santaDo(h.SantaRuleUpdateHandler, "PUT", "alice", tc.body, tc.path).Code, name)
+	}
+
+	// A rule in env B is not reachable through env A.
+	ruleB := santa.Rule{EnvironmentID: envB.ID, Identifier: "EQHXZ8M8AV", RuleType: "TEAMID", Policy: "ALLOWLIST", Scope: "env"}
+	require.NoError(t, db.Create(&ruleB).Error)
+	require.Equal(t, http.StatusNotFound, santaDo(h.SantaRuleUpdateHandler, "PUT", "alice", validRule,
+		map[string]string{"env": envA.Name, "id": strconv.Itoa(int(ruleB.ID))}).Code)
+
+	var lines []string
+	require.NoError(t, db.Model(&auditlog.AuditLog{}).Pluck("line", &lines).Error)
+	require.Contains(t, strings.Join(lines, "\n"),
+		"santa: update rule "+strconv.Itoa(int(rule.ID))+" TEAMID EQHXZ8M8AV ALLOWLIST scope=env -> TEAMID EQHXZ8M8AV BLOCKLIST scope=env")
 }
 
 func TestSantaMutationsAudited(t *testing.T) {

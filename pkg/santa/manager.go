@@ -115,6 +115,39 @@ func (m *Manager) CreateRule(r *Rule) error {
 	return err
 }
 
+// UpdateRule validates r and replaces the user-settable fields of rule r.ID in
+// r.EnvironmentID; CreatedBy is kept. Returns gorm.ErrRecordNotFound if the
+// rule is not in that environment, ErrRuleExists if the edit duplicates
+// another rule.
+func (m *Manager) UpdateRule(r *Rule) error {
+	if err := ValidateRule(r); err != nil {
+		return err
+	}
+	var n int64
+	if err := m.DB.Model(&Rule{}).Where("environment_id = ? AND rule_type = ? AND identifier = ? AND scope = ? AND scope_value = ? AND id <> ?",
+		r.EnvironmentID, r.RuleType, r.Identifier, r.Scope, r.ScopeValue, r.ID).Count(&n).Error; err != nil {
+		return err
+	}
+	if n > 0 {
+		return ErrRuleExists
+	}
+	r.UpdatedAt = m.now()
+	// A map, so emptied fields (custom_msg, cel_expr) are written too.
+	res := m.DB.Model(&Rule{}).Where("environment_id = ? AND id = ?", r.EnvironmentID, r.ID).
+		Updates(map[string]any{
+			"identifier": r.Identifier, "rule_type": r.RuleType, "policy": r.Policy, "cel_expr": r.CELExpr,
+			"custom_msg": r.CustomMsg, "custom_url": r.CustomURL, "scope": r.Scope, "scope_value": r.ScopeValue,
+			"updated_at": r.UpdatedAt,
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 // Rule returns one rule, gorm.ErrRecordNotFound if it is not in envID.
 func (m *Manager) Rule(envID, id uint) (Rule, error) {
 	var r Rule

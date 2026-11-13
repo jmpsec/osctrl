@@ -8798,12 +8798,7 @@ paths:
           schema:
             type: string
       requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/handlers.SantaRuleRequest"
-        description: Rule
-        required: true
+        $ref: "#/components/requestBodies/handlers.SantaRuleRequest"
       responses:
         "201":
           description: Created
@@ -8891,6 +8886,64 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Delete a Santa rule
+      tags:
+        - santa
+    put:
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Rule id
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/handlers.SantaRuleRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Rule"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Update a Santa rule
       tags:
         - santa
   "/api/v1/santa/{env}/token":
@@ -12064,6 +12117,13 @@ components:
           schema:
             $ref: "#/components/schemas/handlers.MFAPasswordRequest"
       description: Request body
+      required: true
+    handlers.SantaRuleRequest:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/handlers.SantaRuleRequest"
+      description: Rule
       required: true
   securitySchemes:
     ApiKeyAuth:
