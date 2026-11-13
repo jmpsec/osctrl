@@ -388,6 +388,12 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
+	// Santa events reach the sinks only through the Santa sync endpoint; an
+	// osquery node must not be able to forge them here.
+	if t.LogType == types.SantaLog {
+		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
+		return
+	}
 	defer func() {
 		if err := r.Body.Close(); err != nil {
 			log.Err(err).Msg("Failed to close body")

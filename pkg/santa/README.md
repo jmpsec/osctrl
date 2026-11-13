@@ -16,6 +16,15 @@ At preflight osctrl computes the node's effective rules and an order-independent
 
 Events uploaded by clients are stored in `santa_events` (fields truncated to 255 characters). Retention is fixed at 30 days; `osctrl-api` prunes daily.
 
+### Events in log sinks and alert rules
+
+After an upload is stored, `osctrl-tls` forwards its events to the log sinks and the alert rules. Both are optional and need no Santa-specific setting.
+
+- **Log sinks:** each upload is sent as one JSON array of events under the category `santa` (the same fields as `GET /api/v1/santa/{env}/events`). A sink with no category filter receives it; a filtered sink needs `santa` in its categories. The DB sink ignores it, since the events are already in `santa_events`. If a sink fails, the error is logged and the upload still succeeds, because the events are stored and a retry would store them twice.
+- **Alert rules:** rules with the source `santa_event` match on the event fields `decision`, `file_sha256`, `file_path`, `file_name`, `executing_user`, `team_id`, `signing_id`, `cd_hash` and `bundle_id`, with the usual substring or regex pattern, on one field or on any. For example, field `decision` with pattern `BLOCK` alerts on every blocked execution. A rule alerts once per node and file hash within its cooldown. These rules need the same permission as log-content rules (superuser or full query tier), and `osctrl-tls` needs `--alerts-enabled`.
+- Event fields are written by the Santa client and are untrusted. The notification detail is one line (`DECISION path sha256=... user=...`) with control characters removed and at most 1024 bytes.
+- The osquery log endpoint rejects the log type `santa`, so an osquery node cannot forge Santa events into the sinks.
+
 ### Bulk import and export
 
 Rule sets can be moved between environments or kept in git.
@@ -134,4 +143,4 @@ Leave `MachineIDKey` unset so the machine ID is the hardware UUID, which must ma
 
 ## Not implemented
 
-The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; file-access, network-flow and telemetry rules; bundle uploads; forwarding Santa events to alert rules or log sinks; MCP tools.
+The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; file-access, network-flow and telemetry rules; bundle uploads; MCP tools.

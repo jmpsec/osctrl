@@ -23,6 +23,9 @@ const (
 	// progressing. The raw block payload is NOT sent through the
 	// fan-out — it is stored by pkg/carves in the DB or S3 directly.
 	CatCarveData = "carve.data"
+	// CatSanta is Santa execution events, emitted by the Santa sync
+	// endpoint as a JSON array per upload (types.SantaLog).
+	CatSanta = "santa"
 )
 
 // AllCategories is the complete set of valid category strings, used for
@@ -33,6 +36,7 @@ var AllCategories = []string{
 	CatQuery,
 	CatCarveMeta,
 	CatCarveData,
+	CatSanta,
 }
 
 // allCategoriesSet is a set for O(1) validation lookups.

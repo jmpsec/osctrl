@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/santa"
+	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
@@ -86,7 +88,12 @@ func (h *HandlersTLS) SantaHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	case "eventupload":
 		err = santaStage(w, r, &syncv1.EventUploadRequest{}, func(q *syncv1.EventUploadRequest) (proto.Message, error) {
-			return h.Santa.EventUpload(sn, q)
+			evs, err := h.Santa.StoreEvents(sn, q)
+			if err != nil {
+				return nil, err
+			}
+			h.santaForward(env, node.UUID, evs)
+			return &syncv1.EventUploadResponse{}, nil
 		})
 	case "ruledownload":
 		err = santaStage(w, r, &syncv1.RuleDownloadRequest{}, func(q *syncv1.RuleDownloadRequest) (proto.Message, error) {
@@ -103,6 +110,31 @@ func (h *HandlersTLS) SantaHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Err(err).Str("stage", r.PathValue("stage")).Msg("santa: sync error")
 		fail(santaErrorStatus(err))
+	}
+}
+
+// santaForward hands stored events to the alert rules and the log sinks. The
+// events are already stored, so a sink failure is logged and the upload still
+// succeeds: failing it would make Santa send the batch again and store it twice.
+func (h *HandlersTLS) santaForward(env environments.TLSEnvironment, uuid string, evs []santa.Event) {
+	if h.Logs == nil || len(evs) == 0 {
+		return
+	}
+	if h.Logs.Alerts != nil {
+		fields := make([]map[string]string, len(evs))
+		for i := range evs {
+			fields[i] = evs[i].AlertFields()
+		}
+		h.Logs.Alerts.MatchSantaEvents(env.ID, env.Name, uuid, fields)
+	}
+	// A JSON array, like osquery log batches: several sinks require one.
+	data, err := json.Marshal(evs)
+	if err != nil {
+		log.Err(err).Msg("santa: error encoding events for log sinks")
+		return
+	}
+	if err := h.Logs.LogWithEnv(types.SantaLog, data, env.ID, env.Name, uuid, false); err != nil {
+		log.Err(err).Msg("santa: error sending events to log sinks")
 	}
 }
 

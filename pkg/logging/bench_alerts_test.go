@@ -103,6 +103,8 @@ func (m *noopMatcher) MatchStatusLogs(envID uint, environment, nodeUUID string, 
 	m.calls += len(logs)
 }
 
+func (m *noopMatcher) MatchSantaEvents(uint, string, string, []map[string]string) {}
+
 func (m *noopMatcher) MatchQueryResult(envID uint, environment, queryName string, result json.RawMessage, status int, message string) {
 	m.calls++
 }

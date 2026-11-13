@@ -41,6 +41,7 @@ var validSources = map[string]bool{
 	SourceNodeInactive:  true,
 	SourceNodeRecovered: true,
 	SourceVulnFinding:   true,
+	SourceSantaEvent:    true,
 }
 
 // ValidateRule checks the operator-facing fields of a rule before it is

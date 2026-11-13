@@ -55,6 +55,11 @@ func (logFile *LoggerFile) Log(logType string, data []byte, environment, uuid st
 		logFile.Status(data, environment, uuid, debug)
 	case types.ResultLog:
 		logFile.Result(data, environment, uuid, debug)
+	case types.SantaLog:
+		logFile.Logger.Info().Str(
+			"type", types.SantaLog).Str(
+			"environment", environment).Str(
+			"uuid", uuid).RawJSON("data", data).Send()
 	}
 }
 

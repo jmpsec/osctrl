@@ -33,6 +33,8 @@ func (logStdout *LoggerStdout) Log(logType string, data []byte, environment, uui
 		logStdout.Status(data, environment, uuid, debug)
 	case types.ResultLog:
 		logStdout.Result(data, environment, uuid, debug)
+	case types.SantaLog:
+		log.Info().Msgf("Santa: %s:%s - %d bytes [%s]", environment, uuid, len(data), string(data))
 	}
 }
 

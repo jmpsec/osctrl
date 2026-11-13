@@ -54,6 +54,7 @@ const RULE_SOURCES = [
   { value: 'node_inactive', label: 'Node inactive', help: 'Node last_seen crosses the inactive threshold. No pattern needed.' },
   { value: 'node_recovered', label: 'Node recovered', help: 'A previously inactive node is seen again. No pattern needed.' },
   { value: 'vuln_finding', label: 'New vulnerability findings', help: 'A node gains a confirmed vulnerability finding at or above the threshold. Findings are grouped per advisory. No pattern needed.' },
+  { value: 'santa_event', label: 'Santa events', help: 'Execution events uploaded by Santa. Fields: decision (BLOCK_BINARY, ALLOW_TEAMID, ...), file_sha256, file_path, file_name, executing_user, team_id, signing_id, cd_hash, bundle_id.' },
 ] as const;
 
 /**
@@ -77,7 +78,7 @@ const RULE_PRESETS = [
 ] as const;
 
 /** Sources that match patterns (vs. node-state sources). */
-const PATTERN_SOURCES = new Set(['result_log', 'status_log', 'query_log']);
+const PATTERN_SOURCES = new Set(['result_log', 'status_log', 'query_log', 'santa_event']);
 
 /** Thresholds of vulnerability rules. Unknown severity only matches "any";
  * known-exploited findings match every threshold. */
@@ -468,6 +469,7 @@ export function AlertsPage() {
           envs={envs ?? []}
           channels={channels}
           vulnsEnabled={features?.vulnerabilities === true}
+          santaEnabled={features?.santa === true}
           canLogContent={(id) => canLogContentRule(me, envUuidOf(id))}
           onClose={() => setRuleModal({ kind: 'closed' })}
           onSaved={() => {
@@ -831,6 +833,7 @@ function RuleEditorModal({
   envs,
   channels,
   vulnsEnabled,
+  santaEnabled,
   canLogContent,
   onClose,
   onSaved,
@@ -839,6 +842,7 @@ function RuleEditorModal({
   envs: { id: number; name: string }[];
   channels: AlertChannel[];
   vulnsEnabled: boolean;
+  santaEnabled: boolean;
   canLogContent: (envID: number) => boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -858,6 +862,7 @@ function RuleEditorModal({
   const sourceOptions = RULE_SOURCES.filter(
     (s) =>
       (s.value !== 'vuln_finding' || vulnsEnabled || existing?.source === 'vuln_finding') &&
+      (s.value !== 'santa_event' || santaEnabled || existing?.source === 'santa_event') &&
       // Log-content sources need superuser or full query tier in the rule's environment.
       (!PATTERN_SOURCES.has(s.value) || canLogContent(envID)),
   );

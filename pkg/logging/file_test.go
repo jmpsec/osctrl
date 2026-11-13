@@ -29,15 +29,17 @@ func TestLoggerFileWritesStatusResultQuery(t *testing.T) {
 		t.Fatalf("export query log: %v", err)
 	}
 
+	lf.Log(types.SantaLog, data, "env", "uuid-1", false)
+
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("file sink wrote nothing: %v", err)
 	}
 	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-	if len(lines) != 3 {
-		t.Fatalf("lines written: got %d want 3", len(lines))
+	if len(lines) != 4 {
+		t.Fatalf("lines written: got %d want 4", len(lines))
 	}
-	wantTypes := []string{types.StatusLog, types.ResultLog, types.QueryLog}
+	wantTypes := []string{types.StatusLog, types.ResultLog, types.QueryLog, types.SantaLog}
 	for i, line := range lines {
 		var entry map[string]any
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/jmpsec/osctrl/pkg/types"
 )
@@ -170,6 +171,70 @@ func (rs *RuleSet) MatchQueryResult(envID uint, environment, queryName string, r
 		}
 	}
 	return hits
+}
+
+// MatchSantaEvents evaluates Santa execution events against rules scoped to
+// envID. Each event is a map of lowercase field name to value (decision,
+// file_sha256, file_path, file_name, executing_user, team_id, signing_id,
+// cd_hash, bundle_id). nodeUUID is the node the sync was authenticated as.
+//
+// Every value is written by the Santa client. The detail is therefore a
+// one-line summary with control characters removed, not the raw match: a file
+// path holding a newline must not forge lines in an email notification. The
+// entity carries the file hash, so one rule alerts once per node and binary
+// within its cooldown.
+func (rs *RuleSet) MatchSantaEvents(envID uint, environment, nodeUUID string, events []map[string]string) []Hit {
+	if len(rs.santa) == 0 || len(events) == 0 {
+		return nil
+	}
+	var hits []Hit
+	for _, fields := range events {
+		keys := sortedKeys(fields)
+		lowered := make(map[string]string, len(fields))
+		for j := range rs.santa {
+			r := &rs.santa[j]
+			if !r.ruleApplies(envID) || (r.nodeScope != "" && r.nodeScope != nodeUUID) {
+				continue
+			}
+			if matched, _ := matchFields(r, fields, keys, lowered); matched {
+				hits = append(hits, Hit{
+					RuleID:          r.id,
+					RuleName:        r.name,
+					EnvironmentID:   envID,
+					Environment:     environment,
+					NodeUUID:        nodeUUID,
+					Entity:          entityOf(nodeUUID, santaEntity(fields["file_sha256"])),
+					Detail:          truncateDetail(santaDetail(fields)),
+					CooldownMinutes: r.cooldownMinutes,
+					Channels:        r.channels,
+				})
+			}
+		}
+	}
+	return hits
+}
+
+// santaDetail is the notification context of a Santa hit.
+func santaDetail(f map[string]string) string {
+	return oneLine(f["decision"] + " " + f["file_path"] + " sha256=" + f["file_sha256"] + " user=" + f["executing_user"])
+}
+
+// santaEntity bounds the client-supplied hash so the entity fits its column.
+func santaEntity(sha string) string {
+	if len(sha) > 64 {
+		sha = strings.ToValidUTF8(sha[:64], "")
+	}
+	return oneLine(sha)
+}
+
+// oneLine replaces control characters with spaces.
+func oneLine(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
 }
 
 // ─────────────────────────────── field extraction ───────────────────────────────

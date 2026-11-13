@@ -64,6 +64,8 @@ type RuleSet struct {
 	nodeRecovered []compiledRule
 	// vulnFinding is evaluated by the vulnerability watcher.
 	vulnFinding []compiledRule
+	// santa is evaluated by the Santa sync endpoint on uploaded events.
+	santa []compiledRule
 }
 
 // counts returns the number of compiled rules per bucket (test helper).
@@ -74,7 +76,7 @@ func (rs *RuleSet) counts() (result, status, query int) {
 // empty reports whether the snapshot has no rules at all.
 func (rs *RuleSet) empty() bool {
 	return len(rs.result) == 0 && len(rs.status) == 0 && len(rs.query) == 0 &&
-		len(rs.nodeInactive) == 0 && len(rs.nodeRecovered) == 0 && len(rs.vulnFinding) == 0
+		len(rs.nodeInactive) == 0 && len(rs.nodeRecovered) == 0 && len(rs.vulnFinding) == 0 && len(rs.santa) == 0
 }
 
 // Store publishes rule snapshots. Safe for concurrent use; readers pull
