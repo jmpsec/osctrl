@@ -26,6 +26,9 @@ type EnvConfig struct {
 	EncryptedRemovableMedia string `gorm:"type:varchar(16)" json:"encrypted_removable_media"`
 	// Mount options used with encrypted REMOUNT
 	EncryptedRemovableMediaFlags []string `gorm:"serializer:json;type:varchar(255)" json:"encrypted_removable_media_flags"`
+	// Base https URL of the osctrl UI. When set, the Santa block dialog links to
+	// its approval request page; empty turns approval requests off.
+	ApprovalURL string `gorm:"type:varchar(255)" json:"approval_url"`
 }
 
 // TableName for EnvConfig
@@ -115,10 +118,42 @@ type Event struct {
 // TableName for Event
 func (Event) TableName() string { return "santa_events" }
 
+// Request statuses.
+const (
+	RequestPending  = "pending"
+	RequestApproved = "approved"
+	RequestDenied   = "denied"
+	RequestExpired  = "expired"
+)
+
+// Request is a user's request to allow a binary that Santa blocked on a machine.
+// The file fields are copied from the linked event, which is pruned earlier
+// than the request; they are written by the Santa client.
+type Request struct {
+	ID            uint      `gorm:"primarykey" json:"id"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	EnvironmentID uint      `gorm:"index:idx_santa_request_target" json:"environment_id"`
+	MachineID     string    `gorm:"type:varchar(64);index:idx_santa_request_target" json:"machine_id"`
+	FileSHA256    string    `gorm:"type:varchar(64);index:idx_santa_request_target" json:"file_sha256"`
+	EventID       uint      `json:"event_id"`
+	FileName      string    `json:"file_name"`
+	FilePath      string    `json:"file_path"`
+	SigningID     string    `json:"signing_id"`
+	TeamID        string    `json:"team_id"`
+	ExecutingUser string    `json:"executing_user"`
+	Requester     string    `gorm:"type:varchar(255);index" json:"requester"`
+	Justification string    `gorm:"type:varchar(1000)" json:"justification"`
+	Status        string    `gorm:"type:varchar(16);index" json:"status"` // pending|approved|denied|expired
+}
+
+// TableName for Request
+func (Request) TableName() string { return "santa_requests" }
+
 // Migrate creates the Santa tables and fills RemovableMedia for configs saved
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}); err != nil {
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}); err != nil {
 		return err
 	}
 	const unset = "(removable_media = '' OR removable_media IS NULL)"

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -28,8 +29,10 @@ var ErrRulesChanged = errors.New("santa: rules changed during sync")
 // SyncNode identifies the authenticated node making a sync request.
 type SyncNode struct {
 	EnvID, NodeID uint
-	UUID          string
-	Tags          []string
+	// EnvUUID is the environment's external identifier, used in the approval request link.
+	EnvUUID string
+	UUID    string
+	Tags    []string
 }
 
 func (n SyncNode) machineID() string { return strings.ToUpper(n.UUID) }
@@ -116,6 +119,12 @@ func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.P
 	}
 	if cfg.BatchSize > 0 {
 		resp.BatchSize = cfg.BatchSize
+	}
+	if cfg.ApprovalURL != "" && n.EnvUUID != "" {
+		// Santa fills the placeholders when the user clicks the button in the block dialog.
+		resp.SetEventDetailUrl(cfg.ApprovalURL + ApprovalRequestPath + url.PathEscape(n.EnvUUID) +
+			"?sha256=%file_sha%&machine_id=%machine_id%")
+		resp.SetEventDetailText("Request approval")
 	}
 	return resp, nil
 }

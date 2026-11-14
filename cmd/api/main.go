@@ -667,6 +667,10 @@ func osctrlAPIService() {
 				if _, err := santaMgr.PruneEvents(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
 					log.Err(err).Msg("error pruning santa events")
 				}
+				// Same window: a pending request whose event is gone has nothing left to decide on.
+				if _, err := santaMgr.ExpireRequests(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
+					log.Err(err).Msg("error expiring santa requests")
+				}
 				select {
 				case <-vulnCtx.Done():
 					return
@@ -1165,6 +1169,16 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/events",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaEventsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiSantaPath)+"/{env}/requests",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		// Approval requests: any signed-in account, no environment permission.
+		muxAPI.Handle(
+			"POST "+_apiPath(apiSantaPath)+"/{env}/requests",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiSantaPath)+"/{env}/requests/mine",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaMyRequestsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// API: node logs
 	muxAPI.Handle(

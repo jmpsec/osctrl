@@ -40,6 +40,8 @@ type SantaConfigRequest struct {
 	EncryptedRemovableMedia string `json:"encrypted_removable_media"`
 	// Required with encrypted REMOUNT; same values as removable_media_flags
 	EncryptedRemovableMediaFlags []string `json:"encrypted_removable_media_flags"`
+	// Base https URL of the osctrl UI; when set, the block dialog links to the approval request page. Empty turns requests off
+	ApprovalURL string `json:"approval_url"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -179,6 +181,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		EnableTransitiveRules: req.EnableTransitiveRules,
 		RemovableMedia:        media, RemovableMediaFlags: req.RemovableMediaFlags,
 		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,
+		ApprovalURL: req.ApprovalURL,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)

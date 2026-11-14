@@ -76,7 +76,7 @@ func (h *HandlersTLS) SantaHandler(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusInternalServerError)
 		return
 	}
-	sn := santa.SyncNode{EnvID: env.ID, NodeID: node.ID, UUID: node.UUID}
+	sn := santa.SyncNode{EnvID: env.ID, EnvUUID: env.UUID, NodeID: node.ID, UUID: node.UUID}
 	for _, t := range nodeTags[node.ID] {
 		sn.Tags = append(sn.Tags, t.Name)
 	}

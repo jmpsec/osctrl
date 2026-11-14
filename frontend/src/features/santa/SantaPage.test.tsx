@@ -55,7 +55,7 @@ const rule: SantaRule = {
 
 const config: SantaConfig = {
   client_mode: 'MONITOR', batch_size: 0, enable_transitive_rules: false, removable_media: 'ALLOW',
-  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, token_set: true,
+  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', token_set: true,
 };
 
 function renderPage() {

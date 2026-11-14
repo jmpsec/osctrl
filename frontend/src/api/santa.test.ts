@@ -33,6 +33,7 @@ describe('santa API client', () => {
     const cfg = {
       client_mode: 'LOCKDOWN' as const, batch_size: 0, enable_transitive_rules: true,
       removable_media: 'BLOCK' as const, removable_media_flags: [], encrypted_removable_media: '' as const, encrypted_removable_media_flags: [],
+      approval_url: 'https://osctrl.example.com',
     };
     await putSantaConfig('dev', cfg);
     expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/config', expect.objectContaining({ method: 'PUT', body: JSON.stringify(cfg) }));

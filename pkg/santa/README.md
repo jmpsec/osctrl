@@ -78,6 +78,36 @@ An optional override for encrypted volumes (`encrypted_removable_media_policy`) 
 
 Santa clients that predate `removable_media_policy` read the deprecated `block_usb_mount` and `remount_usb_mode`, which osctrl still sends, derived from the main policy. Those clients ignore the encrypted override. Configs saved before this setting existed are migrated at startup: `block_usb_mount: true` becomes `BLOCK`, otherwise `ALLOW`. The API still accepts `block_usb_mount` when `removable_media` is omitted.
 
+### Approval requests
+
+A user whose software was blocked can ask for it to be allowed, from the Santa block dialog. It is off by default.
+
+**Turn it on.** In **Settings**, set **Approval request URL** to the address of the osctrl UI, for example `https://osctrl.example.com` (`approval_url` in the config API). It must be an `https` URL without query, fragment or `%` characters; a path prefix is fine. At the next preflight osctrl sends `event_detail_url` and `event_detail_text`, and the block dialog shows a **Request approval** button that opens:
+
+```
+https://osctrl.example.com/santa/request/ENVIRONMENT-UUID?sha256=%file_sha%&machine_id=%machine_id%
+```
+
+Santa fills the two placeholders. An `EventDetailURL` in the Mac's configuration profile is replaced by the one osctrl sends, and a rule's own custom URL still wins for that rule. Emptying the setting removes the link and turns the request routes off for the environment.
+
+**The request.** The page asks the user to sign in, then for a justification (at most 1000 characters). `POST /api/v1/santa/{env}/requests` stores a `pending` request when osctrl holds a `BLOCK` event for that file on that machine; the file name, path, signing ID, team ID and executing user are copied from the event. Details:
+
+- A pending request for the same file and machine is returned instead of a second one, whoever asks.
+- One account can hold 20 pending requests per environment (`429` beyond that).
+- If Santa has not uploaded the block yet, the answer is `404` and the user retries a minute later. The same `404` covers an unknown environment and an environment with requests turned off.
+- Pending requests older than 30 days become `expired` (same window as event retention).
+- `approved` and `denied` are set by the approval queue, which is not part of osctrl yet.
+
+**Who can request.** Any signed-in osctrl account, with no environment permission needed. There is no separate requester role: a requester is an account with no permissions, usually created at first SSO login by a provider with **JIT provision** on, or created by hand. Through these routes a requester gets back only the hash, machine ID, status and date of a request, plus their own justification. `GET /api/v1/santa/{env}/requests/mine` lists only their own requests. The request page sits outside the application shell.
+
+Such an account is still an osctrl account. It can open the rest of the UI, where it sees what any account without permissions sees: an empty environment list, its own profile, and data that needs no environment permission, such as the osquery table schema.
+
+**Limits to know.**
+
+- osctrl does not check that the person signing in is the user of the Mac in the link. Anyone with an account who knows a machine UUID and a file hash blocked on it can file the request. The request records who asked.
+- The `404` for a block osctrl has not seen tells a requester whether a given file was blocked on a given machine.
+- Environment admins list requests with `GET /api/v1/santa/{env}/requests` (optional `status`). There is no queue in the UI yet.
+
 ## Authentication model
 
 - Each environment has one token, sent by Santa in the header `X-Osctrl-Santa-Token`. Only its SHA-256 is stored and it is compared in constant time. Generate or rotate it with `POST /api/v1/santa/{env}/token` (environment admin); the plaintext is returned once (`Cache-Control: no-store`) and the old token stops working immediately. Reading the config never returns the token.
