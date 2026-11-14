@@ -8958,6 +8958,151 @@ paths:
       summary: Delete a Santa client mode override
       tags:
         - santa
+  "/api/v1/santa/{env}/requests":
+    get:
+      description: Newest first, at most 500. Requires environment admin.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: pending, approved, denied or expired
+          in: query
+          name: status
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/santa.Request"
+                type: array
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List Santa approval requests
+      tags:
+        - santa
+    post:
+      description: Any signed-in account may call this; no environment permission is
+        needed. The block must have been reported by the machine. A pending
+        request for the same file and machine is returned (200) instead of
+        creating a second one.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaRequestCreate"
+        description: Request
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaOwnRequest"
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaOwnRequest"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "429":
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Request approval for a binary Santa blocked
+      tags:
+        - santa
+  "/api/v1/santa/{env}/requests/mine":
+    get:
+      description: Any signed-in account may call this; it only returns requests the
+        caller made.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/handlers.SantaOwnRequest"
+                type: array
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List the caller's own Santa approval requests
+      tags:
+        - santa
   "/api/v1/santa/{env}/rules":
     get:
       parameters:
@@ -12960,6 +13105,10 @@ components:
       type: object
     handlers.SantaConfigRequest:
       properties:
+        approval_url:
+          description: Base https URL of the osctrl UI; when set, the block dialog links
+            to the approval request page. Empty turns requests off
+          type: string
         batch_size:
           type: integer
         block_usb_mount:
@@ -12991,6 +13140,13 @@ components:
       type: object
     handlers.SantaConfigResponse:
       properties:
+        approval_url:
+          description: >-
+            Base https URL of the osctrl UI. When set, the Santa block dialog
+            links to
+
+            its approval request page; empty turns approval requests off.
+          type: string
         batch_size:
           description: 0 means the Santa default (50)
           type: integer
@@ -13063,6 +13219,34 @@ components:
           type: string
         scope_value:
           description: Tag name or node UUID
+          type: string
+      type: object
+    handlers.SantaOwnRequest:
+      properties:
+        created_at:
+          type: string
+        file_sha256:
+          type: string
+        id:
+          type: integer
+        justification:
+          description: Empty when the request was made by someone else
+          type: string
+        machine_id:
+          type: string
+        status:
+          type: string
+      type: object
+    handlers.SantaRequestCreate:
+      properties:
+        justification:
+          description: Why the software is needed; at most 1000 characters
+          type: string
+        machine_id:
+          description: Machine (node) UUID, from the block dialog link
+          type: string
+        sha256:
+          description: SHA-256 of the blocked file, from the block dialog link
           type: string
       type: object
     handlers.SantaRuleRequest:
@@ -13721,6 +13905,40 @@ components:
           type: string
         scope_value:
           description: tag name | node UUID (uppercase)
+          type: string
+        updated_at:
+          type: string
+      type: object
+    santa.Request:
+      properties:
+        created_at:
+          type: string
+        environment_id:
+          type: integer
+        event_id:
+          type: integer
+        executing_user:
+          type: string
+        file_name:
+          type: string
+        file_path:
+          type: string
+        file_sha256:
+          type: string
+        id:
+          type: integer
+        justification:
+          type: string
+        machine_id:
+          type: string
+        requester:
+          type: string
+        signing_id:
+          type: string
+        status:
+          description: pending|approved|denied|expired
+          type: string
+        team_id:
           type: string
         updated_at:
           type: string

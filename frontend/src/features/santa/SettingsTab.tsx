@@ -22,6 +22,7 @@ import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
 import { Skeleton } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
+import { basePath } from '$/lib/base-path';
 import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
 const CARD = 'space-y-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4';
@@ -73,6 +74,7 @@ function ConfigForm({ env, config }: { env: string; config: SantaConfig }) {
         removable_media_flags: form.removable_media === 'REMOUNT' ? form.removable_media_flags : [],
         encrypted_removable_media: form.encrypted_removable_media,
         encrypted_removable_media_flags: form.encrypted_removable_media === 'REMOUNT' ? form.encrypted_removable_media_flags : [],
+        approval_url: form.approval_url,
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -133,6 +135,17 @@ function ConfigForm({ env, config }: { env: string; config: SantaConfig }) {
           inherit
           onChange={(action, flags) => setForm({ ...form, encrypted_removable_media: action, encrypted_removable_media_flags: flags })}
         />
+      </div>
+      <div>
+        <Label htmlFor="santa-approval-url">{t('santa.approvalUrl')}</Label>
+        <Input
+          id="santa-approval-url"
+          type="url"
+          placeholder={window.location.origin + basePath}
+          value={form.approval_url ?? ''}
+          onChange={(e) => setForm({ ...form, approval_url: e.target.value.trim() })}
+        />
+        <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.approvalUrlHint')}</p>
       </div>
       {save.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(save.error)}</p>}
       {save.isSuccess && <p role="status" className="text-sm text-[color:var(--text-3)]">{t('santa.saved')}</p>}

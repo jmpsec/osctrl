@@ -32,6 +32,8 @@ export interface SantaConfig {
   /** Empty means encrypted volumes follow removable_media. */
   encrypted_removable_media: SantaMediaAction | '';
   encrypted_removable_media_flags: string[] | null;
+  /** Base https URL of this UI; empty turns approval requests off. */
+  approval_url: string;
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }
@@ -190,6 +192,32 @@ export function deleteSantaModeOverride(env: string, id: number): Promise<unknow
 /** GET /api/v1/santa/{env}/machines */
 export function listSantaMachines(env: string): Promise<SantaMachine[]> {
   return apiFetch<SantaMachine[]>(`${envPath(env)}/machines`);
+}
+
+export type SantaRequestStatus = 'pending' | 'approved' | 'denied' | 'expired';
+
+/** The requester's view of an approval request. */
+export interface SantaOwnRequest {
+  id: number;
+  file_sha256: string;
+  machine_id: string;
+  status: SantaRequestStatus;
+  created_at: string;
+  /** Empty when someone else made the request. */
+  justification: string;
+}
+
+/**
+ * POST /api/v1/santa/{env}/requests — any signed-in account. Returns the
+ * existing pending request when the file was already requested for the machine.
+ */
+export function createSantaRequest(env: string, body: { sha256: string; machine_id: string; justification: string }): Promise<SantaOwnRequest> {
+  return apiFetch<SantaOwnRequest>(`${envPath(env)}/requests`, jsonInit('POST', body));
+}
+
+/** GET /api/v1/santa/{env}/requests/mine — the caller's own requests. */
+export function listMySantaRequests(env: string): Promise<SantaOwnRequest[]> {
+  return apiFetch<SantaOwnRequest[]>(`${envPath(env)}/requests/mine`);
 }
 
 /** GET /api/v1/santa/{env}/events */

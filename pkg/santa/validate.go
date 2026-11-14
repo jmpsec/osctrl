@@ -3,6 +3,7 @@ package santa
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -88,8 +89,21 @@ func ValidateConfig(c *EnvConfig) error {
 		return fmt.Errorf("encrypted: %w", err)
 	}
 	c.BlockUSBMount = c.RemovableMedia != MediaAllow // BLOCK or REMOUNT, validated above
+	c.ApprovalURL = strings.TrimRight(strings.TrimSpace(c.ApprovalURL), "/")
+	if c.ApprovalURL != "" {
+		// Santa expands %placeholders% in the URL it is sent, so none may come from here.
+		u, err := url.Parse(c.ApprovalURL)
+		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" ||
+			strings.Contains(c.ApprovalURL, "%") || len(c.ApprovalURL) > 255 {
+			return errors.New("approval URL must be an https URL without query, fragment or % characters")
+		}
+	}
 	return nil
 }
+
+// ApprovalRequestPath is the UI route of the approval request page, under the
+// environment config's ApprovalURL.
+const ApprovalRequestPath = "/santa/request/"
 
 // ErrInvalidOverride wraps every ValidateModeOverride failure.
 var ErrInvalidOverride = errors.New("invalid santa mode override")
