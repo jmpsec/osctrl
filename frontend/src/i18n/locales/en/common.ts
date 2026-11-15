@@ -975,6 +975,17 @@ export const en = {
       allowedNode: 'Enough votes: it is allowed on your machine after the next Santa sync.',
       allowedEnv: 'Enough votes: it is allowed for everyone after the next Santa sync.',
     },
+    monitor: {
+      title: 'Temporary MONITOR mode',
+      intro: 'Ask for this machine to run in MONITOR mode for a while: Santa logs executions instead of blocking them. It goes back on its first sync after the time is up.',
+      duration: 'Duration',
+      hours: '{n} h',
+      submit: 'Request MONITOR mode',
+      name: 'MONITOR mode for {n} h',
+      approveHint: 'Approving switches the machine to MONITOR for the hours asked, starting now. It goes back on its first Santa sync after that.',
+      permanent: 'Permanent',
+      until: 'until {time}',
+    },
     notifyChannels: 'Notify about new requests',
     notifyChannelsHint: 'Each new request is sent to these alert channels with an approve and a deny link. A link works once, expires after 72 hours and needs an environment admin signed in. Changing the channels requires a superuser.',
     link: {

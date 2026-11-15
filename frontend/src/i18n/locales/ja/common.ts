@@ -964,6 +964,17 @@ export const ja: Messages = {
       allowedNode: '票数に達しました。次回の Santa 同期後にあなたのマシンで許可されます。',
       allowedEnv: '票数に達しました。次回の Santa 同期後に全員に許可されます。',
     },
+    monitor: {
+      title: '一時的な MONITOR モード',
+      intro: 'このマシンをしばらく MONITOR モードで動かすよう依頼します。Santa は実行をブロックせず記録します。期限後の最初の同期で元に戻ります。',
+      duration: '期間',
+      hours: '{n} 時間',
+      submit: 'MONITOR モードを依頼',
+      name: 'MONITOR モード {n} 時間',
+      approveHint: '承認すると、今から依頼された時間だけマシンが MONITOR になります。その後の最初の Santa 同期で元に戻ります。',
+      permanent: '無期限',
+      until: '{time} まで',
+    },
     notifyChannels: '新しいリクエストを通知',
     notifyChannelsHint: '新しいリクエストは、承認リンクと拒否リンクを付けてこれらのアラートチャンネルに送信されます。リンクは 1 回だけ使用でき、72 時間で失効し、環境管理者のサインインが必要です。チャンネルの変更にはスーパーユーザー権限が必要です。',
     link: {

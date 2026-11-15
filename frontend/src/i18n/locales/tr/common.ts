@@ -964,6 +964,17 @@ export const tr: Messages = {
       allowedNode: 'Yeterli oy: bir sonraki Santa eşitlemesinden sonra makinenizde izin verilecek.',
       allowedEnv: 'Yeterli oy: bir sonraki Santa eşitlemesinden sonra herkes için izin verilecek.',
     },
+    monitor: {
+      title: 'Geçici MONITOR modu',
+      intro: 'Bu makinenin bir süre MONITOR modunda çalışmasını isteyin: Santa çalıştırmaları engellemek yerine kaydeder. Süre dolduktan sonraki ilk eşitlemede geri döner.',
+      duration: 'Süre',
+      hours: '{n} sa',
+      submit: 'MONITOR modu iste',
+      name: '{n} sa MONITOR modu',
+      approveHint: 'Onaylamak makineyi şu andan itibaren istenen saatler boyunca MONITOR moduna alır. Ardından ilk Santa eşitlemesinde geri döner.',
+      permanent: 'Kalıcı',
+      until: '{time} tarihine kadar',
+    },
     notifyChannels: 'Yeni istekleri bildir',
     notifyChannelsHint: 'Her yeni istek, bir onay ve bir ret bağlantısıyla bu uyarı kanallarına gönderilir. Bağlantı bir kez çalışır, 72 saat sonra sona erer ve oturum açmış bir ortam yöneticisi gerektirir. Kanalları değiştirmek için süper kullanıcı gerekir.',
     link: {

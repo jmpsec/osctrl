@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ApiError } from '$/api/client';
 import { decideSantaRequestByLink, getSantaRequest, type SantaDecision } from '$/api/santa';
-import { DecisionForm } from './RequestsTab';
+import { DecisionForm, requestName } from './RequestsTab';
 import { MONO, errorText } from './table';
 
 /**
@@ -35,9 +35,9 @@ export function DecideLinkPage({ env, requestId, approve, token }: { env: string
           <section className="space-y-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4">
             {/* File names, paths and the justification come from clients and users: React text only. */}
             <div className="text-sm">
-              <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{r.file_name || r.file_sha256}</div>
+              <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{requestName(r, t)}</div>
               {r.file_path && <div className={sub}>{r.file_path}</div>}
-              <div className={`${MONO} ${sub}`}>{r.file_sha256}</div>
+              {r.file_sha256 && <div className={`${MONO} ${sub}`}>{r.file_sha256}</div>}
               <div className={`${MONO} ${sub}`}>{r.machine_id}</div>
             </div>
             <div className="text-sm">
@@ -45,7 +45,7 @@ export function DecideLinkPage({ env, requestId, approve, token }: { env: string
               <div className={sub}>{r.justification}</div>
             </div>
             {r.status === 'pending' ? (
-              <DecisionForm approve={approve} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} />
+              <DecisionForm approve={approve} monitor={r.kind === 'monitor'} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} />
             ) : (
               <p role="status" className="text-sm text-[color:var(--text-1)]">
                 {t('santa.request.status')}: {t(`santa.request.statuses.${r.status}`)}

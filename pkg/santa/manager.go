@@ -178,27 +178,34 @@ func (m *Manager) DeleteRule(envID, id uint) error {
 	return nil
 }
 
-// ModeOverrides lists the environment's client mode overrides ordered by ID.
+// ModeOverrides lists the environment's client mode overrides ordered by ID,
+// leaving out temporary ones that have expired.
 func (m *Manager) ModeOverrides(envID uint) ([]ModeOverride, error) {
 	var os []ModeOverride
-	err := m.DB.Where("environment_id = ?", envID).Order("id").Find(&os).Error
+	err := m.DB.Where("environment_id = ? AND (expires_at IS NULL OR expires_at > ?)", envID, m.now()).Order("id").Find(&os).Error
 	return os, err
 }
 
 // SetModeOverride validates o and upserts it by (environment, scope, scope value),
-// then reloads it so o carries the stored ID.
+// then reloads it so o carries the stored ID. It is permanent: an expiry on
+// the override it replaces is cleared.
 func (m *Manager) SetModeOverride(o *ModeOverride) error {
+	o.ExpiresAt = nil
+	return upsertModeOverride(m.DB, o)
+}
+
+func upsertModeOverride(db *gorm.DB, o *ModeOverride) error {
 	if err := ValidateModeOverride(o); err != nil {
 		return err
 	}
 	o.ID = 0
-	if err := m.DB.Clauses(clause.OnConflict{
+	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "environment_id"}, {Name: "scope"}, {Name: "scope_value"}},
-		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "created_by", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "created_by", "expires_at", "updated_at"}),
 	}).Create(o).Error; err != nil {
 		return err
 	}
-	return m.DB.Where("environment_id = ? AND scope = ? AND scope_value = ?", o.EnvironmentID, o.Scope, o.ScopeValue).First(o).Error
+	return db.Where("environment_id = ? AND scope = ? AND scope_value = ?", o.EnvironmentID, o.Scope, o.ScopeValue).First(o).Error
 }
 
 // DeleteModeOverride removes an override and returns it, or

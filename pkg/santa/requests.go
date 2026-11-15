@@ -142,7 +142,14 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 		}
 		now := m.now()
 		req.Status, req.DecidedBy, req.DecidedAt, req.Reason = RequestDenied, d.By, &now, d.Reason
-		if d.Approve {
+		switch {
+		case d.Approve && req.Kind == RequestKindMonitor:
+			// The hours run from the approval, not from the request.
+			if _, err := m.grantMonitorIn(tx, envID, req.MachineID, req.MonitorHours, d.By); err != nil {
+				return err
+			}
+			req.Status = RequestApproved
+		case d.Approve:
 			rule := Rule{
 				EnvironmentID: envID, Identifier: req.FileSHA256, RuleType: "BINARY", Policy: "ALLOWLIST",
 				Scope: d.Scope, ScopeValue: d.ScopeValue, CreatedBy: d.By,

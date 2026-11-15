@@ -66,6 +66,13 @@ At preflight the node gets the most specific mode: a node override wins over a t
 
 Each machine records the mode osctrl sent at its last preflight (`assigned_mode`) and where it came from (`mode_source`: `env`, `tag` or `node`). The Machines tab shows both. Settings tab: **Mode overrides**.
 
+**Temporary MONITOR mode.** A machine can leave LOCKDOWN for 1 to 24 hours and go back on its own. It is a node override with an expiry (`expires_at`), sent as the v1 `client_mode` at preflight; Santa's own temporary monitor mode is v2-only and not used.
+
+- An environment admin grants it with `PUT /api/v1/santa/{env}/modes` and `hours` (scope `node`, `MONITOR` only), or with a duration in **Settings > Mode overrides**. A user asks for it from the request page (`POST /api/v1/santa/{env}/requests` with `kind: "monitor"` and `hours`); it goes through the approval queue and notifications like a file request, and the hours count from the approval.
+- The machine must have synced with the environment. A grant replaces a temporary override of the machine, never a permanent one (`409`): change or delete that instead. Setting a permanent override replaces a temporary one.
+- Expiry is server-side and needs nobody: from `expires_at` the override no longer applies or appears in the list. `osctrl-api` removes expired overrides every minute and writes each expiry to the audit log; the grant, the request and the approval are audited too.
+- The machine switches at its next preflight and goes back at its first preflight after the expiry, so both changes wait for the client's sync interval (`FullSyncInterval`, 10 minutes by default in Santa). A machine that does not sync stays in MONITOR until it does.
+
 ### Removable media
 
 Each environment sets a removable media policy, sent at every preflight as `removable_media_policy`:

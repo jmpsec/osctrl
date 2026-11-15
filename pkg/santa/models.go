@@ -98,6 +98,8 @@ type ModeOverride struct {
 	ScopeValue    string    `gorm:"type:varchar(255);uniqueIndex:idx_santa_mode_unique" json:"scope_value"` // tag name | node UUID (uppercase)
 	ClientMode    string    `gorm:"type:varchar(16)" json:"client_mode"`                                    // MONITOR | LOCKDOWN
 	CreatedBy     string    `gorm:"type:varchar(255)" json:"created_by"`
+	// Set for a temporary override; it stops applying at this time. Nil is permanent.
+	ExpiresAt *time.Time `gorm:"index" json:"expires_at"`
 }
 
 // TableName for ModeOverride
@@ -133,6 +135,10 @@ const (
 	RequestExpired  = "expired"
 )
 
+// RequestKindMonitor is a request for temporary MONITOR mode on the machine.
+// The empty kind is a request to allow a blocked file.
+const RequestKindMonitor = "monitor"
+
 // Request is a user's request to allow a binary that Santa blocked on a machine.
 // The file fields are copied from the linked event, which is pruned earlier
 // than the request; they are written by the Santa client.
@@ -159,6 +165,10 @@ type Request struct {
 	Reason string `gorm:"type:varchar(1000)" json:"reason"`
 	// The allow rule an approval created or reused; 0 otherwise.
 	RuleID uint `json:"rule_id"`
+	// "" (allow the file) or monitor (temporary MONITOR mode, no file fields)
+	Kind string `gorm:"type:varchar(16)" json:"kind"`
+	// Hours of MONITOR mode asked for, with kind monitor
+	MonitorHours uint `json:"monitor_hours"`
 }
 
 // TableName for Request

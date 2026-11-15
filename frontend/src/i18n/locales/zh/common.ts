@@ -964,6 +964,17 @@ export const zh: Messages = {
       allowedNode: '票数已足够：下次 Santa 同步后将在你的机器上允许。',
       allowedEnv: '票数已足够：下次 Santa 同步后将对所有人允许。',
     },
+    monitor: {
+      title: '临时 MONITOR 模式',
+      intro: '请求让这台机器暂时以 MONITOR 模式运行：Santa 会记录执行而不是阻止。时间到后的第一次同步时恢复。',
+      duration: '时长',
+      hours: '{n} 小时',
+      submit: '请求 MONITOR 模式',
+      name: 'MONITOR 模式 {n} 小时',
+      approveHint: '批准后机器从现在起按请求的小时数切换为 MONITOR，之后在第一次 Santa 同步时恢复。',
+      permanent: '永久',
+      until: '直到 {time}',
+    },
     notifyChannels: '通知新请求',
     notifyChannelsHint: '每个新请求都会连同批准链接和拒绝链接发送到这些告警渠道。链接只能使用一次，72 小时后过期，并且需要环境管理员登录。更改渠道需要超级用户。',
     link: {

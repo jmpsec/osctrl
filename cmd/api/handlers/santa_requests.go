@@ -19,12 +19,16 @@ import (
 
 // SantaRequestCreate is what a blocked user submits.
 type SantaRequestCreate struct {
-	// SHA-256 of the blocked file, from the block dialog link
+	// Empty to allow the blocked file, or monitor for temporary MONITOR mode on the machine
+	Kind string `json:"kind"`
+	// SHA-256 of the blocked file, from the block dialog link; not used with kind monitor
 	SHA256 string `json:"sha256"`
 	// Machine (node) UUID, from the block dialog link
 	MachineID string `json:"machine_id"`
-	// Why the software is needed; at most 1000 characters
+	// Why it is needed; at most 1000 characters
 	Justification string `json:"justification"`
+	// Hours of MONITOR mode, 1 to 24, with kind monitor
+	Hours uint `json:"hours"`
 }
 
 // SantaOwnRequest is the requester's view of a request. It carries nothing
@@ -39,6 +43,10 @@ type SantaOwnRequest struct {
 	Justification string `json:"justification"`
 	// The approver's reason, when one was given
 	Reason string `json:"reason"`
+	// Empty (allow the file) or monitor
+	Kind string `json:"kind"`
+	// Hours of MONITOR mode asked for, with kind monitor
+	MonitorHours uint `json:"monitor_hours"`
 }
 
 // SantaRequestDecision is an approver's answer to a pending request.
@@ -54,7 +62,10 @@ type SantaRequestDecision struct {
 }
 
 func ownRequest(r santa.Request, user string) SantaOwnRequest {
-	out := SantaOwnRequest{ID: r.ID, FileSHA256: r.FileSHA256, MachineID: r.MachineID, Status: r.Status, CreatedAt: r.CreatedAt, Reason: r.Reason}
+	out := SantaOwnRequest{
+		ID: r.ID, FileSHA256: r.FileSHA256, MachineID: r.MachineID, Status: r.Status, CreatedAt: r.CreatedAt, Reason: r.Reason,
+		Kind: r.Kind, MonitorHours: r.MonitorHours,
+	}
 	if r.Requester == user {
 		out.Justification = r.Justification
 	}
@@ -95,8 +106,8 @@ func (h *HandlersApi) santaRequester(w http.ResponseWriter, r *http.Request) (en
 }
 
 // SantaRequestCreateHandler — POST /api/v1/santa/{env}/requests
-// @Summary Request approval for a binary Santa blocked
-// @Description Any signed-in account may call this; no environment permission is needed. The block must have been reported by the machine. A pending request for the same file and machine is returned (200) instead of creating a second one.
+// @Summary Request approval for a binary Santa blocked, or temporary MONITOR mode
+// @Description Any signed-in account may call this; no environment permission is needed. For a file, the block must have been reported by the machine; with kind monitor, the machine must have synced, and approval switches it to MONITOR for the hours asked (1 to 24) from the approval. A pending request for the same file (or MONITOR) and machine is returned (200) instead of creating a second one.
 // @Tags santa
 // @Accept json
 // @Produce json
@@ -120,12 +131,24 @@ func (h *HandlersApi) SantaRequestCreateHandler(w http.ResponseWriter, r *http.R
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
-	req, created, err := h.Santa.CreateRequest(env.ID, body.MachineID, body.SHA256, user, body.Justification)
+	var (
+		req     santa.Request
+		created bool
+		err     error
+	)
+	switch body.Kind {
+	case "":
+		req, created, err = h.Santa.CreateRequest(env.ID, body.MachineID, body.SHA256, user, body.Justification)
+	case santa.RequestKindMonitor:
+		req, created, err = h.Santa.CreateMonitorRequest(env.ID, body.MachineID, user, body.Justification, body.Hours)
+	default:
+		err = fmt.Errorf("%w: kind must be empty or monitor", santa.ErrInvalidRequest)
+	}
 	switch {
 	case errors.Is(err, santa.ErrInvalidRequest):
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
 		return
-	case errors.Is(err, santa.ErrNoBlockedEvent):
+	case errors.Is(err, santa.ErrNoBlockedEvent), errors.Is(err, santa.ErrUnknownMachine):
 		apiErrorResponse(w, santaRequestNotFound, http.StatusNotFound, err)
 		return
 	case errors.Is(err, santa.ErrTooManyRequests):
@@ -138,7 +161,11 @@ func (h *HandlersApi) SantaRequestCreateHandler(w http.ResponseWriter, r *http.R
 	code := http.StatusOK
 	if created {
 		code = http.StatusCreated
-		h.santaAudit(user, "request approval sha256="+req.FileSHA256+" machine="+req.MachineID, r, env)
+		if req.Kind == santa.RequestKindMonitor {
+			h.santaAudit(user, fmt.Sprintf("request temporary MONITOR machine=%s hours=%d", req.MachineID, req.MonitorHours), r, env)
+		} else {
+			h.santaAudit(user, "request approval sha256="+req.FileSHA256+" machine="+req.MachineID, r, env)
+		}
 		h.santaNotify(env, req)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, ownRequest(req, user))
@@ -267,13 +294,19 @@ func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env e
 	case errors.Is(err, santa.ErrRuleConflict):
 		apiErrorResponse(w, "a rule that does not allow this file already exists for this scope; change or delete it first", http.StatusConflict, err)
 		return
+	case errors.Is(err, santa.ErrPermanentOverride), errors.Is(err, santa.ErrUnknownMachine):
+		apiErrorResponse(w, err.Error(), http.StatusConflict, err)
+		return
 	case err != nil:
 		apiErrorResponse(w, "error deciding request", http.StatusInternalServerError, err)
 		return
 	}
 	// The free-text reason stays on the request, out of the audit line.
 	action := fmt.Sprintf("deny request %d", req.ID)
-	if req.Status == santa.RequestApproved {
+	switch {
+	case req.Status == santa.RequestApproved && req.Kind == santa.RequestKindMonitor:
+		action = fmt.Sprintf("approve request %d temporary MONITOR hours=%d", req.ID, req.MonitorHours)
+	case req.Status == santa.RequestApproved:
 		action = fmt.Sprintf("approve request %d rule=%d scope=%s", req.ID, req.RuleID, d.Scope)
 	}
 	h.santaAudit(d.By, fmt.Sprintf("%s%s sha256=%s machine=%s requester=%s", action, via, req.FileSHA256, req.MachineID, req.Requester), r, env)

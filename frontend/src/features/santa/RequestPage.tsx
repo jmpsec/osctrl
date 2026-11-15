@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createSantaRequest, getSantaVotes, listMySantaRequests, voteSantaFile } from '$/api/santa';
+import { createSantaRequest, getSantaVotes, listMySantaRequests, SANTA_MONITOR_HOURS, voteSantaFile } from '$/api/santa';
 import { Button } from '$/components/atoms/Button';
 import { Label } from '$/components/atoms/Label';
 import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
@@ -43,6 +43,64 @@ function VoteCard({ env, sha256, machineId }: { env: string; sha256: string; mac
         </Button>
       </div>
     </section>
+  );
+}
+
+/** Asking for temporary MONITOR mode on the machine, through the same approval queue. */
+function MonitorCard({ env, machineId, onSent }: { env: string; machineId: string; onSent: () => void }) {
+  const { t } = useTranslation();
+  const [hours, setHours] = useState(SANTA_MONITOR_HOURS[0]);
+  const [justification, setJustification] = useState('');
+  const send = useMutation({
+    mutationFn: () => createSantaRequest(env, { kind: 'monitor', machine_id: machineId, hours, justification }),
+    onSuccess: onSent,
+  });
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    send.mutate();
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4">
+      <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('santa.monitor.title')}</h2>
+      <p className="text-sm text-[color:var(--text-2)]">{t('santa.monitor.intro')}</p>
+      {send.isSuccess ? (
+        <p role="status" className="text-sm text-[color:var(--text-1)]">
+          {t('santa.request.status')}: {t(`santa.request.statuses.${send.data.status}`)}
+        </p>
+      ) : (
+        <>
+          <div>
+            <Label htmlFor="santa-monitor-hours">{t('santa.monitor.duration')}</Label>
+            <select
+              id="santa-monitor-hours"
+              value={hours}
+              onChange={(e) => setHours(Number(e.target.value))}
+              className="h-8 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]"
+            >
+              {SANTA_MONITOR_HOURS.map((h) => <option key={h} value={h}>{t('santa.monitor.hours', { n: h })}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="santa-monitor-why" required>{t('santa.request.justification')}</Label>
+            <textarea
+              id="santa-monitor-why"
+              required
+              rows={3}
+              maxLength={MAX_JUSTIFICATION}
+              value={justification}
+              onChange={(e) => setJustification(e.target.value)}
+              className="w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] p-2 text-sm text-[color:var(--text-1)]"
+            />
+          </div>
+          {send.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(send.error)}</p>}
+          <div className="flex justify-end">
+            <Button type="submit" variant="ghost" disabled={send.isPending || justification.trim() === ''}>{t('santa.monitor.submit')}</Button>
+          </div>
+        </>
+      )}
+    </form>
   );
 }
 
@@ -113,6 +171,7 @@ export function RequestPage({ env, sha256, machineId }: { env: string; sha256: s
         </form>
       )}
       {complete && <VoteCard env={env} sha256={sha256} machineId={machineId} />}
+      {complete && <MonitorCard env={env} machineId={machineId} onSent={() => qc.invalidateQueries({ queryKey: mineKey })} />}
       {mine.data && mine.data.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('santa.request.mine')}</h2>
@@ -128,7 +187,11 @@ export function RequestPage({ env, sha256, machineId }: { env: string; sha256: s
               <tbody>
                 {mine.data.map((r) => (
                   <tr key={r.id} className={ROW}>
-                    <td className={`${TD} ${MONO}`}>{r.file_sha256}</td>
+                    {r.kind === 'monitor' ? (
+                      <td className={TD}>{t('santa.monitor.name', { n: r.monitor_hours })}</td>
+                    ) : (
+                      <td className={`${TD} ${MONO}`}>{r.file_sha256}</td>
+                    )}
                     <td className={TD}>
                       {t(`santa.request.statuses.${r.status}`)}
                       {r.reason && <div className="text-xs text-[color:var(--text-3)] [overflow-wrap:anywhere]">{r.reason}</div>}
