@@ -6,7 +6,7 @@ vi.mock('./client', () => ({
 }));
 
 import {
-  createSantaRule, deleteSantaRule, getSantaConfig, listSantaEvents, listSantaMachines, listSantaRules,
+  createSantaRule, decideSantaRequest, deleteSantaRule, getSantaConfig, listSantaEvents, listSantaMachines, listSantaRequests, listSantaRules,
   putSantaConfig, rotateSantaToken, santaQueryKey,
 } from './santa';
 
@@ -21,11 +21,15 @@ describe('santa API client', () => {
     await listSantaRules('dev');
     await listSantaMachines('dev');
     await listSantaEvents('dev', 2, 10);
+    await listSantaRequests('dev');
+    await listSantaRequests('dev', 'pending');
     expect(mockFetch.mock.calls.map((c) => c[0])).toEqual([
       '/api/v1/santa/a%2Fb/config',
       '/api/v1/santa/dev/rules',
       '/api/v1/santa/dev/machines',
       '/api/v1/santa/dev/events?page=2&page_size=10',
+      '/api/v1/santa/dev/requests',
+      '/api/v1/santa/dev/requests?status=pending',
     ]);
   });
 
@@ -47,6 +51,12 @@ describe('santa API client', () => {
     };
     await createSantaRule('dev', rule);
     expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/rules', expect.objectContaining({ method: 'POST', body: JSON.stringify(rule) }));
+  });
+
+  it('posts a decision for one request', async () => {
+    const body = { decision: 'approve' as const, scope: 'node' as const, scope_value: '', reason: '' };
+    await decideSantaRequest('dev', 9, body);
+    expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/requests/9/decision', expect.objectContaining({ method: 'POST', body: JSON.stringify(body) }));
   });
 
   it('builds env-scoped query keys', () => {

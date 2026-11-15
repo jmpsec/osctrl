@@ -9066,6 +9066,74 @@ paths:
       summary: Request approval for a binary Santa blocked
       tags:
         - santa
+  "/api/v1/santa/{env}/requests/{id}/decision":
+    post:
+      description: Requires environment admin. Approving creates one BINARY allow rule
+        for the file in the chosen scope, or reuses an allow rule that is
+        already there; clients get it on their next sync. Denying needs a
+        reason.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Request ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaRequestDecision"
+        description: Decision
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Request"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Approve or deny a Santa approval request
+      tags:
+        - santa
   "/api/v1/santa/{env}/requests/mine":
     get:
       description: Any signed-in account may call this; it only returns requests the
@@ -13234,6 +13302,9 @@ components:
           type: string
         machine_id:
           type: string
+        reason:
+          description: The approver's reason, when one was given
+          type: string
         status:
           type: string
       type: object
@@ -13247,6 +13318,23 @@ components:
           type: string
         sha256:
           description: SHA-256 of the blocked file, from the block dialog link
+          type: string
+      type: object
+    handlers.SantaRequestDecision:
+      properties:
+        decision:
+          description: approve | deny
+          type: string
+        reason:
+          description: Required to deny, optional to approve; at most 1000 characters. The
+            requester sees it
+          type: string
+        scope:
+          description: "On approve, where the allow rule applies: node (the requesting
+            machine), tag or env"
+          type: string
+        scope_value:
+          description: Tag name, with scope tag
           type: string
       type: object
     handlers.SantaRuleRequest:
@@ -13913,6 +14001,11 @@ components:
       properties:
         created_at:
           type: string
+        decided_at:
+          type: string
+        decided_by:
+          description: Set when the request is approved or denied.
+          type: string
         environment_id:
           type: integer
         event_id:
@@ -13931,8 +14024,14 @@ components:
           type: string
         machine_id:
           type: string
+        reason:
+          description: Why it was denied; optional note on an approval.
+          type: string
         requester:
           type: string
+        rule_id:
+          description: The allow rule an approval created or reused; 0 otherwise.
+          type: integer
         signing_id:
           type: string
         status:

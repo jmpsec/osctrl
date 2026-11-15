@@ -145,6 +145,13 @@ type Request struct {
 	Requester     string    `gorm:"type:varchar(255);index" json:"requester"`
 	Justification string    `gorm:"type:varchar(1000)" json:"justification"`
 	Status        string    `gorm:"type:varchar(16);index" json:"status"` // pending|approved|denied|expired
+	// Set when the request is approved or denied.
+	DecidedBy string     `gorm:"type:varchar(255)" json:"decided_by"`
+	DecidedAt *time.Time `json:"decided_at"`
+	// Why it was denied; optional note on an approval.
+	Reason string `gorm:"type:varchar(1000)" json:"reason"`
+	// The allow rule an approval created or reused; 0 otherwise.
+	RuleID uint `json:"rule_id"`
 }
 
 // TableName for Request
