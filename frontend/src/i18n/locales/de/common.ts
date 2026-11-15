@@ -951,6 +951,13 @@ export const de: Messages = {
       requested: 'Angefragt',
       statuses: { pending: 'Ausstehend', approved: 'Genehmigt', denied: 'Abgelehnt', expired: 'Abgelaufen' },
     },
+    notifyChannels: 'Über neue Anfragen benachrichtigen',
+    notifyChannelsHint: 'Jede neue Anfrage wird mit einem Genehmigen- und einem Ablehnen-Link an diese Alarmkanäle gesendet. Ein Link funktioniert einmal, läuft nach 72 Stunden ab und erfordert einen angemeldeten Umgebungsadministrator. Das Ändern der Kanäle erfordert einen Superuser.',
+    link: {
+      approveTitle: 'Anfrage genehmigen',
+      denyTitle: 'Anfrage ablehnen',
+      invalid: 'Dieser Link wurde bereits verwendet oder ist abgelaufen. Öffnen Sie den Tab Anfragen der Santa-Seite, um zu entscheiden.',
+    },
     tabRequests: 'Anfragen',
     requests: {
       search: 'Datei, Hash, Gerät oder Anfragenden suchen',

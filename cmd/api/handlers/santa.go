@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 
+	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/users"
@@ -42,6 +44,8 @@ type SantaConfigRequest struct {
 	EncryptedRemovableMediaFlags []string `json:"encrypted_removable_media_flags"`
 	// Base https URL of the osctrl UI; when set, the block dialog links to the approval request page. Empty turns requests off
 	ApprovalURL string `json:"approval_url"`
+	// Alert channel IDs told about each new approval request, at most 10. Needs approval_url. Changing it requires superuser
+	NotifyChannels []uint `json:"notify_channels"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -181,10 +185,14 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		EnableTransitiveRules: req.EnableTransitiveRules,
 		RemovableMedia:        media, RemovableMediaFlags: req.RemovableMediaFlags,
 		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,
-		ApprovalURL: req.ApprovalURL,
+		ApprovalURL: req.ApprovalURL, NotifyChannels: req.NotifyChannels,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
+		return
+	}
+	if code, err := h.santaCheckNotifyChannels(r, env, user, cfg.NotifyChannels); err != nil {
+		apiErrorResponse(w, err.Error(), code, fmt.Errorf("attempt by %s", user))
 		return
 	}
 	if err := h.Santa.SaveConfig(cfg); err != nil {
@@ -193,6 +201,33 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 	}
 	h.santaAudit(user, "update config", r, env)
 	h.writeSantaConfig(w, env)
+}
+
+// santaCheckNotifyChannels guards a change of the notification channels.
+// Notifications put requester- and client-written text into the channels, so
+// like log-content alert rules the change needs superuser. Each channel must
+// exist and be global or belong to the environment. ids is sorted and unique.
+func (h *HandlersApi) santaCheckNotifyChannels(r *http.Request, env environments.TLSEnvironment, user string, ids []uint) (int, error) {
+	prev, err := h.Santa.Config(env.ID)
+	if err != nil {
+		return http.StatusInternalServerError, errors.New("error getting config")
+	}
+	if slices.Equal(ids, prev.NotifyChannels) {
+		return 0, nil
+	}
+	if !h.Users.HasRoleContext(r.Context(), user, users.RoleSuperuser) {
+		return http.StatusForbidden, errors.New("changing the notification channels requires superuser")
+	}
+	if len(ids) > 0 && h.Alerts == nil {
+		return http.StatusBadRequest, errors.New("alerts are not enabled")
+	}
+	for _, id := range ids {
+		ch, err := h.Alerts.GetChannel(id)
+		if err != nil || (ch.EnvironmentID != alerts.NoEnvironmentID && ch.EnvironmentID != env.ID) {
+			return http.StatusBadRequest, fmt.Errorf("alert channel %d is not available to this environment", id)
+		}
+	}
+	return 0, nil
 }
 
 // SantaTokenHandler — POST /api/v1/santa/{env}/token

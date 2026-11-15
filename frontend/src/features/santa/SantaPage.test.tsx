@@ -45,8 +45,10 @@ vi.mock('$/api/santa', async () => {
   };
 });
 vi.mock('$/api/environments', () => ({
-  getEnvironment: () => Promise.resolve({ uuid: 'ENV-UUID', hostname: 'tls.example.com' }),
+  getEnvironment: () => Promise.resolve({ id: 5, uuid: 'ENV-UUID', hostname: 'tls.example.com' }),
 }));
+const mockChannels = vi.fn<() => Promise<unknown[]>>();
+vi.mock('$/api/alerts', () => ({ listAlertChannels: () => mockChannels() }));
 
 const rule: SantaRule = {
   id: 7, created_at: '', created_by: 'admin', identifier: 'a'.repeat(64), rule_type: 'BINARY',
@@ -55,7 +57,7 @@ const rule: SantaRule = {
 
 const config: SantaConfig = {
   client_mode: 'MONITOR', batch_size: 0, enable_transitive_rules: false, removable_media: 'ALLOW',
-  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', token_set: true,
+  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', notify_channels: null, token_set: true,
 };
 
 function renderPage() {
@@ -100,6 +102,8 @@ describe('SantaPage', () => {
     mockDeleteMode.mockResolvedValue({});
     mockConfig.mockResolvedValue(config);
     mockPutConfig.mockResolvedValue(config);
+    // By default the caller has no alerts role: the channel list is refused.
+    mockChannels.mockReset().mockRejectedValue(new Error('no access'));
     mockRotate.mockResolvedValue({ token: 'SECRET-TOKEN-123' });
   });
 
@@ -254,6 +258,34 @@ describe('SantaPage', () => {
       removable_media: 'REMOUNT', removable_media_flags: ['rdonly', 'noexec'],
       encrypted_removable_media: '', encrypted_removable_media_flags: [],
     })));
+  });
+
+  it('offers the alert channels of this environment for request notifications', async () => {
+    mockChannels.mockResolvedValue([
+      { id: 3, name: 'soc-mail', type: 'email', environment_id: 0 },
+      { id: 4, name: 'env-hook', type: 'webhook', environment_id: 5 },
+      { id: 9, name: 'elsewhere', type: 'webhook', environment_id: 6 },
+    ]);
+    mockConfig.mockResolvedValue({ ...config, approval_url: 'https://osctrl.example.com', notify_channels: [3] });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    expect(await screen.findByRole('checkbox', { name: /soc-mail/ })).toBeChecked();
+    expect(screen.queryByRole('checkbox', { name: /elsewhere/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: /env-hook/ }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ notify_channels: [3, 4] })));
+  });
+
+  it('keeps the saved channels when the channel list is not available', async () => {
+    mockConfig.mockResolvedValue({ ...config, approval_url: 'https://osctrl.example.com', notify_channels: [3] });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    await screen.findByLabelText('Approval request URL');
+    expect(screen.queryByText('Notify about new requests')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ notify_channels: [3] })));
   });
 
   it('adds and removes a mode override', async () => {

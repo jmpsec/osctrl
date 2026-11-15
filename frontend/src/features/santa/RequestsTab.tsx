@@ -220,15 +220,9 @@ function DecisionModal({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { approve, ids } = pending;
-  const [scope, setScope] = useState<SantaScope>('node');
-  const [tag, setTag] = useState('');
-  const [reason, setReason] = useState('');
   const decide = useMutation({
     // One call per request, so one failure does not undo the others.
-    mutationFn: async () => {
-      const body: SantaDecision = approve
-        ? { decision: 'approve', scope, scope_value: scope === 'tag' ? tag : '', reason }
-        : { decision: 'deny', reason };
+    mutationFn: async (body: SantaDecision) => {
       const failures: unknown[] = [];
       for (const id of ids) {
         try {
@@ -246,60 +240,84 @@ function DecisionModal({
     onSuccess: onClose,
   });
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    decide.mutate();
-  }
-
   return (
     <ModalShell
       title={t(approve ? 'santa.requests.approveTitle' : 'santa.requests.denyTitle', { n: ids.length })}
       titleId="santa-decision-title"
       onClose={onClose}
     >
-      <form onSubmit={submit} className="space-y-3">
-        {approve && (
-          <>
-            <p className="text-sm text-[color:var(--text-2)]">{t('santa.requests.approveHint')}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="santa-decision-scope">{t('santa.scope')}</Label>
-                <select id="santa-decision-scope" className={`${SELECT} w-full`} value={scope} onChange={(e) => setScope(e.target.value as SantaScope)}>
-                  <option value="node">{t('santa.requests.thisMachine')}</option>
-                  <option value="tag">{t('santa.scopes.tag')}</option>
-                  <option value="env">{t('santa.scopes.env')}</option>
-                </select>
-              </div>
-              {scope === 'tag' && (
-                <div>
-                  <Label htmlFor="santa-decision-tag" required>{t('santa.scopes.tag')}</Label>
-                  <Input id="santa-decision-tag" required value={tag} onChange={(e) => setTag(e.target.value.trim())} />
-                </div>
-              )}
-            </div>
-          </>
-        )}
-        <div>
-          <Label htmlFor="santa-decision-reason" required={!approve}>{t('santa.requests.reason')}</Label>
-          <textarea
-            id="santa-decision-reason"
-            required={!approve}
-            rows={3}
-            maxLength={MAX_REASON}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className="w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] p-2 text-sm text-[color:var(--text-1)]"
-          />
-          <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.requests.reasonHint')}</p>
-        </div>
-        {decide.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(decide.error)}</p>}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button type="submit" variant={approve ? undefined : 'danger'} disabled={decide.isPending || (!approve && reason.trim() === '')}>
-            {t(approve ? 'santa.requests.approve' : 'santa.requests.deny')}
-          </Button>
-        </div>
-      </form>
+      <DecisionForm approve={approve} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} onCancel={onClose} />
     </ModalShell>
+  );
+}
+
+/** The approver's choices: where the allow rule applies, and the reason. Shared by the queue and the notification links. */
+export function DecisionForm({
+  approve,
+  pending,
+  error,
+  onSubmit,
+  onCancel,
+}: {
+  approve: boolean;
+  pending: boolean;
+  error?: string;
+  onSubmit: (body: SantaDecision) => void;
+  onCancel?: () => void;
+}) {
+  const { t } = useTranslation();
+  const [scope, setScope] = useState<SantaScope>('node');
+  const [tag, setTag] = useState('');
+  const [reason, setReason] = useState('');
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    onSubmit(approve ? { decision: 'approve', scope, scope_value: scope === 'tag' ? tag : '', reason } : { decision: 'deny', reason });
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      {approve && (
+        <>
+          <p className="text-sm text-[color:var(--text-2)]">{t('santa.requests.approveHint')}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="santa-decision-scope">{t('santa.scope')}</Label>
+              <select id="santa-decision-scope" className={`${SELECT} w-full`} value={scope} onChange={(e) => setScope(e.target.value as SantaScope)}>
+                <option value="node">{t('santa.requests.thisMachine')}</option>
+                <option value="tag">{t('santa.scopes.tag')}</option>
+                <option value="env">{t('santa.scopes.env')}</option>
+              </select>
+            </div>
+            {scope === 'tag' && (
+              <div>
+                <Label htmlFor="santa-decision-tag" required>{t('santa.scopes.tag')}</Label>
+                <Input id="santa-decision-tag" required value={tag} onChange={(e) => setTag(e.target.value.trim())} />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      <div>
+        <Label htmlFor="santa-decision-reason" required={!approve}>{t('santa.requests.reason')}</Label>
+        <textarea
+          id="santa-decision-reason"
+          required={!approve}
+          rows={3}
+          maxLength={MAX_REASON}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] p-2 text-sm text-[color:var(--text-1)]"
+        />
+        <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.requests.reasonHint')}</p>
+      </div>
+      {error && <p role="alert" className="text-sm text-[color:var(--danger)]">{error}</p>}
+      <div className="flex justify-end gap-2">
+        {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>{t('common.cancel')}</Button>}
+        <Button type="submit" variant={approve ? undefined : 'danger'} disabled={pending || (!approve && reason.trim() === '')}>
+          {t(approve ? 'santa.requests.approve' : 'santa.requests.deny')}
+        </Button>
+      </div>
+    </form>
   );
 }

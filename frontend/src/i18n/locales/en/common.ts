@@ -962,6 +962,13 @@ export const en = {
       requested: 'Requested',
       statuses: { pending: 'Pending', approved: 'Approved', denied: 'Denied', expired: 'Expired' },
     },
+    notifyChannels: 'Notify about new requests',
+    notifyChannelsHint: 'Each new request is sent to these alert channels with an approve and a deny link. A link works once, expires after 72 hours and needs an environment admin signed in. Changing the channels requires a superuser.',
+    link: {
+      approveTitle: 'Approve request',
+      denyTitle: 'Deny request',
+      invalid: 'This link was already used or has expired. Open the Requests tab of the Santa page to decide.',
+    },
     tabRequests: 'Requests',
     requests: {
       search: 'Search file, hash, machine or requester',

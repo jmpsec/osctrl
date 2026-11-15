@@ -951,6 +951,13 @@ export const fr: Messages = {
       requested: 'Demandé',
       statuses: { pending: 'En attente', approved: 'Approuvée', denied: 'Refusée', expired: 'Expirée' },
     },
+    notifyChannels: 'Notifier les nouvelles demandes',
+    notifyChannelsHint: "Chaque nouvelle demande est envoyée à ces canaux d'alerte avec un lien pour approuver et un lien pour refuser. Un lien fonctionne une fois, expire après 72 heures et nécessite un administrateur de l'environnement connecté. Modifier les canaux nécessite un superutilisateur.",
+    link: {
+      approveTitle: 'Approuver la demande',
+      denyTitle: 'Refuser la demande',
+      invalid: "Ce lien a déjà été utilisé ou a expiré. Ouvrez l'onglet Demandes de la page Santa pour décider.",
+    },
     tabRequests: 'Demandes',
     requests: {
       search: 'Rechercher un fichier, un hash, une machine ou un demandeur',

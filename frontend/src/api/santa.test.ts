@@ -6,7 +6,7 @@ vi.mock('./client', () => ({
 }));
 
 import {
-  createSantaRule, decideSantaRequest, deleteSantaRule, getSantaConfig, listSantaEvents, listSantaMachines, listSantaRequests, listSantaRules,
+  createSantaRule, decideSantaRequest, decideSantaRequestByLink, deleteSantaRule, getSantaConfig, getSantaRequest, listSantaEvents, listSantaMachines, listSantaRequests, listSantaRules,
   putSantaConfig, rotateSantaToken, santaQueryKey,
 } from './santa';
 
@@ -37,7 +37,7 @@ describe('santa API client', () => {
     const cfg = {
       client_mode: 'LOCKDOWN' as const, batch_size: 0, enable_transitive_rules: true,
       removable_media: 'BLOCK' as const, removable_media_flags: [], encrypted_removable_media: '' as const, encrypted_removable_media_flags: [],
-      approval_url: 'https://osctrl.example.com',
+      approval_url: 'https://osctrl.example.com', notify_channels: [3],
     };
     await putSantaConfig('dev', cfg);
     expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/config', expect.objectContaining({ method: 'PUT', body: JSON.stringify(cfg) }));
@@ -57,6 +57,15 @@ describe('santa API client', () => {
     const body = { decision: 'approve' as const, scope: 'node' as const, scope_value: '', reason: '' };
     await decideSantaRequest('dev', 9, body);
     expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/requests/9/decision', expect.objectContaining({ method: 'POST', body: JSON.stringify(body) }));
+  });
+
+  it('posts a link decision with the token in the body, never in the URL', async () => {
+    await decideSantaRequestByLink('dev', 'TOKEN', { decision: 'deny', reason: 'no' });
+    expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/requests/link', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ token: 'TOKEN', decision: 'deny', reason: 'no' }),
+    }));
+    await getSantaRequest('dev', 9);
+    expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/requests/9');
   });
 
   it('builds env-scoped query keys', () => {

@@ -951,6 +951,13 @@ export const it: Messages = {
       requested: 'Richiesto',
       statuses: { pending: 'In attesa', approved: 'Approvata', denied: 'Negata', expired: 'Scaduta' },
     },
+    notifyChannels: 'Notifica le nuove richieste',
+    notifyChannelsHint: "Ogni nuova richiesta viene inviata a questi canali di avviso con un link per approvare e uno per negare. Un link funziona una volta, scade dopo 72 ore e richiede un amministratore dell'ambiente con accesso effettuato. Modificare i canali richiede un superutente.",
+    link: {
+      approveTitle: 'Approva richiesta',
+      denyTitle: 'Nega richiesta',
+      invalid: 'Questo link è già stato usato o è scaduto. Apri la scheda Richieste della pagina Santa per decidere.',
+    },
     tabRequests: 'Richieste',
     requests: {
       search: 'Cerca file, hash, computer o richiedente',

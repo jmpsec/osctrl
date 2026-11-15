@@ -951,6 +951,13 @@ export const ko: Messages = {
       requested: '요청 시각',
       statuses: { pending: '대기 중', approved: '승인됨', denied: '거부됨', expired: '만료됨' },
     },
+    notifyChannels: '새 요청 알림',
+    notifyChannelsHint: '새 요청은 승인 링크와 거부 링크와 함께 이 알림 채널로 전송됩니다. 링크는 한 번만 사용할 수 있고 72시간 후 만료되며 환경 관리자의 로그인이 필요합니다. 채널을 변경하려면 슈퍼유저 권한이 필요합니다.',
+    link: {
+      approveTitle: '요청 승인',
+      denyTitle: '요청 거부',
+      invalid: '이 링크는 이미 사용되었거나 만료되었습니다. Santa 페이지의 요청 탭을 열어 결정하세요.',
+    },
     tabRequests: '요청',
     requests: {
       search: '파일, 해시, 기기 또는 요청자 검색',

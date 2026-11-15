@@ -9066,6 +9066,58 @@ paths:
       summary: Request approval for a binary Santa blocked
       tags:
         - santa
+  "/api/v1/santa/{env}/requests/{id}":
+    get:
+      description: Requires environment admin.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Request ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Request"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get one Santa approval request
+      tags:
+        - santa
   "/api/v1/santa/{env}/requests/{id}/decision":
     post:
       description: Requires environment admin. Approving creates one BINARY allow rule
@@ -9132,6 +9184,73 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Approve or deny a Santa approval request
+      tags:
+        - santa
+  "/api/v1/santa/{env}/requests/link":
+    post:
+      description: "Requires environment admin: the link token alone decides nothing.
+        A link works once, for the action it was made for, until it expires (72
+        hours). A used, expired or unknown link answers 410."
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaLinkDecision"
+        description: Token and decision
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Request"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "410":
+          description: Gone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Approve or deny a Santa approval request through a notification link
       tags:
         - santa
   "/api/v1/santa/{env}/requests/mine":
@@ -13196,6 +13315,12 @@ components:
           items:
             type: string
           type: array
+        notify_channels:
+          description: Alert channel IDs told about each new approval request, at most 10.
+            Needs approval_url. Changing it requires superuser
+          items:
+            type: integer
+          type: array
         removable_media:
           description: ALLOW | BLOCK | REMOUNT; empty means ALLOW
           type: string
@@ -13242,6 +13367,15 @@ components:
           type: integer
         id:
           type: integer
+        notify_channels:
+          description: >-
+            Alert channel IDs told about each new approval request, with
+            single-use
+
+            approve and deny links. Needs ApprovalURL.
+          items:
+            type: integer
+          type: array
         removable_media:
           description: ALLOW | BLOCK | REMOUNT
           type: string
@@ -13276,6 +13410,26 @@ components:
           type: integer
         total:
           type: integer
+      type: object
+    handlers.SantaLinkDecision:
+      properties:
+        decision:
+          description: approve | deny
+          type: string
+        reason:
+          description: Required to deny, optional to approve; at most 1000 characters. The
+            requester sees it
+          type: string
+        scope:
+          description: "On approve, where the allow rule applies: node (the requesting
+            machine), tag or env"
+          type: string
+        scope_value:
+          description: Tag name, with scope tag
+          type: string
+        token:
+          description: The token from the link
+          type: string
       type: object
     handlers.SantaModeOverrideRequest:
       properties:

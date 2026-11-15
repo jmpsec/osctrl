@@ -120,6 +120,12 @@ type Decision struct {
 // that is already there, in the same transaction as the status change.
 // Returns gorm.ErrRecordNotFound if the request is not in envID.
 func (m *Manager) DecideRequest(envID, id uint, d Decision) (Request, error) {
+	return m.decideIn(m.DB, envID, id, d)
+}
+
+// decideIn is DecideRequest on db, which may be the caller's transaction: gorm
+// then nests this one in a savepoint.
+func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, error) {
 	d.Reason = strings.TrimSpace(d.Reason)
 	switch {
 	case d.By == "":
@@ -130,7 +136,7 @@ func (m *Manager) DecideRequest(envID, id uint, d Decision) (Request, error) {
 		return Request{}, fmt.Errorf("%w: a reason is required to deny", ErrInvalidRequest)
 	}
 	var req Request
-	err := m.DB.Transaction(func(tx *gorm.DB) error {
+	err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("environment_id = ? AND id = ?", envID, id).First(&req).Error; err != nil {
 			return err
 		}

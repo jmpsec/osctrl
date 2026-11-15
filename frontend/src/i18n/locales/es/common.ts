@@ -951,6 +951,13 @@ export const es: Messages = {
       requested: 'Solicitado',
       statuses: { pending: 'Pendiente', approved: 'Aprobada', denied: 'Denegada', expired: 'Caducada' },
     },
+    notifyChannels: 'Avisar de nuevas solicitudes',
+    notifyChannelsHint: 'Cada solicitud nueva se envía a estos canales de alertas con un enlace para aprobar y otro para denegar. Un enlace funciona una vez, caduca a las 72 horas y requiere un administrador del entorno con sesión iniciada. Cambiar los canales requiere un superusuario.',
+    link: {
+      approveTitle: 'Aprobar solicitud',
+      denyTitle: 'Denegar solicitud',
+      invalid: 'Este enlace ya se ha usado o ha caducado. Abre la pestaña Solicitudes de la página de Santa para decidir.',
+    },
     tabRequests: 'Solicitudes',
     requests: {
       search: 'Buscar archivo, hash, equipo o solicitante',

@@ -61,19 +61,27 @@ func (m *Manager) SaveConfig(cfg EnvConfig) error {
 	return m.DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "environment_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "batch_size", "enable_transitive_rules", "block_usb_mount",
-			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "updated_at"}),
+			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels", "updated_at"}),
 	}).Create(&cfg).Error
 }
 
-// RotateToken issues a new sync token, stores only its hash and returns the plaintext once.
-func (m *Manager) RotateToken(envID uint) (string, error) {
+// newToken returns 256 random bits, URL-safe.
+func newToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	token := base64.RawURLEncoding.EncodeToString(b)
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// RotateToken issues a new sync token, stores only its hash and returns the plaintext once.
+func (m *Manager) RotateToken(envID uint) (string, error) {
+	token, err := newToken()
+	if err != nil {
+		return "", err
+	}
 	cfg := EnvConfig{EnvironmentID: envID, ClientMode: "MONITOR", RemovableMedia: MediaAllow, TokenHash: hashToken(token)}
-	err := m.DB.Clauses(clause.OnConflict{
+	err = m.DB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "environment_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"token_hash", "updated_at"}),
 	}).Create(&cfg).Error

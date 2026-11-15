@@ -34,6 +34,7 @@ import { alertsRoute } from './routes/_app/alerts'
 import { healthRoute } from './routes/_app/health'
 import { auditRoute } from './routes/_app/audit'
 import { devComponentsRoute } from './routes/dev.components'
+import { santaDecideRoute } from './routes/santa.decide.$env'
 import { santaRequestRoute } from './routes/santa.request.$env'
 import { basePath } from '$/lib/base-path'
 
@@ -41,6 +42,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   santaRequestRoute,
+  santaDecideRoute,
   devComponentsRoute,
   appRoute.addChildren([
     appIndexRoute,

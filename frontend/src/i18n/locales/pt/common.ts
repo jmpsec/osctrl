@@ -951,6 +951,13 @@ export const pt: Messages = {
       requested: 'Pedido em',
       statuses: { pending: 'Pendente', approved: 'Aprovado', denied: 'Negado', expired: 'Expirado' },
     },
+    notifyChannels: 'Notificar novos pedidos',
+    notifyChannelsHint: 'Cada novo pedido é enviado a estes canais de alerta com um link para aprovar e outro para negar. Um link funciona uma vez, expira após 72 horas e exige um administrador do ambiente com sessão iniciada. Alterar os canais exige um superusuário.',
+    link: {
+      approveTitle: 'Aprovar pedido',
+      denyTitle: 'Negar pedido',
+      invalid: 'Este link já foi usado ou expirou. Abra a aba Pedidos da página do Santa para decidir.',
+    },
     tabRequests: 'Pedidos',
     requests: {
       search: 'Buscar arquivo, hash, máquina ou solicitante',

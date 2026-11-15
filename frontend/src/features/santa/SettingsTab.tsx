@@ -16,6 +16,7 @@ import {
   type SantaMediaAction,
   type SantaModeOverrideInput,
 } from '$/api/santa';
+import { listAlertChannels } from '$/api/alerts';
 import { getEnvironment } from '$/api/environments';
 import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
@@ -41,7 +42,7 @@ export function SettingsTab({ env }: { env: string }) {
   }
   return (
     <div className="space-y-4">
-      <ConfigForm env={env} config={config.data} />
+      <ConfigForm env={env} envId={environment.data?.id} config={config.data} />
       <ModeOverridesCard env={env} />
       <TokenCard env={env} tokenSet={config.data.token_set} />
       <section className={CARD}>
@@ -60,7 +61,37 @@ export function SettingsTab({ env }: { env: string }) {
   );
 }
 
-function ConfigForm({ env, config }: { env: string; config: SantaConfig }) {
+/**
+ * Alert channels told about new approval requests. The list needs an alerts
+ * role, so it is simply absent for users without one (or with alerts off);
+ * the saved selection is then sent back unchanged.
+ */
+function NotifyChannels({ envId, selected, onChange }: { envId?: number; selected: number[]; onChange: (ids: number[]) => void }) {
+  const { t } = useTranslation();
+  const channels = useQuery({ queryKey: ['alerts', 'channels'], queryFn: () => listAlertChannels(), retry: false, staleTime: 60_000 });
+  const usable = (channels.data ?? []).filter((c) => c.environment_id === 0 || c.environment_id === envId);
+  if (usable.length === 0) return null;
+  return (
+    <fieldset>
+      <legend className="text-sm font-medium text-[color:var(--text-2)]">{t('santa.notifyChannels')}</legend>
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+        {usable.map((c) => (
+          <label key={c.id} className="flex items-center gap-1.5 text-sm text-[color:var(--text-2)]">
+            <input
+              type="checkbox"
+              checked={selected.includes(c.id)}
+              onChange={(e) => onChange(e.target.checked ? [...selected, c.id] : selected.filter((id) => id !== c.id))}
+            />
+            {c.name} <span className="text-xs text-[color:var(--text-3)]">({c.type})</span>
+          </label>
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.notifyChannelsHint')}</p>
+    </fieldset>
+  );
+}
+
+function ConfigForm({ env, envId, config }: { env: string; envId?: number; config: SantaConfig }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [form, setForm] = useState(config);
@@ -75,6 +106,7 @@ function ConfigForm({ env, config }: { env: string; config: SantaConfig }) {
         encrypted_removable_media: form.encrypted_removable_media,
         encrypted_removable_media_flags: form.encrypted_removable_media === 'REMOUNT' ? form.encrypted_removable_media_flags : [],
         approval_url: form.approval_url,
+        notify_channels: form.notify_channels ?? [],
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -147,6 +179,8 @@ function ConfigForm({ env, config }: { env: string; config: SantaConfig }) {
         />
         <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.approvalUrlHint')}</p>
       </div>
+      <NotifyChannels envId={envId} selected={form.notify_channels ?? []} onChange={(ids) => setForm({ ...form, notify_channels: ids })} />
+
       {save.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(save.error)}</p>}
       {save.isSuccess && <p role="status" className="text-sm text-[color:var(--text-3)]">{t('santa.saved')}</p>}
       <div className="flex justify-end">

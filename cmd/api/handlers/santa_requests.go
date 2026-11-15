@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,9 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/utils"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -136,6 +139,7 @@ func (h *HandlersApi) SantaRequestCreateHandler(w http.ResponseWriter, r *http.R
 	if created {
 		code = http.StatusCreated
 		h.santaAudit(user, "request approval sha256="+req.FileSHA256+" machine="+req.MachineID, r, env)
+		h.santaNotify(env, req)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, code, ownRequest(req, user))
 }
@@ -226,14 +230,31 @@ func (h *HandlersApi) SantaRequestDecideHandler(w http.ResponseWriter, r *http.R
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
-	if body.Decision != "approve" && body.Decision != "deny" {
-		apiErrorResponse(w, "decision must be approve or deny", http.StatusBadRequest, nil)
+	d, ok := santaDecision(w, body, user)
+	if !ok {
 		return
 	}
-	req, err := h.Santa.DecideRequest(env.ID, uint(id), santa.Decision{
+	req, err := h.Santa.DecideRequest(env.ID, uint(id), d)
+	h.santaDecided(w, r, env, d, "", req, err)
+}
+
+func santaDecision(w http.ResponseWriter, body SantaRequestDecision, user string) (santa.Decision, bool) {
+	if body.Decision != "approve" && body.Decision != "deny" {
+		apiErrorResponse(w, "decision must be approve or deny", http.StatusBadRequest, nil)
+		return santa.Decision{}, false
+	}
+	return santa.Decision{
 		Approve: body.Decision == "approve", Scope: body.Scope, ScopeValue: body.ScopeValue, Reason: body.Reason, By: user,
-	})
+	}, true
+}
+
+// santaDecided answers a decision: the error, or the audit line and the
+// request. via is appended to the audit line (" via link").
+func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env environments.TLSEnvironment, d santa.Decision, via string, req santa.Request, err error) {
 	switch {
+	case errors.Is(err, santa.ErrLinkInvalid):
+		apiErrorResponse(w, "this link was already used or has expired", http.StatusGone, err)
+		return
 	case errors.Is(err, santa.ErrInvalidRequest), errors.Is(err, santa.ErrInvalidRule):
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
 		return
@@ -253,8 +274,123 @@ func (h *HandlersApi) SantaRequestDecideHandler(w http.ResponseWriter, r *http.R
 	// The free-text reason stays on the request, out of the audit line.
 	action := fmt.Sprintf("deny request %d", req.ID)
 	if req.Status == santa.RequestApproved {
-		action = fmt.Sprintf("approve request %d rule=%d scope=%s", req.ID, req.RuleID, body.Scope)
+		action = fmt.Sprintf("approve request %d rule=%d scope=%s", req.ID, req.RuleID, d.Scope)
 	}
-	h.santaAudit(user, fmt.Sprintf("%s sha256=%s machine=%s requester=%s", action, req.FileSHA256, req.MachineID, req.Requester), r, env)
+	h.santaAudit(d.By, fmt.Sprintf("%s%s sha256=%s machine=%s requester=%s", action, via, req.FileSHA256, req.MachineID, req.Requester), r, env)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, req)
+}
+
+// SantaLinkDecision is a decision made through an approve or deny link.
+type SantaLinkDecision struct {
+	// The token from the link
+	Token string `json:"token"`
+	SantaRequestDecision
+}
+
+// SantaRequestLinkHandler — POST /api/v1/santa/{env}/requests/link
+// @Summary Approve or deny a Santa approval request through a notification link
+// @Description Requires environment admin: the link token alone decides nothing. A link works once, for the action it was made for, until it expires (72 hours). A used, expired or unknown link answers 410.
+// @Tags santa
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param body body SantaLinkDecision true "Token and decision"
+// @Success 200 {object} santa.Request
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 409 {object} types.ApiErrorResponse
+// @Failure 410 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/requests/link [post]
+func (h *HandlersApi) SantaRequestLinkHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	var body SantaLinkDecision
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&body); err != nil {
+		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
+		return
+	}
+	d, ok := santaDecision(w, body.SantaRequestDecision, user)
+	if !ok {
+		return
+	}
+	req, err := h.Santa.DecideByLink(env.ID, body.Token, d)
+	h.santaDecided(w, r, env, d, " via link", req, err)
+}
+
+// SantaRequestGetHandler — GET /api/v1/santa/{env}/requests/{id}
+// @Summary Get one Santa approval request
+// @Description Requires environment admin.
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param id path int true "Request ID"
+// @Success 200 {object} santa.Request
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/requests/{id} [get]
+func (h *HandlersApi) SantaRequestGetHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
+	if err != nil {
+		apiErrorResponse(w, "invalid request id", http.StatusBadRequest, err)
+		return
+	}
+	req, err := h.Santa.Request(env.ID, uint(id))
+	if err != nil {
+		apiErrorResponse(w, "request not found", http.StatusNotFound, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, req)
+}
+
+// santaNotifier delivers a notification to alert channels; *alerts.Dispatcher.
+type santaNotifier interface {
+	Dispatch(ctx context.Context, h alerts.Hit) error
+}
+
+// santaNotify tells the environment's notification channels about a new
+// request, with a single-use approve and deny link. It never fails the
+// request: a notification that cannot be sent is logged.
+func (h *HandlersApi) santaNotify(env environments.TLSEnvironment, req santa.Request) {
+	if h.SantaNotify == nil {
+		return
+	}
+	cfg, err := h.Santa.Config(env.ID)
+	if err != nil || len(cfg.NotifyChannels) == 0 || cfg.ApprovalURL == "" {
+		return
+	}
+	approve, deny, err := h.Santa.NewRequestLinks(req)
+	if err != nil {
+		log.Err(err).Msg("santa: error creating approval links")
+		return
+	}
+	notice := santa.RequestNotice(req)
+	hit := alerts.Hit{
+		RuleName: "Santa approval request", EnvironmentID: env.ID, Environment: env.Name,
+		NodeUUID: req.MachineID, Entity: req.FileSHA256, Channels: cfg.NotifyChannels,
+		Detail: notice +
+			"\nApprove: " + santa.DecisionLink(cfg.ApprovalURL, env.UUID, req.ID, true, approve) +
+			"\nDeny: " + santa.DecisionLink(cfg.ApprovalURL, env.UUID, req.ID, false, deny) +
+			"\nEach link works once, expires in 72 hours and needs an environment admin signed in to osctrl.",
+		// The links stay out of the alert history.
+		HistoryDetail: notice,
+	}
+	// ponytail: one goroutine per new request, bounded only by the per-requester
+	// pending cap; hand it to a queue if request volume ever makes that matter.
+	go func() {
+		if err := h.SantaNotify.Dispatch(context.Background(), hit); err != nil {
+			log.Err(err).Uint("request", req.ID).Msg("santa: approval notification failed")
+		}
+	}()
 }

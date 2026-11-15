@@ -97,11 +97,14 @@ type HandlersApi struct {
 	PostureEnabled       bool
 	Vulns                *vulns.Reader  // nil when --vuln-enabled is off
 	Santa                *santa.Manager // nil when --santa-enabled is off
-	NodeConfig           *nodeconfig.Manager
-	FlagsOverrides       *nodeconfig.FlagsManager
-	Extensions           *extensions.Manager
-	OsqueryVersions      *osqueryversions.Manager
-	rolloutCache         rolloutProgressCache
+	// SantaNotify sends approval request notifications to alert channels. Nil
+	// when alerts are off.
+	SantaNotify     santaNotifier
+	NodeConfig      *nodeconfig.Manager
+	FlagsOverrides  *nodeconfig.FlagsManager
+	Extensions      *extensions.Manager
+	OsqueryVersions *osqueryversions.Manager
+	rolloutCache    rolloutProgressCache
 	// MFA owns the second-factor tables. Nil disables every MFA route.
 	MFA *mfa.Manager
 	// WebAuthn is nil when no RP ID or origin could be resolved, which
@@ -352,6 +355,16 @@ func WithExtensions(m *extensions.Manager) HandlersOption {
 func WithSanta(m *santa.Manager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Santa = m
+	}
+}
+
+// WithSantaNotifier sends Santa approval request notifications through the
+// alert channels of mgr. A nil mgr (alerts off) leaves notifications off.
+func WithSantaNotifier(mgr *alerts.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		if mgr != nil {
+			h.SantaNotify = alerts.NewDispatcher(mgr)
+		}
 	}
 }
 

@@ -1,0 +1,104 @@
+package santa
+
+import (
+	"errors"
+	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
+	"gorm.io/gorm"
+)
+
+// LinkTTL is how long an approve or deny link works.
+const LinkTTL = 72 * time.Hour
+
+// ErrLinkInvalid is the one error for a link that is unknown, used, expired,
+// from another environment or for the other action.
+var ErrLinkInvalid = errors.New("santa: link is not valid any more")
+
+// Request returns one request, gorm.ErrRecordNotFound if it is not in envID.
+func (m *Manager) Request(envID, id uint) (Request, error) {
+	var req Request
+	err := m.DB.Where("environment_id = ? AND id = ?", envID, id).First(&req).Error
+	return req, err
+}
+
+// NewRequestLinks stores an approve and a deny link for req and returns their
+// tokens, which are not stored and cannot be read back.
+func (m *Manager) NewRequestLinks(req Request) (approve, deny string, err error) {
+	tokens := make([]string, 2)
+	links := make([]RequestLink, 2)
+	for i := range links {
+		if tokens[i], err = newToken(); err != nil {
+			return "", "", err
+		}
+		links[i] = RequestLink{
+			EnvironmentID: req.EnvironmentID, RequestID: req.ID, Approve: i == 0,
+			TokenHash: hashToken(tokens[i]), ExpiresAt: m.now().Add(LinkTTL),
+		}
+	}
+	return tokens[0], tokens[1], m.DB.Create(&links).Error
+}
+
+// DecideByLink decides the request a link token belongs to. The link must be
+// unused, unexpired, in envID and for the action in d. It is consumed in the
+// same transaction as the decision, so a decision that fails leaves it usable.
+func (m *Manager) DecideByLink(envID uint, token string, d Decision) (Request, error) {
+	var req Request
+	err := m.DB.Transaction(func(tx *gorm.DB) error {
+		var links []RequestLink
+		if err := tx.Where("environment_id = ? AND token_hash = ?", envID, hashToken(token)).Limit(1).Find(&links).Error; err != nil {
+			return err
+		}
+		now := m.now()
+		if len(links) == 0 || links[0].UsedAt != nil || !now.Before(links[0].ExpiresAt) || links[0].Approve != d.Approve {
+			return ErrLinkInvalid
+		}
+		// The used_at condition lets only one of two simultaneous uses through.
+		res := tx.Model(&RequestLink{}).Where("id = ? AND used_at IS NULL", links[0].ID).
+			Updates(map[string]any{"used_at": now, "used_by": d.By})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrLinkInvalid
+		}
+		var err error
+		req, err = m.decideIn(tx, envID, links[0].RequestID, d)
+		return err
+	})
+	return req, err
+}
+
+// PruneLinks deletes links that expired before now and returns how many.
+func (m *Manager) PruneLinks(now time.Time) (int64, error) {
+	res := m.DB.Where("expires_at < ?", now).Delete(&RequestLink{})
+	return res.RowsAffected, res.Error
+}
+
+// DecisionLink is the URL of an approve or deny link. The token is the
+// fragment, which browsers do not send to the server or put in the Referer.
+func DecisionLink(base, envUUID string, requestID uint, approve bool, token string) string {
+	action := "deny"
+	if approve {
+		action = "approve"
+	}
+	return fmt.Sprintf("%s%s%s?request=%d&action=%s#%s", base, ApprovalDecidePath, url.PathEscape(envUUID), requestID, action, token)
+}
+
+// oneLine collapses the whitespace of client- and user-written text, so it
+// cannot fake extra lines in a notification.
+func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+// RequestNotice is the text of the notification for a new request: what was
+// asked, by whom and why. The file name, requester and justification are
+// written by the Santa client and the requester.
+func RequestNotice(req Request) string {
+	name := oneLine(req.FileName)
+	if name == "" {
+		name = req.FileSHA256
+	}
+	return fmt.Sprintf("%s asks to allow %s (sha256 %s) on machine %s. Justification: %s",
+		oneLine(req.Requester), name, req.FileSHA256, req.MachineID, oneLine(req.Justification))
+}

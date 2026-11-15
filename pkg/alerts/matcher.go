@@ -25,10 +25,13 @@ type Hit struct {
 	EnvironmentID uint
 	// Environment is the env name captured at match time, used for the
 	// history row and rendered payloads.
-	Environment     string
-	NodeUUID        string
-	Entity          string
-	Detail          string
+	Environment string
+	NodeUUID    string
+	Entity      string
+	Detail      string
+	// HistoryDetail, when set, is stored in the history row instead of Detail,
+	// for a Detail that carries something only the channel should get.
+	HistoryDetail   string
 	CooldownMinutes int
 	Channels        []uint
 }

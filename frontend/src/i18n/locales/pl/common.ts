@@ -951,6 +951,13 @@ export const pl: Messages = {
       requested: 'Zgłoszono',
       statuses: { pending: 'Oczekuje', approved: 'Zatwierdzona', denied: 'Odrzucona', expired: 'Wygasła' },
     },
+    notifyChannels: 'Powiadamiaj o nowych prośbach',
+    notifyChannelsHint: 'Każda nowa prośba jest wysyłana do tych kanałów alertów z linkiem do zatwierdzenia i linkiem do odrzucenia. Link działa raz, wygasa po 72 godzinach i wymaga zalogowanego administratora środowiska. Zmiana kanałów wymaga superużytkownika.',
+    link: {
+      approveTitle: 'Zatwierdź prośbę',
+      denyTitle: 'Odrzuć prośbę',
+      invalid: 'Ten link został już użyty lub wygasł. Otwórz kartę Prośby na stronie Santa, aby podjąć decyzję.',
+    },
     tabRequests: 'Prośby',
     requests: {
       search: 'Szukaj pliku, skrótu, komputera lub wnioskującego',

@@ -260,6 +260,25 @@ func TestDispatcherFanOutIsolation(t *testing.T) {
 	}
 }
 
+func TestDispatcherHistoryDetail(t *testing.T) {
+	m := newTestManager(t)
+	ch, err := m.CreateChannel(AlertChannel{
+		Name: "good", Type: ChannelWebhook, Enabled: true,
+		Config: `{"url":"` + goodWebhookURL(t) + `","allowPrivateTargets":true}`,
+	})
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	h := Hit{RuleName: "r", Detail: "text with a secret link", HistoryDetail: "text", Channels: []uint{ch.ID}}
+	if err := NewDispatcher(m).Dispatch(context.Background(), h); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	rows, _ := m.RecentHistory(10)
+	if len(rows) != 1 || rows[0].Detail != "text" {
+		t.Fatalf("history must store HistoryDetail, not Detail: %+v", rows)
+	}
+}
+
 func goodWebhookURL(t *testing.T) string {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

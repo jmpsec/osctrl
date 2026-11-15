@@ -671,6 +671,9 @@ func osctrlAPIService() {
 				if _, err := santaMgr.ExpireRequests(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
 					log.Err(err).Msg("error expiring santa requests")
 				}
+				if _, err := santaMgr.PruneLinks(time.Now()); err != nil {
+					log.Err(err).Msg("error pruning santa approval links")
+				}
 				select {
 				case <-vulnCtx.Done():
 					return
@@ -788,6 +791,7 @@ func osctrlAPIService() {
 		handlers.WithPostureEnabled(flagParams.Service.PostureEnabled),
 		handlers.WithVulns(vulnReader),
 		handlers.WithSanta(santaMgr),
+		handlers.WithSantaNotifier(alertsMgr),
 		handlers.WithMFA(mfamgr, webAuthn, flagParams.Service.MFARequired, mfaIssuerName(flagParams)),
 		handlers.WithVersion(buildVersion),
 		handlers.WithName(serviceName),
@@ -1172,6 +1176,12 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/requests",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiSantaPath)+"/{env}/requests/{id}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestGetHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiSantaPath)+"/{env}/requests/link",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestLinkHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"POST "+_apiPath(apiSantaPath)+"/{env}/requests/{id}/decision",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestDecideHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
