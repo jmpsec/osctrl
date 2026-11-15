@@ -1192,6 +1192,12 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/requests/mine",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaMyRequestsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiSantaPath)+"/{env}/votes",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVoteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiSantaPath)+"/{env}/votes",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVoteStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
 	// API: node logs
 	muxAPI.Handle(

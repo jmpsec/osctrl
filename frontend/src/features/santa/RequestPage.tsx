@@ -1,12 +1,50 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createSantaRequest, listMySantaRequests } from '$/api/santa';
+import { createSantaRequest, getSantaVotes, listMySantaRequests, voteSantaFile } from '$/api/santa';
 import { Button } from '$/components/atoms/Button';
 import { Label } from '$/components/atoms/Label';
 import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
 const MAX_JUSTIFICATION = 1000;
+
+/**
+ * Voting for the file, shown only when the environment has a vote threshold.
+ * It shows counts, never who voted.
+ */
+function VoteCard({ env, sha256, machineId }: { env: string; sha256: string; machineId: string }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const key = ['santa', env, 'votes', sha256];
+  const votes = useQuery({ queryKey: key, queryFn: () => getSantaVotes(env, sha256), retry: false });
+  const cast = useMutation({
+    mutationFn: () => voteSantaFile(env, { sha256, machine_id: machineId }),
+    onSuccess: (st) => qc.setQueryData(key, st),
+  });
+  const st = votes.data;
+  if (!st || (st.local_threshold === 0 && st.global_threshold === 0)) return null;
+  return (
+    <section className="space-y-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4">
+      <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('santa.vote.title')}</h2>
+      <p className="text-sm text-[color:var(--text-2)]">
+        {t('santa.vote.count', { n: st.votes })}
+        {st.local_threshold > 0 && ` ${t('santa.vote.local', { n: st.local_threshold })}`}
+        {st.global_threshold > 0 && ` ${t('santa.vote.global', { n: st.global_threshold })}`}
+      </p>
+      {st.allowed !== '' && (
+        <p role="status" className="text-sm text-[color:var(--text-1)]">
+          {t(st.allowed === 'env' ? 'santa.vote.allowedEnv' : 'santa.vote.allowedNode')}
+        </p>
+      )}
+      {cast.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(cast.error)}</p>}
+      <div className="flex justify-end">
+        <Button type="button" disabled={st.voted || cast.isPending} onClick={() => cast.mutate()}>
+          {t(st.voted ? 'santa.vote.voted' : 'santa.vote.button')}
+        </Button>
+      </div>
+    </section>
+  );
+}
 
 /**
  * The page a blocked user lands on from the Santa dialog. It shows only what
@@ -74,6 +112,7 @@ export function RequestPage({ env, sha256, machineId }: { env: string; sha256: s
           )}
         </form>
       )}
+      {complete && <VoteCard env={env} sha256={sha256} machineId={machineId} />}
       {mine.data && mine.data.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('santa.request.mine')}</h2>

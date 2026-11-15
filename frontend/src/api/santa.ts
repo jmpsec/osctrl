@@ -36,6 +36,10 @@ export interface SantaConfig {
   approval_url: string;
   /** Alert channel IDs told about each new request; changing it requires superuser. */
   notify_channels: number[] | null;
+  /** Votes that allow a blocked file on each voter's machine; 0 is off. */
+  vote_local_threshold: number;
+  /** Votes that allow the file in the whole environment; 0 is off. */
+  vote_global_threshold: number;
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }
@@ -246,6 +250,27 @@ export function createSantaRequest(env: string, body: { sha256: string; machine_
 /** GET /api/v1/santa/{env}/requests/mine — the caller's own requests. */
 export function listMySantaRequests(env: string): Promise<SantaOwnRequest[]> {
   return apiFetch<SantaOwnRequest[]>(`${envPath(env)}/requests/mine`);
+}
+
+export interface SantaVoteStatus {
+  votes: number;
+  /** 0 is off. */
+  local_threshold: number;
+  /** 0 is off. */
+  global_threshold: number;
+  voted: boolean;
+  /** What the votes reached for the caller: node is their own machine. */
+  allowed: '' | 'node' | 'env';
+}
+
+/** GET /api/v1/santa/{env}/votes — any signed-in account. */
+export function getSantaVotes(env: string, sha256: string): Promise<SantaVoteStatus> {
+  return apiFetch<SantaVoteStatus>(`${envPath(env)}/votes?sha256=${encodeURIComponent(sha256)}`);
+}
+
+/** POST /api/v1/santa/{env}/votes — one vote per account and file. 409 when a rule blocks the file. */
+export function voteSantaFile(env: string, body: { sha256: string; machine_id: string }): Promise<SantaVoteStatus> {
+  return apiFetch<SantaVoteStatus>(`${envPath(env)}/votes`, jsonInit('POST', body));
 }
 
 /** GET /api/v1/santa/{env}/requests — newest first, at most 500; an empty status lists every status. */

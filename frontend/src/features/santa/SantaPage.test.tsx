@@ -57,7 +57,8 @@ const rule: SantaRule = {
 
 const config: SantaConfig = {
   client_mode: 'MONITOR', batch_size: 0, enable_transitive_rules: false, removable_media: 'ALLOW',
-  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', notify_channels: null, token_set: true,
+  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', notify_channels: null,
+  vote_local_threshold: 0, vote_global_threshold: 0, token_set: true,
 };
 
 function renderPage() {
@@ -286,6 +287,19 @@ describe('SantaPage', () => {
     expect(screen.queryByText('Notify about new requests')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ notify_channels: [3] })));
+  });
+
+  it('saves the vote thresholds', async () => {
+    mockConfig.mockResolvedValue({ ...config, approval_url: 'https://osctrl.example.com', vote_local_threshold: 2 });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    expect(await screen.findByLabelText('Votes to allow on voters’ machines')).toHaveValue(2);
+    const global = screen.getByLabelText('Votes to allow for the environment');
+    await user.clear(global);
+    await user.type(global, '5');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ vote_local_threshold: 2, vote_global_threshold: 5 })));
   });
 
   it('adds and removes a mode override', async () => {

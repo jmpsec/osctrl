@@ -156,21 +156,9 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 			if err := ValidateRule(&rule); err != nil {
 				return err
 			}
-			// Looked up before the insert: a failed insert would abort the transaction.
-			var existing []Rule
-			if err := tx.Where("environment_id = ? AND rule_type = ? AND identifier = ? AND scope = ? AND scope_value = ?",
-				envID, rule.RuleType, rule.Identifier, rule.Scope, rule.ScopeValue).Limit(1).Find(&existing).Error; err != nil {
+			rule, _, err := allowRule(tx, rule)
+			if err != nil {
 				return err
-			}
-			switch {
-			case len(existing) == 0:
-				if err := tx.Create(&rule).Error; err != nil {
-					return err
-				}
-			case strings.HasPrefix(existing[0].Policy, "ALLOWLIST"):
-				rule = existing[0]
-			default:
-				return ErrRuleConflict
 			}
 			req.Status, req.RuleID = RequestApproved, rule.ID
 		}
@@ -190,6 +178,25 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 		return nil
 	})
 	return req, err
+}
+
+// allowRule stores a validated allow rule in tx, or returns the allow rule that
+// is already there for the same file and scope (created is false). A rule that
+// does not allow the file is ErrRuleConflict.
+func allowRule(tx *gorm.DB, rule Rule) (_ Rule, created bool, err error) {
+	// Looked up before the insert: a failed insert would abort the transaction.
+	var existing []Rule
+	if err := tx.Where("environment_id = ? AND rule_type = ? AND identifier = ? AND scope = ? AND scope_value = ?",
+		rule.EnvironmentID, rule.RuleType, rule.Identifier, rule.Scope, rule.ScopeValue).Limit(1).Find(&existing).Error; err != nil {
+		return rule, false, err
+	}
+	switch {
+	case len(existing) == 0:
+		return rule, true, tx.Create(&rule).Error
+	case strings.HasPrefix(existing[0].Policy, "ALLOWLIST"):
+		return existing[0], false, nil
+	}
+	return rule, false, ErrRuleConflict
 }
 
 // ExpireRequests marks pending requests created before olderThan as expired

@@ -32,6 +32,10 @@ type EnvConfig struct {
 	// Alert channel IDs told about each new approval request, with single-use
 	// approve and deny links. Needs ApprovalURL.
 	NotifyChannels []uint `gorm:"serializer:json;type:varchar(255)" json:"notify_channels"`
+	// Votes for a blocked file that allow it on each voter's machine; 0 is off.
+	VoteLocalThreshold uint32 `json:"vote_local_threshold"`
+	// Votes that allow the file in the whole environment; 0 is off.
+	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
 }
 
 // TableName for EnvConfig
@@ -177,10 +181,24 @@ type RequestLink struct {
 // TableName for RequestLink
 func (RequestLink) TableName() string { return "santa_request_links" }
 
+// Vote is one user's vote to allow a file Santa blocked on their machine. A
+// user has one vote per file in an environment.
+type Vote struct {
+	ID            uint      `gorm:"primarykey" json:"id"`
+	CreatedAt     time.Time `json:"created_at"`
+	EnvironmentID uint      `gorm:"uniqueIndex:idx_santa_vote" json:"environment_id"`
+	FileSHA256    string    `gorm:"type:varchar(64);uniqueIndex:idx_santa_vote" json:"file_sha256"`
+	Voter         string    `gorm:"type:varchar(255);uniqueIndex:idx_santa_vote" json:"voter"`
+	MachineID     string    `gorm:"type:varchar(64)" json:"machine_id"`
+}
+
+// TableName for Vote
+func (Vote) TableName() string { return "santa_votes" }
+
 // Migrate creates the Santa tables and fills RemovableMedia for configs saved
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}); err != nil {
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}); err != nil {
 		return err
 	}
 	const unset = "(removable_media = '' OR removable_media IS NULL)"

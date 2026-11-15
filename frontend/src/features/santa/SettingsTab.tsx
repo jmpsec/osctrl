@@ -107,6 +107,8 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         encrypted_removable_media_flags: form.encrypted_removable_media === 'REMOUNT' ? form.encrypted_removable_media_flags : [],
         approval_url: form.approval_url,
         notify_channels: form.notify_channels ?? [],
+        vote_local_threshold: form.vote_local_threshold ?? 0,
+        vote_global_threshold: form.vote_global_threshold ?? 0,
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -180,6 +182,23 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.approvalUrlHint')}</p>
       </div>
       <NotifyChannels envId={envId} selected={form.notify_channels ?? []} onChange={(ids) => setForm({ ...form, notify_channels: ids })} />
+      <div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(['vote_local_threshold', 'vote_global_threshold'] as const).map((field) => (
+            <div key={field}>
+              <Label htmlFor={`santa-${field}`}>{t(field === 'vote_local_threshold' ? 'santa.voteLocal' : 'santa.voteGlobal')}</Label>
+              <Input
+                id={`santa-${field}`}
+                type="number"
+                min={0}
+                value={form[field] ?? 0}
+                onChange={(e) => setForm({ ...form, [field]: Math.max(0, Math.floor(Number(e.target.value)) || 0) })}
+              />
+            </div>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.voteHint')}</p>
+      </div>
 
       {save.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(save.error)}</p>}
       {save.isSuccess && <p role="status" className="text-sm text-[color:var(--text-3)]">{t('santa.saved')}</p>}

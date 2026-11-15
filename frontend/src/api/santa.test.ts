@@ -7,7 +7,7 @@ vi.mock('./client', () => ({
 
 import {
   createSantaRule, decideSantaRequest, decideSantaRequestByLink, deleteSantaRule, getSantaConfig, getSantaRequest, listSantaEvents, listSantaMachines, listSantaRequests, listSantaRules,
-  putSantaConfig, rotateSantaToken, santaQueryKey,
+  getSantaVotes, putSantaConfig, rotateSantaToken, santaQueryKey, voteSantaFile,
 } from './santa';
 
 describe('santa API client', () => {
@@ -38,6 +38,7 @@ describe('santa API client', () => {
       client_mode: 'LOCKDOWN' as const, batch_size: 0, enable_transitive_rules: true,
       removable_media: 'BLOCK' as const, removable_media_flags: [], encrypted_removable_media: '' as const, encrypted_removable_media_flags: [],
       approval_url: 'https://osctrl.example.com', notify_channels: [3],
+      vote_local_threshold: 2, vote_global_threshold: 5,
     };
     await putSantaConfig('dev', cfg);
     expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/config', expect.objectContaining({ method: 'PUT', body: JSON.stringify(cfg) }));
@@ -66,6 +67,14 @@ describe('santa API client', () => {
     }));
     await getSantaRequest('dev', 9);
     expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/requests/9');
+  });
+
+  it('reads and casts votes', async () => {
+    await getSantaVotes('dev', 'abc');
+    expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/votes?sha256=abc');
+    const body = { sha256: 'abc', machine_id: 'M' };
+    await voteSantaFile('dev', body);
+    expect(mockFetch).toHaveBeenLastCalledWith('/api/v1/santa/dev/votes', expect.objectContaining({ method: 'POST', body: JSON.stringify(body) }));
   });
 
   it('builds env-scoped query keys', () => {
