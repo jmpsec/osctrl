@@ -9594,6 +9594,110 @@ paths:
       summary: Rotate the Santa sync token
       tags:
         - santa
+  "/api/v1/santa/{env}/votes":
+    get:
+      description: Any signed-in account may call this. Returns the vote count, both
+        thresholds (0 is off) and whether the caller voted; never who voted.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: SHA-256 of the file
+          in: query
+          name: sha256
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.VoteStatus"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get the votes for a binary
+      tags:
+        - santa
+    post:
+      description: "Any signed-in account may call this; no environment permission is
+        needed. The block must have been reported by the machine. One vote per
+        account and file: voting again changes nothing. At the local threshold
+        each voter's machine gets a BINARY allow rule; at the global threshold
+        the environment gets one. A file blocked by a rule cannot be voted for
+        (409), and neither can any file while both thresholds are 0 (409)."
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaVoteCreate"
+        description: Vote
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.VoteStatus"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Vote to allow a binary Santa blocked
+      tags:
+        - santa
   "/api/v1/saved-queries/{env}":
     get:
       description: Returns paginated saved queries for an environment.
@@ -13330,6 +13434,14 @@ components:
           items:
             type: string
           type: array
+        vote_global_threshold:
+          description: Votes that allow the file in the whole environment; 0 is off, and
+            it cannot be below the local threshold. Needs approval_url
+          type: integer
+        vote_local_threshold:
+          description: Votes that allow a blocked file on each voter's machine; 0 is off.
+            Needs approval_url
+          type: integer
       type: object
     handlers.SantaConfigResponse:
       properties:
@@ -13388,6 +13500,13 @@ components:
           type: boolean
         updated_at:
           type: string
+        vote_global_threshold:
+          description: Votes that allow the file in the whole environment; 0 is off.
+          type: integer
+        vote_local_threshold:
+          description: Votes for a blocked file that allow it on each voter's machine; 0
+            is off.
+          type: integer
       type: object
     handlers.SantaEffectiveRulesResponse:
       properties:
@@ -13513,6 +13632,15 @@ components:
     handlers.SantaTokenResponse:
       properties:
         token:
+          type: string
+      type: object
+    handlers.SantaVoteCreate:
+      properties:
+        machine_id:
+          description: Machine (node) UUID, from the block dialog link
+          type: string
+        sha256:
+          description: SHA-256 of the blocked file, from the block dialog link
           type: string
       type: object
     handlers.StatsResponse:
@@ -14247,6 +14375,24 @@ components:
           type: string
         scope_value:
           type: string
+      type: object
+    santa.VoteStatus:
+      properties:
+        allowed:
+          description: 'What the votes reached for the caller: "" (nothing yet), node or
+            env'
+          type: string
+        global_threshold:
+          description: Votes that allow the file in the whole environment; 0 is off
+          type: integer
+        local_threshold:
+          description: Votes that allow the file on each voter's machine; 0 is off
+          type: integer
+        voted:
+          description: Whether the caller has voted for the file
+          type: boolean
+        votes:
+          type: integer
       type: object
     serviceconfig.ServiceConfig:
       properties:

@@ -46,6 +46,10 @@ type SantaConfigRequest struct {
 	ApprovalURL string `json:"approval_url"`
 	// Alert channel IDs told about each new approval request, at most 10. Needs approval_url. Changing it requires superuser
 	NotifyChannels []uint `json:"notify_channels"`
+	// Votes that allow a blocked file on each voter's machine; 0 is off. Needs approval_url
+	VoteLocalThreshold uint32 `json:"vote_local_threshold"`
+	// Votes that allow the file in the whole environment; 0 is off, and it cannot be below the local threshold. Needs approval_url
+	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -186,6 +190,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		RemovableMedia:        media, RemovableMediaFlags: req.RemovableMediaFlags,
 		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,
 		ApprovalURL: req.ApprovalURL, NotifyChannels: req.NotifyChannels,
+		VoteLocalThreshold: req.VoteLocalThreshold, VoteGlobalThreshold: req.VoteGlobalThreshold,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)

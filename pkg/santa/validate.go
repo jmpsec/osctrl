@@ -107,8 +107,20 @@ func ValidateConfig(c *EnvConfig) error {
 	case len(c.NotifyChannels) > 0 && c.ApprovalURL == "":
 		return errors.New("notification channels need the approval URL")
 	}
+	local, global := c.VoteLocalThreshold, c.VoteGlobalThreshold
+	switch {
+	case local > MaxVoteThreshold || global > MaxVoteThreshold:
+		return fmt.Errorf("vote thresholds are at most %d", MaxVoteThreshold)
+	case local > 0 && global > 0 && global < local:
+		return errors.New("the global vote threshold cannot be below the local one")
+	case (local > 0 || global > 0) && c.ApprovalURL == "":
+		return errors.New("voting needs the approval URL")
+	}
 	return nil
 }
+
+// MaxVoteThreshold caps both vote thresholds.
+const MaxVoteThreshold = 10000
 
 // MaxNotifyChannels caps the alert channels notified of a new request.
 const MaxNotifyChannels = 10

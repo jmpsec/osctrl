@@ -61,7 +61,8 @@ func (m *Manager) SaveConfig(cfg EnvConfig) error {
 	return m.DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "environment_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "batch_size", "enable_transitive_rules", "block_usb_mount",
-			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels", "updated_at"}),
+			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels",
+			"vote_local_threshold", "vote_global_threshold", "updated_at"}),
 	}).Create(&cfg).Error
 }
 
