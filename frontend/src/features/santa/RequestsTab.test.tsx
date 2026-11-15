@@ -15,8 +15,10 @@ vi.mock('$/api/santa', async () => {
     listSantaRequests: (env: string, status: string) => mockList(env, status),
     decideSantaRequest: (env: string, id: number, body: SantaDecision) => mockDecide(env, id, body),
     listSantaMachines: () => Promise.resolve([{ machine_id: 'M-1', hostname: 'ada-mbp' }]),
+    getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256),
   };
 });
+const mockBinary = vi.fn<(env: string, sha256: string) => Promise<never>>(() => Promise.reject(new Error('no events for this file')));
 
 function request(id: number, over: Partial<SantaRequest> = {}): SantaRequest {
   return {
@@ -69,6 +71,13 @@ describe('RequestsTab', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(mockDecide).toHaveBeenCalledWith('dev', 1, { decision: 'approve', scope: 'node', scope_value: '', reason: '' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('opens the binary details from the file name', async () => {
+    renderTab();
+    await userEvent.click(await screen.findByRole('button', { name: 'Binary details: tool-1' }));
+    expect(await screen.findByRole('dialog', { name: 'Binary details' })).toBeInTheDocument();
+    expect(mockBinary).toHaveBeenCalledWith('dev', request(1).file_sha256);
   });
 
   it('approves a MONITOR request without a rule scope', async () => {

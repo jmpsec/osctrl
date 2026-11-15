@@ -19,7 +19,8 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { useLocale } from '$/i18n/useLocale';
-import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
+import { BinaryModal } from './BinaryModal';
+import { BINARY_LINK, MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
 const STATUSES: SantaRequestStatus[] = ['pending', 'approved', 'denied', 'expired'];
 const MAX_REASON = 1000;
@@ -46,6 +47,8 @@ export function RequestsTab({ env }: { env: string }) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [dialog, setDialog] = useState<Pending | null>(null);
+  const [binary, setBinary] = useState<string | null>(null);
+  const closeBinary = useCallback(() => setBinary(null), []);
   const closeDialog = useCallback(() => {
     setDialog(null);
     setSelected(new Set());
@@ -142,6 +145,7 @@ export function RequestsTab({ env }: { env: string }) {
                     when={formatDateTime(new Date(r.created_at))}
                     selected={selected.has(r.id)}
                     onToggle={() => toggle(r.id)}
+                    onBinary={() => setBinary(r.file_sha256)}
                     onDecide={(approve) => setDialog({ approve, ids: [r.id], monitor: r.kind === 'monitor' })}
                   />
                 ))}
@@ -151,6 +155,7 @@ export function RequestsTab({ env }: { env: string }) {
         )}
       </section>
       {dialog && <DecisionModal env={env} pending={dialog} onClose={closeDialog} />}
+      {binary && <BinaryModal env={env} sha256={binary} onClose={closeBinary} />}
     </div>
   );
 }
@@ -162,12 +167,14 @@ function RequestRow({
   selected,
   onToggle,
   onDecide,
+  onBinary,
 }: {
   r: SantaRequest;
   hostname?: string;
   when: string;
   selected: boolean;
   onToggle: () => void;
+  onBinary: () => void;
   onDecide: (approve: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -180,7 +187,11 @@ function RequestRow({
       </td>
       {/* File names, paths, signing IDs and the justification come from clients and users: React text only. */}
       <td className={TD}>
-        <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{name}</div>
+        {r.file_sha256 ? (
+          <button type="button" className={BINARY_LINK} aria-label={`${t('santa.binary.title')}: ${name}`} onClick={onBinary}>{name}</button>
+        ) : (
+          <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{name}</div>
+        )}
         {r.file_path && <div className={sub}>{r.file_path}</div>}
         {r.file_sha256 && <div className={`${MONO} ${sub}`}>{r.file_sha256}</div>}
         {r.signing_id && <div className={`${MONO} ${sub}`}>{r.signing_id}</div>}

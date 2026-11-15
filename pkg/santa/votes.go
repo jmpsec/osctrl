@@ -76,19 +76,13 @@ func voteStatus(db *gorm.DB, cfg EnvConfig, sha256, voter string) (VoteStatus, e
 
 // knownBad reports whether votes must not allow the file of ev: Santa blocked
 // it for a reason other than being unknown, or a rule that is not an allow rule
-// names the file, its team ID, signing ID or CDHash in any scope.
+// names the file, its team ID, signing ID, CDHash or leaf certificate in any scope.
 func knownBad(db *gorm.DB, ev Event) (bool, error) {
 	if ev.Decision != "BLOCK_UNKNOWN" {
 		return true, nil
 	}
-	match := db.Where("rule_type = ? AND identifier = ?", "BINARY", strings.ToLower(ev.FileSHA256))
-	for typ, id := range map[string]string{"TEAMID": strings.ToUpper(ev.TeamID), "SIGNINGID": ev.SigningID, "CDHASH": strings.ToLower(ev.CDHash)} {
-		if id != "" {
-			match = match.Or("rule_type = ? AND identifier = ?", typ, id)
-		}
-	}
 	var n int64
-	err := db.Model(&Rule{}).Where("environment_id = ? AND policy NOT LIKE ?", ev.EnvironmentID, "ALLOWLIST%").Where(match).Count(&n).Error
+	err := db.Model(&Rule{}).Where("environment_id = ? AND policy NOT LIKE ?", ev.EnvironmentID, "ALLOWLIST%").Where(ruleMatch(db, ev)).Count(&n).Error
 	return n > 0, err
 }
 

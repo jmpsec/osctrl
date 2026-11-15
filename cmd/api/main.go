@@ -1194,6 +1194,9 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 			"GET "+_apiPath(apiSantaPath)+"/{env}/events",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaEventsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"GET "+_apiPath(apiSantaPath)+"/{env}/binaries/{sha256}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaBinaryHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/requests",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(

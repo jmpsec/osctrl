@@ -122,6 +122,22 @@ type Event struct {
 	CDHash        string    `json:"cd_hash"`
 	BundleID      string    `json:"bundle_id"`
 	ExecutedAt    time.Time `json:"executed_at"`
+	BundleName    string    `json:"bundle_name"`
+	BundleVersion string    `json:"bundle_version"`
+	BundlePath    string    `json:"bundle_path"`
+	// Leaf certificate first, as the client reported it; empty for unsigned files
+	// and for events stored before the chain was kept.
+	SigningChain []Cert `gorm:"serializer:json;type:text" json:"signing_chain"`
+}
+
+// Cert is one certificate of a signing chain, as reported by the Santa client.
+type Cert struct {
+	SHA256     string    `json:"sha256"`
+	CN         string    `json:"cn"`
+	Org        string    `json:"org"`
+	OU         string    `json:"ou"`
+	ValidFrom  time.Time `json:"valid_from"`
+	ValidUntil time.Time `json:"valid_until"`
 }
 
 // TableName for Event

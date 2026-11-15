@@ -8568,6 +8568,63 @@ paths:
       summary: List query samples
       tags:
         - queries
+  "/api/v1/santa/{env}/binaries/{sha256}":
+    get:
+      description: Requires environment admin. Identity fields (names, signing chain,
+        bundle) come from the file's newest event and are written by Santa
+        clients. First and last seen, the event counts and the machine count
+        only cover the events osctrl still keeps (30 days). Rules lists every
+        rule of the environment naming the file, its team ID, signing ID, CDHash
+        or leaf certificate. 404 when the environment has no event for the hash.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: SHA-256 of the file
+          in: path
+          name: sha256
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Binary"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Get what the stored events say about one binary
+      tags:
+        - santa
   "/api/v1/santa/{env}/config":
     get:
       parameters:
@@ -14166,9 +14223,76 @@ components:
         - PlatformLinux
         - PlatformDarwin
         - PlatformWindows
+    santa.Binary:
+      properties:
+        blocked:
+          type: integer
+        bundle_id:
+          type: string
+        bundle_name:
+          type: string
+        bundle_path:
+          type: string
+        bundle_version:
+          type: string
+        cd_hash:
+          type: string
+        events:
+          description: Events of the file, and how many of them were blocks
+          type: integer
+        file_name:
+          type: string
+        file_path:
+          type: string
+        first_seen:
+          type: string
+        last_seen:
+          type: string
+        machines:
+          description: Distinct machines that reported the file
+          type: integer
+        rules:
+          description: Rules of any scope naming the file, its team ID, signing ID, CDHash
+            or leaf certificate
+          items:
+            $ref: "#/components/schemas/santa.Rule"
+          type: array
+        sha256:
+          type: string
+        signing_chain:
+          description: Leaf certificate first; empty when unsigned or not reported
+          items:
+            $ref: "#/components/schemas/santa.Cert"
+          type: array
+        signing_id:
+          type: string
+        team_id:
+          type: string
+      type: object
+    santa.Cert:
+      properties:
+        cn:
+          type: string
+        org:
+          type: string
+        ou:
+          type: string
+        sha256:
+          type: string
+        valid_from:
+          type: string
+        valid_until:
+          type: string
+      type: object
     santa.Event:
       properties:
         bundle_id:
+          type: string
+        bundle_name:
+          type: string
+        bundle_path:
+          type: string
+        bundle_version:
           type: string
         cd_hash:
           type: string
@@ -14194,6 +14318,15 @@ components:
           type: string
         node_id:
           type: integer
+        signing_chain:
+          description: >-
+            Leaf certificate first, as the client reported it; empty for
+            unsigned files
+
+            and for events stored before the chain was kept.
+          items:
+            $ref: "#/components/schemas/santa.Cert"
+          type: array
         signing_id:
           type: string
         team_id:
