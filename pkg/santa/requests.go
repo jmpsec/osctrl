@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"gorm.io/gorm"
 )
 
 const (
@@ -89,6 +91,99 @@ func (m *Manager) Requests(envID uint, status, requester string) ([]Request, err
 	var reqs []Request
 	err := q.Order("id DESC").Limit(maxPageSize).Find(&reqs).Error
 	return reqs, err
+}
+
+var (
+	// ErrRequestNotPending is returned when the request was already decided or expired.
+	ErrRequestNotPending = errors.New("santa: request is not pending")
+	// ErrRuleConflict is returned when a rule that does not allow the file
+	// already exists for the same file and scope.
+	ErrRuleConflict = errors.New("santa: a rule that does not allow this file already exists for this scope")
+)
+
+// Decision is an approver's answer to a pending request.
+type Decision struct {
+	Approve bool
+	// Scope of the allow rule on approval: "node" (the requesting machine),
+	// "tag" or "env". Ignored on denial.
+	Scope string
+	// Tag name for scope "tag"; ignored otherwise.
+	ScopeValue string
+	// Required on denial, optional on approval; at most MaxJustification characters.
+	Reason string
+	// The approver.
+	By string
+}
+
+// DecideRequest approves or denies a pending request. An approval stores one
+// BINARY allow rule for the file in the chosen scope, or reuses an allow rule
+// that is already there, in the same transaction as the status change.
+// Returns gorm.ErrRecordNotFound if the request is not in envID.
+func (m *Manager) DecideRequest(envID, id uint, d Decision) (Request, error) {
+	d.Reason = strings.TrimSpace(d.Reason)
+	switch {
+	case d.By == "":
+		return Request{}, fmt.Errorf("%w: approver is required", ErrInvalidRequest)
+	case utf8.RuneCountInString(d.Reason) > MaxJustification:
+		return Request{}, fmt.Errorf("%w: reason is at most %d characters", ErrInvalidRequest, MaxJustification)
+	case !d.Approve && d.Reason == "":
+		return Request{}, fmt.Errorf("%w: a reason is required to deny", ErrInvalidRequest)
+	}
+	var req Request
+	err := m.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("environment_id = ? AND id = ?", envID, id).First(&req).Error; err != nil {
+			return err
+		}
+		now := m.now()
+		req.Status, req.DecidedBy, req.DecidedAt, req.Reason = RequestDenied, d.By, &now, d.Reason
+		if d.Approve {
+			rule := Rule{
+				EnvironmentID: envID, Identifier: req.FileSHA256, RuleType: "BINARY", Policy: "ALLOWLIST",
+				Scope: d.Scope, ScopeValue: d.ScopeValue, CreatedBy: d.By,
+			}
+			switch d.Scope {
+			case "node":
+				rule.ScopeValue = req.MachineID
+			case "env":
+				rule.ScopeValue = ""
+			}
+			if err := ValidateRule(&rule); err != nil {
+				return err
+			}
+			// Looked up before the insert: a failed insert would abort the transaction.
+			var existing []Rule
+			if err := tx.Where("environment_id = ? AND rule_type = ? AND identifier = ? AND scope = ? AND scope_value = ?",
+				envID, rule.RuleType, rule.Identifier, rule.Scope, rule.ScopeValue).Limit(1).Find(&existing).Error; err != nil {
+				return err
+			}
+			switch {
+			case len(existing) == 0:
+				if err := tx.Create(&rule).Error; err != nil {
+					return err
+				}
+			case strings.HasPrefix(existing[0].Policy, "ALLOWLIST"):
+				rule = existing[0]
+			default:
+				return ErrRuleConflict
+			}
+			req.Status, req.RuleID = RequestApproved, rule.ID
+		}
+		// The status condition makes a second decision a no-op, so one request
+		// never produces two rules.
+		res := tx.Model(&Request{}).Where("id = ? AND status = ?", req.ID, RequestPending).Updates(map[string]any{
+			"status": req.Status, "decided_by": req.DecidedBy, "decided_at": req.DecidedAt,
+			"reason": req.Reason, "rule_id": req.RuleID, "updated_at": now,
+		})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrRequestNotPending
+		}
+		req.UpdatedAt = now
+		return nil
+	})
+	return req, err
 }
 
 // ExpireRequests marks pending requests created before olderThan as expired

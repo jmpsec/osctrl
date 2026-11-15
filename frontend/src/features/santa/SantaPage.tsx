@@ -6,10 +6,11 @@ import { usePageTitle } from '$/lib/usePageTitle';
 import { StatusTabs } from '$/components/data/StatusTabs';
 import { EventsTab } from './EventsTab';
 import { MachinesTab } from './MachinesTab';
+import { RequestsTab } from './RequestsTab';
 import { EMPTY_RULE, RuleFormModal, RulesTab, type RuleDraft } from './RulesTab';
 import { SettingsTab } from './SettingsTab';
 
-type Tab = 'rules' | 'events' | 'machines' | 'settings';
+type Tab = 'rules' | 'events' | 'requests' | 'machines' | 'settings';
 
 export function SantaPage() {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ export function SantaPage() {
   const tabs: { value: Tab; label: string }[] = [
     { value: 'rules', label: t('santa.tabRules') },
     { value: 'events', label: t('santa.tabEvents') },
+    { value: 'requests', label: t('santa.tabRequests') },
     { value: 'machines', label: t('santa.tabMachines') },
     { value: 'settings', label: t('santa.tabSettings') },
   ];
@@ -41,6 +43,7 @@ export function SantaPage() {
 
       {tab === 'rules' && <RulesTab env={env} onAdd={() => setDraft(EMPTY_RULE)} onEdit={setDraft} />}
       {tab === 'events' && <EventsTab env={env} onRule={setDraft} />}
+      {tab === 'requests' && <RequestsTab env={env} />}
       {tab === 'machines' && <MachinesTab env={env} />}
       {tab === 'settings' && <SettingsTab env={env} />}
 

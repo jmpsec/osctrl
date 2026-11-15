@@ -21,7 +21,7 @@ vi.mock('$/api/santa', async () => {
 const SHA = 'ab'.repeat(32);
 const MACHINE = '22222222-2222-4222-8222-222222222222';
 const own: SantaOwnRequest = {
-  id: 1, file_sha256: SHA, machine_id: MACHINE, status: 'pending', created_at: '2026-11-13T10:00:00Z', justification: 'I need it',
+  id: 1, file_sha256: SHA, machine_id: MACHINE, status: 'pending', created_at: '2026-11-13T10:00:00Z', justification: 'I need it', reason: '',
 };
 
 function renderPage(sha256 = SHA, machineId = MACHINE) {
@@ -74,9 +74,10 @@ describe('RequestPage', () => {
   });
 
   it('lists the caller’s own requests', async () => {
-    mockMine.mockResolvedValue([{ ...own, status: 'denied' }]);
+    mockMine.mockResolvedValue([{ ...own, status: 'denied', reason: 'not company software' }]);
     renderPage();
     expect(await screen.findByText('Denied')).toBeInTheDocument();
+    expect(screen.getByText('not company software')).toBeInTheDocument();
   });
 });
 

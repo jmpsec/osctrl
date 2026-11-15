@@ -96,7 +96,7 @@ Santa fills the two placeholders. An `EventDetailURL` in the Mac's configuration
 - One account can hold 20 pending requests per environment (`429` beyond that).
 - If Santa has not uploaded the block yet, the answer is `404` and the user retries a minute later. The same `404` covers an unknown environment and an environment with requests turned off.
 - Pending requests older than 30 days become `expired` (same window as event retention).
-- `approved` and `denied` are set by the approval queue, which is not part of osctrl yet.
+- `approved` and `denied` are set by an approver, see **Deciding requests** below.
 
 **Who can request.** Any signed-in osctrl account, with no environment permission needed. There is no separate requester role: a requester is an account with no permissions, usually created at first SSO login by a provider with **JIT provision** on, or created by hand. Through these routes a requester gets back only the hash, machine ID, status and date of a request, plus their own justification. `GET /api/v1/santa/{env}/requests/mine` lists only their own requests. The request page sits outside the application shell.
 
@@ -106,7 +106,23 @@ Such an account is still an osctrl account. It can open the rest of the UI, wher
 
 - osctrl does not check that the person signing in is the user of the Mac in the link. Anyone with an account who knows a machine UUID and a file hash blocked on it can file the request. The request records who asked.
 - The `404` for a block osctrl has not seen tells a requester whether a given file was blocked on a given machine.
-- Environment admins list requests with `GET /api/v1/santa/{env}/requests` (optional `status`). There is no queue in the UI yet.
+- Two people asking for the same file at the same instant can each get a pending request. Each is decided on its own; approving both for the same scope still leaves one rule.
+
+**Deciding requests.** Environment admins decide requests in the **Requests** tab of the Santa page. It lists pending requests first, with the file name, path, hash and signing ID from the blocked event, the machine, the user who ran the file, the requester and the justification. The list can be searched, filtered by status, and decided one request at a time or several at once. The API is `GET /api/v1/santa/{env}/requests` (optional `status`, newest 500) and `POST /api/v1/santa/{env}/requests/{id}/decision`:
+
+```json
+{ "decision": "approve", "scope": "node", "scope_value": "", "reason": "" }
+```
+
+- `approve` creates one `BINARY` `ALLOWLIST` rule for the file hash, in the scope the approver picks: `node` (the machine that asked), `tag` (`scope_value` is the tag name) or `env`. The rule and the status change are stored together, and machines in that scope get the rule on their next sync.
+- If an allow rule for the same hash and scope already exists, the request is approved and points at that rule; no second rule is created.
+- If the existing rule for the same hash and scope blocks the file, the answer is `409` and the request stays pending. Change or delete that rule first.
+- `deny` needs a `reason` (at most 1000 characters). A reason is optional on approval.
+- A request that was already decided or has expired answers `409`.
+- The requester sees the new status, and the reason, in their list on the request page. osctrl does not send an email.
+- Every decision writes an audit line with the request, hash, machine, requester and, for approvals, the rule ID and scope. The reason text is kept on the request, not in the audit line.
+- Deleting the rule later does not change the request; it stays `approved` with the old rule ID.
+- Bulk decisions in the UI are one API call per request, so a failure on one does not undo the others.
 
 ## Authentication model
 

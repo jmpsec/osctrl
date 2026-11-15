@@ -90,7 +90,10 @@ export function RequestPage({ env, sha256, machineId }: { env: string; sha256: s
                 {mine.data.map((r) => (
                   <tr key={r.id} className={ROW}>
                     <td className={`${TD} ${MONO}`}>{r.file_sha256}</td>
-                    <td className={TD}>{t(`santa.request.statuses.${r.status}`)}</td>
+                    <td className={TD}>
+                      {t(`santa.request.statuses.${r.status}`)}
+                      {r.reason && <div className="text-xs text-[color:var(--text-3)] [overflow-wrap:anywhere]">{r.reason}</div>}
+                    </td>
                     <td className={TD}>{new Date(r.created_at).toLocaleString()}</td>
                   </tr>
                 ))}

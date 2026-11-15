@@ -3,12 +3,15 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/utils"
+	"gorm.io/gorm"
 )
 
 // SantaRequestCreate is what a blocked user submits.
@@ -31,10 +34,24 @@ type SantaOwnRequest struct {
 	CreatedAt  time.Time `json:"created_at"`
 	// Empty when the request was made by someone else
 	Justification string `json:"justification"`
+	// The approver's reason, when one was given
+	Reason string `json:"reason"`
+}
+
+// SantaRequestDecision is an approver's answer to a pending request.
+type SantaRequestDecision struct {
+	// approve | deny
+	Decision string `json:"decision"`
+	// On approve, where the allow rule applies: node (the requesting machine), tag or env
+	Scope string `json:"scope"`
+	// Tag name, with scope tag
+	ScopeValue string `json:"scope_value"`
+	// Required to deny, optional to approve; at most 1000 characters. The requester sees it
+	Reason string `json:"reason"`
 }
 
 func ownRequest(r santa.Request, user string) SantaOwnRequest {
-	out := SantaOwnRequest{ID: r.ID, FileSHA256: r.FileSHA256, MachineID: r.MachineID, Status: r.Status, CreatedAt: r.CreatedAt}
+	out := SantaOwnRequest{ID: r.ID, FileSHA256: r.FileSHA256, MachineID: r.MachineID, Status: r.Status, CreatedAt: r.CreatedAt, Reason: r.Reason}
 	if r.Requester == user {
 		out.Justification = r.Justification
 	}
@@ -175,4 +192,69 @@ func (h *HandlersApi) SantaRequestsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, reqs)
+}
+
+// SantaRequestDecideHandler — POST /api/v1/santa/{env}/requests/{id}/decision
+// @Summary Approve or deny a Santa approval request
+// @Description Requires environment admin. Approving creates one BINARY allow rule for the file in the chosen scope, or reuses an allow rule that is already there; clients get it on their next sync. Denying needs a reason.
+// @Tags santa
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param id path int true "Request ID"
+// @Param body body SantaRequestDecision true "Decision"
+// @Success 200 {object} santa.Request
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 409 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/requests/{id}/decision [post]
+func (h *HandlersApi) SantaRequestDecideHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
+	if err != nil {
+		apiErrorResponse(w, "invalid request id", http.StatusBadRequest, err)
+		return
+	}
+	var body SantaRequestDecision
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&body); err != nil {
+		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
+		return
+	}
+	if body.Decision != "approve" && body.Decision != "deny" {
+		apiErrorResponse(w, "decision must be approve or deny", http.StatusBadRequest, nil)
+		return
+	}
+	req, err := h.Santa.DecideRequest(env.ID, uint(id), santa.Decision{
+		Approve: body.Decision == "approve", Scope: body.Scope, ScopeValue: body.ScopeValue, Reason: body.Reason, By: user,
+	})
+	switch {
+	case errors.Is(err, santa.ErrInvalidRequest), errors.Is(err, santa.ErrInvalidRule):
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
+		return
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		apiErrorResponse(w, "request not found", http.StatusNotFound, err)
+		return
+	case errors.Is(err, santa.ErrRequestNotPending):
+		apiErrorResponse(w, "the request was already decided or has expired", http.StatusConflict, err)
+		return
+	case errors.Is(err, santa.ErrRuleConflict):
+		apiErrorResponse(w, "a rule that does not allow this file already exists for this scope; change or delete it first", http.StatusConflict, err)
+		return
+	case err != nil:
+		apiErrorResponse(w, "error deciding request", http.StatusInternalServerError, err)
+		return
+	}
+	// The free-text reason stays on the request, out of the audit line.
+	action := fmt.Sprintf("deny request %d", req.ID)
+	if req.Status == santa.RequestApproved {
+		action = fmt.Sprintf("approve request %d rule=%d scope=%s", req.ID, req.RuleID, body.Scope)
+	}
+	h.santaAudit(user, fmt.Sprintf("%s sha256=%s machine=%s requester=%s", action, req.FileSHA256, req.MachineID, req.Requester), r, env)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, req)
 }

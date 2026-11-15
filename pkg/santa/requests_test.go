@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestValidateConfigApprovalURL(t *testing.T) {
@@ -145,4 +146,118 @@ func TestCreateRequestPendingCap(t *testing.T) {
 	// The cap is per requester.
 	_, _, err = m.CreateRequest(1, machine, evs[MaxPendingRequests].FileSHA256, "eve", "need it")
 	require.NoError(t, err)
+}
+
+func TestDecideRequest(t *testing.T) {
+	m := newTestManager(t)
+	machine := strings.ToUpper(testUUID)
+	shas := make([]string, 6)
+	evs := make([]Event, len(shas))
+	for i := range shas {
+		shas[i] = fmt.Sprintf("%064x", i+1)
+		evs[i] = Event{EnvironmentID: 1, MachineID: machine, Decision: "BLOCK_BINARY", FileSHA256: shas[i]}
+	}
+	require.NoError(t, m.AddEvents(evs))
+	ask := func(i int) Request {
+		t.Helper()
+		req, created, err := m.CreateRequest(1, machine, shas[i], "bob", "need it")
+		require.NoError(t, err)
+		require.True(t, created)
+		return req
+	}
+	rulesFor := func(sha string) []Rule {
+		t.Helper()
+		var rs []Rule
+		require.NoError(t, m.DB.Where("identifier = ?", sha).Find(&rs).Error)
+		return rs
+	}
+
+	req := ask(0)
+	bad := []struct {
+		name string
+		d    Decision
+	}{
+		{"no approver", Decision{Approve: true, Scope: "env"}},
+		{"deny without reason", Decision{By: "alice", Reason: "  "}},
+		{"long reason", Decision{By: "alice", Reason: strings.Repeat("é", MaxJustification+1)}},
+	}
+	for _, tt := range bad {
+		_, err := m.DecideRequest(1, req.ID, tt.d)
+		require.ErrorIs(t, err, ErrInvalidRequest, tt.name)
+	}
+	for _, d := range []Decision{{Approve: true, By: "alice", Scope: "everywhere"}, {Approve: true, By: "alice", Scope: "tag"}} {
+		_, err := m.DecideRequest(1, req.ID, d)
+		require.ErrorIs(t, err, ErrInvalidRule)
+	}
+	// Another environment cannot decide it, and nothing above changed it.
+	_, err := m.DecideRequest(2, req.ID, Decision{Approve: true, By: "alice", Scope: "env"})
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	require.Empty(t, rulesFor(shas[0]))
+
+	// Approving for the machine: one node rule the machine gets on its next sync.
+	got, err := m.DecideRequest(1, req.ID, Decision{Approve: true, By: "alice", Scope: "node", ScopeValue: "ignored"})
+	require.NoError(t, err)
+	require.Equal(t, RequestApproved, got.Status)
+	require.Equal(t, "alice", got.DecidedBy)
+	require.NotNil(t, got.DecidedAt)
+	rules := rulesFor(shas[0])
+	require.Len(t, rules, 1)
+	require.Equal(t, got.RuleID, rules[0].ID)
+	require.Equal(t, Rule{
+		ID: rules[0].ID, CreatedAt: rules[0].CreatedAt, UpdatedAt: rules[0].UpdatedAt, EnvironmentID: 1,
+		Identifier: shas[0], RuleType: "BINARY", Policy: "ALLOWLIST", Scope: "node", ScopeValue: machine, CreatedBy: "alice",
+	}, rules[0])
+	eff, err := m.EffectiveRules(1, testUUID, nil)
+	require.NoError(t, err)
+	require.Len(t, eff, 1)
+	other, err := m.EffectiveRules(1, "11111111-2222-3333-4444-555555555555", nil)
+	require.NoError(t, err)
+	require.Empty(t, other)
+
+	// A decided request cannot be decided again, either way.
+	for _, d := range []Decision{{Approve: true, By: "carol", Scope: "env"}, {By: "carol", Reason: "no"}} {
+		_, err = m.DecideRequest(1, req.ID, d)
+		require.ErrorIs(t, err, ErrRequestNotPending)
+	}
+	require.Len(t, rulesFor(shas[0]), 1)
+	stored, err := m.Requests(1, RequestApproved, "")
+	require.NoError(t, err)
+	require.Len(t, stored, 1)
+	require.Equal(t, "alice", stored[0].DecidedBy)
+
+	// Tag and environment scopes.
+	got, err = m.DecideRequest(1, ask(1).ID, Decision{Approve: true, By: "alice", Scope: "tag", ScopeValue: "dev"})
+	require.NoError(t, err)
+	require.Equal(t, "dev", rulesFor(shas[1])[0].ScopeValue)
+	got, err = m.DecideRequest(1, ask(2).ID, Decision{Approve: true, By: "alice", Scope: "env", ScopeValue: "ignored"})
+	require.NoError(t, err)
+	require.Equal(t, "", rulesFor(shas[2])[0].ScopeValue)
+	require.NotZero(t, got.RuleID)
+
+	// An allow rule already there is reused, not duplicated.
+	allow := Rule{EnvironmentID: 1, Identifier: shas[3], RuleType: "BINARY", Policy: "ALLOWLIST_COMPILER", Scope: "env"}
+	require.NoError(t, m.CreateRule(&allow))
+	got, err = m.DecideRequest(1, ask(3).ID, Decision{Approve: true, By: "alice", Scope: "env"})
+	require.NoError(t, err)
+	require.Equal(t, allow.ID, got.RuleID)
+	require.Len(t, rulesFor(shas[3]), 1)
+
+	// A block rule in the same scope is not overridden; the request stays pending.
+	block := Rule{EnvironmentID: 1, Identifier: shas[4], RuleType: "BINARY", Policy: "BLOCKLIST", Scope: "env"}
+	require.NoError(t, m.CreateRule(&block))
+	blocked := ask(4)
+	_, err = m.DecideRequest(1, blocked.ID, Decision{Approve: true, By: "alice", Scope: "env"})
+	require.ErrorIs(t, err, ErrRuleConflict)
+	pending, err := m.Requests(1, RequestPending, "")
+	require.NoError(t, err)
+	require.Len(t, pending, 1)
+	require.Equal(t, blocked.ID, pending[0].ID)
+
+	// Denying records the reason and creates no rule.
+	got, err = m.DecideRequest(1, ask(5).ID, Decision{By: "alice", Reason: " not company software ", Scope: "env"})
+	require.NoError(t, err)
+	require.Equal(t, RequestDenied, got.Status)
+	require.Equal(t, "not company software", got.Reason)
+	require.Zero(t, got.RuleID)
+	require.Empty(t, rulesFor(shas[5]))
 }

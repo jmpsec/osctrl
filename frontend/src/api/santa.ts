@@ -120,7 +120,7 @@ export interface SantaEventsPage {
   page: number;
 }
 
-export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events', ...rest: unknown[]) =>
+export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests', ...rest: unknown[]) =>
   ['santa', env, part, ...rest] as const;
 
 function envPath(env: string): string {
@@ -205,6 +205,32 @@ export interface SantaOwnRequest {
   created_at: string;
   /** Empty when someone else made the request. */
   justification: string;
+  /** The approver's reason, when one was given. */
+  reason: string;
+}
+
+/** The approver's view of an approval request. File fields are reported by the Santa client. */
+export interface SantaRequest extends SantaOwnRequest {
+  file_name: string;
+  file_path: string;
+  signing_id: string;
+  team_id: string;
+  executing_user: string;
+  requester: string;
+  decided_by: string;
+  decided_at: string | null;
+  /** The allow rule an approval created or reused; 0 otherwise. */
+  rule_id: number;
+}
+
+export interface SantaDecision {
+  decision: 'approve' | 'deny';
+  /** On approve: node is the requesting machine. */
+  scope?: SantaScope;
+  /** Tag name, with scope tag. */
+  scope_value?: string;
+  /** Required to deny; the requester sees it. */
+  reason: string;
 }
 
 /**
@@ -218,6 +244,19 @@ export function createSantaRequest(env: string, body: { sha256: string; machine_
 /** GET /api/v1/santa/{env}/requests/mine — the caller's own requests. */
 export function listMySantaRequests(env: string): Promise<SantaOwnRequest[]> {
   return apiFetch<SantaOwnRequest[]>(`${envPath(env)}/requests/mine`);
+}
+
+/** GET /api/v1/santa/{env}/requests — newest first, at most 500; an empty status lists every status. */
+export function listSantaRequests(env: string, status: SantaRequestStatus | '' = ''): Promise<SantaRequest[]> {
+  return apiFetch<SantaRequest[]>(`${envPath(env)}/requests${status ? `?status=${status}` : ''}`);
+}
+
+/**
+ * POST /api/v1/santa/{env}/requests/{id}/decision — approving creates the allow
+ * rule. 409 when the request is no longer pending or a block rule is in the way.
+ */
+export function decideSantaRequest(env: string, id: number, body: SantaDecision): Promise<SantaRequest> {
+  return apiFetch<SantaRequest>(`${envPath(env)}/requests/${id}/decision`, jsonInit('POST', body));
 }
 
 /** GET /api/v1/santa/{env}/events */
