@@ -124,6 +124,23 @@ Such an account is still an osctrl account. It can open the rest of the UI, wher
 - Deleting the rule later does not change the request; it stays `approved` with the old rule ID.
 - Bulk decisions in the UI are one API call per request, so a failure on one does not undo the others.
 
+**Notifying approvers.** Approvers do not have to watch the queue: each new request can be sent to alert channels (email or webhook). It needs alerts enabled in `osctrl-api` (`--alerts-enabled`) and the approval URL set.
+
+- In **Settings**, tick the channels under **Notify about new requests** (`notify_channels` in the config API, at most 10). A channel must be global or belong to the environment.
+- Changing the channels requires a superuser, like alert rules on log content: the notification carries text written by the requester and by the Santa client. An environment admin can still save the rest of the config; the channels are kept.
+- The notification is sent by `osctrl-api` when the request is created, once per request. A request merged into a pending one sends nothing. A notification that cannot be delivered is logged and does not fail the request; it is not retried.
+- The message says who asks, for which file and machine, and why, on one line, followed by an **Approve** and a **Deny** link:
+
+```
+https://osctrl.example.com/santa/decide/ENVIRONMENT-UUID?request=12&action=approve#TOKEN
+```
+
+- Opening a link decides nothing. It shows the request and the same choices as the queue (scope for an approval, reason for a denial); the approver confirms there. The page asks them to sign in first.
+- A link is not a credential. `POST /api/v1/santa/{env}/requests/link` requires an environment admin session like every other decision, and the token only proves the link came from the notification. Anyone else who gets the link can do nothing with it.
+- A link works once, for the action it was made for, for 72 hours. A used, expired, unknown or other-environment link, or an approve link used to deny, answers `410`. Once the request is decided the other link answers `409`. A decision that fails (for example a block rule in the way) leaves the link usable.
+- Only the SHA-256 of each token is stored. The token is the URL fragment, so the browser does not send it with the page request; it is posted in the request body. The alert history keeps the message without the links.
+- A webhook channel receives the usual alert JSON with the message in `detail`. Slack and similar tools need a relay that maps it to their format; there are no interactive buttons.
+
 ## Authentication model
 
 - Each environment has one token, sent by Santa in the header `X-Osctrl-Santa-Token`. Only its SHA-256 is stored and it is compared in constant time. Generate or rotate it with `POST /api/v1/santa/{env}/token` (environment admin); the plaintext is returned once (`Cache-Control: no-store`) and the old token stops working immediately. Reading the config never returns the token.

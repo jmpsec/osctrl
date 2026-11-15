@@ -29,6 +29,9 @@ type EnvConfig struct {
 	// Base https URL of the osctrl UI. When set, the Santa block dialog links to
 	// its approval request page; empty turns approval requests off.
 	ApprovalURL string `gorm:"type:varchar(255)" json:"approval_url"`
+	// Alert channel IDs told about each new approval request, with single-use
+	// approve and deny links. Needs ApprovalURL.
+	NotifyChannels []uint `gorm:"serializer:json;type:varchar(255)" json:"notify_channels"`
 }
 
 // TableName for EnvConfig
@@ -157,10 +160,27 @@ type Request struct {
 // TableName for Request
 func (Request) TableName() string { return "santa_requests" }
 
+// RequestLink is a single-use approve or deny link sent with the notification
+// of a new request. Only the SHA-256 of its token is stored.
+type RequestLink struct {
+	ID            uint       `gorm:"primarykey" json:"id"`
+	CreatedAt     time.Time  `json:"created_at"`
+	EnvironmentID uint       `json:"environment_id"`
+	RequestID     uint       `gorm:"index" json:"request_id"`
+	Approve       bool       `json:"approve"`
+	TokenHash     string     `gorm:"type:varchar(64);uniqueIndex" json:"-"`
+	ExpiresAt     time.Time  `gorm:"index" json:"expires_at"`
+	UsedAt        *time.Time `json:"used_at"`
+	UsedBy        string     `gorm:"type:varchar(255)" json:"used_by"`
+}
+
+// TableName for RequestLink
+func (RequestLink) TableName() string { return "santa_request_links" }
+
 // Migrate creates the Santa tables and fills RemovableMedia for configs saved
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}); err != nil {
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}); err != nil {
 		return err
 	}
 	const unset = "(removable_media = '' OR removable_media IS NULL)"

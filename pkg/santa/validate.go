@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -98,8 +99,23 @@ func ValidateConfig(c *EnvConfig) error {
 			return errors.New("approval URL must be an https URL without query, fragment or % characters")
 		}
 	}
+	slices.Sort(c.NotifyChannels)
+	c.NotifyChannels = slices.Compact(c.NotifyChannels)
+	switch {
+	case len(c.NotifyChannels) > MaxNotifyChannels:
+		return fmt.Errorf("at most %d notification channels", MaxNotifyChannels)
+	case len(c.NotifyChannels) > 0 && c.ApprovalURL == "":
+		return errors.New("notification channels need the approval URL")
+	}
 	return nil
 }
+
+// MaxNotifyChannels caps the alert channels notified of a new request.
+const MaxNotifyChannels = 10
+
+// ApprovalDecidePath is the UI route the approve and deny links open, under
+// the environment config's ApprovalURL.
+const ApprovalDecidePath = "/santa/decide/"
 
 // ApprovalRequestPath is the UI route of the approval request page, under the
 // environment config's ApprovalURL.

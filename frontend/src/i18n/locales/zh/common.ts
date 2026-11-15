@@ -951,6 +951,13 @@ export const zh: Messages = {
       requested: '请求时间',
       statuses: { pending: '待处理', approved: '已批准', denied: '已拒绝', expired: '已过期' },
     },
+    notifyChannels: '通知新请求',
+    notifyChannelsHint: '每个新请求都会连同批准链接和拒绝链接发送到这些告警渠道。链接只能使用一次，72 小时后过期，并且需要环境管理员登录。更改渠道需要超级用户。',
+    link: {
+      approveTitle: '批准请求',
+      denyTitle: '拒绝请求',
+      invalid: '此链接已被使用或已过期。请打开 Santa 页面的“请求”标签页进行处理。',
+    },
     tabRequests: '请求',
     requests: {
       search: '搜索文件、哈希、设备或请求人',

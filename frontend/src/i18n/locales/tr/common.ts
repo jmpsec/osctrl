@@ -951,6 +951,13 @@ export const tr: Messages = {
       requested: 'İstendi',
       statuses: { pending: 'Beklemede', approved: 'Onaylandı', denied: 'Reddedildi', expired: 'Süresi doldu' },
     },
+    notifyChannels: 'Yeni istekleri bildir',
+    notifyChannelsHint: 'Her yeni istek, bir onay ve bir ret bağlantısıyla bu uyarı kanallarına gönderilir. Bağlantı bir kez çalışır, 72 saat sonra sona erer ve oturum açmış bir ortam yöneticisi gerektirir. Kanalları değiştirmek için süper kullanıcı gerekir.',
+    link: {
+      approveTitle: 'İsteği onayla',
+      denyTitle: 'İsteği reddet',
+      invalid: 'Bu bağlantı zaten kullanılmış veya süresi dolmuş. Karar vermek için Santa sayfasının İstekler sekmesini açın.',
+    },
     tabRequests: 'İstekler',
     requests: {
       search: 'Dosya, hash, makine veya isteyen ara',

@@ -951,6 +951,13 @@ export const ca: Messages = {
       requested: 'Sol·licitat',
       statuses: { pending: 'Pendent', approved: 'Aprovada', denied: 'Denegada', expired: 'Caducada' },
     },
+    notifyChannels: 'Avisa de sol·licituds noves',
+    notifyChannelsHint: "Cada sol·licitud nova s'envia a aquests canals d'alertes amb un enllaç per aprovar i un altre per denegar. Un enllaç funciona una vegada, caduca al cap de 72 hores i requereix un administrador de l'entorn amb la sessió iniciada. Canviar els canals requereix un superusuari.",
+    link: {
+      approveTitle: 'Aprova la sol·licitud',
+      denyTitle: 'Denega la sol·licitud',
+      invalid: "Aquest enllaç ja s'ha fet servir o ha caducat. Obre la pestanya Sol·licituds de la pàgina de Santa per decidir.",
+    },
     tabRequests: 'Sol·licituds',
     requests: {
       search: 'Cerca fitxer, hash, equip o sol·licitant',

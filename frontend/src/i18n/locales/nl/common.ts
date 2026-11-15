@@ -951,6 +951,13 @@ export const nl: Messages = {
       requested: 'Aangevraagd',
       statuses: { pending: 'In behandeling', approved: 'Goedgekeurd', denied: 'Geweigerd', expired: 'Verlopen' },
     },
+    notifyChannels: 'Melden bij nieuwe verzoeken',
+    notifyChannelsHint: 'Elk nieuw verzoek wordt naar deze waarschuwingskanalen gestuurd met een link om goed te keuren en een om te weigeren. Een link werkt één keer, verloopt na 72 uur en vereist een aangemelde omgevingsbeheerder. Het wijzigen van de kanalen vereist een superuser.',
+    link: {
+      approveTitle: 'Verzoek goedkeuren',
+      denyTitle: 'Verzoek weigeren',
+      invalid: 'Deze link is al gebruikt of verlopen. Open het tabblad Verzoeken van de Santa-pagina om te beslissen.',
+    },
     tabRequests: 'Verzoeken',
     requests: {
       search: 'Zoek bestand, hash, machine of aanvrager',

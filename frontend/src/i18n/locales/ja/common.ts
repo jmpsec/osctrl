@@ -951,6 +951,13 @@ export const ja: Messages = {
       requested: 'リクエスト日時',
       statuses: { pending: '保留中', approved: '承認済み', denied: '拒否', expired: '期限切れ' },
     },
+    notifyChannels: '新しいリクエストを通知',
+    notifyChannelsHint: '新しいリクエストは、承認リンクと拒否リンクを付けてこれらのアラートチャンネルに送信されます。リンクは 1 回だけ使用でき、72 時間で失効し、環境管理者のサインインが必要です。チャンネルの変更にはスーパーユーザー権限が必要です。',
+    link: {
+      approveTitle: 'リクエストを承認',
+      denyTitle: 'リクエストを拒否',
+      invalid: 'このリンクは使用済みか、期限切れです。Santa ページの「リクエスト」タブを開いて判断してください。',
+    },
     tabRequests: 'リクエスト',
     requests: {
       search: 'ファイル、ハッシュ、マシン、リクエスト者で検索',

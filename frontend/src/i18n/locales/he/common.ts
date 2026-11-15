@@ -951,6 +951,13 @@ export const he: Messages = {
       requested: 'התבקש',
       statuses: { pending: 'ממתין', approved: 'אושר', denied: 'נדחה', expired: 'פג תוקף' },
     },
+    notifyChannels: 'התראה על בקשות חדשות',
+    notifyChannelsHint: 'כל בקשה חדשה נשלחת לערוצי ההתראות האלה עם קישור לאישור וקישור לדחייה. קישור פועל פעם אחת, פג לאחר 72 שעות ודורש מנהל סביבה מחובר. שינוי הערוצים דורש משתמש-על.',
+    link: {
+      approveTitle: 'אישור הבקשה',
+      denyTitle: 'דחיית הבקשה',
+      invalid: 'הקישור הזה כבר נוצל או שפג תוקפו. פתח את הלשונית בקשות בדף Santa כדי להחליט.',
+    },
     tabRequests: 'בקשות',
     requests: {
       search: 'חיפוש קובץ, גיבוב, מחשב או מבקש',

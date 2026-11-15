@@ -34,6 +34,8 @@ export interface SantaConfig {
   encrypted_removable_media_flags: string[] | null;
   /** Base https URL of this UI; empty turns approval requests off. */
   approval_url: string;
+  /** Alert channel IDs told about each new request; changing it requires superuser. */
+  notify_channels: number[] | null;
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }
@@ -257,6 +259,19 @@ export function listSantaRequests(env: string, status: SantaRequestStatus | '' =
  */
 export function decideSantaRequest(env: string, id: number, body: SantaDecision): Promise<SantaRequest> {
   return apiFetch<SantaRequest>(`${envPath(env)}/requests/${id}/decision`, jsonInit('POST', body));
+}
+
+/** GET /api/v1/santa/{env}/requests/{id} */
+export function getSantaRequest(env: string, id: number): Promise<SantaRequest> {
+  return apiFetch<SantaRequest>(`${envPath(env)}/requests/${id}`);
+}
+
+/**
+ * POST /api/v1/santa/{env}/requests/link — decides through a notification
+ * link. 410 when the link was used, has expired or is for the other action.
+ */
+export function decideSantaRequestByLink(env: string, token: string, body: SantaDecision): Promise<SantaRequest> {
+  return apiFetch<SantaRequest>(`${envPath(env)}/requests/link`, jsonInit('POST', { token, ...body }));
 }
 
 /** GET /api/v1/santa/{env}/events */

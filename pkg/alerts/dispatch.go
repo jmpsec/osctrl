@@ -150,6 +150,10 @@ func (d *Dispatcher) Dispatch(ctx context.Context, h Hit) error {
 			continue
 		}
 		delivered++
+		detail := h.Detail
+		if h.HistoryDetail != "" {
+			detail = h.HistoryDetail
+		}
 		// Per-channel history row (auditable "who was notified").
 		if err := d.mgr.RecordHistory(AlertHistory{
 			RuleID:      h.RuleID,
@@ -159,7 +163,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, h Hit) error {
 			Environment: h.Environment,
 			NodeUUID:    h.NodeUUID,
 			Entity:      h.Entity,
-			Detail:      h.Detail,
+			Detail:      detail,
 		}); err != nil {
 			log.Err(err).Msg("recording alert history failed")
 		}
