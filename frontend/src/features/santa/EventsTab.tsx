@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
@@ -8,8 +8,9 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { Pagination } from '$/components/data/Pagination';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { useLocale } from '$/i18n/useLocale';
+import { BinaryModal } from './BinaryModal';
 import { EMPTY_RULE } from './RulesTab';
-import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
+import { BINARY_LINK, MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
 /** An event's binary hash, turned into a ready-to-review environment-wide rule. */
 function ruleFor(e: SantaEvent, policy: SantaRuleInput['policy']): SantaRuleInput {
@@ -20,6 +21,8 @@ export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRu
   const { t } = useTranslation();
   const { formatDateTime } = useLocale();
   const [page, setPage] = useState(1);
+  const [binary, setBinary] = useState<string | null>(null);
+  const closeBinary = useCallback(() => setBinary(null), []);
   const events = useQuery({
     queryKey: santaQueryKey(env, 'events', page),
     queryFn: () => listSantaEvents(env, page),
@@ -54,7 +57,18 @@ export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRu
                   <td className={`${TD} whitespace-nowrap`}>{formatDateTime(new Date(e.executed_at))}</td>
                   {/* File names, paths and hashes are reported by clients: React text only. */}
                   <td className={TD}>
-                    <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{e.file_name || e.file_path}</div>
+                    {e.file_sha256 ? (
+                      <button
+                        type="button"
+                        className={BINARY_LINK}
+                        aria-label={`${t('santa.binary.title')}: ${e.file_name || e.file_path || e.file_sha256}`}
+                        onClick={() => setBinary(e.file_sha256)}
+                      >
+                        {e.file_name || e.file_path || e.file_sha256}
+                      </button>
+                    ) : (
+                      <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{e.file_name || e.file_path}</div>
+                    )}
                     <div className={`${MONO} text-xs text-[color:var(--text-3)]`}>{e.file_sha256}</div>
                   </td>
                   <td className={TD}>{e.executing_user}</td>
@@ -84,6 +98,7 @@ export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRu
           onPageChange={setPage}
         />
       )}
+      {binary && <BinaryModal env={env} sha256={binary} onClose={closeBinary} />}
     </section>
   );
 }

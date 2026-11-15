@@ -1,6 +1,7 @@
 package santa
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"math"
@@ -232,6 +233,10 @@ func (m *Manager) StoreEvents(n SyncNode, req *syncv1.EventUploadRequest) ([]Eve
 			CDHash:        truncate(e.GetCdhash(), maxEventField),
 			BundleID:      truncate(e.GetFileBundleId(), maxEventField),
 			ExecutedAt:    unixTime(e.GetExecutionTime()),
+			BundleName:    truncate(e.GetFileBundleName(), maxEventField),
+			BundleVersion: truncate(cmp.Or(e.GetFileBundleVersionString(), e.GetFileBundleVersion()), maxEventField),
+			BundlePath:    truncate(e.GetFileBundlePath(), maxEventField),
+			SigningChain:  signingChain(e.GetSigningChain()),
 		})
 	}
 	if err := m.AddEvents(evs); err != nil {
@@ -283,6 +288,25 @@ func unixTime(f float64) time.Time {
 	}
 	sec, frac := math.Modf(f)
 	return time.Unix(int64(sec), int64(frac*1e9)).UTC()
+}
+
+// maxChainCerts caps the certificates kept per event; real chains have three.
+const maxChainCerts = 8
+
+// signingChain copies a reported chain, leaf first, with bounded sizes.
+func signingChain(certs []*syncv1.Certificate) []Cert {
+	var out []Cert
+	for _, c := range certs {
+		if c == nil || len(out) == maxChainCerts {
+			continue
+		}
+		out = append(out, Cert{
+			SHA256: truncate(c.GetSha256(), 64), CN: truncate(c.GetCn(), maxEventField),
+			Org: truncate(c.GetOrg(), maxEventField), OU: truncate(c.GetOu(), maxEventField),
+			ValidFrom: time.Unix(int64(c.GetValidFrom()), 0).UTC(), ValidUntil: time.Unix(int64(c.GetValidUntil()), 0).UTC(),
+		})
+	}
+	return out
 }
 
 // truncate cuts s to at most max bytes without splitting a UTF-8 rune.

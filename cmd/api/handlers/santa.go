@@ -657,6 +657,40 @@ func (h *HandlersApi) SantaEventsHandler(w http.ResponseWriter, r *http.Request)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, SantaEventsResponse{Events: evs, Total: total, Page: max(page, 1)})
 }
 
+// SantaBinaryHandler — GET /api/v1/santa/{env}/binaries/{sha256}
+// @Summary Get what the stored events say about one binary
+// @Description Requires environment admin. Identity fields (names, signing chain, bundle) come from the file's newest event and are written by Santa clients. First and last seen, the event counts and the machine count only cover the events osctrl still keeps (30 days). Rules lists every rule of the environment naming the file, its team ID, signing ID, CDHash or leaf certificate. 404 when the environment has no event for the hash.
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param sha256 path string true "SHA-256 of the file"
+// @Success 200 {object} santa.Binary
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/binaries/{sha256} [get]
+func (h *HandlersApi) SantaBinaryHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	b, err := h.Santa.Binary(env.ID, r.PathValue("sha256"))
+	switch {
+	case errors.Is(err, santa.ErrInvalidRequest):
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
+		return
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		apiErrorResponse(w, "no events for this file", http.StatusNotFound, err)
+		return
+	case err != nil:
+		apiErrorResponse(w, "error getting binary", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, b)
+}
+
 // SantaEffectiveRulesResponse is what a machine gets at its next sync.
 type SantaEffectiveRulesResponse struct {
 	Rules      []santa.Rule `json:"rules"`

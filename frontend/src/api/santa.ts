@@ -127,13 +127,52 @@ export interface SantaEvent {
   executed_at: string;
 }
 
+export interface SantaCert {
+  sha256: string;
+  cn: string;
+  org: string;
+  ou: string;
+  valid_from: string;
+  valid_until: string;
+}
+
+/**
+ * What the stored events say about one file hash. Every identity field is
+ * reported by Santa clients; dates and counts cover the kept events only.
+ */
+export interface SantaBinary {
+  sha256: string;
+  file_name: string;
+  file_path: string;
+  team_id: string;
+  signing_id: string;
+  cd_hash: string;
+  bundle_id: string;
+  bundle_name: string;
+  bundle_version: string;
+  bundle_path: string;
+  /** Leaf first; null or empty when unsigned or not reported. */
+  signing_chain: SantaCert[] | null;
+  first_seen: string;
+  last_seen: string;
+  events: number;
+  blocked: number;
+  machines: number;
+  rules: SantaRule[] | null;
+}
+
+/** GET /api/v1/santa/{env}/binaries/{sha256} — 404 when no event has the hash. */
+export function getSantaBinary(env: string, sha256: string): Promise<SantaBinary> {
+  return apiFetch<SantaBinary>(`${envPath(env)}/binaries/${encodeURIComponent(sha256)}`);
+}
+
 export interface SantaEventsPage {
   events: SantaEvent[];
   total: number;
   page: number;
 }
 
-export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests', ...rest: unknown[]) =>
+export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries', ...rest: unknown[]) =>
   ['santa', env, part, ...rest] as const;
 
 function envPath(env: string): string {

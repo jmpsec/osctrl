@@ -130,7 +130,7 @@ func TestVote(t *testing.T) {
 
 func TestVoteKnownBad(t *testing.T) {
 	const team, signing, cdhash = "ABCDE12345", "ABCDE12345:com.example.tool", "0123456789abcdef0123456789abcdef01234567"
-	shas := make([]string, 7)
+	shas := make([]string, 8)
 	for i := range shas {
 		shas[i] = strings.Repeat(fmt.Sprintf("%02x", i+1), 32)
 	}
@@ -147,6 +147,7 @@ func TestVoteKnownBad(t *testing.T) {
 		{"team ID block rule", "BLOCK_UNKNOWN", &Rule{RuleType: "TEAMID", Identifier: team, Policy: "BLOCKLIST", Scope: "env"}, true},
 		{"signing ID CEL rule", "BLOCK_UNKNOWN", &Rule{RuleType: "SIGNINGID", Identifier: signing, Policy: "CEL", CELExpr: "true", Scope: "env"}, true},
 		{"CDHash block rule", "BLOCK_UNKNOWN", &Rule{RuleType: "CDHASH", Identifier: cdhash, Policy: "BLOCKLIST", Scope: "env"}, true},
+		{"leaf certificate block rule", "BLOCK_UNKNOWN", &Rule{RuleType: "CERTIFICATE", Identifier: strings.Repeat("c3", 32), Policy: "BLOCKLIST", Scope: "env"}, true},
 	}
 	machine := strings.ToUpper(testUUID)
 	for i, tt := range tests {
@@ -155,6 +156,7 @@ func TestVoteKnownBad(t *testing.T) {
 		require.NoError(t, m.SaveConfig(EnvConfig{EnvironmentID: 1, ClientMode: "LOCKDOWN", ApprovalURL: "https://osctrl.example.com", VoteGlobalThreshold: 1}))
 		require.NoError(t, m.AddEvents([]Event{{
 			EnvironmentID: 1, MachineID: machine, FileSHA256: shas[i], Decision: tt.decision, TeamID: team, SigningID: signing, CDHash: cdhash,
+			SigningChain: []Cert{{SHA256: strings.Repeat("C3", 32)}},
 		}}))
 		if tt.rule != nil {
 			r := *tt.rule

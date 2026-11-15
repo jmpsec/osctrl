@@ -31,6 +31,15 @@ After an upload is stored, `osctrl-tls` forwards its events to the log sinks and
 - `GET /api/v1/santa/{env}/machines/{machineid}/rules` returns the rules a node gets after scope resolution, with its client mode and where the mode comes from. The node must be enrolled in the environment; it does not need to have synced yet.
 - The MCP server has four read tools (`list_santa_rules`, `list_santa_machines`, `list_santa_events`, `get_santa_node_rules`) and, behind the MCP write opt-in, `create_santa_rule` and `delete_santa_rule`. They call the routes above, so they need environment admin and write the same audit lines. See [MCP.md](../../MCP.md).
 
+### Binary details
+
+Deciding on a rule needs context, so each file hash has a detail view: the file name in **Events** and in the approval queue opens it.
+
+- `GET /api/v1/santa/{env}/binaries/{sha256}` (environment admin) returns what the stored events say about the file: name, path, team ID, signing ID, CDHash, bundle (ID, name, version, path) and signing chain from its newest event; first and last seen; the number of events, blocks and distinct machines; and every rule of the environment that names the file, its team ID, signing ID, CDHash or leaf certificate, whatever its scope. `404` when the environment has no event for the hash.
+- Events now keep `bundle_name`, `bundle_version`, `bundle_path` and `signing_chain` (leaf first, at most 8 certificates) from `eventupload`. They are also in the event list and the log sinks; the MCP event tool keeps its own shorter field list. Events stored before this have them empty; no client change is needed.
+- Everything comes from `santa_events`, which is pruned after 30 days. First seen, last seen and the counts cover that window only, not the file's whole history.
+- All of it is written by Santa clients and is untrusted: a compromised client can report any name, signer or chain for a hash. The view is context for a decision, not proof of who signed the file.
+
 ### Bulk import and export
 
 Rule sets can be moved between environments or kept in git.
