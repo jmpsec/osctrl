@@ -22,7 +22,7 @@ function request(id: number, over: Partial<SantaRequest> = {}): SantaRequest {
   return {
     id, file_sha256: `${id}`.repeat(64).slice(0, 64), machine_id: 'M-1', status: 'pending', created_at: '2026-11-13T10:00:00Z',
     justification: `why ${id}`, reason: '', file_name: `tool-${id}`, file_path: `/Applications/tool-${id}`, signing_id: '', team_id: '',
-    executing_user: 'ada', requester: `user${id}`, decided_by: '', decided_at: null, rule_id: 0, ...over,
+    executing_user: 'ada', requester: `user${id}`, decided_by: '', decided_at: null, rule_id: 0, kind: '', monitor_hours: 0, ...over,
   };
 }
 
@@ -69,6 +69,17 @@ describe('RequestsTab', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(mockDecide).toHaveBeenCalledWith('dev', 1, { decision: 'approve', scope: 'node', scope_value: '', reason: '' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('approves a MONITOR request without a rule scope', async () => {
+    mockList.mockResolvedValue([request(4, { kind: 'monitor', monitor_hours: 8, file_sha256: '', file_name: '', file_path: '' })]);
+    renderTab();
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve MONITOR mode for 8 h' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).queryByLabelText('Scope')).not.toBeInTheDocument();
+    expect(within(dialog).getByText(/switches the machine to MONITOR/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(mockDecide).toHaveBeenCalledWith('dev', 4, { decision: 'approve', scope: 'node', scope_value: '', reason: '' }));
   });
 
   it('denies the selected requests in bulk and needs a reason', async () => {

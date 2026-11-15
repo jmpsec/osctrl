@@ -964,6 +964,17 @@ export const ca: Messages = {
       allowedNode: 'Vots suficients: es permetrà al teu equip després de la propera sincronització de Santa.',
       allowedEnv: 'Vots suficients: es permetrà per a tothom després de la propera sincronització de Santa.',
     },
+    monitor: {
+      title: 'Mode MONITOR temporal',
+      intro: "Demana que aquest equip funcioni en mode MONITOR durant un temps: Santa registra les execucions en lloc de blocar-les. Torna enrere a la primera sincronització després d'acabar el temps.",
+      duration: 'Durada',
+      hours: '{n} h',
+      submit: 'Demana el mode MONITOR',
+      name: 'Mode MONITOR durant {n} h',
+      approveHint: "Aprovar passa l'equip a MONITOR durant les hores demanades, des d'ara. Torna enrere a la primera sincronització de Santa després.",
+      permanent: 'Permanent',
+      until: 'fins a {time}',
+    },
     notifyChannels: 'Avisa de sol·licituds noves',
     notifyChannelsHint: "Cada sol·licitud nova s'envia a aquests canals d'alertes amb un enllaç per aprovar i un altre per denegar. Un enllaç funciona una vegada, caduca al cap de 72 hores i requereix un administrador de l'entorn amb la sessió iniciada. Canviar els canals requereix un superusuari.",
     link: {

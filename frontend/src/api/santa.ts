@@ -98,11 +98,18 @@ export interface SantaModeOverrideInput {
   scope: 'tag' | 'node';
   scope_value: string;
   client_mode: SantaClientMode;
+  /** Temporary MONITOR mode for 1 to 24 hours (node scope only); omitted or 0 is permanent. */
+  hours?: number;
 }
+
+/** Hours offered for temporary MONITOR mode; the API accepts 1 to 24. */
+export const SANTA_MONITOR_HOURS = [1, 2, 4, 8, 24];
 
 export interface SantaModeOverride extends SantaModeOverrideInput {
   id: number;
   created_by: string;
+  /** Set for temporary MONITOR mode; null is permanent. */
+  expires_at: string | null;
 }
 
 export interface SantaEvent {
@@ -213,6 +220,9 @@ export interface SantaOwnRequest {
   justification: string;
   /** The approver's reason, when one was given. */
   reason: string;
+  /** monitor: temporary MONITOR mode for monitor_hours, no file fields. */
+  kind: '' | 'monitor';
+  monitor_hours: number;
 }
 
 /** The approver's view of an approval request. File fields are reported by the Santa client. */
@@ -243,7 +253,10 @@ export interface SantaDecision {
  * POST /api/v1/santa/{env}/requests — any signed-in account. Returns the
  * existing pending request when the file was already requested for the machine.
  */
-export function createSantaRequest(env: string, body: { sha256: string; machine_id: string; justification: string }): Promise<SantaOwnRequest> {
+export function createSantaRequest(
+  env: string,
+  body: { sha256: string; machine_id: string; justification: string } | { kind: 'monitor'; machine_id: string; hours: number; justification: string },
+): Promise<SantaOwnRequest> {
   return apiFetch<SantaOwnRequest>(`${envPath(env)}/requests`, jsonInit('POST', body));
 }
 

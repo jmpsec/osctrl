@@ -27,7 +27,7 @@ const OFF: SantaVoteStatus = { votes: 0, local_threshold: 0, global_threshold: 0
 const SHA = 'ab'.repeat(32);
 const MACHINE = '22222222-2222-4222-8222-222222222222';
 const own: SantaOwnRequest = {
-  id: 1, file_sha256: SHA, machine_id: MACHINE, status: 'pending', created_at: '2026-11-13T10:00:00Z', justification: 'I need it', reason: '',
+  id: 1, file_sha256: SHA, machine_id: MACHINE, status: 'pending', created_at: '2026-11-13T10:00:00Z', justification: 'I need it', reason: '', kind: '', monitor_hours: 0,
 };
 
 function renderPage(sha256 = SHA, machineId = MACHINE) {
@@ -45,6 +45,22 @@ describe('RequestPage', () => {
     mockMine.mockReset().mockResolvedValue([]);
     mockVotes.mockReset().mockResolvedValue(OFF);
     mockVote.mockReset();
+  });
+
+  it('requests temporary MONITOR mode for the machine', async () => {
+    mockCreate.mockResolvedValue({ ...own, file_sha256: '', kind: 'monitor', monitor_hours: 4 });
+    renderPage();
+    await userEvent.selectOptions(screen.getByLabelText('Duration'), '4');
+    await userEvent.type(screen.getByLabelText(/Why do you need it/, { selector: '#santa-monitor-why' }), 'debugging a build');
+    await userEvent.click(screen.getByRole('button', { name: 'Request MONITOR mode' }));
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith('ENV-UUID', { kind: 'monitor', machine_id: MACHINE, hours: 4, justification: 'debugging a build' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Status: Pending');
+  });
+
+  it('lists a MONITOR request by its hours', async () => {
+    mockMine.mockResolvedValue([{ ...own, file_sha256: '', kind: 'monitor', monitor_hours: 2 }]);
+    renderPage();
+    expect(await screen.findByText('MONITOR mode for 2 h')).toBeInTheDocument();
   });
 
   it('hides voting while the environment has no threshold', async () => {
@@ -77,7 +93,7 @@ describe('RequestPage', () => {
     renderPage();
     const submit = screen.getByRole('button', { name: 'Send request' });
     expect(submit).toBeDisabled();
-    await userEvent.type(screen.getByLabelText(/Why do you need it/), 'I need it');
+    await userEvent.type(screen.getByLabelText(/Why do you need it/, { selector: '#santa-request-why' }), 'I need it');
     await userEvent.click(submit);
     await waitFor(() => expect(mockCreate).toHaveBeenCalledWith('ENV-UUID', { sha256: SHA, machine_id: MACHINE, justification: 'I need it' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Your request was sent. Status: Pending');
@@ -86,7 +102,7 @@ describe('RequestPage', () => {
   it('says so when the file was already requested by someone else', async () => {
     mockCreate.mockResolvedValue({ ...own, justification: '' });
     renderPage();
-    await userEvent.type(screen.getByLabelText(/Why do you need it/), 'me too');
+    await userEvent.type(screen.getByLabelText(/Why do you need it/, { selector: '#santa-request-why' }), 'me too');
     await userEvent.click(screen.getByRole('button', { name: 'Send request' }));
     expect(await screen.findByRole('status')).toHaveTextContent('already requested');
   });
@@ -94,7 +110,7 @@ describe('RequestPage', () => {
   it('shows the API error and keeps the form', async () => {
     mockCreate.mockRejectedValue(new Error('no blocked execution found'));
     renderPage();
-    await userEvent.type(screen.getByLabelText(/Why do you need it/), 'why');
+    await userEvent.type(screen.getByLabelText(/Why do you need it/, { selector: '#santa-request-why' }), 'why');
     await userEvent.click(screen.getByRole('button', { name: 'Send request' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('no blocked execution found');
     expect(screen.getByRole('button', { name: 'Send request' })).toBeInTheDocument();

@@ -964,6 +964,17 @@ export const pl: Messages = {
       allowedNode: 'Wystarczająco głosów: będzie dozwolone na Twoim komputerze po następnej synchronizacji Santa.',
       allowedEnv: 'Wystarczająco głosów: będzie dozwolone dla wszystkich po następnej synchronizacji Santa.',
     },
+    monitor: {
+      title: 'Tymczasowy tryb MONITOR',
+      intro: 'Poproś, aby ten komputer działał przez pewien czas w trybie MONITOR: Santa rejestruje uruchomienia zamiast je blokować. Wraca przy pierwszej synchronizacji po upływie czasu.',
+      duration: 'Czas trwania',
+      hours: '{n} godz.',
+      submit: 'Poproś o tryb MONITOR',
+      name: 'Tryb MONITOR na {n} godz.',
+      approveHint: 'Zatwierdzenie przełącza komputer w tryb MONITOR na żądane godziny, od teraz. Wraca przy pierwszej synchronizacji Santa po tym czasie.',
+      permanent: 'Na stałe',
+      until: 'do {time}',
+    },
     notifyChannels: 'Powiadamiaj o nowych prośbach',
     notifyChannelsHint: 'Każda nowa prośba jest wysyłana do tych kanałów alertów z linkiem do zatwierdzenia i linkiem do odrzucenia. Link działa raz, wygasa po 72 godzinach i wymaga zalogowanego administratora środowiska. Zmiana kanałów wymaga superużytkownika.',
     link: {

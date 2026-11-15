@@ -8859,8 +8859,12 @@ paths:
       tags:
         - santa
     put:
-      description: Creates the override, or replaces the mode of the existing one for
-        the same tag or node.
+      description: "Creates the override, or replaces the mode of the existing one for
+        the same tag or node; the result is permanent. With hours (1 to 24),
+        scope node and MONITOR, it is temporary instead: the machine must have
+        synced, it cannot replace a permanent node override (409), and it stops
+        applying when it expires, reverting at the machine's first sync after
+        that."
       parameters:
         - description: Environment name or UUID
           in: path
@@ -8896,6 +8900,12 @@ paths:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
         "404":
           description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
           content:
             application/json:
               schema:
@@ -9007,9 +9017,11 @@ paths:
         - santa
     post:
       description: Any signed-in account may call this; no environment permission is
-        needed. The block must have been reported by the machine. A pending
-        request for the same file and machine is returned (200) instead of
-        creating a second one.
+        needed. For a file, the block must have been reported by the machine;
+        with kind monitor, the machine must have synced, and approval switches
+        it to MONITOR for the hours asked (1 to 24) from the approval. A pending
+        request for the same file (or MONITOR) and machine is returned (200)
+        instead of creating a second one.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -9063,7 +9075,7 @@ paths:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
       security:
         - ApiKeyAuth: []
-      summary: Request approval for a binary Santa blocked
+      summary: Request approval for a binary Santa blocked, or temporary MONITOR mode
       tags:
         - santa
   "/api/v1/santa/{env}/requests/{id}":
@@ -13555,6 +13567,10 @@ components:
         client_mode:
           description: MONITOR | LOCKDOWN
           type: string
+        hours:
+          description: Temporary MONITOR mode for 1 to 24 hours, with scope node and
+            MONITOR only; 0 is permanent
+          type: integer
         scope:
           description: tag | node
           type: string
@@ -13573,8 +13589,14 @@ components:
         justification:
           description: Empty when the request was made by someone else
           type: string
+        kind:
+          description: Empty (allow the file) or monitor
+          type: string
         machine_id:
           type: string
+        monitor_hours:
+          description: Hours of MONITOR mode asked for, with kind monitor
+          type: integer
         reason:
           description: The approver's reason, when one was given
           type: string
@@ -13583,14 +13605,22 @@ components:
       type: object
     handlers.SantaRequestCreate:
       properties:
+        hours:
+          description: Hours of MONITOR mode, 1 to 24, with kind monitor
+          type: integer
         justification:
-          description: Why the software is needed; at most 1000 characters
+          description: Why it is needed; at most 1000 characters
+          type: string
+        kind:
+          description: Empty to allow the blocked file, or monitor for temporary MONITOR
+            mode on the machine
           type: string
         machine_id:
           description: Machine (node) UUID, from the block dialog link
           type: string
         sha256:
-          description: SHA-256 of the blocked file, from the block dialog link
+          description: SHA-256 of the blocked file, from the block dialog link; not used
+            with kind monitor
           type: string
       type: object
     handlers.SantaRequestDecision:
@@ -14268,6 +14298,10 @@ components:
           type: string
         environment_id:
           type: integer
+        expires_at:
+          description: Set for a temporary override; it stops applying at this time. Nil
+            is permanent.
+          type: string
         id:
           type: integer
         scope:
@@ -14304,8 +14338,15 @@ components:
           type: integer
         justification:
           type: string
+        kind:
+          description: '"" (allow the file) or monitor (temporary MONITOR mode, no file
+            fields)'
+          type: string
         machine_id:
           type: string
+        monitor_hours:
+          description: Hours of MONITOR mode asked for, with kind monitor
+          type: integer
         reason:
           description: Why it was denied; optional note on an approval.
           type: string

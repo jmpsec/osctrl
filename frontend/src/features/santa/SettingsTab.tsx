@@ -10,6 +10,7 @@ import {
   rotateSantaToken,
   santaQueryKey,
   SANTA_MEDIA_ACTIONS,
+  SANTA_MONITOR_HOURS,
   SANTA_REMOUNT_FLAGS,
   SANTA_TOKEN_HEADER,
   type SantaConfig,
@@ -211,7 +212,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
 
 const SELECT =
   'h-8 w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]';
-const EMPTY_OVERRIDE: SantaModeOverrideInput = { scope: 'tag', scope_value: '', client_mode: 'LOCKDOWN' };
+const EMPTY_OVERRIDE: SantaModeOverrideInput = { scope: 'tag', scope_value: '', client_mode: 'LOCKDOWN', hours: 0 };
 
 function ModeOverridesCard({ env }: { env: string }) {
   const { t } = useTranslation();
@@ -220,8 +221,10 @@ function ModeOverridesCard({ env }: { env: string }) {
   const overrides = useQuery({ queryKey: key, queryFn: () => listSantaModeOverrides(env) });
   const [form, setForm] = useState(EMPTY_OVERRIDE);
   const refresh = () => qc.invalidateQueries({ queryKey: key });
+  // Only MONITOR on a node can be temporary.
+  const temporary = form.scope === 'node' && form.client_mode === 'MONITOR';
   const save = useMutation({
-    mutationFn: () => setSantaModeOverride(env, form),
+    mutationFn: () => setSantaModeOverride(env, { ...form, hours: temporary ? form.hours : 0 }),
     onSuccess: () => {
       setForm(EMPTY_OVERRIDE);
       return refresh();
@@ -261,7 +264,12 @@ function ModeOverridesCard({ env }: { env: string }) {
                 <tr key={o.id} className={ROW}>
                   <td className={TD}>{t(`santa.scopes.${o.scope}`)}</td>
                   <td className={`${TD} ${MONO}`}>{o.scope_value}</td>
-                  <td className={TD}>{o.client_mode}</td>
+                  <td className={TD}>
+                    {o.client_mode}
+                    {o.expires_at && (
+                      <div className="text-xs text-[color:var(--text-3)]">{t('santa.monitor.until', { time: new Date(o.expires_at).toLocaleString() })}</div>
+                    )}
+                  </td>
                   <td className={TD}>{o.created_by}</td>
                   <td className={`${TD} text-end`}>
                     <Button
@@ -282,7 +290,7 @@ function ModeOverridesCard({ env }: { env: string }) {
           </table>
         </div>
       )}
-      <form onSubmit={submit} className="grid items-end gap-3 sm:grid-cols-[8rem_1fr_9rem_auto]">
+      <form onSubmit={submit} className="grid items-end gap-3 sm:grid-cols-[8rem_1fr_9rem_8rem_auto]">
         <div>
           <Label htmlFor="santa-override-scope">{t('santa.scope')}</Label>
           <select
@@ -315,6 +323,19 @@ function ModeOverridesCard({ env }: { env: string }) {
           >
             <option value="MONITOR">MONITOR</option>
             <option value="LOCKDOWN">LOCKDOWN</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="santa-override-hours">{t('santa.monitor.duration')}</Label>
+          <select
+            id="santa-override-hours"
+            className={SELECT}
+            disabled={!temporary}
+            value={temporary ? form.hours : 0}
+            onChange={(e) => setForm({ ...form, hours: Number(e.target.value) })}
+          >
+            <option value={0}>{t('santa.monitor.permanent')}</option>
+            {SANTA_MONITOR_HOURS.map((h) => <option key={h} value={h}>{t('santa.monitor.hours', { n: h })}</option>)}
           </select>
         </div>
         <Button type="submit" disabled={save.isPending}>{t('santa.addOverride')}</Button>

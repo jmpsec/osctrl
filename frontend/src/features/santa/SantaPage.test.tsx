@@ -98,7 +98,7 @@ describe('SantaPage', () => {
       machine_id: 'M1', serial_number: 'SER1', hostname: 'mac-01', os_version: '15', santa_version: '2025.1',
       primary_user: 'bob', client_mode: 'MONITOR', assigned_mode: 'LOCKDOWN', mode_source: 'tag', rule_count: 3, last_sync_at: null,
     }]);
-    mockModes.mockResolvedValue([{ id: 4, scope: 'tag', scope_value: 'pilot', client_mode: 'LOCKDOWN', created_by: 'admin' }]);
+    mockModes.mockResolvedValue([{ id: 4, scope: 'tag', scope_value: 'pilot', client_mode: 'LOCKDOWN', created_by: 'admin', expires_at: null }]);
     mockSetMode.mockResolvedValue({});
     mockDeleteMode.mockResolvedValue({});
     mockConfig.mockResolvedValue(config);
@@ -310,14 +310,29 @@ describe('SantaPage', () => {
     expect(await screen.findByText('pilot')).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Scope'), 'node');
     await user.type(screen.getByLabelText(/Scope value/), '11111111-2222-3333-4444-555555555555');
+    const duration = screen.getByLabelText('Duration');
+    expect(duration).toBeDisabled();
     await user.selectOptions(screen.getAllByLabelText('Mode')[1], 'MONITOR');
+    // Only MONITOR on a node can be temporary.
+    expect(duration).toBeEnabled();
+    await user.selectOptions(duration, '4');
     await user.click(screen.getByRole('button', { name: 'Add override' }));
     await waitFor(() => expect(mockSetMode).toHaveBeenCalledWith('dev', {
-      scope: 'node', scope_value: '11111111-2222-3333-4444-555555555555', client_mode: 'MONITOR',
+      scope: 'node', scope_value: '11111111-2222-3333-4444-555555555555', client_mode: 'MONITOR', hours: 4,
     }));
     await user.click(screen.getByRole('button', { name: 'Delete pilot' }));
     await waitFor(() => expect(mockDeleteMode).toHaveBeenCalledWith('dev', 4));
     confirmSpy.mockRestore();
+  });
+
+  it('shows when a temporary override ends', async () => {
+    mockModes.mockResolvedValue([{
+      id: 5, scope: 'node', scope_value: 'M1', client_mode: 'MONITOR', created_by: 'admin', expires_at: '2026-11-15T20:00:00Z',
+    }]);
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    expect(await screen.findByText(/^until /)).toBeInTheDocument();
   });
 
   it('shows the assigned mode and where it comes from', async () => {

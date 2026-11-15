@@ -964,6 +964,17 @@ export const nl: Messages = {
       allowedNode: 'Genoeg stemmen: na de volgende Santa-synchronisatie is het toegestaan op je machine.',
       allowedEnv: 'Genoeg stemmen: na de volgende Santa-synchronisatie is het toegestaan voor iedereen.',
     },
+    monitor: {
+      title: 'Tijdelijke MONITOR-modus',
+      intro: 'Vraag of deze machine een tijdje in MONITOR-modus draait: Santa logt uitvoeringen in plaats van ze te blokkeren. Bij de eerste synchronisatie na afloop gaat hij terug.',
+      duration: 'Duur',
+      hours: '{n} u',
+      submit: 'MONITOR-modus aanvragen',
+      name: 'MONITOR-modus voor {n} u',
+      approveHint: 'Goedkeuren zet de machine vanaf nu voor de gevraagde uren in MONITOR. Bij de eerste Santa-synchronisatie daarna gaat hij terug.',
+      permanent: 'Permanent',
+      until: 'tot {time}',
+    },
     notifyChannels: 'Melden bij nieuwe verzoeken',
     notifyChannelsHint: 'Elk nieuw verzoek wordt naar deze waarschuwingskanalen gestuurd met een link om goed te keuren en een om te weigeren. Een link werkt één keer, verloopt na 72 uur en vereist een aangemelde omgevingsbeheerder. Het wijzigen van de kanalen vereist een superuser.',
     link: {

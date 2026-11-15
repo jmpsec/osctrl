@@ -29,6 +29,13 @@ const SELECT =
 interface Pending {
   approve: boolean;
   ids: number[];
+  /** Every request is for MONITOR mode, so there is no rule scope to choose. */
+  monitor: boolean;
+}
+
+/** What a request asks for, as one line: the file, or MONITOR mode. */
+export function requestName(r: SantaRequest, t: (key: string, o?: Record<string, unknown>) => string): string {
+  return r.kind === 'monitor' ? t('santa.monitor.name', { n: r.monitor_hours }) : r.file_name || r.file_sha256;
 }
 
 /** The approval queue: requests from blocked users, decided one at a time or in bulk. */
@@ -56,7 +63,9 @@ export function RequestsTab({ env }: { env: string }) {
         .some((v) => v.toLowerCase().includes(needle)),
   );
   const pending = rows.filter((r) => r.status === 'pending');
-  const chosen = pending.filter((r) => selected.has(r.id)).map((r) => r.id);
+  const chosenRows = pending.filter((r) => selected.has(r.id));
+  const chosen = chosenRows.map((r) => r.id);
+  const allMonitor = chosenRows.every((r) => r.kind === 'monitor');
   const toggle = (id: number) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -88,10 +97,10 @@ export function RequestsTab({ env }: { env: string }) {
           {STATUSES.map((s) => <option key={s} value={s}>{t(`santa.request.statuses.${s}`)}</option>)}
         </select>
         <div className="ms-auto flex gap-2">
-          <Button size="sm" disabled={chosen.length === 0} onClick={() => setDialog({ approve: true, ids: chosen })}>
+          <Button size="sm" disabled={chosen.length === 0} onClick={() => setDialog({ approve: true, ids: chosen, monitor: allMonitor })}>
             {t('santa.requests.approve')} ({chosen.length})
           </Button>
-          <Button size="sm" variant="danger" disabled={chosen.length === 0} onClick={() => setDialog({ approve: false, ids: chosen })}>
+          <Button size="sm" variant="danger" disabled={chosen.length === 0} onClick={() => setDialog({ approve: false, ids: chosen, monitor: allMonitor })}>
             {t('santa.requests.deny')} ({chosen.length})
           </Button>
         </div>
@@ -133,7 +142,7 @@ export function RequestsTab({ env }: { env: string }) {
                     when={formatDateTime(new Date(r.created_at))}
                     selected={selected.has(r.id)}
                     onToggle={() => toggle(r.id)}
-                    onDecide={(approve) => setDialog({ approve, ids: [r.id] })}
+                    onDecide={(approve) => setDialog({ approve, ids: [r.id], monitor: r.kind === 'monitor' })}
                   />
                 ))}
               </tbody>
@@ -162,7 +171,7 @@ function RequestRow({
   onDecide: (approve: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const name = r.file_name || r.file_sha256;
+  const name = requestName(r, t);
   const sub = 'text-xs text-[color:var(--text-3)] [overflow-wrap:anywhere]';
   return (
     <tr className={ROW}>
@@ -173,7 +182,7 @@ function RequestRow({
       <td className={TD}>
         <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{name}</div>
         {r.file_path && <div className={sub}>{r.file_path}</div>}
-        <div className={`${MONO} ${sub}`}>{r.file_sha256}</div>
+        {r.file_sha256 && <div className={`${MONO} ${sub}`}>{r.file_sha256}</div>}
         {r.signing_id && <div className={`${MONO} ${sub}`}>{r.signing_id}</div>}
       </td>
       <td className={TD}>
@@ -219,7 +228,7 @@ function DecisionModal({
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const { approve, ids } = pending;
+  const { approve, ids, monitor } = pending;
   const decide = useMutation({
     // One call per request, so one failure does not undo the others.
     mutationFn: async (body: SantaDecision) => {
@@ -234,6 +243,7 @@ function DecisionModal({
       await Promise.all([
         qc.invalidateQueries({ queryKey: santaQueryKey(env, 'requests') }),
         qc.invalidateQueries({ queryKey: santaQueryKey(env, 'rules') }),
+        qc.invalidateQueries({ queryKey: santaQueryKey(env, 'modes') }),
       ]);
       if (failures.length > 0) throw new Error(`${failures.length}/${ids.length}: ${errorText(failures[0]) ?? ''}`);
     },
@@ -246,7 +256,7 @@ function DecisionModal({
       titleId="santa-decision-title"
       onClose={onClose}
     >
-      <DecisionForm approve={approve} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} onCancel={onClose} />
+      <DecisionForm approve={approve} monitor={monitor} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} onCancel={onClose} />
     </ModalShell>
   );
 }
@@ -254,12 +264,15 @@ function DecisionModal({
 /** The approver's choices: where the allow rule applies, and the reason. Shared by the queue and the notification links. */
 export function DecisionForm({
   approve,
+  monitor = false,
   pending,
   error,
   onSubmit,
   onCancel,
 }: {
   approve: boolean;
+  /** Approving MONITOR mode: no rule scope, the hours were asked for. */
+  monitor?: boolean;
   pending: boolean;
   error?: string;
   onSubmit: (body: SantaDecision) => void;
@@ -277,7 +290,8 @@ export function DecisionForm({
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      {approve && (
+      {approve && monitor && <p className="text-sm text-[color:var(--text-2)]">{t('santa.monitor.approveHint')}</p>}
+      {approve && !monitor && (
         <>
           <p className="text-sm text-[color:var(--text-2)]">{t('santa.requests.approveHint')}</p>
           <div className="grid gap-3 sm:grid-cols-2">

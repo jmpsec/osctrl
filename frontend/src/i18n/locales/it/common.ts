@@ -964,6 +964,17 @@ export const it: Messages = {
       allowedNode: 'Voti sufficienti: sarà consentito sulla tua macchina dopo la prossima sincronizzazione di Santa.',
       allowedEnv: 'Voti sufficienti: sarà consentito per tutti dopo la prossima sincronizzazione di Santa.',
     },
+    monitor: {
+      title: 'Modalità MONITOR temporanea',
+      intro: "Chiedi che questa macchina funzioni in modalità MONITOR per un po': Santa registra le esecuzioni invece di bloccarle. Torna indietro alla prima sincronizzazione dopo la scadenza.",
+      duration: 'Durata',
+      hours: '{n} h',
+      submit: 'Richiedi modalità MONITOR',
+      name: 'Modalità MONITOR per {n} h',
+      approveHint: 'Approvare porta la macchina in MONITOR per le ore richieste, da ora. Torna indietro alla prima sincronizzazione di Santa successiva.',
+      permanent: 'Permanente',
+      until: 'fino a {time}',
+    },
     notifyChannels: 'Notifica le nuove richieste',
     notifyChannelsHint: "Ogni nuova richiesta viene inviata a questi canali di avviso con un link per approvare e uno per negare. Un link funziona una volta, scade dopo 72 ore e richiede un amministratore dell'ambiente con accesso effettuato. Modificare i canali richiede un superutente.",
     link: {

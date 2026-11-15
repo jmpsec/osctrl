@@ -95,6 +95,10 @@ func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 // asked, by whom and why. The file name, requester and justification are
 // written by the Santa client and the requester.
 func RequestNotice(req Request) string {
+	if req.Kind == RequestKindMonitor {
+		return fmt.Sprintf("%s asks for MONITOR mode for %d hours on machine %s. Justification: %s",
+			oneLine(req.Requester), req.MonitorHours, req.MachineID, oneLine(req.Justification))
+	}
 	name := oneLine(req.FileName)
 	if name == "" {
 		name = req.FileSHA256

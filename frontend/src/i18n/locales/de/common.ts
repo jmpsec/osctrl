@@ -964,6 +964,17 @@ export const de: Messages = {
       allowedNode: 'Genug Stimmen: Nach der nächsten Santa-Synchronisierung ist sie auf Ihrem Rechner erlaubt.',
       allowedEnv: 'Genug Stimmen: Nach der nächsten Santa-Synchronisierung ist sie für alle erlaubt.',
     },
+    monitor: {
+      title: 'Temporärer MONITOR-Modus',
+      intro: 'Beantragen Sie, dass dieser Rechner eine Zeit lang im MONITOR-Modus läuft: Santa protokolliert Ausführungen, statt sie zu blockieren. Er wechselt bei der ersten Synchronisierung nach Ablauf zurück.',
+      duration: 'Dauer',
+      hours: '{n} h',
+      submit: 'MONITOR-Modus beantragen',
+      name: 'MONITOR-Modus für {n} h',
+      approveHint: 'Die Genehmigung schaltet den Rechner ab jetzt für die beantragten Stunden auf MONITOR. Er wechselt bei der ersten Santa-Synchronisierung danach zurück.',
+      permanent: 'Dauerhaft',
+      until: 'bis {time}',
+    },
     notifyChannels: 'Über neue Anfragen benachrichtigen',
     notifyChannelsHint: 'Jede neue Anfrage wird mit einem Genehmigen- und einem Ablehnen-Link an diese Alarmkanäle gesendet. Ein Link funktioniert einmal, läuft nach 72 Stunden ab und erfordert einen angemeldeten Umgebungsadministrator. Das Ändern der Kanäle erfordert einen Superuser.',
     link: {

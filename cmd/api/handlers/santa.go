@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/jmpsec/osctrl/pkg/alerts"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -77,6 +78,8 @@ type SantaModeOverrideRequest struct {
 	ScopeValue string `json:"scope_value"`
 	// MONITOR | LOCKDOWN
 	ClientMode string `json:"client_mode"`
+	// Temporary MONITOR mode for 1 to 24 hours, with scope node and MONITOR only; 0 is permanent
+	Hours uint `json:"hours"`
 }
 
 // SantaEventsResponse is one page of events.
@@ -500,7 +503,7 @@ func (h *HandlersApi) SantaModeOverridesHandler(w http.ResponseWriter, r *http.R
 
 // SantaModeOverrideSetHandler — PUT /api/v1/santa/{env}/modes
 // @Summary Set the Santa client mode for a tag or a node
-// @Description Creates the override, or replaces the mode of the existing one for the same tag or node.
+// @Description Creates the override, or replaces the mode of the existing one for the same tag or node; the result is permanent. With hours (1 to 24), scope node and MONITOR, it is temporary instead: the machine must have synced, it cannot replace a permanent node override (409), and it stops applying when it expires, reverting at the machine's first sync after that.
 // @Tags santa
 // @Accept json
 // @Produce json
@@ -510,6 +513,7 @@ func (h *HandlersApi) SantaModeOverridesHandler(w http.ResponseWriter, r *http.R
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
+// @Failure 409 {object} types.ApiErrorResponse
 // @Failure 503 {object} types.ApiErrorResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/santa/{env}/modes [put]
@@ -524,16 +528,34 @@ func (h *HandlersApi) SantaModeOverrideSetHandler(w http.ResponseWriter, r *http
 		return
 	}
 	o := santa.ModeOverride{EnvironmentID: env.ID, CreatedBy: user, Scope: req.Scope, ScopeValue: req.ScopeValue, ClientMode: req.ClientMode}
-	err := h.Santa.SetModeOverride(&o)
-	if errors.Is(err, santa.ErrInvalidOverride) {
+	var err error
+	switch {
+	case req.Hours == 0:
+		err = h.Santa.SetModeOverride(&o)
+	case req.Scope != "node" || req.ClientMode != "MONITOR":
+		err = fmt.Errorf("%w: hours are only valid for MONITOR on a node", santa.ErrInvalidOverride)
+	default:
+		o, err = h.Santa.GrantMonitor(env.ID, req.ScopeValue, req.Hours, user)
+	}
+	switch {
+	case errors.Is(err, santa.ErrInvalidOverride):
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
 		return
-	}
-	if err != nil {
+	case errors.Is(err, santa.ErrUnknownMachine):
+		apiErrorResponse(w, "this machine has not synced with the environment", http.StatusNotFound, err)
+		return
+	case errors.Is(err, santa.ErrPermanentOverride):
+		apiErrorResponse(w, err.Error(), http.StatusConflict, err)
+		return
+	case err != nil:
 		apiErrorResponse(w, "error saving mode override", http.StatusInternalServerError, err)
 		return
 	}
-	h.santaAudit(user, fmt.Sprintf("set mode override %s scope=%s scope_value=%s", o.ClientMode, o.Scope, o.ScopeValue), r, env)
+	action := fmt.Sprintf("set mode override %s scope=%s scope_value=%s", o.ClientMode, o.Scope, o.ScopeValue)
+	if o.ExpiresAt != nil {
+		action = fmt.Sprintf("grant temporary MONITOR machine=%s hours=%d expires=%s", o.ScopeValue, req.Hours, o.ExpiresAt.UTC().Format(time.RFC3339))
+	}
+	h.santaAudit(user, action, r, env)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, o)
 }
 

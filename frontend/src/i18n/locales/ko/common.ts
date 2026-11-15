@@ -964,6 +964,17 @@ export const ko: Messages = {
       allowedNode: '표가 충분합니다. 다음 Santa 동기화 후 내 기기에서 허용됩니다.',
       allowedEnv: '표가 충분합니다. 다음 Santa 동기화 후 모두에게 허용됩니다.',
     },
+    monitor: {
+      title: '임시 MONITOR 모드',
+      intro: '이 기기를 잠시 MONITOR 모드로 실행하도록 요청합니다. Santa는 실행을 차단하지 않고 기록합니다. 시간이 끝난 뒤 첫 동기화에서 원래대로 돌아갑니다.',
+      duration: '기간',
+      hours: '{n}시간',
+      submit: 'MONITOR 모드 요청',
+      name: 'MONITOR 모드 {n}시간',
+      approveHint: '승인하면 지금부터 요청한 시간 동안 기기가 MONITOR로 전환됩니다. 그 뒤 첫 Santa 동기화에서 원래대로 돌아갑니다.',
+      permanent: '영구',
+      until: '{time}까지',
+    },
     notifyChannels: '새 요청 알림',
     notifyChannelsHint: '새 요청은 승인 링크와 거부 링크와 함께 이 알림 채널로 전송됩니다. 링크는 한 번만 사용할 수 있고 72시간 후 만료되며 환경 관리자의 로그인이 필요합니다. 채널을 변경하려면 슈퍼유저 권한이 필요합니다.',
     link: {
