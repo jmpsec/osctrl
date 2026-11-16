@@ -851,6 +851,7 @@ export const tr: Messages = {
     description: 'Santa eşitleme sunucusu: izin ve engelleme kurallarını yönetin, engellenen çalıştırmaları inceleyin ve istemcileri izleyin.',
     tabRules: 'Kurallar',
     tabEvents: 'Olaylar',
+    tabFileAccess: 'Dosya erişimi',
     tabMachines: 'Makineler',
     tabSettings: 'Ayarlar',
     loadError: 'Santa verileri yüklenemedi',
@@ -1017,6 +1018,7 @@ export const tr: Messages = {
       verdicts: { clean: 'Temiz', flagged: 'İşaretli', unknown: 'Bilinmiyor', error: 'Denetim başarısız', unchecked: 'Denetlenmedi' },
     },
     carve: { retrieve: 'Dosyayı al', view: 'Çıkarmayı görüntüle', fromLatest: 'En son {machine} üzerinde çalıştı' },
+    fileAccess: { override: 'Dosya erişim kurallarını geçersiz kılma', overrideHint: 'FileAccessPolicy profiliyle dağıtılan dosya erişim kurallarının eylemini değiştirir. İstemciler bir sonraki eşitlemede uygular.', none: 'Dosya erişim olayı yok', noneHint: 'Dosya erişim kuralları MDM ile FileAccessPolicy profiliyle dağıtılır. İhlalleri burada görünür.', rule: 'Kural', target: 'Yol', process: 'İşlem', actions: { unset: 'Ayarlanmadı (istemciler değişmez)', NONE: 'Yok (kurallar yazıldığı gibi)', AUDIT_ONLY: 'Yalnızca denetim (kaydet ve izin ver)', DISABLE: 'Kuralları devre dışı bırak' } },
     notifyChannels: 'Yeni istekleri bildir',
     notifyChannelsHint: 'Her yeni istek, bir onay ve bir ret bağlantısıyla bu uyarı kanallarına gönderilir. Bağlantı bir kez çalışır, 72 saat sonra sona erer ve oturum açmış bir ortam yöneticisi gerektirir. Kanalları değiştirmek için süper kullanıcı gerekir.',
     link: {

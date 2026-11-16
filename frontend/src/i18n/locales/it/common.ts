@@ -851,6 +851,7 @@ export const it: Messages = {
     description: 'Server di sincronizzazione Santa: gestisci le regole di consenso e blocco, controlla le esecuzioni bloccate e monitora i client.',
     tabRules: 'Regole',
     tabEvents: 'Eventi',
+    tabFileAccess: 'Accesso ai file',
     tabMachines: 'Macchine',
     tabSettings: 'Impostazioni',
     loadError: 'Impossibile caricare i dati di Santa',
@@ -1017,6 +1018,7 @@ export const it: Messages = {
       verdicts: { clean: 'Pulito', flagged: 'Segnalato', unknown: 'Sconosciuto', error: 'Controllo non riuscito', unchecked: 'Non controllato' },
     },
     carve: { retrieve: 'Recupera file', view: "Visualizza l'estrazione", fromLatest: 'Ultima esecuzione su {machine}' },
+    fileAccess: { override: 'Override delle regole di accesso ai file', overrideHint: "Cambia l'azione delle regole di accesso ai file distribuite con il profilo FileAccessPolicy. I client la applicano alla sincronizzazione successiva.", none: 'Nessun evento di accesso ai file', noneHint: 'Le regole di accesso ai file sono distribuite tramite MDM con il profilo FileAccessPolicy. Le loro violazioni appaiono qui.', rule: 'Regola', target: 'Percorso', process: 'Processo', actions: { unset: 'Non impostato (client invariati)', NONE: 'Nessuno (regole come scritte)', AUDIT_ONLY: 'Solo audit (registra e consenti)', DISABLE: 'Disattiva le regole' } },
     notifyChannels: 'Notifica le nuove richieste',
     notifyChannelsHint: "Ogni nuova richiesta viene inviata a questi canali di avviso con un link per approvare e uno per negare. Un link funziona una volta, scade dopo 72 ore e richiede un amministratore dell'ambiente con accesso effettuato. Modificare i canali richiede un superutente.",
     link: {

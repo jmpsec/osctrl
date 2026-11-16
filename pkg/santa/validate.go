@@ -116,6 +116,9 @@ func ValidateConfig(c *EnvConfig) error {
 	case (local > 0 || global > 0) && c.ApprovalURL == "":
 		return errors.New("voting needs the approval URL")
 	}
+	if a := c.OverrideFileAccessAction; a != "" && a != "NONE" && a != "AUDIT_ONLY" && a != "DISABLE" {
+		return fmt.Errorf("invalid file access override %q", a)
+	}
 	return nil
 }
 

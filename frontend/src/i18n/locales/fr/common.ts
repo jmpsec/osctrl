@@ -851,6 +851,7 @@ export const fr: Messages = {
     description: 'Serveur de synchronisation Santa : gérez les règles d\'autorisation et de blocage, examinez les exécutions bloquées et surveillez les clients.',
     tabRules: 'Règles',
     tabEvents: 'Événements',
+    tabFileAccess: 'Accès aux fichiers',
     tabMachines: 'Machines',
     tabSettings: 'Paramètres',
     loadError: 'Impossible de charger les données Santa',
@@ -1017,6 +1018,7 @@ export const fr: Messages = {
       verdicts: { clean: 'Sain', flagged: 'Signalé', unknown: 'Inconnu', error: 'Échec de la vérification', unchecked: 'Non vérifié' },
     },
     carve: { retrieve: 'Récupérer le fichier', view: "Voir l'extraction", fromLatest: 'Dernière exécution sur {machine}' },
+    fileAccess: { override: "Forçage des règles d'accès aux fichiers", overrideHint: "Modifie l'action des règles d'accès aux fichiers déployées avec le profil FileAccessPolicy. Les clients l'appliquent à la synchronisation suivante.", none: "Aucun événement d'accès aux fichiers", noneHint: "Les règles d'accès aux fichiers sont déployées par MDM avec le profil FileAccessPolicy. Leurs violations apparaissent ici.", rule: 'Règle', target: 'Chemin', process: 'Processus', actions: { unset: 'Non défini (clients inchangés)', NONE: 'Aucun (règles appliquées telles quelles)', AUDIT_ONLY: 'Audit seul (journaliser et autoriser)', DISABLE: 'Désactiver les règles' } },
     notifyChannels: 'Notifier les nouvelles demandes',
     notifyChannelsHint: "Chaque nouvelle demande est envoyée à ces canaux d'alerte avec un lien pour approuver et un lien pour refuser. Un lien fonctionne une fois, expire après 72 heures et nécessite un administrateur de l'environnement connecté. Modifier les canaux nécessite un superutilisateur.",
     link: {

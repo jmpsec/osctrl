@@ -24,6 +24,7 @@ const mockImport = vi.fn<(env: string, rules: unknown[], dryRun: boolean) => Pro
 const mockModes = vi.fn<() => Promise<SantaModeOverride[]>>();
 const mockSetMode = vi.fn<(env: string, body: unknown) => Promise<unknown>>();
 const mockDeleteMode = vi.fn<(env: string, id: number) => Promise<unknown>>();
+const mockFileAccess = vi.fn<() => Promise<unknown>>();
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -43,6 +44,7 @@ vi.mock('$/api/santa', async () => {
     setSantaModeOverride: (env: string, body: unknown) => mockSetMode(env, body),
     deleteSantaModeOverride: (env: string, id: number) => mockDeleteMode(env, id),
     carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
+    listSantaFileAccessEvents: () => mockFileAccess(),
   };
 });
 const mockCarve = vi.fn<(env: string, id: number) => Promise<{ query_name: string }>>();
@@ -62,7 +64,7 @@ const rule: SantaRule = {
 const config: SantaConfig = {
   client_mode: 'MONITOR', batch_size: 0, enable_transitive_rules: false, removable_media: 'ALLOW',
   removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', notify_channels: null,
-  vote_local_threshold: 0, vote_global_threshold: 0, token_set: true,
+  vote_local_threshold: 0, vote_global_threshold: 0, override_file_access_action: '', token_set: true,
 };
 
 function renderPage() {
@@ -326,6 +328,44 @@ describe('SantaPage', () => {
     await user.type(global, '5');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ vote_local_threshold: 2, vote_global_threshold: 5 })));
+  });
+
+  it('saves the file access override', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    const select = await screen.findByLabelText('File access rules override');
+    expect(select).toHaveValue('');
+    await user.selectOptions(select, 'AUDIT_ONLY');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ override_file_access_action: 'AUDIT_ONLY' })));
+  });
+
+  it('lists file access events with their process chain', async () => {
+    mockFileAccess.mockResolvedValue({
+      events: [{
+        id: 3, machine_id: 'M1', rule_name: 'ChromeCookies', rule_version: 'v2', target: '/Users/bob/Cookies',
+        decision: 'DENIED', accessed_at: '2026-01-01T00:00:00Z',
+        process_chain: [{ pid: 42, file_path: '/tmp/evil', file_sha256: '', signing_id: '', team_id: '' },
+          { pid: 1, file_path: '/sbin/launchd', file_sha256: '', signing_id: '', team_id: '' }],
+      }],
+      total: 1, page: 1,
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'File access' }));
+    expect(await screen.findByText('ChromeCookies')).toBeInTheDocument();
+    expect(screen.getByText('/Users/bob/Cookies')).toBeInTheDocument();
+    expect(screen.getByText('/sbin/launchd')).toBeInTheDocument();
+    expect(screen.getByText('DENIED')).toBeInTheDocument();
+  });
+
+  it('explains where file access events come from when there are none', async () => {
+    mockFileAccess.mockResolvedValue({ events: [], total: 0, page: 1 });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'File access' }));
+    expect(await screen.findByText('No file access events')).toBeInTheDocument();
   });
 
   it('adds and removes a mode override', async () => {

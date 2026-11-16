@@ -81,7 +81,7 @@ func TestSantaRoutesRequireEnvAdmin(t *testing.T) {
 		"modes": {h.SantaModeOverridesHandler, "GET"}, "mode set": {h.SantaModeOverrideSetHandler, "PUT"},
 		"mode delete": {h.SantaModeOverrideDeleteHandler, "DELETE"}, "rules import": {h.SantaRulesImportHandler, "POST"},
 		"machines": {h.SantaMachinesHandler, "GET"}, "events": {h.SantaEventsHandler, "GET"},
-		"effective rules": {h.SantaEffectiveRulesHandler, "GET"},
+		"effective rules": {h.SantaEffectiveRulesHandler, "GET"}, "file access events": {h.SantaFileAccessEventsHandler, "GET"},
 	}
 	for name, rt := range routes {
 		require.Equal(t, http.StatusForbidden, santaDo(rt.fn, rt.method, "carol", validRule, p).Code, name)
@@ -122,6 +122,49 @@ func TestSantaEventsFilters(t *testing.T) {
 		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &res))
 		require.Equal(t, tt.total, res.Total, tt.query)
 	}
+}
+
+func TestSantaFileAccessEvents(t *testing.T) {
+	h, db, envA, envB := setupSantaHandlers(t)
+	require.NoError(t, db.Create(&[]santa.FileAccessEvent{
+		{EnvironmentID: envA.ID, MachineID: "M-1", RuleName: "Cookies", Decision: "DENIED"},
+		{EnvironmentID: envA.ID, MachineID: "M-2", RuleName: "Keychain", Decision: "AUDIT_ONLY"},
+		{EnvironmentID: envB.ID, MachineID: "M-1", RuleName: "Cookies", Decision: "DENIED"},
+	}).Error)
+	for _, tt := range []struct {
+		query string
+		total int64
+	}{
+		{"", 2},
+		{"machine_id=m-1", 1},
+		{"machine_id=M-3", 0},
+	} {
+		rr := santaDoURL(h.SantaFileAccessEventsHandler, "GET", "/x?"+tt.query, "alice", "", map[string]string{"env": envA.Name})
+		require.Equal(t, http.StatusOK, rr.Code, tt.query)
+		var res SantaFileAccessEventsResponse
+		require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &res))
+		require.Equal(t, tt.total, res.Total, tt.query)
+		for _, e := range res.Events {
+			require.Equal(t, envA.ID, e.EnvironmentID)
+		}
+	}
+}
+
+func TestSantaConfigFileAccessOverride(t *testing.T) {
+	h, _, envA, _ := setupSantaHandlers(t)
+	put := func(action string) int {
+		body := `{"client_mode":"MONITOR","override_file_access_action":"` + action + `"}`
+		return santaDo(h.SantaConfigPutHandler, "PUT", "alice", body, map[string]string{"env": envA.Name}).Code
+	}
+	require.Equal(t, http.StatusBadRequest, put("disable"))
+	require.Equal(t, http.StatusOK, put("AUDIT_ONLY"))
+	cfg, err := h.Santa.Config(envA.ID)
+	require.NoError(t, err)
+	require.Equal(t, "AUDIT_ONLY", cfg.OverrideFileAccessAction)
+	require.Equal(t, http.StatusOK, put(""))
+	cfg, err = h.Santa.Config(envA.ID)
+	require.NoError(t, err)
+	require.Empty(t, cfg.OverrideFileAccessAction)
 }
 
 func TestSantaEffectiveRules(t *testing.T) {

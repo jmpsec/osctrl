@@ -36,6 +36,9 @@ type EnvConfig struct {
 	VoteLocalThreshold uint32 `json:"vote_local_threshold"`
 	// Votes that allow the file in the whole environment; 0 is off.
 	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
+	// Overrides the action of MDM-deployed file access rules: NONE | AUDIT_ONLY | DISABLE;
+	// empty sends nothing, leaving each client's setting unchanged
+	OverrideFileAccessAction string `gorm:"type:varchar(16)" json:"override_file_access_action"`
 }
 
 // TableName for EnvConfig
@@ -145,6 +148,38 @@ type Cert struct {
 // TableName for Event
 func (Event) TableName() string { return "santa_events" }
 
+// FileAccessEvent is a violation of a file access rule, uploaded by a Santa
+// client. Every field but the IDs is written by the client.
+type FileAccessEvent struct {
+	ID            uint      `gorm:"primarykey" json:"id"`
+	CreatedAt     time.Time `gorm:"index" json:"created_at"`
+	EnvironmentID uint      `gorm:"index" json:"environment_id"`
+	NodeID        uint      `gorm:"index" json:"node_id"`
+	MachineID     string    `gorm:"type:varchar(64)" json:"machine_id"`
+	RuleName      string    `json:"rule_name"`
+	RuleVersion   string    `json:"rule_version"`
+	// The path that was accessed
+	Target string `gorm:"type:varchar(1024)" json:"target"`
+	// DENIED | DENIED_INVALID_SIGNATURE | AUDIT_ONLY
+	Decision   string    `json:"decision"`
+	AccessedAt time.Time `json:"accessed_at"`
+	// The accessing process first, then its parents
+	ProcessChain []Process `gorm:"serializer:json;type:text" json:"process_chain"`
+}
+
+// TableName for FileAccessEvent
+func (FileAccessEvent) TableName() string { return "santa_file_access_events" }
+
+// Process is one process of a file access event's process chain.
+type Process struct {
+	Pid        int32  `json:"pid"`
+	FilePath   string `json:"file_path"`
+	FileSHA256 string `json:"file_sha256"`
+	SigningID  string `json:"signing_id"`
+	TeamID     string `json:"team_id"`
+	CDHash     string `json:"cd_hash"`
+}
+
 // Request statuses.
 const (
 	RequestPending  = "pending"
@@ -230,7 +265,7 @@ func (Vote) TableName() string { return "santa_votes" }
 // Migrate creates the Santa tables and fills RemovableMedia for configs saved
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}); err != nil {
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}, &FileAccessEvent{}); err != nil {
 		return err
 	}
 	const unset = "(removable_media = '' OR removable_media IS NULL)"

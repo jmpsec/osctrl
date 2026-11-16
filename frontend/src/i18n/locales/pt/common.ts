@@ -851,6 +851,7 @@ export const pt: Messages = {
     description: 'Servidor de sincronização do Santa: gerencie regras de permissão e bloqueio, revise execuções bloqueadas e monitore os clientes.',
     tabRules: 'Regras',
     tabEvents: 'Eventos',
+    tabFileAccess: 'Acesso a arquivos',
     tabMachines: 'Máquinas',
     tabSettings: 'Configurações',
     loadError: 'Não foi possível carregar os dados do Santa',
@@ -1017,6 +1018,7 @@ export const pt: Messages = {
       verdicts: { clean: 'Limpo', flagged: 'Sinalizado', unknown: 'Desconhecido', error: 'Falha na verificação', unchecked: 'Não verificado' },
     },
     carve: { retrieve: 'Recuperar arquivo', view: 'Ver extração', fromLatest: 'Última execução em {machine}' },
+    fileAccess: { override: 'Substituição das regras de acesso a arquivos', overrideHint: 'Altera a ação das regras de acesso a arquivos implantadas com o perfil FileAccessPolicy. Os clientes a aplicam na próxima sincronização.', none: 'Nenhum evento de acesso a arquivos', noneHint: 'As regras de acesso a arquivos são implantadas via MDM com o perfil FileAccessPolicy. As violações aparecem aqui.', rule: 'Regra', target: 'Caminho', process: 'Processo', actions: { unset: 'Não definido (clientes inalterados)', NONE: 'Nenhuma (regras como escritas)', AUDIT_ONLY: 'Somente auditoria (registrar e permitir)', DISABLE: 'Desativar regras' } },
     notifyChannels: 'Notificar novos pedidos',
     notifyChannelsHint: 'Cada novo pedido é enviado a estes canais de alerta com um link para aprovar e outro para negar. Um link funciona uma vez, expira após 72 horas e exige um administrador do ambiente com sessão iniciada. Alterar os canais exige um superusuário.',
     link: {

@@ -5,13 +5,14 @@ import { ShieldCheck } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { StatusTabs } from '$/components/data/StatusTabs';
 import { EventsTab } from './EventsTab';
+import { FileAccessTab } from './FileAccessTab';
 import { MachinesTab } from './MachinesTab';
 import { ReportsTab } from './ReportsTab';
 import { RequestsTab } from './RequestsTab';
 import { EMPTY_RULE, RuleFormModal, RulesTab, type RuleDraft } from './RulesTab';
 import { SettingsTab } from './SettingsTab';
 
-type Tab = 'rules' | 'events' | 'requests' | 'reports' | 'machines' | 'settings';
+type Tab = 'rules' | 'events' | 'file-access' | 'requests' | 'reports' | 'machines' | 'settings';
 
 export function SantaPage() {
   const { t } = useTranslation();
@@ -25,6 +26,7 @@ export function SantaPage() {
   const tabs: { value: Tab; label: string }[] = [
     { value: 'rules', label: t('santa.tabRules') },
     { value: 'events', label: t('santa.tabEvents') },
+    { value: 'file-access', label: t('santa.tabFileAccess') },
     { value: 'requests', label: t('santa.tabRequests') },
     { value: 'reports', label: t('santa.tabReports') },
     { value: 'machines', label: t('santa.tabMachines') },
@@ -45,6 +47,7 @@ export function SantaPage() {
 
       {tab === 'rules' && <RulesTab env={env} onAdd={() => setDraft(EMPTY_RULE)} onEdit={setDraft} />}
       {tab === 'events' && <EventsTab env={env} onRule={setDraft} />}
+      {tab === 'file-access' && <FileAccessTab env={env} />}
       {tab === 'requests' && <RequestsTab env={env} />}
       {tab === 'reports' && <ReportsTab env={env} />}
       {tab === 'machines' && <MachinesTab env={env} />}

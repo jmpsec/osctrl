@@ -13,7 +13,9 @@ import {
   SANTA_MONITOR_HOURS,
   SANTA_REMOUNT_FLAGS,
   SANTA_TOKEN_HEADER,
+  SANTA_FILE_ACCESS_ACTIONS,
   type SantaConfig,
+  type SantaFileAccessAction,
   type SantaMediaAction,
   type SantaModeOverrideInput,
 } from '$/api/santa';
@@ -110,6 +112,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         notify_channels: form.notify_channels ?? [],
         vote_local_threshold: form.vote_local_threshold ?? 0,
         vote_global_threshold: form.vote_global_threshold ?? 0,
+        override_file_access_action: form.override_file_access_action ?? '',
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -170,6 +173,18 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
           inherit
           onChange={(action, flags) => setForm({ ...form, encrypted_removable_media: action, encrypted_removable_media_flags: flags })}
         />
+      </div>
+      <div>
+        <Label htmlFor="santa-file-access">{t('santa.fileAccess.override')}</Label>
+        <select
+          id="santa-file-access"
+          className={SELECT}
+          value={form.override_file_access_action ?? ''}
+          onChange={(e) => setForm({ ...form, override_file_access_action: e.target.value as SantaFileAccessAction })}
+        >
+          {SANTA_FILE_ACCESS_ACTIONS.map((a) => <option key={a} value={a}>{t(`santa.fileAccess.actions.${a || 'unset'}`)}</option>)}
+        </select>
+        <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.fileAccess.overrideHint')}</p>
       </div>
       <div>
         <Label htmlFor="santa-approval-url">{t('santa.approvalUrl')}</Label>

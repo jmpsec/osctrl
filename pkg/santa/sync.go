@@ -121,6 +121,9 @@ func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.P
 	if cfg.BatchSize > 0 {
 		resp.BatchSize = cfg.BatchSize
 	}
+	if a, ok := syncv1.FileAccessAction_value[cfg.OverrideFileAccessAction]; ok && a != 0 {
+		resp.OverrideFileAccessAction = syncv1.FileAccessAction(a).Enum()
+	}
 	if cfg.ApprovalURL != "" && n.EnvUUID != "" {
 		// Santa fills the placeholders when the user clicks the button in the block dialog.
 		resp.SetEventDetailUrl(cfg.ApprovalURL + ApprovalRequestPath + url.PathEscape(n.EnvUUID) +
@@ -200,7 +203,7 @@ func toProtoRule(r Rule) (*syncv1.Rule, error) {
 	}, nil
 }
 
-// EventUpload stores execution events; other event kinds are ignored.
+// EventUpload stores execution and file access events; audit events are ignored.
 func (m *Manager) EventUpload(n SyncNode, req *syncv1.EventUploadRequest) (*syncv1.EventUploadResponse, error) {
 	if _, err := m.StoreEvents(n, req); err != nil {
 		return nil, err
@@ -208,8 +211,8 @@ func (m *Manager) EventUpload(n SyncNode, req *syncv1.EventUploadRequest) (*sync
 	return &syncv1.EventUploadResponse{}, nil
 }
 
-// StoreEvents stores the execution events of an upload and returns them as
-// stored, for forwarding to log sinks and alert rules.
+// StoreEvents stores the execution and file access events of an upload and
+// returns the execution events as stored, for forwarding to log sinks and alert rules.
 func (m *Manager) StoreEvents(n SyncNode, req *syncv1.EventUploadRequest) ([]Event, error) {
 	if _, err := m.loadMachine(n); err != nil {
 		return nil, err
@@ -242,7 +245,67 @@ func (m *Manager) StoreEvents(n SyncNode, req *syncv1.EventUploadRequest) ([]Eve
 	if err := m.AddEvents(evs); err != nil {
 		return nil, err
 	}
+	if err := m.addFileAccessEvents(n, req.GetFileAccessEvents()); err != nil {
+		return nil, err
+	}
 	return evs, nil
+}
+
+// maxChainProcs caps the processes kept per file access event.
+const maxChainProcs = 8
+
+func (m *Manager) addFileAccessEvents(n SyncNode, in []*syncv1.FileAccessEvent) error {
+	now := m.now()
+	evs := make([]FileAccessEvent, 0, len(in))
+	for _, e := range in {
+		if e == nil {
+			continue
+		}
+		var chain []Process
+		for _, p := range e.GetProcessChain() {
+			if p == nil || len(chain) == maxChainProcs {
+				continue
+			}
+			chain = append(chain, Process{
+				Pid: p.GetPid(), FilePath: truncate(p.GetFilePath(), 1024), FileSHA256: truncate(p.GetFileSha256(), 64),
+				SigningID: truncate(p.GetSigningId(), maxEventField), TeamID: truncate(p.GetTeamId(), maxEventField),
+				CDHash: truncate(p.GetCdhash(), maxEventField),
+			})
+		}
+		evs = append(evs, FileAccessEvent{
+			CreatedAt: now, EnvironmentID: n.EnvID, NodeID: n.NodeID, MachineID: n.machineID(),
+			RuleName:     truncate(e.GetRuleName(), maxEventField),
+			RuleVersion:  truncate(e.GetRuleVersion(), maxEventField),
+			Target:       truncate(e.GetTarget(), 1024),
+			Decision:     strings.TrimPrefix(e.GetDecision().String(), "FILE_ACCESS_DECISION_"),
+			AccessedAt:   unixTime(e.GetAccessTime()),
+			ProcessChain: chain,
+		})
+	}
+	if len(evs) == 0 {
+		return nil
+	}
+	return m.DB.CreateInBatches(&evs, 200).Error
+}
+
+// FileAccessEvents lists an environment's file access events, newest first,
+// optionally for one machine.
+func (m *Manager) FileAccessEvents(envID uint, page, pageSize int, machineID string) ([]FileAccessEvent, int64, error) {
+	page = max(page, 1)
+	if pageSize < 1 || pageSize > maxPageSize {
+		pageSize = maxPageSize
+	}
+	q := m.DB.Model(&FileAccessEvent{}).Where("environment_id = ?", envID)
+	if machineID != "" {
+		q = q.Where("machine_id = ?", strings.ToUpper(machineID))
+	}
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var evs []FileAccessEvent
+	err := q.Order("created_at DESC, id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&evs).Error
+	return evs, total, err
 }
 
 // AlertFields returns the fields alert rules can match, keyed by their JSON

@@ -51,6 +51,8 @@ type SantaConfigRequest struct {
 	VoteLocalThreshold uint32 `json:"vote_local_threshold"`
 	// Votes that allow the file in the whole environment; 0 is off, and it cannot be below the local threshold. Needs approval_url
 	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
+	// Overrides the action of MDM-deployed file access rules: NONE | AUDIT_ONLY | DISABLE; empty leaves the clients unchanged
+	OverrideFileAccessAction string `json:"override_file_access_action"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -194,6 +196,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,
 		ApprovalURL: req.ApprovalURL, NotifyChannels: req.NotifyChannels,
 		VoteLocalThreshold: req.VoteLocalThreshold, VoteGlobalThreshold: req.VoteGlobalThreshold,
+		OverrideFileAccessAction: req.OverrideFileAccessAction,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
@@ -655,6 +658,45 @@ func (h *HandlersApi) SantaEventsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, SantaEventsResponse{Events: evs, Total: total, Page: max(page, 1)})
+}
+
+// SantaFileAccessEventsResponse is one page of file access events.
+type SantaFileAccessEventsResponse struct {
+	Events []santa.FileAccessEvent `json:"events"`
+	Total  int64                   `json:"total"`
+	Page   int                     `json:"page"`
+}
+
+// SantaFileAccessEventsHandler — GET /api/v1/santa/{env}/file-access-events
+// @Summary List Santa file access events
+// @Description Requires environment admin. Violations of file access rules deployed to the clients through MDM, newest first, kept 30 days. Every field but the IDs is written by Santa clients.
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param page query int false "Page (1-based)"
+// @Param page_size query int false "Page size"
+// @Param machine_id query string false "Only events of this machine (node UUID)"
+// @Success 200 {object} SantaFileAccessEventsResponse
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/file-access-events [get]
+func (h *HandlersApi) SantaFileAccessEventsHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	size, _ := strconv.Atoi(q.Get("page_size"))
+	evs, total, err := h.Santa.FileAccessEvents(env.ID, page, size, q.Get("machine_id"))
+	if err != nil {
+		apiErrorResponse(w, "error listing file access events", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, SantaFileAccessEventsResponse{Events: evs, Total: total, Page: max(page, 1)})
 }
 
 // SantaBinaryHandler — GET /api/v1/santa/{env}/binaries/{sha256}

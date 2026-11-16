@@ -851,6 +851,7 @@ export const nl: Messages = {
     description: 'Santa-syncserver: beheer toestaan- en blokkeerregels, bekijk geblokkeerde uitvoeringen en houd clients in de gaten.',
     tabRules: 'Regels',
     tabEvents: 'Gebeurtenissen',
+    tabFileAccess: 'Bestandstoegang',
     tabMachines: 'Machines',
     tabSettings: 'Instellingen',
     loadError: 'Santa-gegevens konden niet worden geladen',
@@ -1017,6 +1018,7 @@ export const nl: Messages = {
       verdicts: { clean: 'Schoon', flagged: 'Gemarkeerd', unknown: 'Onbekend', error: 'Controle mislukt', unchecked: 'Niet gecontroleerd' },
     },
     carve: { retrieve: 'Bestand ophalen', view: 'Carve bekijken', fromLatest: 'Laatst uitgevoerd op {machine}' },
+    fileAccess: { override: 'Overschrijving van bestandstoegangsregels', overrideHint: 'Wijzigt de actie van de bestandstoegangsregels die met het profiel FileAccessPolicy zijn uitgerold. Clients passen dit toe bij de volgende synchronisatie.', none: 'Geen bestandstoegangsgebeurtenissen', noneHint: 'Bestandstoegangsregels worden via MDM uitgerold met het profiel FileAccessPolicy. Overtredingen verschijnen hier.', rule: 'Regel', target: 'Pad', process: 'Proces', actions: { unset: 'Niet ingesteld (clients ongewijzigd)', NONE: 'Geen (regels zoals geschreven)', AUDIT_ONLY: 'Alleen audit (loggen en toestaan)', DISABLE: 'Regels uitschakelen' } },
     notifyChannels: 'Melden bij nieuwe verzoeken',
     notifyChannelsHint: 'Elk nieuw verzoek wordt naar deze waarschuwingskanalen gestuurd met een link om goed te keuren en een om te weigeren. Een link werkt één keer, verloopt na 72 uur en vereist een aangemelde omgevingsbeheerder. Het wijzigen van de kanalen vereist een superuser.',
     link: {

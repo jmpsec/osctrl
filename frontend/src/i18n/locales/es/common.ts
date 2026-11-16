@@ -851,6 +851,7 @@ export const es: Messages = {
     description: 'Servidor de sincronización de Santa: gestiona reglas de permitir y bloquear, revisa las ejecuciones bloqueadas y supervisa los clientes.',
     tabRules: 'Reglas',
     tabEvents: 'Eventos',
+    tabFileAccess: 'Acceso a archivos',
     tabMachines: 'Equipos',
     tabSettings: 'Ajustes',
     loadError: 'No se pudieron cargar los datos de Santa',
@@ -1017,6 +1018,7 @@ export const es: Messages = {
       verdicts: { clean: 'Limpio', flagged: 'Marcado', unknown: 'Desconocido', error: 'Comprobación fallida', unchecked: 'Sin comprobar' },
     },
     carve: { retrieve: 'Recuperar archivo', view: 'Ver extracción', fromLatest: 'Última ejecución en {machine}' },
+    fileAccess: { override: 'Anulación de las reglas de acceso a archivos', overrideHint: 'Cambia la acción de las reglas de acceso a archivos desplegadas con el perfil FileAccessPolicy. Los clientes la aplican en la siguiente sincronización.', none: 'No hay eventos de acceso a archivos', noneHint: 'Las reglas de acceso a archivos se despliegan mediante MDM con el perfil FileAccessPolicy. Sus infracciones aparecen aquí.', rule: 'Regla', target: 'Ruta', process: 'Proceso', actions: { unset: 'Sin definir (clientes sin cambios)', NONE: 'Ninguna (reglas tal como están)', AUDIT_ONLY: 'Solo auditoría (registrar y permitir)', DISABLE: 'Desactivar reglas' } },
     notifyChannels: 'Avisar de nuevas solicitudes',
     notifyChannelsHint: 'Cada solicitud nueva se envía a estos canales de alertas con un enlace para aprobar y otro para denegar. Un enlace funciona una vez, caduca a las 72 horas y requiere un administrador del entorno con sesión iniciada. Cambiar los canales requiere un superusuario.',
     link: {

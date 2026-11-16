@@ -851,6 +851,7 @@ export const ko: Messages = {
     description: 'Santa 동기화 서버: 허용 및 차단 규칙을 관리하고, 차단된 실행을 검토하며, 클라이언트를 모니터링합니다.',
     tabRules: '규칙',
     tabEvents: '이벤트',
+    tabFileAccess: '파일 접근',
     tabMachines: '머신',
     tabSettings: '설정',
     loadError: 'Santa 데이터를 불러오지 못했습니다',
@@ -1017,6 +1018,7 @@ export const ko: Messages = {
       verdicts: { clean: '정상', flagged: '표시됨', unknown: '알 수 없음', error: '검사 실패', unchecked: '검사 안 함' },
     },
     carve: { retrieve: '파일 가져오기', view: '추출 보기', fromLatest: '마지막 실행: {machine}' },
+    fileAccess: { override: '파일 접근 규칙 재정의', overrideHint: 'FileAccessPolicy 프로필로 배포된 파일 접근 규칙의 동작을 변경합니다. 클라이언트는 다음 동기화 때 적용합니다.', none: '파일 접근 이벤트가 없습니다', noneHint: '파일 접근 규칙은 MDM을 통해 FileAccessPolicy 프로필로 배포됩니다. 위반 사항이 여기에 표시됩니다.', rule: '규칙', target: '경로', process: '프로세스', actions: { unset: '설정 안 함(클라이언트 변경 없음)', NONE: '없음(규칙대로 적용)', AUDIT_ONLY: '감사만(기록 후 허용)', DISABLE: '규칙 비활성화' } },
     notifyChannels: '새 요청 알림',
     notifyChannelsHint: '새 요청은 승인 링크와 거부 링크와 함께 이 알림 채널로 전송됩니다. 링크는 한 번만 사용할 수 있고 72시간 후 만료되며 환경 관리자의 로그인이 필요합니다. 채널을 변경하려면 슈퍼유저 권한이 필요합니다.',
     link: {

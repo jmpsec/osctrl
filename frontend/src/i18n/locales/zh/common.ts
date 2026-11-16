@@ -851,6 +851,7 @@ export const zh: Messages = {
     description: 'Santa 同步服务器：管理允许和阻止规则，查看被阻止的执行，并监控客户端。',
     tabRules: '规则',
     tabEvents: '事件',
+    tabFileAccess: '文件访问',
     tabMachines: '机器',
     tabSettings: '设置',
     loadError: '无法加载 Santa 数据',
@@ -1017,6 +1018,7 @@ export const zh: Messages = {
       verdicts: { clean: '安全', flagged: '已标记', unknown: '未知', error: '检查失败', unchecked: '未检查' },
     },
     carve: { retrieve: '获取文件', view: '查看提取', fromLatest: '最近运行于 {machine}' },
+    fileAccess: { override: '文件访问规则覆盖', overrideHint: '更改通过 FileAccessPolicy 配置描述文件部署的文件访问规则的操作。客户端在下次同步时应用。', none: '没有文件访问事件', noneHint: '文件访问规则通过 MDM 以 FileAccessPolicy 配置描述文件部署。违规会显示在这里。', rule: '规则', target: '路径', process: '进程', actions: { unset: '未设置（客户端不变）', NONE: '无（按规则执行）', AUDIT_ONLY: '仅审计（记录并允许）', DISABLE: '禁用规则' } },
     notifyChannels: '通知新请求',
     notifyChannelsHint: '每个新请求都会连同批准链接和拒绝链接发送到这些告警渠道。链接只能使用一次，72 小时后过期，并且需要环境管理员登录。更改渠道需要超级用户。',
     link: {
