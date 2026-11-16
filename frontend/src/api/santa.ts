@@ -166,13 +166,56 @@ export function getSantaBinary(env: string, sha256: string): Promise<SantaBinary
   return apiFetch<SantaBinary>(`${envPath(env)}/binaries/${encodeURIComponent(sha256)}`);
 }
 
+export interface SantaLockdownCandidate {
+  machine_id: string;
+  hostname: string;
+  mode_source: string;
+  last_sync_at: string | null;
+  /** ALLOW_UNKNOWN executions in the window: what LOCKDOWN would have blocked. */
+  would_block: number;
+  /** None would have blocked, and the machine synced in the window. */
+  ready: boolean;
+}
+
+export interface SantaRankedBinary {
+  sha256: string;
+  file_name: string;
+  team_id: string;
+  events: number;
+  machines: number;
+}
+
+export interface SantaRankedTeam {
+  team_id: string;
+  events: number;
+  machines: number;
+  binaries: number;
+}
+
+/** Computed from the events received in the last `days` days; ranked lists hold at most 20. */
+export interface SantaReport {
+  days: number;
+  since: string;
+  lockdown_ready: SantaLockdownCandidate[] | null;
+  top_blocked: SantaRankedBinary[] | null;
+  top_blocked_teams: SantaRankedTeam[] | null;
+  coverage_gaps: SantaRankedBinary[] | null;
+}
+
+export const SANTA_REPORT_DAYS = [7, 14, 30];
+
+/** GET /api/v1/santa/{env}/reports?days= — 1 to 30 days. */
+export function getSantaReport(env: string, days: number): Promise<SantaReport> {
+  return apiFetch<SantaReport>(`${envPath(env)}/reports?days=${days}`);
+}
+
 export interface SantaEventsPage {
   events: SantaEvent[];
   total: number;
   page: number;
 }
 
-export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries', ...rest: unknown[]) =>
+export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries' | 'reports', ...rest: unknown[]) =>
   ['santa', env, part, ...rest] as const;
 
 function envPath(env: string): string {

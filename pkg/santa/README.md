@@ -40,6 +40,16 @@ Deciding on a rule needs context, so each file hash has a detail view: the file 
 - Everything comes from `santa_events`, which is pruned after 30 days. First seen, last seen and the counts cover that window only, not the file's whole history.
 - All of it is written by Santa clients and is untrusted: a compromised client can report any name, signer or chain for a hash. The view is context for a decision, not proof of who signed the file.
 
+### Reports
+
+The **Reports** tab answers when an environment or a machine can move to LOCKDOWN. `GET /api/v1/santa/{env}/reports?days=N` (environment admin, `N` 1 to 30, default 14) computes, from the events received in the window:
+
+- **Ready for lockdown:** every machine assigned MONITOR at its last preflight, with its `ALLOW_UNKNOWN` count, that is, the executions no rule allowed and LOCKDOWN would have blocked. A machine is ready with none and a sync within the window; one that has not synced has reported nothing to judge it by. Ready machines come first. Machines already in LOCKDOWN are left out.
+- **Top blocked:** binaries and team IDs ranked by `BLOCK_*` events, with the number of machines (and, for a team ID, of distinct binaries).
+- **Rule coverage gaps:** the binaries most executed with no rule deciding them (`ALLOW_UNKNOWN` or `BLOCK_UNKNOWN`), the first candidates for an allow or block rule.
+
+Each ranked list has at most 20 entries. The window is on the time osctrl received each event, not the client's clock, and cannot exceed the 30 days events are kept. A binary name opens the binary details. The queries read one environment's events in the window through the `(environment_id, created_at)` index `idx_santa_events_env_created`, which `osctrl-api` builds in the background at startup (concurrently on PostgreSQL), so a large events table does not hold up startup. All names and team IDs are written by Santa clients.
+
 ### Bulk import and export
 
 Rule sets can be moved between environments or kept in git.

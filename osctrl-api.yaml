@@ -9025,6 +9025,64 @@ paths:
       summary: Delete a Santa client mode override
       tags:
         - santa
+  "/api/v1/santa/{env}/reports":
+    get:
+      description: Requires environment admin. Computed from the events osctrl
+        received in the last days days. Ready for lockdown lists the machines
+        assigned MONITOR at their last preflight with their ALLOW_UNKNOWN count
+        (executions LOCKDOWN would have blocked); a machine is ready with none
+        and a sync in the window. Top blocked ranks BLOCK_* events by binary and
+        by team ID. Coverage gaps rank the binaries most executed with no rule
+        deciding them (ALLOW_UNKNOWN or BLOCK_UNKNOWN). Each ranked list has at
+        most 20 entries. Event fields are written by Santa clients.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Window in days, 1 to 30 (default 14)
+          in: query
+          name: days
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Report"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: "Santa reports: ready for lockdown, top blocked, rule coverage gaps"
+      tags:
+        - santa
   "/api/v1/santa/{env}/requests":
     get:
       description: Newest first, at most 500. Requires environment admin.
@@ -14370,6 +14428,23 @@ components:
           description: Rules that do not exist yet
           type: integer
       type: object
+    santa.LockdownCandidate:
+      properties:
+        hostname:
+          type: string
+        last_sync_at:
+          type: string
+        machine_id:
+          type: string
+        mode_source:
+          type: string
+        ready:
+          description: No would-block execution and a sync within the window
+          type: boolean
+        would_block:
+          description: "ALLOW_UNKNOWN events in the window: executions no rule allowed"
+          type: integer
+      type: object
     santa.Machine:
       properties:
         applied_digest:
@@ -14445,6 +14520,57 @@ components:
           type: string
         updated_at:
           type: string
+      type: object
+    santa.RankedBinary:
+      properties:
+        events:
+          type: integer
+        file_name:
+          type: string
+        machines:
+          type: integer
+        sha256:
+          type: string
+        team_id:
+          type: string
+      type: object
+    santa.RankedTeam:
+      properties:
+        binaries:
+          type: integer
+        events:
+          type: integer
+        machines:
+          type: integer
+        team_id:
+          type: string
+      type: object
+    santa.Report:
+      properties:
+        coverage_gaps:
+          description: Most executed binaries that no rule decided (ALLOW_UNKNOWN or
+            BLOCK_UNKNOWN)
+          items:
+            $ref: "#/components/schemas/santa.RankedBinary"
+          type: array
+        days:
+          type: integer
+        lockdown_ready:
+          description: Machines assigned MONITOR at their last preflight, ready ones first
+          items:
+            $ref: "#/components/schemas/santa.LockdownCandidate"
+          type: array
+        since:
+          type: string
+        top_blocked:
+          description: Most blocked binaries and team IDs
+          items:
+            $ref: "#/components/schemas/santa.RankedBinary"
+          type: array
+        top_blocked_teams:
+          items:
+            $ref: "#/components/schemas/santa.RankedTeam"
+          type: array
       type: object
     santa.Request:
       properties:
