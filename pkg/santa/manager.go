@@ -64,7 +64,9 @@ func (m *Manager) SaveConfig(cfg EnvConfig) error {
 		Columns: []clause.Column{{Name: "environment_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "batch_size", "enable_transitive_rules", "block_usb_mount",
 			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels",
-			"vote_local_threshold", "vote_global_threshold", "override_file_access_action", "updated_at"}),
+			"vote_local_threshold", "vote_global_threshold", "override_file_access_action",
+			"enable_bundles", "enable_all_event_upload", "disable_unknown_event_upload", "allowed_path_regex", "blocked_path_regex",
+			"event_detail_url", "event_detail_text", "updated_at"}),
 	}).Create(&cfg).Error
 }
 

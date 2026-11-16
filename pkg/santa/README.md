@@ -146,6 +146,16 @@ Santa can restrict which processes read or write sensitive files, such as browse
 
   Clients pick up a change at their next sync. Choosing unset again does not undo an override a client already received; choose `NONE` to undo it.
 
+### Upload and path settings
+
+These preflight settings live under **Settings** (and the config API). osctrl sends all of them at every preflight, so turning one off reaches clients at their next sync.
+
+- **Bundles** (`enable_bundles`): when Santa blocks a binary inside an app bundle, it hashes the whole bundle and uploads that hash with the event. The first time osctrl sees a bundle hash in an environment, it answers with `event_upload_bundle_binaries`, and the client uploads every binary of the bundle as a `BUNDLE_BINARY` event. These appear in **Events** with the bundle's `bundle_hash`; create rules for them from there. osctrl stops asking for a bundle once one of its `BUNDLE_BINARY` events is stored. Bundle hashes that are not 64 hex characters are ignored.
+- **Upload all execution events** (`enable_all_event_upload`): clients upload every execution Santa decides on, not only blocks and would-be blocks. This can be a lot of events.
+- **Skip would-be blocks** (`disable_unknown_event_upload`): clients do not upload executions that LOCKDOWN would block, which is the bulk of MONITOR mode events.
+- **Allowed and blocked path regexes** (`allowed_path_regex`, `blocked_path_regex`): an execution that matches no rule is allowed or blocked when its path matches. The blocked regex is checked first. Santa uses ICU regexes; osctrl checks them with Go's RE2 parser, so use the common subset (no lookaround or backreferences). At most 1024 characters, one line. Empty turns it off. These are much easier to get wrong than rules: a writable path in the allowed regex lets anyone run anything from it.
+- **Block dialog URL and button label** (`event_detail_url`, `event_detail_text`): the button in the Santa block dialog. The URL must be `https` and can use Santa placeholders such as `%file_sha%`, `%machine_id%`, `%username%` and `%bundle_or_file_identifier%`. It overrides the approval request link below. The label is at most 32 characters; when empty, the approval link keeps **Request approval** and a custom URL keeps the client's default. When neither the URL nor the approval URL is set, osctrl sends nothing, and clients keep what they had.
+
 ### Approval requests
 
 A user whose software was blocked can ask for it to be allowed, from the Santa block dialog. It is off by default.
@@ -335,4 +345,4 @@ The `WatchItems` key (here `ChromeCookies`) is the rule name that osctrl shows, 
 
 ## Not implemented
 
-The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; delivering file access rules (a v2-only stage; deploy them with MDM), network-flow and telemetry rules; bundle uploads.
+The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; delivering file access rules (a v2-only stage; deploy them with MDM), network-flow and telemetry rules; `export_configuration` (telemetry export to a signed POST URL; no osctrl log sink issues one); one-step rules for a whole bundle.

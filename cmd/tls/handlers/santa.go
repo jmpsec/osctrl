@@ -93,7 +93,11 @@ func (h *HandlersTLS) SantaHandler(w http.ResponseWriter, r *http.Request) {
 				return nil, err
 			}
 			h.santaForward(env, node.UUID, evs)
-			return &syncv1.EventUploadResponse{}, nil
+			bundles, err := h.Santa.BundlesWanted(sn.EnvID, evs)
+			if err != nil {
+				return nil, err
+			}
+			return &syncv1.EventUploadResponse{EventUploadBundleBinaries: bundles}, nil
 		})
 	case "ruledownload":
 		err = santaStage(w, r, &syncv1.RuleDownloadRequest{}, func(q *syncv1.RuleDownloadRequest) (proto.Message, error) {

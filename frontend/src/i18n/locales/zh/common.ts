@@ -1018,6 +1018,7 @@ export const zh: Messages = {
       verdicts: { clean: '安全', flagged: '已标记', unknown: '未知', error: '检查失败', unchecked: '未检查' },
     },
     carve: { retrieve: '获取文件', view: '查看提取', fromLatest: '最近运行于 {machine}' },
+    settings: { enable_bundles: '捆绑包：上传被阻止应用所在捆绑包中的所有二进制文件', enable_all_event_upload: '上传所有执行事件，而不仅是阻止事件', disable_unknown_event_upload: '不上传 LOCKDOWN 会阻止的执行', allowed_path_regex: '允许路径正则表达式', blocked_path_regex: '阻止路径正则表达式', pathRegexHint: '没有规则匹配时，来自匹配路径的执行将被允许或阻止；先检查阻止正则表达式。留空即关闭。风险高于规则。', event_detail_url: '阻止对话框 URL', event_detail_text: '按钮文字', eventDetailHint: '替换审批请求链接。Santa 会填充 %file_sha% 和 %machine_id% 等占位符。留空则使用上面的审批 URL。' },
     fileAccess: { override: '文件访问规则覆盖', overrideHint: '更改通过 FileAccessPolicy 配置描述文件部署的文件访问规则的操作。客户端在下次同步时应用。', none: '没有文件访问事件', noneHint: '文件访问规则通过 MDM 以 FileAccessPolicy 配置描述文件部署。违规会显示在这里。', rule: '规则', target: '路径', process: '进程', actions: { unset: '未设置（客户端不变）', NONE: '无（按规则执行）', AUDIT_ONLY: '仅审计（记录并允许）', DISABLE: '禁用规则' } },
     notifyChannels: '通知新请求',
     notifyChannelsHint: '每个新请求都会连同批准链接和拒绝链接发送到这些告警渠道。链接只能使用一次，72 小时后过期，并且需要环境管理员登录。更改渠道需要超级用户。',

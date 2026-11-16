@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 // ErrInvalidRule wraps every ValidateRule failure.
@@ -118,6 +119,24 @@ func ValidateConfig(c *EnvConfig) error {
 	}
 	if a := c.OverrideFileAccessAction; a != "" && a != "NONE" && a != "AUDIT_ONLY" && a != "DISABLE" {
 		return fmt.Errorf("invalid file access override %q", a)
+	}
+	for name, re := range map[string]string{"allowed": c.AllowedPathRegex, "blocked": c.BlockedPathRegex} {
+		// Santa uses ICU regexes; RE2 parses their common subset, which catches typos.
+		if _, err := regexp.Compile(re); err != nil || len(re) > 1024 || strings.ContainsAny(re, "\r\n") {
+			return fmt.Errorf("invalid %s path regex", name)
+		}
+	}
+	c.EventDetailURL = strings.TrimSpace(c.EventDetailURL)
+	if c.EventDetailURL != "" {
+		// Santa placeholders like %file_sha% are allowed here; they make the URL unparseable as-is.
+		u, err := url.Parse(strings.ReplaceAll(c.EventDetailURL, "%", ""))
+		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || len(c.EventDetailURL) > 1024 {
+			return errors.New("event detail URL must be an https URL")
+		}
+	}
+	c.EventDetailText = strings.TrimSpace(c.EventDetailText)
+	if utf8.RuneCountInString(c.EventDetailText) > 32 || strings.ContainsAny(c.EventDetailText, "\r\n") {
+		return errors.New("event detail text is at most 32 characters on one line")
 	}
 	return nil
 }
