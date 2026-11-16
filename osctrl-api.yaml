@@ -8904,6 +8904,69 @@ paths:
       summary: Retrieve the file of a Santa event from its machine
       tags:
         - santa
+  "/api/v1/santa/{env}/file-access-events":
+    get:
+      description: Requires environment admin. Violations of file access rules
+        deployed to the clients through MDM, newest first, kept 30 days. Every
+        field but the IDs is written by Santa clients.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Page (1-based)
+          in: query
+          name: page
+          schema:
+            type: integer
+        - description: Page size
+          in: query
+          name: page_size
+          schema:
+            type: integer
+        - description: Only events of this machine (node UUID)
+          in: query
+          name: machine_id
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaFileAccessEventsResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List Santa file access events
+      tags:
+        - santa
   "/api/v1/santa/{env}/machines":
     get:
       parameters:
@@ -13671,6 +13734,10 @@ components:
           items:
             type: integer
           type: array
+        override_file_access_action:
+          description: "Overrides the action of MDM-deployed file access rules: NONE |
+            AUDIT_ONLY | DISABLE; empty leaves the clients unchanged"
+          type: string
         removable_media:
           description: ALLOW | BLOCK | REMOUNT; empty means ALLOW
           type: string
@@ -13734,6 +13801,13 @@ components:
           items:
             type: integer
           type: array
+        override_file_access_action:
+          description: >-
+            Overrides the action of MDM-deployed file access rules: NONE |
+            AUDIT_ONLY | DISABLE;
+
+            empty sends nothing, leaving each client's setting unchanged
+          type: string
         removable_media:
           description: ALLOW | BLOCK | REMOUNT
           type: string
@@ -13770,6 +13844,17 @@ components:
         events:
           items:
             $ref: "#/components/schemas/santa.Event"
+          type: array
+        page:
+          type: integer
+        total:
+          type: integer
+      type: object
+    handlers.SantaFileAccessEventsResponse:
+      properties:
+        events:
+          items:
+            $ref: "#/components/schemas/santa.FileAccessEvent"
           type: array
         page:
           type: integer
@@ -14533,6 +14618,36 @@ components:
         team_id:
           type: string
       type: object
+    santa.FileAccessEvent:
+      properties:
+        accessed_at:
+          type: string
+        created_at:
+          type: string
+        decision:
+          description: DENIED | DENIED_INVALID_SIGNATURE | AUDIT_ONLY
+          type: string
+        environment_id:
+          type: integer
+        id:
+          type: integer
+        machine_id:
+          type: string
+        node_id:
+          type: integer
+        process_chain:
+          description: The accessing process first, then its parents
+          items:
+            $ref: "#/components/schemas/santa.Process"
+          type: array
+        rule_name:
+          type: string
+        rule_version:
+          type: string
+        target:
+          description: The path that was accessed
+          type: string
+      type: object
     santa.ImportIssue:
       properties:
         index:
@@ -14662,6 +14777,21 @@ components:
           description: tag name | node UUID (uppercase)
           type: string
         updated_at:
+          type: string
+      type: object
+    santa.Process:
+      properties:
+        cd_hash:
+          type: string
+        file_path:
+          type: string
+        file_sha256:
+          type: string
+        pid:
+          type: integer
+        signing_id:
+          type: string
+        team_id:
           type: string
       type: object
     santa.RankedBinary:

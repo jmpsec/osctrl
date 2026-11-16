@@ -851,6 +851,7 @@ export const ca: Messages = {
     description: 'Servidor de sincronització de Santa: gestiona regles de permetre i bloquejar, revisa les execucions bloquejades i supervisa els clients.',
     tabRules: 'Regles',
     tabEvents: 'Esdeveniments',
+    tabFileAccess: 'Accés a fitxers',
     tabMachines: 'Equips',
     tabSettings: 'Configuració',
     loadError: 'No s\'han pogut carregar les dades de Santa',
@@ -1017,6 +1018,7 @@ export const ca: Messages = {
       verdicts: { clean: 'Net', flagged: 'Marcat', unknown: 'Desconegut', error: 'Comprovació fallida', unchecked: 'Sense comprovar' },
     },
     carve: { retrieve: 'Recupera el fitxer', view: "Mostra l'extracció", fromLatest: 'Última execució a {machine}' },
+    fileAccess: { override: "Anul·lació de les regles d'accés a fitxers", overrideHint: "Canvia l'acció de les regles d'accés a fitxers desplegades amb el perfil FileAccessPolicy. Els clients l'apliquen a la sincronització següent.", none: "No hi ha esdeveniments d'accés a fitxers", noneHint: "Les regles d'accés a fitxers es despleguen mitjançant MDM amb el perfil FileAccessPolicy. Les seves infraccions apareixen aquí.", rule: 'Regla', target: 'Camí', process: 'Procés', actions: { unset: 'Sense definir (clients sense canvis)', NONE: 'Cap (regles tal com són)', AUDIT_ONLY: 'Només auditoria (registra i permet)', DISABLE: 'Desactiva les regles' } },
     notifyChannels: 'Avisa de sol·licituds noves',
     notifyChannelsHint: "Cada sol·licitud nova s'envia a aquests canals d'alertes amb un enllaç per aprovar i un altre per denegar. Un enllaç funciona una vegada, caduca al cap de 72 hores i requereix un administrador de l'entorn amb la sessió iniciada. Canviar els canals requereix un superusuari.",
     link: {

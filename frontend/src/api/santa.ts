@@ -23,6 +23,9 @@ export const SANTA_MEDIA_ACTIONS: SantaMediaAction[] = ['ALLOW', 'BLOCK', 'REMOU
 /** Mount options offered in the UI; the API also accepts async and -j. */
 export const SANTA_REMOUNT_FLAGS = ['rdonly', 'noexec', 'nosuid', 'nodev', 'nobrowse', 'noowners'];
 
+export type SantaFileAccessAction = '' | 'NONE' | 'AUDIT_ONLY' | 'DISABLE';
+export const SANTA_FILE_ACCESS_ACTIONS: SantaFileAccessAction[] = ['', 'NONE', 'AUDIT_ONLY', 'DISABLE'];
+
 export interface SantaConfig {
   client_mode: SantaClientMode;
   batch_size: number;
@@ -40,6 +43,8 @@ export interface SantaConfig {
   vote_local_threshold: number;
   /** Votes that allow the file in the whole environment; 0 is off. */
   vote_global_threshold: number;
+  /** Overrides the action of MDM-deployed file access rules; empty leaves clients unchanged. */
+  override_file_access_action: SantaFileAccessAction;
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }
@@ -231,7 +236,7 @@ export interface SantaEventsPage {
   page: number;
 }
 
-export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries' | 'reports', ...rest: unknown[]) =>
+export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries' | 'reports' | 'file-access', ...rest: unknown[]) =>
   ['santa', env, part, ...rest] as const;
 
 function envPath(env: string): string {
@@ -427,6 +432,28 @@ export function getSantaRequest(env: string, id: number): Promise<SantaRequest> 
  */
 export function decideSantaRequestByLink(env: string, token: string, body: SantaDecision): Promise<SantaRequest> {
   return apiFetch<SantaRequest>(`${envPath(env)}/requests/link`, jsonInit('POST', { token, ...body }));
+}
+
+/** A violation of a file access rule; every field but the IDs is written by the client. */
+export interface SantaFileAccessEvent {
+  id: number;
+  machine_id: string;
+  rule_name: string;
+  rule_version: string;
+  target: string;
+  decision: string;
+  accessed_at: string;
+  /** The accessing process first, then its parents. */
+  process_chain: { pid: number; file_path: string; file_sha256: string; signing_id: string; team_id: string }[] | null;
+}
+
+/** GET /api/v1/santa/{env}/file-access-events */
+export function listSantaFileAccessEvents(
+  env: string,
+  page = 1,
+  pageSize = SANTA_EVENTS_PAGE_SIZE,
+): Promise<{ events: SantaFileAccessEvent[]; total: number; page: number }> {
+  return apiFetch(`${envPath(env)}/file-access-events?page=${page}&page_size=${pageSize}`);
 }
 
 /** GET /api/v1/santa/{env}/events */

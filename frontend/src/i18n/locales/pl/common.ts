@@ -851,6 +851,7 @@ export const pl: Messages = {
     description: 'Serwer synchronizacji Santa: zarządzaj regułami zezwalania i blokowania, przeglądaj zablokowane uruchomienia i monitoruj klientów.',
     tabRules: 'Reguły',
     tabEvents: 'Zdarzenia',
+    tabFileAccess: 'Dostęp do plików',
     tabMachines: 'Maszyny',
     tabSettings: 'Ustawienia',
     loadError: 'Nie udało się wczytać danych Santa',
@@ -1017,6 +1018,7 @@ export const pl: Messages = {
       verdicts: { clean: 'Czysty', flagged: 'Oznaczony', unknown: 'Nieznany', error: 'Kontrola nie powiodła się', unchecked: 'Nie sprawdzono' },
     },
     carve: { retrieve: 'Pobierz plik', view: 'Pokaż pobranie', fromLatest: 'Ostatnio uruchomiony na {machine}' },
+    fileAccess: { override: 'Nadpisanie reguł dostępu do plików', overrideHint: 'Zmienia działanie reguł dostępu do plików wdrożonych profilem FileAccessPolicy. Klienci stosują je przy następnej synchronizacji.', none: 'Brak zdarzeń dostępu do plików', noneHint: 'Reguły dostępu do plików są wdrażane przez MDM profilem FileAccessPolicy. Ich naruszenia pojawiają się tutaj.', rule: 'Reguła', target: 'Ścieżka', process: 'Proces', actions: { unset: 'Nieustawione (klienci bez zmian)', NONE: 'Brak (reguły bez zmian)', AUDIT_ONLY: 'Tylko audyt (rejestruj i zezwól)', DISABLE: 'Wyłącz reguły' } },
     notifyChannels: 'Powiadamiaj o nowych prośbach',
     notifyChannelsHint: 'Każda nowa prośba jest wysyłana do tych kanałów alertów z linkiem do zatwierdzenia i linkiem do odrzucenia. Link działa raz, wygasa po 72 godzinach i wymaga zalogowanego administratora środowiska. Zmiana kanałów wymaga superużytkownika.',
     link: {

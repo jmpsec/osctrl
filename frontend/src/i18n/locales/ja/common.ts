@@ -851,6 +851,7 @@ export const ja: Messages = {
     description: 'Santa 同期サーバー: 許可・ブロックルールの管理、ブロックされた実行の確認、クライアントの監視を行います。',
     tabRules: 'ルール',
     tabEvents: 'イベント',
+    tabFileAccess: 'ファイルアクセス',
     tabMachines: 'マシン',
     tabSettings: '設定',
     loadError: 'Santa のデータを読み込めませんでした',
@@ -1017,6 +1018,7 @@ export const ja: Messages = {
       verdicts: { clean: '問題なし', flagged: '検出', unknown: '不明', error: 'チェック失敗', unchecked: '未チェック' },
     },
     carve: { retrieve: 'ファイルを取得', view: 'カーブを表示', fromLatest: '最後の実行: {machine}' },
+    fileAccess: { override: 'ファイルアクセスルールの上書き', overrideHint: 'FileAccessPolicy プロファイルで配布されたファイルアクセスルールの動作を変更します。クライアントは次回の同期で適用します。', none: 'ファイルアクセスイベントはありません', noneHint: 'ファイルアクセスルールは MDM から FileAccessPolicy プロファイルで配布されます。違反はここに表示されます。', rule: 'ルール', target: 'パス', process: 'プロセス', actions: { unset: '未設定（クライアントは変更なし）', NONE: 'なし（ルールどおり）', AUDIT_ONLY: '監査のみ（記録して許可）', DISABLE: 'ルールを無効化' } },
     notifyChannels: '新しいリクエストを通知',
     notifyChannelsHint: '新しいリクエストは、承認リンクと拒否リンクを付けてこれらのアラートチャンネルに送信されます。リンクは 1 回だけ使用でき、72 時間で失効し、環境管理者のサインインが必要です。チャンネルの変更にはスーパーユーザー権限が必要です。',
     link: {

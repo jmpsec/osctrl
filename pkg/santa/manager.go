@@ -64,7 +64,7 @@ func (m *Manager) SaveConfig(cfg EnvConfig) error {
 		Columns: []clause.Column{{Name: "environment_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "batch_size", "enable_transitive_rules", "block_usb_mount",
 			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels",
-			"vote_local_threshold", "vote_global_threshold", "updated_at"}),
+			"vote_local_threshold", "vote_global_threshold", "override_file_access_action", "updated_at"}),
 	}).Create(&cfg).Error
 }
 
@@ -329,8 +329,13 @@ func (m *Manager) Events(envID uint, page, pageSize int, f EventFilter) ([]Event
 	return evs, total, err
 }
 
-// PruneEvents deletes events created before olderThan and returns how many.
+// PruneEvents deletes execution and file access events created before
+// olderThan and returns how many.
 func (m *Manager) PruneEvents(olderThan time.Time) (int64, error) {
 	res := m.DB.Where("created_at < ?", olderThan).Delete(&Event{})
-	return res.RowsAffected, res.Error
+	if res.Error != nil {
+		return 0, res.Error
+	}
+	fa := m.DB.Where("created_at < ?", olderThan).Delete(&FileAccessEvent{})
+	return res.RowsAffected + fa.RowsAffected, fa.Error
 }

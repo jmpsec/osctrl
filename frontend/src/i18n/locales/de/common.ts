@@ -851,6 +851,7 @@ export const de: Messages = {
     description: 'Santa-Sync-Server: Verwalten Sie Erlauben- und Blockieren-Regeln, prüfen Sie blockierte Ausführungen und überwachen Sie Clients.',
     tabRules: 'Regeln',
     tabEvents: 'Ereignisse',
+    tabFileAccess: 'Dateizugriff',
     tabMachines: 'Rechner',
     tabSettings: 'Einstellungen',
     loadError: 'Santa-Daten konnten nicht geladen werden',
@@ -1017,6 +1018,7 @@ export const de: Messages = {
       verdicts: { clean: 'Unbedenklich', flagged: 'Markiert', unknown: 'Unbekannt', error: 'Prüfung fehlgeschlagen', unchecked: 'Nicht geprüft' },
     },
     carve: { retrieve: 'Datei abrufen', view: 'Carve anzeigen', fromLatest: 'Zuletzt ausgeführt auf {machine}' },
+    fileAccess: { override: 'Übersteuerung der Dateizugriffsregeln', overrideHint: 'Ändert die Aktion der Dateizugriffsregeln, die mit dem Profil FileAccessPolicy verteilt werden. Clients übernehmen sie bei der nächsten Synchronisierung.', none: 'Keine Dateizugriffsereignisse', noneHint: 'Dateizugriffsregeln werden per MDM mit dem Profil FileAccessPolicy verteilt. Verstöße dagegen erscheinen hier.', rule: 'Regel', target: 'Pfad', process: 'Prozess', actions: { unset: 'Nicht gesetzt (Clients unverändert)', NONE: 'Keine (Regeln wie definiert)', AUDIT_ONLY: 'Nur Audit (protokollieren und erlauben)', DISABLE: 'Regeln deaktivieren' } },
     notifyChannels: 'Über neue Anfragen benachrichtigen',
     notifyChannelsHint: 'Jede neue Anfrage wird mit einem Genehmigen- und einem Ablehnen-Link an diese Alarmkanäle gesendet. Ein Link funktioniert einmal, läuft nach 72 Stunden ab und erfordert einen angemeldeten Umgebungsadministrator. Das Ändern der Kanäle erfordert einen Superuser.',
     link: {

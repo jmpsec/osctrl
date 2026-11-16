@@ -862,6 +862,7 @@ export const en = {
     description: 'Santa sync server: manage allow and block rules, review blocked executions and monitor clients.',
     tabRules: 'Rules',
     tabEvents: 'Events',
+    tabFileAccess: 'File access',
     tabMachines: 'Machines',
     tabSettings: 'Settings',
     loadError: 'Could not load Santa data',
@@ -1028,6 +1029,7 @@ export const en = {
       verdicts: { clean: 'Clean', flagged: 'Flagged', unknown: 'Unknown', error: 'Check failed', unchecked: 'Not checked' },
     },
     carve: { retrieve: 'Retrieve file', view: 'View carve', fromLatest: 'Last ran on {machine}' },
+    fileAccess: { override: 'File access rules override', overrideHint: 'Changes the action of the file access rules deployed with the FileAccessPolicy profile. Clients apply it at their next sync.', none: 'No file access events', noneHint: 'File access rules are deployed through MDM with the FileAccessPolicy profile. Their violations show up here.', rule: 'Rule', target: 'Path', process: 'Process', actions: { unset: 'Not set (clients unchanged)', NONE: 'None (rules apply as written)', AUDIT_ONLY: 'Audit only (log and allow)', DISABLE: 'Disable rules' } },
     notifyChannels: 'Notify about new requests',
     notifyChannelsHint: 'Each new request is sent to these alert channels with an approve and a deny link. A link works once, expires after 72 hours and needs an environment admin signed in. Changing the channels requires a superuser.',
     link: {

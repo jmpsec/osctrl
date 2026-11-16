@@ -133,6 +133,19 @@ An optional override for encrypted volumes (`encrypted_removable_media_policy`) 
 
 Santa clients that predate `removable_media_policy` read the deprecated `block_usb_mount` and `remount_usb_mode`, which osctrl still sends, derived from the main policy. Those clients ignore the encrypted override. Configs saved before this setting existed are migrated at startup: `block_usb_mount: true` becomes `BLOCK`, otherwise `ALLOW`. The API still accepts `block_usb_mount` when `removable_media` is omitted.
 
+### File access rules
+
+Santa can restrict which processes read or write sensitive files, such as browser cookies, keychains or SSH keys. The v1 sync protocol cannot deliver these rules, so deploy them with MDM (see [Deploying file access rules](#deploying-file-access-rules)). osctrl does two things with them:
+
+- It stores the violations that clients upload in `file_access_events`: the rule name and version, the accessed path, the decision (`DENIED`, `DENIED_INVALID_SIGNATURE` or `AUDIT_ONLY`), and the process chain (accessing process first, at most 8 processes). They appear in the **File access** tab and through `GET /api/v1/santa/{env}/file-access-events?machine_id=` (environment admin), and they are pruned with the execution events after 30 days. Every field is written by the client. They are not forwarded to log sinks or alert rules.
+- It sends `override_file_access_action` at preflight, set per environment under **Settings > File access rules override**:
+  - unset (default): nothing is sent, and each client keeps its current setting;
+  - `NONE`: the rules apply as written;
+  - `AUDIT_ONLY`: violations are logged and uploaded, but allowed;
+  - `DISABLE`: the rules are not enforced.
+
+  Clients pick up a change at their next sync. Choosing unset again does not undo an override a client already received; choose `NONE` to undo it.
+
 ### Approval requests
 
 A user whose software was blocked can ask for it to be allowed, from the Santa block dialog. It is off by default.
@@ -237,6 +250,53 @@ Set the keys in the `com.northpolesec.santa` payload of your MDM configuration p
 
 Leave `MachineIDKey` unset so the machine ID is the hardware UUID, which must match the osquery node UUID. The trailing slash on `SyncBaseURL` is required. Leave `ClientMode` unset as well, so the mode chosen in osctrl applies.
 
+### Deploying file access rules
+
+Add the policy inline under `FileAccessPolicy` in the same payload, or put it in a separate plist and point `FileAccessPolicyPlist` at that file. Santa re-reads the file every `FileAccessPolicyUpdateIntervalSec` seconds (10 minutes by default). For example, this policy lets only Chrome read its cookies:
+
+```xml
+<key>FileAccessPolicy</key>
+<dict>
+    <key>Version</key>
+    <string>v1.0</string>
+    <key>WatchItems</key>
+    <dict>
+        <key>ChromeCookies</key>
+        <dict>
+            <key>Paths</key>
+            <array>
+                <dict>
+                    <key>Path</key>
+                    <string>/Users/*/Library/Application Support/Google/Chrome/Default/Cookies</string>
+                    <key>IsPrefix</key>
+                    <false/>
+                </dict>
+            </array>
+            <key>Options</key>
+            <dict>
+                <key>RuleType</key>
+                <string>PathsWithAllowedProcesses</string>
+                <key>AllowReadAccess</key>
+                <false/>
+                <key>AuditOnly</key>
+                <true/>
+            </dict>
+            <key>Processes</key>
+            <array>
+                <dict>
+                    <key>SigningID</key>
+                    <string>com.google.Chrome*</string>
+                    <key>TeamID</key>
+                    <string>EQHXZ8M8AV</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
+</dict>
+```
+
+The `WatchItems` key (here `ChromeCookies`) is the rule name that osctrl shows, and `Version` is the rule version. `RuleType` also takes `PathsWithDeniedProcesses`, `ProcessesWithAllowedPaths` and `ProcessesWithDeniedPaths`. Start with `AuditOnly`, check the **File access** tab for legitimate access, then remove it. Santa's file access documentation has the full format.
+
 ## Rolling out to a Mac
 
 ### osctrl side
@@ -275,4 +335,4 @@ Leave `MachineIDKey` unset so the machine ID is the hardware UUID, which must ma
 
 ## Not implemented
 
-The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; file-access, network-flow and telemetry rules; bundle uploads.
+The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; delivering file access rules (a v2-only stage; deploy them with MDM), network-flow and telemetry rules; bundle uploads.

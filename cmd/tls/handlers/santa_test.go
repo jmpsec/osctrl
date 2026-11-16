@@ -166,6 +166,27 @@ func TestSantaAuditCapPerEnvironment(t *testing.T) {
 	require.Equal(t, before+1, metricValue(t, dropped))
 }
 
+// A file access violation in Santa's JSON wire format lands in the
+// environment of the authenticated node, and the override reaches preflight.
+func TestSantaFileAccessJSON(t *testing.T) {
+	f := newSantaFixture(t)
+	require.NoError(t, f.h.Santa.SaveConfig(santa.EnvConfig{EnvironmentID: f.env.ID, ClientMode: "MONITOR", OverrideFileAccessAction: "AUDIT_ONLY"}))
+	w := f.post(santaEnvUUID, "preflight", santaMachineID, f.token, []byte(`{"hostname":"h"}`))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), `"override_file_access_action":"AUDIT_ONLY"`)
+
+	body := `{"machine_id":"x","file_access_events":[{"rule_name":"Cookies","rule_version":"1","target":"/Users/u/Cookies",` +
+		`"decision":"FILE_ACCESS_DECISION_DENIED","access_time":1700000000,"process_chain":[{"pid":42,"file_path":"/tmp/evil"}]}]}`
+	w = f.post(santaEnvUUID, "eventupload", santaMachineID, f.token, []byte(body))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	evs, total, err := f.h.Santa.FileAccessEvents(f.env.ID, 1, 10, "")
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	require.Equal(t, strings.ToUpper(santaMachineID), evs[0].MachineID)
+	require.Equal(t, "DENIED", evs[0].Decision)
+	require.Equal(t, "/tmp/evil", evs[0].ProcessChain[0].FilePath)
+}
+
 func TestSantaOversizedBody(t *testing.T) {
 	f := newSantaFixture(t)
 	body := bytes.Repeat([]byte(" "), santa.MaxRawBody+1)

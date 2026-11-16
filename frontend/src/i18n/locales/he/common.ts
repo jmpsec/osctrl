@@ -851,6 +851,7 @@ export const he: Messages = {
     description: 'שרת הסנכרון של Santa: ניהול כללי היתר וחסימה, סקירת הרצות שנחסמו וניטור לקוחות.',
     tabRules: 'כללים',
     tabEvents: 'אירועים',
+    tabFileAccess: 'גישה לקבצים',
     tabMachines: 'מכונות',
     tabSettings: 'הגדרות',
     loadError: 'לא ניתן לטעון את נתוני Santa',
@@ -1017,6 +1018,7 @@ export const he: Messages = {
       verdicts: { clean: 'נקי', flagged: 'מסומן', unknown: 'לא ידוע', error: 'הבדיקה נכשלה', unchecked: 'לא נבדק' },
     },
     carve: { retrieve: 'אחזור הקובץ', view: 'הצגת החילוץ', fromLatest: 'הורץ לאחרונה ב-{machine}' },
+    fileAccess: { override: 'עקיפת כללי גישה לקבצים', overrideHint: 'משנה את הפעולה של כללי הגישה לקבצים שנפרסו עם הפרופיל FileAccessPolicy. הלקוחות מחילים אותה בסנכרון הבא.', none: 'אין אירועי גישה לקבצים', noneHint: 'כללי גישה לקבצים נפרסים דרך MDM עם הפרופיל FileAccessPolicy. ההפרות שלהם מופיעות כאן.', rule: 'כלל', target: 'נתיב', process: 'תהליך', actions: { unset: 'לא מוגדר (הלקוחות ללא שינוי)', NONE: 'ללא (הכללים כפי שנכתבו)', AUDIT_ONLY: 'ביקורת בלבד (רישום והרשאה)', DISABLE: 'השבתת הכללים' } },
     notifyChannels: 'התראה על בקשות חדשות',
     notifyChannelsHint: 'כל בקשה חדשה נשלחת לערוצי ההתראות האלה עם קישור לאישור וקישור לדחייה. קישור פועל פעם אחת, פג לאחר 72 שעות ודורש מנהל סביבה מחובר. שינוי הערוצים דורש משתמש-על.',
     link: {
