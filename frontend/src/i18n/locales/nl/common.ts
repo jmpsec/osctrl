@@ -1008,6 +1008,14 @@ export const nl: Messages = {
       binaries: 'Bestanden',
       footnote: 'Berekend uit de gebeurtenissen die osctrl in de periode ontving, hoogstens 20 per lijst. Namen en team-ID’s worden door Santa-clients gemeld.',
     },
+    risk: {
+      title: 'Risicocontroles',
+      checkNow: 'Nu controleren',
+      flaggedWarning: 'Een risicocontrole heeft dit bestand gemarkeerd. Goedkeuren vereist het negeren van het oordeel met een reden, en komt in het auditlogboek.',
+      override: 'Risico-oordeel negeren en toch goedkeuren',
+      overridden: 'Goedgekeurd ondanks een gemarkeerd risico-oordeel',
+      verdicts: { clean: 'Schoon', flagged: 'Gemarkeerd', unknown: 'Onbekend', error: 'Controle mislukt', unchecked: 'Niet gecontroleerd' },
+    },
     notifyChannels: 'Melden bij nieuwe verzoeken',
     notifyChannelsHint: 'Elk nieuw verzoek wordt naar deze waarschuwingskanalen gestuurd met een link om goed te keuren en een om te weigeren. Een link werkt één keer, verloopt na 72 uur en vereist een aangemelde omgevingsbeheerder. Het wijzigen van de kanalen vereist een superuser.',
     link: {

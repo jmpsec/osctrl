@@ -176,6 +176,22 @@ type YAMLConfigurationService struct {
 	// secret: prefer the VULN_NVD_API_KEY environment variable. json:"-"
 	// keeps it out of service_config, which admins can read and edit.
 	VulnNVDAPIKey string `yaml:"vulnNVDAPIKey" json:"-"`
+	// SantaVirusTotalKey turns on the VirusTotal risk check for Santa
+	// approvals and votes. A secret like VulnNVDAPIKey: prefer the
+	// SANTA_VIRUSTOTAL_KEY environment variable. Consumed by osctrl-api only.
+	SantaVirusTotalKey string `yaml:"santaVirusTotalKey" json:"-"`
+	// SantaVirusTotalThreshold is how many engines must flag a file for the
+	// VirusTotal check to report it flagged.
+	SantaVirusTotalThreshold int `yaml:"santaVirusTotalThreshold"`
+	// SantaRiskWebhookURL turns on a custom HTTP risk check. Treated as a
+	// secret (it may carry a token), so it stays out of service_config.
+	SantaRiskWebhookURL string `yaml:"santaRiskWebhookURL" json:"-"`
+	// SantaRiskWebhookSecret signs the webhook request body (HMAC-SHA256).
+	SantaRiskWebhookSecret string `yaml:"santaRiskWebhookSecret" json:"-"`
+	// SantaRiskTTLHours is how long a risk verdict is cached.
+	SantaRiskTTLHours int `yaml:"santaRiskTTLHours"`
+	// SantaRiskTimeoutSeconds bounds each risk check request.
+	SantaRiskTimeoutSeconds int `yaml:"santaRiskTimeoutSeconds"`
 	// EventsEnabled enables best-effort SSE invalidation notifications.
 	EventsEnabled bool `yaml:"eventsEnabled"`
 	// EventsNamespace must be shared by API/TLS and unique within Redis.

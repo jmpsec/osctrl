@@ -1008,6 +1008,14 @@ export const de: Messages = {
       binaries: 'Binärdateien',
       footnote: 'Berechnet aus den Ereignissen, die osctrl im Zeitraum erhalten hat, höchstens 20 pro Liste. Namen und Team-IDs werden von Santa-Clients gemeldet.',
     },
+    risk: {
+      title: 'Risikoprüfungen',
+      checkNow: 'Jetzt prüfen',
+      flaggedWarning: 'Eine Risikoprüfung hat diese Datei markiert. Die Genehmigung erfordert eine Übersteuerung mit Begründung und wird im Audit-Log festgehalten.',
+      override: 'Risikobewertung übersteuern und trotzdem genehmigen',
+      overridden: 'Trotz markierter Risikobewertung genehmigt',
+      verdicts: { clean: 'Unbedenklich', flagged: 'Markiert', unknown: 'Unbekannt', error: 'Prüfung fehlgeschlagen', unchecked: 'Nicht geprüft' },
+    },
     notifyChannels: 'Über neue Anfragen benachrichtigen',
     notifyChannelsHint: 'Jede neue Anfrage wird mit einem Genehmigen- und einem Ablehnen-Link an diese Alarmkanäle gesendet. Ein Link funktioniert einmal, läuft nach 72 Stunden ab und erfordert einen angemeldeten Umgebungsadministrator. Das Ändern der Kanäle erfordert einen Superuser.',
     link: {

@@ -185,6 +185,10 @@ type Request struct {
 	Kind string `gorm:"type:varchar(16)" json:"kind"`
 	// Hours of MONITOR mode asked for, with kind monitor
 	MonitorHours uint `json:"monitor_hours"`
+	// The approver allowed the file although a risk check flagged it
+	RiskOverride bool `json:"risk_override"`
+	// Cached risk verdict of the file, when risk checks are on; not stored
+	Risk *Risk `gorm:"-" json:"risk,omitempty"`
 }
 
 // TableName for Request
@@ -224,7 +228,7 @@ func (Vote) TableName() string { return "santa_votes" }
 // Migrate creates the Santa tables and fills RemovableMedia for configs saved
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}); err != nil {
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}); err != nil {
 		return err
 	}
 	const unset = "(removable_media = '' OR removable_media IS NULL)"

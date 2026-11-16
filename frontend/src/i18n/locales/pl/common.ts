@@ -1008,6 +1008,14 @@ export const pl: Messages = {
       binaries: 'Pliki',
       footnote: 'Obliczone ze zdarzeń odebranych przez osctrl w tym okresie, najwyżej 20 na listę. Nazwy i team ID zgłaszają klienci Santa.',
     },
+    risk: {
+      title: 'Kontrole ryzyka',
+      checkNow: 'Sprawdź teraz',
+      flaggedWarning: 'Kontrola ryzyka oznaczyła ten plik. Zatwierdzenie wymaga pominięcia werdyktu z podaniem powodu i trafia do dziennika audytu.',
+      override: 'Pomiń werdykt ryzyka i mimo to zatwierdź',
+      overridden: 'Zatwierdzono mimo oznaczonego werdyktu ryzyka',
+      verdicts: { clean: 'Czysty', flagged: 'Oznaczony', unknown: 'Nieznany', error: 'Kontrola nie powiodła się', unchecked: 'Nie sprawdzono' },
+    },
     notifyChannels: 'Powiadamiaj o nowych prośbach',
     notifyChannelsHint: 'Każda nowa prośba jest wysyłana do tych kanałów alertów z linkiem do zatwierdzenia i linkiem do odrzucenia. Link działa raz, wygasa po 72 godzinach i wymaga zalogowanego administratora środowiska. Zmiana kanałów wymaga superużytkownika.',
     link: {

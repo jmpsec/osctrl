@@ -40,6 +40,27 @@ Deciding on a rule needs context, so each file hash has a detail view: the file 
 - Everything comes from `santa_events`, which is pruned after 30 days. First seen, last seen and the counts cover that window only, not the file's whole history.
 - All of it is written by Santa clients and is untrusted: a compromised client can report any name, signer or chain for a hash. The view is context for a decision, not proof of who signed the file.
 
+### Risk checks
+
+Before a vote or an approval allows a file, `osctrl-api` can ask reputation services about its hash. Off until a check is configured on `osctrl-api` (not `osctrl-tls`):
+
+| Setting | Flag / environment | Default |
+|---|---|---|
+| VirusTotal API key | `--santa-virustotal-key` / `SANTA_VIRUSTOTAL_KEY` | off |
+| Engines that must flag a file | `--santa-virustotal-threshold` / `SANTA_VIRUSTOTAL_THRESHOLD` | 3 |
+| Custom webhook URL | `--santa-risk-webhook-url` / `SANTA_RISK_WEBHOOK_URL` | off |
+| Webhook HMAC secret | `--santa-risk-webhook-secret` / `SANTA_RISK_WEBHOOK_SECRET` | none |
+| Verdict cache | `--santa-risk-ttl-hours` / `SANTA_RISK_TTL_HOURS` | 24 |
+| Timeout per check | `--santa-risk-timeout-seconds` / `SANTA_RISK_TIMEOUT_SECONDS` | 10 |
+
+- **Secrets.** The key, the webhook URL and its secret come from the environment, flags or the YAML file only. They are never stored in `service_config`, never returned by the API and never logged (request errors drop the URL). Prefer the environment: a flag value shows in the process list.
+- **Only hashes are sent.** VirusTotal gets `GET /api/v3/files/{sha256}`. The webhook gets `POST {"sha256": "..."}`, signed with `X-Osctrl-Signature` (HMAC-SHA256, hex) when a secret is set, and must answer `{"verdict": "clean" | "flagged" | "unknown", "detail": "..."}`. The webhook is configured by the operator, not through the API, so private addresses are allowed.
+- **Verdicts.** VirusTotal reports `flagged` when at least the threshold of engines call the file malicious, `unknown` when it has never seen the file. Each check's verdict is cached per hash; a check that fails (timeout, quota, bad answer) is cached as `error` for 5 minutes. The overall verdict is `flagged` if any check flags the file, else `error` if any failed, else `clean` or `unknown`.
+- **Votes fail closed.** A vote for a flagged file is refused (`409`), and so is one while a check cannot answer (`503`). `unknown` is not an outage and does not stop a vote.
+- **Approvals.** Approving a flagged file is refused (`409`) unless the approver sets `override` and gives a reason. The request records it (`risk_override`) and the audit line ends with `override_risk=flagged`. A failed check does not stop an approver; the queue shows it. Denials and MONITOR requests run no check.
+- **Where verdicts show.** A new request is checked in the background. The approval queue, the approve/deny link page and the binary details show the cached verdict; the binary details have a **Check now** button (`POST /api/v1/santa/{env}/binaries/{sha256}/risk`, environment admin, audited). The requester never sees a verdict.
+- Expired verdicts are pruned daily. VirusTotal's free tier allows 4 lookups a minute and 500 a day; the cache keeps a busy queue within that only if the TTL is long enough.
+
 ### Reports
 
 The **Reports** tab answers when an environment or a machine can move to LOCKDOWN. `GET /api/v1/santa/{env}/reports?days=N` (environment admin, `N` 1 to 30, default 14) computes, from the events received in the window:

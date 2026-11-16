@@ -1008,6 +1008,14 @@ export const pt: Messages = {
       binaries: 'Binários',
       footnote: 'Calculado a partir dos eventos que o osctrl recebeu no período, no máximo 20 por lista. Nomes e team IDs são informados pelos clientes do Santa.',
     },
+    risk: {
+      title: 'Verificações de risco',
+      checkNow: 'Verificar agora',
+      flaggedWarning: 'Uma verificação de risco sinalizou este arquivo. Aprová-lo exige ignorar o veredito com um motivo, e isso fica no log de auditoria.',
+      override: 'Ignorar o veredito de risco e aprovar mesmo assim',
+      overridden: 'Aprovado apesar de um veredito de risco sinalizado',
+      verdicts: { clean: 'Limpo', flagged: 'Sinalizado', unknown: 'Desconhecido', error: 'Falha na verificação', unchecked: 'Não verificado' },
+    },
     notifyChannels: 'Notificar novos pedidos',
     notifyChannelsHint: 'Cada novo pedido é enviado a estes canais de alerta com um link para aprovar e outro para negar. Um link funciona uma vez, expira após 72 horas e exige um administrador do ambiente com sessão iniciada. Alterar os canais exige um superusuário.',
     link: {

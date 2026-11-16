@@ -1008,6 +1008,14 @@ export const it: Messages = {
       binaries: 'Binari',
       footnote: 'Calcolato dagli eventi ricevuti da osctrl nel periodo, al massimo 20 per elenco. Nomi e team ID sono segnalati dai client Santa.',
     },
+    risk: {
+      title: 'Controlli di rischio',
+      checkNow: 'Controlla ora',
+      flaggedWarning: 'Un controllo di rischio ha segnalato questo file. Approvarlo richiede di ignorare il verdetto con un motivo, e viene registrato nel log di audit.',
+      override: 'Ignora il verdetto di rischio e approva comunque',
+      overridden: 'Approvato nonostante un verdetto di rischio segnalato',
+      verdicts: { clean: 'Pulito', flagged: 'Segnalato', unknown: 'Sconosciuto', error: 'Controllo non riuscito', unchecked: 'Non controllato' },
+    },
     notifyChannels: 'Notifica le nuove richieste',
     notifyChannelsHint: "Ogni nuova richiesta viene inviata a questi canali di avviso con un link per approvare e uno per negare. Un link funziona una volta, scade dopo 72 ore e richiede un amministratore dell'ambiente con accesso effettuato. Modificare i canali richiede un superutente.",
     link: {

@@ -24,7 +24,7 @@ function request(id: number, over: Partial<SantaRequest> = {}): SantaRequest {
   return {
     id, file_sha256: `${id}`.repeat(64).slice(0, 64), machine_id: 'M-1', status: 'pending', created_at: '2026-11-13T10:00:00Z',
     justification: `why ${id}`, reason: '', file_name: `tool-${id}`, file_path: `/Applications/tool-${id}`, signing_id: '', team_id: '',
-    executing_user: 'ada', requester: `user${id}`, decided_by: '', decided_at: null, rule_id: 0, kind: '', monitor_hours: 0, ...over,
+    executing_user: 'ada', requester: `user${id}`, decided_by: '', decided_at: null, rule_id: 0, kind: '', monitor_hours: 0, risk_override: false, ...over,
   };
 }
 
@@ -117,5 +117,38 @@ describe('RequestsTab', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('1/2: rule in the way');
     expect(mockDecide).toHaveBeenCalledWith('dev', 1, { decision: 'approve', scope: 'tag', scope_value: 'dev', reason: '' });
+  });
+
+  it('shows risk verdicts and needs a reasoned override to approve a flagged file', async () => {
+    mockList.mockResolvedValue([
+      request(1, { risk: { verdict: 'flagged', checks: [{ check: 'virustotal', verdict: 'flagged', detail: '12 of 70 engines flag it', checked_at: '', expires_at: '' }] } }),
+      request(2, { risk: { verdict: 'error', checks: null } }),
+    ]);
+    renderTab();
+    expect(await screen.findByText('Flagged')).toHaveAttribute('title', 'virustotal: 12 of 70 engines flag it');
+    expect(screen.getByText('Check failed')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Approve tool-1' }));
+    const dialog = screen.getByRole('dialog');
+    const approve = within(dialog).getByRole('button', { name: 'Approve' });
+    expect(within(dialog).getByText(/A risk check flagged this file/)).toBeInTheDocument();
+    expect(approve).toBeDisabled();
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: /Override the risk verdict/ }));
+    expect(approve).toBeDisabled();
+    await userEvent.type(within(dialog).getByLabelText(/Reason/), 'in-house build');
+    await userEvent.click(approve);
+    await waitFor(() => expect(mockDecide).toHaveBeenCalledWith('dev', 1, {
+      decision: 'approve', scope: 'node', scope_value: '', reason: 'in-house build', override: true,
+    }));
+  });
+
+  it('approves a file whose check failed without an override', async () => {
+    mockList.mockResolvedValue([request(2, { risk: { verdict: 'error', checks: null } })]);
+    renderTab();
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve tool-2' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(mockDecide).toHaveBeenCalledWith('dev', 2, { decision: 'approve', scope: 'node', scope_value: '', reason: '' }));
   });
 });

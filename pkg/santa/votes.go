@@ -1,6 +1,7 @@
 package santa
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -116,6 +117,21 @@ func (m *Manager) Vote(envID uint, machineID, sha256, voter string) (VoteResult,
 	}
 	if len(evs) == 0 {
 		return res, ErrNoBlockedEvent
+	}
+	// Voting is self-service, so it fails closed: a flagged file or a check
+	// that could not answer stops the vote. Run before the transaction, as it
+	// calls out over the network.
+	risk, err := m.CheckRisk(context.Background(), sha256)
+	if err != nil {
+		return res, err
+	}
+	if risk != nil {
+		switch risk.Verdict {
+		case RiskFlagged:
+			return res, ErrRiskFlagged
+		case RiskError:
+			return res, ErrRiskUnavailable
+		}
 	}
 	// ponytail: votes are never pruned and a lowered threshold only takes effect
 	// on the next vote; add expiry or a recount if either matters.

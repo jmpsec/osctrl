@@ -20,6 +20,7 @@ import { SkeletonRow } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { useLocale } from '$/i18n/useLocale';
 import { BinaryModal } from './BinaryModal';
+import { RiskBadge } from './RiskBadge';
 import { BINARY_LINK, MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
 const STATUSES: SantaRequestStatus[] = ['pending', 'approved', 'denied', 'expired'];
@@ -32,6 +33,8 @@ interface Pending {
   ids: number[];
   /** Every request is for MONITOR mode, so there is no rule scope to choose. */
   monitor: boolean;
+  /** A risk check flagged at least one of the files. */
+  flagged: boolean;
 }
 
 /** What a request asks for, as one line: the file, or MONITOR mode. */
@@ -69,6 +72,7 @@ export function RequestsTab({ env }: { env: string }) {
   const chosenRows = pending.filter((r) => selected.has(r.id));
   const chosen = chosenRows.map((r) => r.id);
   const allMonitor = chosenRows.every((r) => r.kind === 'monitor');
+  const anyFlagged = chosenRows.some((r) => r.risk?.verdict === 'flagged');
   const toggle = (id: number) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -100,10 +104,10 @@ export function RequestsTab({ env }: { env: string }) {
           {STATUSES.map((s) => <option key={s} value={s}>{t(`santa.request.statuses.${s}`)}</option>)}
         </select>
         <div className="ms-auto flex gap-2">
-          <Button size="sm" disabled={chosen.length === 0} onClick={() => setDialog({ approve: true, ids: chosen, monitor: allMonitor })}>
+          <Button size="sm" disabled={chosen.length === 0} onClick={() => setDialog({ approve: true, ids: chosen, monitor: allMonitor, flagged: anyFlagged })}>
             {t('santa.requests.approve')} ({chosen.length})
           </Button>
-          <Button size="sm" variant="danger" disabled={chosen.length === 0} onClick={() => setDialog({ approve: false, ids: chosen, monitor: allMonitor })}>
+          <Button size="sm" variant="danger" disabled={chosen.length === 0} onClick={() => setDialog({ approve: false, ids: chosen, monitor: allMonitor, flagged: anyFlagged })}>
             {t('santa.requests.deny')} ({chosen.length})
           </Button>
         </div>
@@ -146,7 +150,7 @@ export function RequestsTab({ env }: { env: string }) {
                     selected={selected.has(r.id)}
                     onToggle={() => toggle(r.id)}
                     onBinary={() => setBinary(r.file_sha256)}
-                    onDecide={(approve) => setDialog({ approve, ids: [r.id], monitor: r.kind === 'monitor' })}
+                    onDecide={(approve) => setDialog({ approve, ids: [r.id], monitor: r.kind === 'monitor', flagged: r.risk?.verdict === 'flagged' })}
                   />
                 ))}
               </tbody>
@@ -194,6 +198,8 @@ function RequestRow({
         )}
         {r.file_path && <div className={sub}>{r.file_path}</div>}
         {r.file_sha256 && <div className={`${MONO} ${sub}`}>{r.file_sha256}</div>}
+        {r.risk && <div className="mt-1"><RiskBadge risk={r.risk} /></div>}
+        {r.risk_override && <div className={sub}>{t('santa.risk.overridden')}</div>}
         {r.signing_id && <div className={`${MONO} ${sub}`}>{r.signing_id}</div>}
       </td>
       <td className={TD}>
@@ -239,7 +245,7 @@ function DecisionModal({
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const { approve, ids, monitor } = pending;
+  const { approve, ids, monitor, flagged } = pending;
   const decide = useMutation({
     // One call per request, so one failure does not undo the others.
     mutationFn: async (body: SantaDecision) => {
@@ -267,7 +273,7 @@ function DecisionModal({
       titleId="santa-decision-title"
       onClose={onClose}
     >
-      <DecisionForm approve={approve} monitor={monitor} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} onCancel={onClose} />
+      <DecisionForm approve={approve} monitor={monitor} flagged={flagged} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} onCancel={onClose} />
     </ModalShell>
   );
 }
@@ -276,6 +282,7 @@ function DecisionModal({
 export function DecisionForm({
   approve,
   monitor = false,
+  flagged = false,
   pending,
   error,
   onSubmit,
@@ -284,6 +291,8 @@ export function DecisionForm({
   approve: boolean;
   /** Approving MONITOR mode: no rule scope, the hours were asked for. */
   monitor?: boolean;
+  /** A risk check flagged the file: approving needs an explicit, reasoned override. */
+  flagged?: boolean;
   pending: boolean;
   error?: string;
   onSubmit: (body: SantaDecision) => void;
@@ -293,10 +302,17 @@ export function DecisionForm({
   const [scope, setScope] = useState<SantaScope>('node');
   const [tag, setTag] = useState('');
   const [reason, setReason] = useState('');
+  const [override, setOverride] = useState(false);
+  const needsOverride = approve && flagged;
+  const reasonRequired = !approve || (needsOverride && override);
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    onSubmit(approve ? { decision: 'approve', scope, scope_value: scope === 'tag' ? tag : '', reason } : { decision: 'deny', reason });
+    onSubmit(
+      approve
+        ? { decision: 'approve', scope, scope_value: scope === 'tag' ? tag : '', reason, ...(needsOverride && override ? { override: true } : {}) }
+        : { decision: 'deny', reason },
+    );
   }
 
   return (
@@ -323,11 +339,20 @@ export function DecisionForm({
           </div>
         </>
       )}
+      {needsOverride && (
+        <div role="alert" className="space-y-2 rounded-md border border-[color:var(--danger)] p-3">
+          <p className="text-sm text-[color:var(--danger)]">{t('santa.risk.flaggedWarning')}</p>
+          <label className="flex items-center gap-2 text-sm text-[color:var(--text-1)]">
+            <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} />
+            {t('santa.risk.override')}
+          </label>
+        </div>
+      )}
       <div>
-        <Label htmlFor="santa-decision-reason" required={!approve}>{t('santa.requests.reason')}</Label>
+        <Label htmlFor="santa-decision-reason" required={reasonRequired}>{t('santa.requests.reason')}</Label>
         <textarea
           id="santa-decision-reason"
-          required={!approve}
+          required={reasonRequired}
           rows={3}
           maxLength={MAX_REASON}
           value={reason}
@@ -339,7 +364,11 @@ export function DecisionForm({
       {error && <p role="alert" className="text-sm text-[color:var(--danger)]">{error}</p>}
       <div className="flex justify-end gap-2">
         {onCancel && <Button type="button" variant="ghost" onClick={onCancel}>{t('common.cancel')}</Button>}
-        <Button type="submit" variant={approve ? undefined : 'danger'} disabled={pending || (!approve && reason.trim() === '')}>
+        <Button
+          type="submit"
+          variant={approve ? undefined : 'danger'}
+          disabled={pending || (needsOverride && !override) || (reasonRequired && reason.trim() === '')}
+        >
           {t(approve ? 'santa.requests.approve' : 'santa.requests.deny')}
         </Button>
       </div>

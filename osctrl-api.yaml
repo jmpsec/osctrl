@@ -8625,6 +8625,61 @@ paths:
       summary: Get what the stored events say about one binary
       tags:
         - santa
+  "/api/v1/santa/{env}/binaries/{sha256}/risk":
+    post:
+      description: Requires environment admin. Runs every configured risk check whose
+        cached verdict is missing or expired (VirusTotal, custom webhook) and
+        returns the result. Only the hash is sent. 404 when no risk check is
+        configured.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: SHA-256 of the file
+          in: path
+          name: sha256
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Risk"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Run the Santa risk checks for a binary
+      tags:
+        - santa
   "/api/v1/santa/{env}/config":
     get:
       parameters:
@@ -13662,6 +13717,10 @@ components:
         decision:
           description: approve | deny
           type: string
+        override:
+          description: Approve although a risk check flagged the file; needs a reason and
+            is audited
+          type: boolean
         reason:
           description: Required to deny, optional to approve; at most 1000 characters. The
             requester sees it
@@ -13743,6 +13802,10 @@ components:
         decision:
           description: approve | deny
           type: string
+        override:
+          description: Approve although a risk check flagged the file; needs a reason and
+            is audited
+          type: boolean
         reason:
           description: Required to deny, optional to approve; at most 1000 characters. The
             requester sees it
@@ -14309,6 +14372,10 @@ components:
         machines:
           description: Distinct machines that reported the file
           type: integer
+        risk:
+          allOf:
+            - $ref: "#/components/schemas/santa.Risk"
+          description: Cached risk verdict, when risk checks are on
         rules:
           description: Rules of any scope naming the file, its team ID, signing ID, CDHash
             or leaf certificate
@@ -14611,6 +14678,13 @@ components:
           type: string
         requester:
           type: string
+        risk:
+          allOf:
+            - $ref: "#/components/schemas/santa.Risk"
+          description: Cached risk verdict of the file, when risk checks are on; not stored
+        risk_override:
+          description: The approver allowed the file although a risk check flagged it
+          type: boolean
         rule_id:
           description: The allow rule an approval created or reused; 0 otherwise.
           type: integer
@@ -14622,6 +14696,20 @@ components:
         team_id:
           type: string
         updated_at:
+          type: string
+      type: object
+    santa.Risk:
+      properties:
+        checks:
+          items:
+            $ref: "#/components/schemas/santa.Verdict"
+          type: array
+        verdict:
+          description: >-
+            flagged if any check flagged, error if any failed, clean if any
+            found it
+
+            clean, unknown when none knows it, unchecked when nothing is cached
           type: string
       type: object
     santa.Rule:
@@ -14674,6 +14762,19 @@ components:
         scope:
           type: string
         scope_value:
+          type: string
+      type: object
+    santa.Verdict:
+      properties:
+        check:
+          type: string
+        checked_at:
+          type: string
+        detail:
+          type: string
+        expires_at:
+          type: string
+        verdict:
           type: string
       type: object
     santa.VoteStatus:

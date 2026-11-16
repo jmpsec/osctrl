@@ -1008,6 +1008,14 @@ export const fr: Messages = {
       binaries: 'Binaires',
       footnote: 'Calculé à partir des événements reçus par osctrl sur la période, 20 au plus par liste. Les noms et team IDs sont signalés par les clients Santa.',
     },
+    risk: {
+      title: 'Vérifications de risque',
+      checkNow: 'Vérifier maintenant',
+      flaggedWarning: "Une vérification de risque a signalé ce fichier. L'approuver nécessite de passer outre le verdict avec un motif, et c'est consigné dans le journal d'audit.",
+      override: 'Passer outre le verdict de risque et approuver quand même',
+      overridden: 'Approuvé malgré un verdict de risque signalé',
+      verdicts: { clean: 'Sain', flagged: 'Signalé', unknown: 'Inconnu', error: 'Échec de la vérification', unchecked: 'Non vérifié' },
+    },
     notifyChannels: 'Notifier les nouvelles demandes',
     notifyChannelsHint: "Chaque nouvelle demande est envoyée à ces canaux d'alerte avec un lien pour approuver et un lien pour refuser. Un lien fonctionne une fois, expire après 72 heures et nécessite un administrateur de l'environnement connecté. Modifier les canaux nécessite un superutilisateur.",
     link: {

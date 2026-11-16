@@ -719,6 +719,21 @@ func TestSeed_NeverStoresTheNVDAPIKey(t *testing.T) {
 	}
 }
 
+// The Santa risk check secrets follow the NVD key: never in service_config.
+func TestSeed_NeverStoresSantaRiskSecrets(t *testing.T) {
+	cfg := testAPIParams()
+	cfg.Service.SantaVirusTotalKey = "vt-secret-123"
+	cfg.Service.SantaRiskWebhookURL = "https://risk.example.com/hook?token=url-secret-123"
+	cfg.Service.SantaRiskWebhookSecret = "hmac-secret-123"
+	values, err := sectionValues(config.ServiceAPI, cfg)
+	require.NoError(t, err)
+	for name, v := range values {
+		for _, secret := range []string{"vt-secret-123", "url-secret-123", "hmac-secret-123"} {
+			assert.NotContains(t, v, secret, "section %s", name)
+		}
+	}
+}
+
 func TestOsctrldEnabled(t *testing.T) {
 	setRow := func(t *testing.T, m *ServiceConfigManager, service, value string) {
 		t.Helper()

@@ -648,6 +648,7 @@ func osctrlAPIService() {
 		}
 		// The report index, built in the background like the other secondary indexes.
 		dbutil.BuildIndexes(db.Conn, santa.Indexes()...)
+		santaMgr.Risk = santaRiskEngine(flagParams.Service)
 		log.Info().Msg("Santa enabled")
 	}
 	// Vulnerability findings count toward the posture risk score when both
@@ -695,6 +696,9 @@ func osctrlAPIService() {
 				}
 				if _, err := santaMgr.PruneLinks(time.Now()); err != nil {
 					log.Err(err).Msg("error pruning santa approval links")
+				}
+				if _, err := santaMgr.PruneVerdicts(time.Now()); err != nil {
+					log.Err(err).Msg("error pruning santa risk verdicts")
 				}
 				select {
 				case <-vulnCtx.Done():
@@ -1198,6 +1202,9 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/binaries/{sha256}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaBinaryHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"POST "+_apiPath(apiSantaPath)+"/{env}/binaries/{sha256}/risk",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaBinaryRiskHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/reports",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaReportHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

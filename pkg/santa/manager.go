@@ -22,8 +22,10 @@ var ErrRuleExists = errors.New("santa rule already exists")
 
 // Manager provides persistence for Santa configs, rules, machines and events.
 type Manager struct {
-	DB  *gorm.DB
-	now func() time.Time
+	DB *gorm.DB
+	// Risk runs reputation checks before votes and approvals; nil turns them off.
+	Risk *RiskEngine
+	now  func() time.Time
 }
 
 // NewManager migrates the Santa tables and returns a Manager.

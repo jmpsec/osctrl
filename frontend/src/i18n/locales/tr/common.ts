@@ -1008,6 +1008,14 @@ export const tr: Messages = {
       binaries: 'Dosyalar',
       footnote: 'osctrl’in dönem içinde aldığı olaylardan hesaplanır, liste başına en fazla 20. Adlar ve team ID’ler Santa istemcileri tarafından bildirilir.',
     },
+    risk: {
+      title: 'Risk denetimleri',
+      checkNow: 'Şimdi denetle',
+      flaggedWarning: 'Bir risk denetimi bu dosyayı işaretledi. Onaylamak, gerekçeyle kararı geçersiz kılmayı gerektirir ve denetim günlüğüne yazılır.',
+      override: 'Risk kararını geçersiz kıl ve yine de onayla',
+      overridden: 'İşaretli risk kararına rağmen onaylandı',
+      verdicts: { clean: 'Temiz', flagged: 'İşaretli', unknown: 'Bilinmiyor', error: 'Denetim başarısız', unchecked: 'Denetlenmedi' },
+    },
     notifyChannels: 'Yeni istekleri bildir',
     notifyChannelsHint: 'Her yeni istek, bir onay ve bir ret bağlantısıyla bu uyarı kanallarına gönderilir. Bağlantı bir kez çalışır, 72 saat sonra sona erer ve oturum açmış bir ortam yöneticisi gerektirir. Kanalları değiştirmek için süper kullanıcı gerekir.',
     link: {

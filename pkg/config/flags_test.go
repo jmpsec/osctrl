@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -272,6 +273,27 @@ func TestVulnFeedFlags(t *testing.T) {
 	for _, f := range initServiceFlags(params) {
 		if f.Names()[0] == "vuln-osv-url" {
 			t.Fatal("feed flags must not be shared with osctrl-tls")
+		}
+	}
+}
+
+// Risk checks only run in osctrl-api, so their flags (and secrets) must not
+// reach osctrl-tls.
+func TestSantaRiskFlags(t *testing.T) {
+	params := &ServiceParameters{Service: &YAMLConfigurationService{}}
+	names := map[string]bool{}
+	for _, f := range initSantaRiskFlags(params) {
+		names[f.Names()[0]] = true
+	}
+	for _, want := range []string{"santa-virustotal-key", "santa-virustotal-threshold", "santa-risk-webhook-url", "santa-risk-webhook-secret", "santa-risk-ttl-hours", "santa-risk-timeout-seconds"} {
+		if !names[want] {
+			t.Errorf("missing --%s", want)
+		}
+	}
+	// initServiceFlags is shared with osctrl-tls.
+	for _, f := range initServiceFlags(params) {
+		if strings.HasPrefix(f.Names()[0], "santa-risk") || strings.HasPrefix(f.Names()[0], "santa-virustotal") {
+			t.Fatalf("--%s must not be shared with osctrl-tls", f.Names()[0])
 		}
 	}
 }

@@ -55,6 +55,12 @@ func (h *HandlersApi) SantaVoteHandler(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, santa.ErrVotingOff):
 		apiErrorResponse(w, "voting is off", http.StatusConflict, err)
 		return
+	case errors.Is(err, santa.ErrRiskFlagged):
+		apiErrorResponse(w, "a risk check flagged this file; it cannot be voted for", http.StatusConflict, err)
+		return
+	case errors.Is(err, santa.ErrRiskUnavailable):
+		apiErrorResponse(w, err.Error(), http.StatusServiceUnavailable, err)
+		return
 	case errors.Is(err, santa.ErrKnownBad), errors.Is(err, santa.ErrRuleConflict):
 		apiErrorResponse(w, "this file is blocked by a rule and cannot be voted for", http.StatusConflict, err)
 		return

@@ -59,6 +59,8 @@ type SantaRequestDecision struct {
 	ScopeValue string `json:"scope_value"`
 	// Required to deny, optional to approve; at most 1000 characters. The requester sees it
 	Reason string `json:"reason"`
+	// Approve although a risk check flagged the file; needs a reason and is audited
+	Override bool `json:"override"`
 }
 
 func ownRequest(r santa.Request, user string) SantaOwnRequest {
@@ -165,6 +167,7 @@ func (h *HandlersApi) SantaRequestCreateHandler(w http.ResponseWriter, r *http.R
 			h.santaAudit(user, fmt.Sprintf("request temporary MONITOR machine=%s hours=%d", req.MachineID, req.MonitorHours), r, env)
 		} else {
 			h.santaAudit(user, "request approval sha256="+req.FileSHA256+" machine="+req.MachineID, r, env)
+			h.santaWarmRisk(req.FileSHA256)
 		}
 		h.santaNotify(env, req)
 	}
@@ -272,6 +275,7 @@ func santaDecision(w http.ResponseWriter, body SantaRequestDecision, user string
 	}
 	return santa.Decision{
 		Approve: body.Decision == "approve", Scope: body.Scope, ScopeValue: body.ScopeValue, Reason: body.Reason, By: user,
+		Override: body.Override,
 	}, true
 }
 
@@ -297,6 +301,12 @@ func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env e
 	case errors.Is(err, santa.ErrPermanentOverride), errors.Is(err, santa.ErrUnknownMachine):
 		apiErrorResponse(w, err.Error(), http.StatusConflict, err)
 		return
+	case errors.Is(err, santa.ErrRiskFlagged):
+		apiErrorResponse(w, "a risk check flagged this file; approve with override and a reason to allow it anyway", http.StatusConflict, err)
+		return
+	case errors.Is(err, santa.ErrOverrideReason):
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
+		return
 	case err != nil:
 		apiErrorResponse(w, "error deciding request", http.StatusInternalServerError, err)
 		return
@@ -308,6 +318,9 @@ func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env e
 		action = fmt.Sprintf("approve request %d temporary MONITOR hours=%d", req.ID, req.MonitorHours)
 	case req.Status == santa.RequestApproved:
 		action = fmt.Sprintf("approve request %d rule=%d scope=%s", req.ID, req.RuleID, d.Scope)
+		if req.RiskOverride {
+			action += " override_risk=flagged"
+		}
 	}
 	h.santaAudit(d.By, fmt.Sprintf("%s%s sha256=%s machine=%s requester=%s", action, via, req.FileSHA256, req.MachineID, req.Requester), r, env)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, req)

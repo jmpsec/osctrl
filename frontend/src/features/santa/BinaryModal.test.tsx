@@ -1,14 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { SantaBinary } from '$/api/santa';
+import userEvent from '@testing-library/user-event';
+import type { SantaBinary, SantaRisk } from '$/api/santa';
 import { BinaryModal } from './BinaryModal';
 
 const mockBinary = vi.fn<(env: string, sha256: string) => Promise<SantaBinary>>();
+const mockCheck = vi.fn<(env: string, sha256: string) => Promise<SantaRisk>>();
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
-  return { ...actual, getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256) };
+  return {
+    ...actual,
+    getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256),
+    checkSantaRisk: (env: string, sha256: string) => mockCheck(env, sha256),
+  };
 });
 
 const SHA = 'ab'.repeat(32);
@@ -65,6 +71,26 @@ describe('BinaryModal', () => {
     renderModal();
     expect(await screen.findByText('No signing chain reported.')).toBeInTheDocument();
     expect(screen.getByText(/No rule names this binary/)).toBeInTheDocument();
+  });
+
+  it('hides risk checks when none is configured', async () => {
+    mockBinary.mockResolvedValue(binary);
+    renderModal();
+    await screen.findByText('Tool 1.2.3');
+    expect(screen.queryByRole('button', { name: 'Check now' })).not.toBeInTheDocument();
+  });
+
+  it('runs the risk checks on demand and shows each verdict', async () => {
+    mockBinary.mockResolvedValue({ ...binary, risk: { verdict: 'unchecked', checks: null } });
+    mockCheck.mockResolvedValue({
+      verdict: 'flagged',
+      checks: [{ check: 'virustotal', verdict: 'flagged', detail: '12 of 70 engines flag it', checked_at: '', expires_at: '' }],
+    });
+    renderModal();
+    expect(await screen.findByText('Not checked')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Check now' }));
+    expect(await screen.findByText('virustotal: Flagged — 12 of 70 engines flag it')).toBeInTheDocument();
+    expect(mockCheck).toHaveBeenCalledWith('dev', SHA);
   });
 
   it('shows the API error', async () => {
