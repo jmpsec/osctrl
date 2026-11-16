@@ -41,7 +41,7 @@ func TestPreflightFirstSyncIsClean(t *testing.T) {
 	require.True(t, *resp.EnableTransitiveRules)
 	require.NotNil(t, resp.BlockUsbMount) //nolint:staticcheck // see sync.go
 	require.True(t, *resp.BlockUsbMount)  //nolint:staticcheck // see sync.go
-	require.Nil(t, resp.EnableBundles)
+	require.False(t, resp.GetEnableBundles())
 
 	mc, err := m.Machine(1, strings.ToUpper(testUUID))
 	require.NoError(t, err)

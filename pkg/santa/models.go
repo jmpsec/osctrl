@@ -39,6 +39,19 @@ type EnvConfig struct {
 	// Overrides the action of MDM-deployed file access rules: NONE | AUDIT_ONLY | DISABLE;
 	// empty sends nothing, leaving each client's setting unchanged
 	OverrideFileAccessAction string `gorm:"type:varchar(16)" json:"override_file_access_action"`
+	// Clients hash the bundle of a blocked binary and upload its other binaries on request
+	EnableBundles bool `json:"enable_bundles"`
+	// Upload every execution decision, not only blocks and would-be blocks
+	EnableAllEventUpload bool `json:"enable_all_event_upload"`
+	// Skip uploading executions that LOCKDOWN would block
+	DisableUnknownEventUpload bool `json:"disable_unknown_event_upload"`
+	// Executions from matching paths are allowed or blocked when no rule matches; empty is off
+	AllowedPathRegex string `gorm:"type:varchar(1024)" json:"allowed_path_regex"`
+	BlockedPathRegex string `gorm:"type:varchar(1024)" json:"blocked_path_regex"`
+	// https URL of the block dialog button, with Santa placeholders; overrides the
+	// approval request link. EventDetailText is the button label.
+	EventDetailURL  string `gorm:"type:varchar(1024)" json:"event_detail_url"`
+	EventDetailText string `gorm:"type:varchar(64)" json:"event_detail_text"`
 }
 
 // TableName for EnvConfig
@@ -128,6 +141,8 @@ type Event struct {
 	BundleName    string    `json:"bundle_name"`
 	BundleVersion string    `json:"bundle_version"`
 	BundlePath    string    `json:"bundle_path"`
+	// Hash of the binary's bundle, lowercase hex; set when bundles are enabled
+	BundleHash string `gorm:"type:varchar(64);index" json:"bundle_hash"`
 	// Leaf certificate first, as the client reported it; empty for unsigned files
 	// and for events stored before the chain was kept.
 	SigningChain []Cert `gorm:"serializer:json;type:text" json:"signing_chain"`

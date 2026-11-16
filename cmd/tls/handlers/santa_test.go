@@ -187,6 +187,21 @@ func TestSantaFileAccessJSON(t *testing.T) {
 	require.Equal(t, "/tmp/evil", evs[0].ProcessChain[0].FilePath)
 }
 
+func TestSantaV1SettingsJSON(t *testing.T) {
+	f := newSantaFixture(t)
+	require.NoError(t, f.h.Santa.SaveConfig(santa.EnvConfig{EnvironmentID: f.env.ID, ClientMode: "MONITOR", EnableBundles: true, BlockedPathRegex: `^/tmp/.*`}))
+	w := f.post(santaEnvUUID, "preflight", santaMachineID, f.token, []byte(`{"hostname":"h"}`))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), `"enable_bundles":true`)
+	require.Contains(t, w.Body.String(), `"blocked_path_regex":"^/tmp/.*"`)
+
+	hash := strings.Repeat("ab", 32)
+	body := `{"machine_id":"x","events":[{"file_sha256":"` + strings.Repeat("0", 64) + `","decision":"BLOCK_UNKNOWN","file_bundle_hash":"` + hash + `"}]}`
+	w = f.post(santaEnvUUID, "eventupload", santaMachineID, f.token, []byte(body))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), `"event_upload_bundle_binaries":["`+hash+`"]`)
+}
+
 func TestSantaOversizedBody(t *testing.T) {
 	f := newSantaFixture(t)
 	body := bytes.Repeat([]byte(" "), santa.MaxRawBody+1)

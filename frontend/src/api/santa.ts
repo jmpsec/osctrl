@@ -45,6 +45,16 @@ export interface SantaConfig {
   vote_global_threshold: number;
   /** Overrides the action of MDM-deployed file access rules; empty leaves clients unchanged. */
   override_file_access_action: SantaFileAccessAction;
+  /** Clients hash the bundle of a blocked binary and upload its other binaries. */
+  enable_bundles: boolean;
+  enable_all_event_upload: boolean;
+  disable_unknown_event_upload: boolean;
+  /** Paths allowed or blocked when no rule matches; empty is off. */
+  allowed_path_regex: string;
+  blocked_path_regex: string;
+  /** Block dialog button URL, with Santa placeholders; overrides the approval link. */
+  event_detail_url: string;
+  event_detail_text: string;
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }

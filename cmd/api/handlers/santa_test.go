@@ -167,6 +167,25 @@ func TestSantaConfigFileAccessOverride(t *testing.T) {
 	require.Empty(t, cfg.OverrideFileAccessAction)
 }
 
+func TestSantaConfigV1Settings(t *testing.T) {
+	h, _, envA, _ := setupSantaHandlers(t)
+	put := func(body string) int {
+		return santaDo(h.SantaConfigPutHandler, "PUT", "alice", `{"client_mode":"MONITOR",`+body+`}`, map[string]string{"env": envA.Name}).Code
+	}
+	require.Equal(t, http.StatusBadRequest, put(`"allowed_path_regex":"(unclosed"`))
+	require.Equal(t, http.StatusBadRequest, put(`"event_detail_url":"javascript:alert(1)"`))
+	require.Equal(t, http.StatusOK, put(`"enable_bundles":true,"disable_unknown_event_upload":true,"allowed_path_regex":"^/opt/.*",`+
+		`"event_detail_url":"https://x.example.com/%file_sha%","event_detail_text":"Details"`))
+	cfg, err := h.Santa.Config(envA.ID)
+	require.NoError(t, err)
+	require.True(t, cfg.EnableBundles)
+	require.True(t, cfg.DisableUnknownEventUpload)
+	require.False(t, cfg.EnableAllEventUpload)
+	require.Equal(t, "^/opt/.*", cfg.AllowedPathRegex)
+	require.Equal(t, "https://x.example.com/%file_sha%", cfg.EventDetailURL)
+	require.Equal(t, "Details", cfg.EventDetailText)
+}
+
 func TestSantaEffectiveRules(t *testing.T) {
 	h, db, envA, envB := setupSantaHandlers(t)
 	uuid := "22222222-2222-4222-8222-222222222222"

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -111,6 +112,12 @@ func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.P
 		RemovableMediaPolicy:  mediaPolicy(cfg.RemovableMedia, cfg.RemovableMediaFlags),
 		// Clients that predate removable_media_policy read these instead; newer ones ignore them.
 		BlockUsbMount: &block, //nolint:staticcheck // deprecated, kept for older clients
+		// Always sent: Santa keeps its last value for an absent field, and an empty regex clears it.
+		EnableBundles:             &cfg.EnableBundles,
+		EnableAllEventUpload:      &cfg.EnableAllEventUpload,
+		DisableUnknownEventUpload: &cfg.DisableUnknownEventUpload,
+		AllowedPathRegex:          &cfg.AllowedPathRegex,
+		BlockedPathRegex:          &cfg.BlockedPathRegex,
 	}
 	if cfg.RemovableMedia == MediaRemount {
 		resp.RemountUsbMode = cfg.RemovableMediaFlags //nolint:staticcheck // deprecated, kept for older clients
@@ -124,11 +131,17 @@ func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.P
 	if a, ok := syncv1.FileAccessAction_value[cfg.OverrideFileAccessAction]; ok && a != 0 {
 		resp.OverrideFileAccessAction = syncv1.FileAccessAction(a).Enum()
 	}
-	if cfg.ApprovalURL != "" && n.EnvUUID != "" {
-		// Santa fills the placeholders when the user clicks the button in the block dialog.
+	// Santa fills the placeholders when the user clicks the button in the block dialog.
+	switch {
+	case cfg.EventDetailURL != "":
+		resp.SetEventDetailUrl(cfg.EventDetailURL)
+		if cfg.EventDetailText != "" {
+			resp.SetEventDetailText(cfg.EventDetailText)
+		}
+	case cfg.ApprovalURL != "" && n.EnvUUID != "":
 		resp.SetEventDetailUrl(cfg.ApprovalURL + ApprovalRequestPath + url.PathEscape(n.EnvUUID) +
 			"?sha256=%file_sha%&machine_id=%machine_id%")
-		resp.SetEventDetailText("Request approval")
+		resp.SetEventDetailText(cmp.Or(cfg.EventDetailText, "Request approval"))
 	}
 	return resp, nil
 }
@@ -203,12 +216,46 @@ func toProtoRule(r Rule) (*syncv1.Rule, error) {
 	}, nil
 }
 
-// EventUpload stores execution and file access events; audit events are ignored.
+// EventUpload stores execution and file access events and asks for the
+// binaries of new bundles; audit events are ignored.
 func (m *Manager) EventUpload(n SyncNode, req *syncv1.EventUploadRequest) (*syncv1.EventUploadResponse, error) {
-	if _, err := m.StoreEvents(n, req); err != nil {
+	evs, err := m.StoreEvents(n, req)
+	if err != nil {
 		return nil, err
 	}
-	return &syncv1.EventUploadResponse{}, nil
+	bundles, err := m.BundlesWanted(n.EnvID, evs)
+	if err != nil {
+		return nil, err
+	}
+	return &syncv1.EventUploadResponse{EventUploadBundleBinaries: bundles}, nil
+}
+
+// DecisionBundleBinary is the decision of an event that only lists a binary of a bundle.
+const DecisionBundleBinary = "BUNDLE_BINARY"
+
+// BundlesWanted returns the bundle hashes in evs whose binaries the environment
+// has not received yet, when bundles are enabled. The client then uploads each
+// binary of those bundles as a BUNDLE_BINARY event.
+func (m *Manager) BundlesWanted(envID uint, evs []Event) ([]string, error) {
+	cfg, err := m.Config(envID)
+	if err != nil || !cfg.EnableBundles {
+		return nil, err
+	}
+	var hashes []string
+	for _, e := range evs {
+		if e.BundleHash != "" && e.Decision != DecisionBundleBinary && !slices.Contains(hashes, e.BundleHash) {
+			hashes = append(hashes, e.BundleHash)
+		}
+	}
+	if len(hashes) == 0 {
+		return nil, nil
+	}
+	var have []string
+	if err := m.DB.Model(&Event{}).Where("environment_id = ? AND decision = ? AND bundle_hash IN ?", envID, DecisionBundleBinary, hashes).
+		Distinct().Pluck("bundle_hash", &have).Error; err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(hashes, func(h string) bool { return slices.Contains(have, h) }), nil
 }
 
 // StoreEvents stores the execution and file access events of an upload and
@@ -239,6 +286,7 @@ func (m *Manager) StoreEvents(n SyncNode, req *syncv1.EventUploadRequest) ([]Eve
 			BundleName:    truncate(e.GetFileBundleName(), maxEventField),
 			BundleVersion: truncate(cmp.Or(e.GetFileBundleVersionString(), e.GetFileBundleVersion()), maxEventField),
 			BundlePath:    truncate(e.GetFileBundlePath(), maxEventField),
+			BundleHash:    bundleHash(e.GetFileBundleHash()),
 			SigningChain:  signingChain(e.GetSigningChain()),
 		})
 	}
@@ -370,6 +418,14 @@ func signingChain(certs []*syncv1.Certificate) []Cert {
 		})
 	}
 	return out
+}
+
+// bundleHash keeps a reported bundle hash only when it is a SHA-256.
+func bundleHash(h string) string {
+	if !hex64.MatchString(h) {
+		return ""
+	}
+	return strings.ToLower(h)
 }
 
 // truncate cuts s to at most max bytes without splitting a UTF-8 rune.

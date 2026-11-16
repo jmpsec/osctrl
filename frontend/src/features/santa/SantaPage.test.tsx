@@ -64,7 +64,9 @@ const rule: SantaRule = {
 const config: SantaConfig = {
   client_mode: 'MONITOR', batch_size: 0, enable_transitive_rules: false, removable_media: 'ALLOW',
   removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', notify_channels: null,
-  vote_local_threshold: 0, vote_global_threshold: 0, override_file_access_action: '', token_set: true,
+  vote_local_threshold: 0, vote_global_threshold: 0, override_file_access_action: '', enable_bundles: false,
+  enable_all_event_upload: false, disable_unknown_event_upload: false, allowed_path_regex: '', blocked_path_regex: '',
+  event_detail_url: '', event_detail_text: '', token_set: true,
 };
 
 function renderPage() {
@@ -339,6 +341,22 @@ describe('SantaPage', () => {
     await user.selectOptions(select, 'AUDIT_ONLY');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ override_file_access_action: 'AUDIT_ONLY' })));
+  });
+
+  it('saves the v1 sync settings', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    await user.click(await screen.findByLabelText('Bundles: upload every binary of the bundle of a blocked app'));
+    await user.click(screen.getByLabelText('Do not upload executions that LOCKDOWN would block'));
+    await user.type(screen.getByLabelText('Blocked path regex'), '^/tmp/');
+    await user.type(screen.getByLabelText('Block dialog URL'), 'https://wiki.example.com/');
+    await user.type(screen.getByLabelText('Button label'), 'Help');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({
+      enable_bundles: true, enable_all_event_upload: false, disable_unknown_event_upload: true,
+      allowed_path_regex: '', blocked_path_regex: '^/tmp/', event_detail_url: 'https://wiki.example.com/', event_detail_text: 'Help',
+    })));
   });
 
   it('lists file access events with their process chain', async () => {

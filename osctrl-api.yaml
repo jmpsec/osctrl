@@ -13705,6 +13705,10 @@ components:
       type: object
     handlers.SantaConfigRequest:
       properties:
+        allowed_path_regex:
+          description: Executions from matching paths are allowed when no rule matches;
+            empty is off. At most 1024 characters
+          type: string
         approval_url:
           description: Base https URL of the osctrl UI; when set, the block dialog links
             to the approval request page. Empty turns requests off
@@ -13715,8 +13719,22 @@ components:
           description: "Deprecated: use removable_media; only read when it is empty (true
             means BLOCK)."
           type: boolean
+        blocked_path_regex:
+          description: Executions from matching paths are blocked when no rule matches;
+            checked before allowed_path_regex. Empty is off
+          type: string
         client_mode:
           type: string
+        disable_unknown_event_upload:
+          description: Skip uploading executions that LOCKDOWN would block
+          type: boolean
+        enable_all_event_upload:
+          description: Upload every execution decision, not only blocks and would-be blocks
+          type: boolean
+        enable_bundles:
+          description: Clients hash the bundle of a blocked binary and upload its other
+            binaries when osctrl asks
+          type: boolean
         enable_transitive_rules:
           type: boolean
         encrypted_removable_media:
@@ -13728,6 +13746,13 @@ components:
           items:
             type: string
           type: array
+        event_detail_text:
+          description: Label of the block dialog button, at most 32 characters
+          type: string
+        event_detail_url:
+          description: https URL of the block dialog button, with Santa placeholders such
+            as %file_sha%; overrides the approval request link
+          type: string
         notify_channels:
           description: Alert channel IDs told about each new approval request, at most 10.
             Needs approval_url. Changing it requires superuser
@@ -13758,6 +13783,10 @@ components:
       type: object
     handlers.SantaConfigResponse:
       properties:
+        allowed_path_regex:
+          description: Executions from matching paths are allowed or blocked when no rule
+            matches; empty is off
+          type: string
         approval_url:
           description: >-
             Base https URL of the osctrl UI. When set, the Santa block dialog
@@ -13772,11 +13801,23 @@ components:
           description: "Deprecated: derived from removable_media, sent only for older
             Santa clients"
           type: boolean
+        blocked_path_regex:
+          type: string
         client_mode:
           description: MONITOR | LOCKDOWN
           type: string
         created_at:
           type: string
+        disable_unknown_event_upload:
+          description: Skip uploading executions that LOCKDOWN would block
+          type: boolean
+        enable_all_event_upload:
+          description: Upload every execution decision, not only blocks and would-be blocks
+          type: boolean
+        enable_bundles:
+          description: Clients hash the bundle of a blocked binary and upload its other
+            binaries on request
+          type: boolean
         enable_transitive_rules:
           type: boolean
         encrypted_removable_media:
@@ -13790,6 +13831,15 @@ components:
           type: array
         environment_id:
           type: integer
+        event_detail_text:
+          type: string
+        event_detail_url:
+          description: >-
+            https URL of the block dialog button, with Santa placeholders;
+            overrides the
+
+            approval request link. EventDetailText is the button label.
+          type: string
         id:
           type: integer
         notify_channels:
@@ -14568,6 +14618,10 @@ components:
       type: object
     santa.Event:
       properties:
+        bundle_hash:
+          description: Hash of the binary's bundle, lowercase hex; set when bundles are
+            enabled
+          type: string
         bundle_id:
           type: string
         bundle_name:

@@ -113,6 +113,13 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         vote_local_threshold: form.vote_local_threshold ?? 0,
         vote_global_threshold: form.vote_global_threshold ?? 0,
         override_file_access_action: form.override_file_access_action ?? '',
+        enable_bundles: !!form.enable_bundles,
+        enable_all_event_upload: !!form.enable_all_event_upload,
+        disable_unknown_event_upload: !!form.disable_unknown_event_upload,
+        allowed_path_regex: form.allowed_path_regex ?? '',
+        blocked_path_regex: form.blocked_path_regex ?? '',
+        event_detail_url: form.event_detail_url ?? '',
+        event_detail_text: form.event_detail_text ?? '',
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -157,6 +164,29 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         />
         {t('santa.transitiveRules')}
       </label>
+      {(['enable_bundles', 'enable_all_event_upload', 'disable_unknown_event_upload'] as const).map((field) => (
+        <label key={field} className="flex items-center gap-2 text-sm text-[color:var(--text-2)]">
+          <input type="checkbox" checked={!!form[field]} onChange={(e) => setForm({ ...form, [field]: e.target.checked })} />
+          {t(`santa.settings.${field}`)}
+        </label>
+      ))}
+      <div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(['allowed_path_regex', 'blocked_path_regex'] as const).map((field) => (
+            <div key={field}>
+              <Label htmlFor={`santa-${field}`}>{t(`santa.settings.${field}`)}</Label>
+              <Input
+                id={`santa-${field}`}
+                className="font-mono"
+                maxLength={1024}
+                value={form[field] ?? ''}
+                onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+              />
+            </div>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.settings.pathRegexHint')}</p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <MediaPolicy
           id="santa-media"
@@ -196,6 +226,31 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
           onChange={(e) => setForm({ ...form, approval_url: e.target.value.trim() })}
         />
         <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.approvalUrlHint')}</p>
+      </div>
+      <div>
+        <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+          <div>
+            <Label htmlFor="santa-event-detail-url">{t('santa.settings.event_detail_url')}</Label>
+            <Input
+              id="santa-event-detail-url"
+              type="url"
+              maxLength={1024}
+              placeholder="https://…?sha256=%file_sha%"
+              value={form.event_detail_url ?? ''}
+              onChange={(e) => setForm({ ...form, event_detail_url: e.target.value.trim() })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="santa-event-detail-text">{t('santa.settings.event_detail_text')}</Label>
+            <Input
+              id="santa-event-detail-text"
+              maxLength={32}
+              value={form.event_detail_text ?? ''}
+              onChange={(e) => setForm({ ...form, event_detail_text: e.target.value })}
+            />
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.settings.eventDetailHint')}</p>
       </div>
       <NotifyChannels envId={envId} selected={form.notify_channels ?? []} onChange={(ids) => setForm({ ...form, notify_channels: ids })} />
       <div>

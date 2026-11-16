@@ -53,6 +53,20 @@ type SantaConfigRequest struct {
 	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
 	// Overrides the action of MDM-deployed file access rules: NONE | AUDIT_ONLY | DISABLE; empty leaves the clients unchanged
 	OverrideFileAccessAction string `json:"override_file_access_action"`
+	// Clients hash the bundle of a blocked binary and upload its other binaries when osctrl asks
+	EnableBundles bool `json:"enable_bundles"`
+	// Upload every execution decision, not only blocks and would-be blocks
+	EnableAllEventUpload bool `json:"enable_all_event_upload"`
+	// Skip uploading executions that LOCKDOWN would block
+	DisableUnknownEventUpload bool `json:"disable_unknown_event_upload"`
+	// Executions from matching paths are allowed when no rule matches; empty is off. At most 1024 characters
+	AllowedPathRegex string `json:"allowed_path_regex"`
+	// Executions from matching paths are blocked when no rule matches; checked before allowed_path_regex. Empty is off
+	BlockedPathRegex string `json:"blocked_path_regex"`
+	// https URL of the block dialog button, with Santa placeholders such as %file_sha%; overrides the approval request link
+	EventDetailURL string `json:"event_detail_url"`
+	// Label of the block dialog button, at most 32 characters
+	EventDetailText string `json:"event_detail_text"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -197,6 +211,10 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		ApprovalURL: req.ApprovalURL, NotifyChannels: req.NotifyChannels,
 		VoteLocalThreshold: req.VoteLocalThreshold, VoteGlobalThreshold: req.VoteGlobalThreshold,
 		OverrideFileAccessAction: req.OverrideFileAccessAction,
+		EnableBundles:            req.EnableBundles, EnableAllEventUpload: req.EnableAllEventUpload,
+		DisableUnknownEventUpload: req.DisableUnknownEventUpload,
+		AllowedPathRegex:          req.AllowedPathRegex, BlockedPathRegex: req.BlockedPathRegex,
+		EventDetailURL: req.EventDetailURL, EventDetailText: req.EventDetailText,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
