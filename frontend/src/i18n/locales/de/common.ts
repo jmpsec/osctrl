@@ -1016,6 +1016,7 @@ export const de: Messages = {
       overridden: 'Trotz markierter Risikobewertung genehmigt',
       verdicts: { clean: 'Unbedenklich', flagged: 'Markiert', unknown: 'Unbekannt', error: 'Prüfung fehlgeschlagen', unchecked: 'Nicht geprüft' },
     },
+    carve: { retrieve: 'Datei abrufen', view: 'Carve anzeigen', fromLatest: 'Zuletzt ausgeführt auf {machine}' },
     notifyChannels: 'Über neue Anfragen benachrichtigen',
     notifyChannelsHint: 'Jede neue Anfrage wird mit einem Genehmigen- und einem Ablehnen-Link an diese Alarmkanäle gesendet. Ein Link funktioniert einmal, läuft nach 72 Stunden ab und erfordert einen angemeldeten Umgebungsadministrator. Das Ändern der Kanäle erfordert einen Superuser.',
     link: {

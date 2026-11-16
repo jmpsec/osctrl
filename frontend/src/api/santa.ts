@@ -125,6 +125,16 @@ export interface SantaEvent {
   bundle_id: string;
   machine_id: string;
   executed_at: string;
+  /** Carve started from this event to retrieve the file; empty when none. */
+  carve_name: string;
+}
+
+/**
+ * POST /api/v1/santa/{env}/events/{id}/carve — carve the event's file on its
+ * machine through the carves endpoint (carve access and sensitive paths apply).
+ */
+export function carveSantaEvent(env: string, id: number): Promise<{ query_name: string }> {
+  return apiFetch<{ query_name: string }>(`${envPath(env)}/events/${id}/carve`, { method: 'POST' });
 }
 
 export interface SantaCert {
@@ -161,6 +171,10 @@ export interface SantaBinary {
   rules: SantaRule[] | null;
   /** Cached verdict; absent when no risk check is configured. */
   risk?: SantaRisk;
+  /** Newest event of the file, to retrieve it from the machine that last ran it. */
+  latest_event_id: number;
+  latest_machine_id: string;
+  latest_carve: string;
 }
 
 /** GET /api/v1/santa/{env}/binaries/{sha256} — 404 when no event has the hash. */

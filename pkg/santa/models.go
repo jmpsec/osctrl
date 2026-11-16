@@ -128,6 +128,8 @@ type Event struct {
 	// Leaf certificate first, as the client reported it; empty for unsigned files
 	// and for events stored before the chain was kept.
 	SigningChain []Cert `gorm:"serializer:json;type:text" json:"signing_chain"`
+	// Name of the osquery carve started from this event to retrieve the file; set by osctrl.
+	CarveName string `gorm:"type:varchar(255)" json:"carve_name"`
 }
 
 // Cert is one certificate of a signing chain, as reported by the Santa client.

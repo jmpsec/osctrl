@@ -1016,6 +1016,7 @@ export const pt: Messages = {
       overridden: 'Aprovado apesar de um veredito de risco sinalizado',
       verdicts: { clean: 'Limpo', flagged: 'Sinalizado', unknown: 'Desconhecido', error: 'Falha na verificação', unchecked: 'Não verificado' },
     },
+    carve: { retrieve: 'Recuperar arquivo', view: 'Ver extração', fromLatest: 'Última execução em {machine}' },
     notifyChannels: 'Notificar novos pedidos',
     notifyChannelsHint: 'Cada novo pedido é enviado a estes canais de alerta com um link para aprovar e outro para negar. Um link funciona uma vez, expira após 72 horas e exige um administrador do ambiente com sessão iniciada. Alterar os canais exige um superusuário.',
     link: {

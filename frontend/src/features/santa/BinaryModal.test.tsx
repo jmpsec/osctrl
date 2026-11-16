@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,8 +15,14 @@ vi.mock('$/api/santa', async () => {
     ...actual,
     getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256),
     checkSantaRisk: (env: string, sha256: string) => mockCheck(env, sha256),
+    carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
   };
 });
+const mockCarve = vi.fn<(env: string, id: number) => Promise<{ query_name: string }>>();
+vi.mock('$/api/carves', () => ({ getCarve: () => Promise.reject(new Error('no access')) }));
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
+}));
 
 const SHA = 'ab'.repeat(32);
 const binary: SantaBinary = {
@@ -31,6 +38,7 @@ const binary: SantaBinary = {
     id: 9, identifier: 'ABCDE12345', rule_type: 'TEAMID', policy: 'BLOCKLIST', cel_expr: '', custom_msg: '', custom_url: '',
     scope: 'tag', scope_value: 'dev', created_at: '2026-11-01T10:00:00Z', created_by: 'alice',
   }],
+  latest_event_id: 0, latest_machine_id: '', latest_carve: '',
 };
 
 function renderModal() {
@@ -91,6 +99,16 @@ describe('BinaryModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Check now' }));
     expect(await screen.findByText('virustotal: Flagged — 12 of 70 engines flag it')).toBeInTheDocument();
     expect(mockCheck).toHaveBeenCalledWith('dev', SHA);
+  });
+
+  it('retrieves the file from the machine that last ran it', async () => {
+    mockBinary.mockResolvedValue({ ...binary, latest_event_id: 42, latest_machine_id: 'M-9' });
+    mockCarve.mockResolvedValue({ query_name: 'carve_x' });
+    renderModal();
+    expect(await screen.findByText('Last ran on M-9')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Retrieve file' }));
+    expect(mockCarve).toHaveBeenCalledWith('dev', 42);
+    expect(await screen.findByRole('link', { name: 'View carve' })).toBeInTheDocument();
   });
 
   it('shows the API error', async () => {

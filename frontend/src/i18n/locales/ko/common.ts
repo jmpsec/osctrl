@@ -1016,6 +1016,7 @@ export const ko: Messages = {
       overridden: '표시된 위험 판정을 무시하고 승인됨',
       verdicts: { clean: '정상', flagged: '표시됨', unknown: '알 수 없음', error: '검사 실패', unchecked: '검사 안 함' },
     },
+    carve: { retrieve: '파일 가져오기', view: '추출 보기', fromLatest: '마지막 실행: {machine}' },
     notifyChannels: '새 요청 알림',
     notifyChannelsHint: '새 요청은 승인 링크와 거부 링크와 함께 이 알림 채널로 전송됩니다. 링크는 한 번만 사용할 수 있고 72시간 후 만료되며 환경 관리자의 로그인이 필요합니다. 채널을 변경하려면 슈퍼유저 권한이 필요합니다.',
     link: {

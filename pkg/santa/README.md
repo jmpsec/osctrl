@@ -40,6 +40,14 @@ Deciding on a rule needs context, so each file hash has a detail view: the file 
 - Everything comes from `santa_events`, which is pruned after 30 days. First seen, last seen and the counts cover that window only, not the file's whole history.
 - All of it is written by Santa clients and is untrusted: a compromised client can report any name, signer or chain for a hash. The view is context for a decision, not proof of who signed the file.
 
+### Retrieving a binary
+
+**Retrieve file** on an event, or in the binary details (from the machine that last ran it), starts an osquery file carve of the event's path on that machine.
+
+- `POST /api/v1/santa/{env}/events/{id}/carve` (environment admin) dispatches to the carves endpoint, so carve access, sensitive paths, node scope, storage and the carve audit line all apply as for any carve. The carve name is kept on the event (`carve_name`) and the Santa audit line names it; the event row then shows the carve status and links to it. The file comes back through the existing osquery carve upload; `osctrl-tls` has no new upload path.
+- The machine must be an osquery node of the same environment (Santa machine ID = osquery UUID), else `409`. The path is the event's `file_path` joined with `file_name`, both written by the Santa client: a compromised client can point the carve at another file, which the sensitive-path list still guards.
+- The carve is recorded on the event, which is pruned after 30 days; the carve itself follows the carves' own lifecycle.
+
 ### Risk checks
 
 Before a vote or an approval allows a file, `osctrl-api` can ask reputation services about its hash. Off until a check is configured on `osctrl-api` (not `osctrl-tls`):

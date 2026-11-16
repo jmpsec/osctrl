@@ -33,7 +33,7 @@ function StatusBadge({ status }: { status: string }) {
 
 // Overall carve lifecycle badge for the header — mirrors the status column
 // of the carves list (colors and spinner) so both surfaces read the same.
-function CarveStatusBadge({ status }: { status?: string }) {
+export function CarveStatusBadge({ status }: { status?: string }) {
   const normalized = (status || '').toUpperCase();
   const { variant, label, live } = (() => {
     switch (normalized) {

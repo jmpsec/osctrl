@@ -5,6 +5,7 @@ import { Button } from '$/components/atoms/Button';
 import { Skeleton } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { useLocale } from '$/i18n/useLocale';
+import { CarveRetrieve } from './CarveRetrieve';
 import { RiskBadge } from './RiskBadge';
 import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
@@ -77,6 +78,13 @@ export function BinaryModal({ env, sha256, onClose }: {
             <Field label={t('santa.binary.blocked')} value={String(b.blocked)} />
           </dl>
           <p className={SUB}>{t('santa.binary.retention')}</p>
+
+          {b.file_path && b.latest_event_id > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={SUB}>{t('santa.carve.fromLatest', { machine: b.latest_machine_id })}</span>
+              <CarveRetrieve env={env} eventId={b.latest_event_id} carve={b.latest_carve} />
+            </div>
+          )}
 
           {b.risk && (
             <section className="space-y-1">

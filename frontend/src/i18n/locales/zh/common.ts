@@ -1016,6 +1016,7 @@ export const zh: Messages = {
       overridden: '在风险判定为已标记的情况下批准',
       verdicts: { clean: '安全', flagged: '已标记', unknown: '未知', error: '检查失败', unchecked: '未检查' },
     },
+    carve: { retrieve: '获取文件', view: '查看提取', fromLatest: '最近运行于 {machine}' },
     notifyChannels: '通知新请求',
     notifyChannelsHint: '每个新请求都会连同批准链接和拒绝链接发送到这些告警渠道。链接只能使用一次，72 小时后过期，并且需要环境管理员登录。更改渠道需要超级用户。',
     link: {

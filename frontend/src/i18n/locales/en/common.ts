@@ -1027,6 +1027,7 @@ export const en = {
       overridden: 'Approved over a flagged risk verdict',
       verdicts: { clean: 'Clean', flagged: 'Flagged', unknown: 'Unknown', error: 'Check failed', unchecked: 'Not checked' },
     },
+    carve: { retrieve: 'Retrieve file', view: 'View carve', fromLatest: 'Last ran on {machine}' },
     notifyChannels: 'Notify about new requests',
     notifyChannelsHint: 'Each new request is sent to these alert channels with an approve and a deny link. A link works once, expires after 72 hours and needs an environment admin signed in. Changing the channels requires a superuser.',
     link: {

@@ -1016,6 +1016,7 @@ export const es: Messages = {
       overridden: 'Aprobado pese a un veredicto de riesgo marcado',
       verdicts: { clean: 'Limpio', flagged: 'Marcado', unknown: 'Desconocido', error: 'Comprobación fallida', unchecked: 'Sin comprobar' },
     },
+    carve: { retrieve: 'Recuperar archivo', view: 'Ver extracción', fromLatest: 'Última ejecución en {machine}' },
     notifyChannels: 'Avisar de nuevas solicitudes',
     notifyChannelsHint: 'Cada solicitud nueva se envía a estos canales de alertas con un enlace para aprobar y otro para denegar. Un enlace funciona una vez, caduca a las 72 horas y requiere un administrador del entorno con sesión iniciada. Cambiar los canales requiere un superusuario.',
     link: {

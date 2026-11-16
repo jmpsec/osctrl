@@ -1016,6 +1016,7 @@ export const it: Messages = {
       overridden: 'Approvato nonostante un verdetto di rischio segnalato',
       verdicts: { clean: 'Pulito', flagged: 'Segnalato', unknown: 'Sconosciuto', error: 'Controllo non riuscito', unchecked: 'Non controllato' },
     },
+    carve: { retrieve: 'Recupera file', view: "Visualizza l'estrazione", fromLatest: 'Ultima esecuzione su {machine}' },
     notifyChannels: 'Notifica le nuove richieste',
     notifyChannelsHint: "Ogni nuova richiesta viene inviata a questi canali di avviso con un link per approvare e uno per negare. Un link funziona una volta, scade dopo 72 ore e richiede un amministratore dell'ambiente con accesso effettuato. Modificare i canali richiede un superutente.",
     link: {
