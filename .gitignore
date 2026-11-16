@@ -60,6 +60,10 @@ notes.txt
 
 # Generated bins
 *.bin
+api
+tls
+cli
+mcp
 
 # Tests
 coverage.out
