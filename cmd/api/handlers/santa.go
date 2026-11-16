@@ -691,6 +691,46 @@ func (h *HandlersApi) SantaBinaryHandler(w http.ResponseWriter, r *http.Request)
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, b)
 }
 
+// SantaReportHandler — GET /api/v1/santa/{env}/reports
+// @Summary Santa reports: ready for lockdown, top blocked, rule coverage gaps
+// @Description Requires environment admin. Computed from the events osctrl received in the last days days. Ready for lockdown lists the machines assigned MONITOR at their last preflight with their ALLOW_UNKNOWN count (executions LOCKDOWN would have blocked); a machine is ready with none and a sync in the window. Top blocked ranks BLOCK_* events by binary and by team ID. Coverage gaps rank the binaries most executed with no rule deciding them (ALLOW_UNKNOWN or BLOCK_UNKNOWN). Each ranked list has at most 20 entries. Event fields are written by Santa clients.
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param days query int false "Window in days, 1 to 30 (default 14)"
+// @Success 200 {object} santa.Report
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/reports [get]
+func (h *HandlersApi) SantaReportHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	days := santa.DefaultReportDays
+	if v := r.URL.Query().Get("days"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			apiErrorResponse(w, "days must be a number", http.StatusBadRequest, nil)
+			return
+		}
+		days = n
+	}
+	rep, err := h.Santa.Report(env.ID, days)
+	switch {
+	case errors.Is(err, santa.ErrInvalidRequest):
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
+		return
+	case err != nil:
+		apiErrorResponse(w, "error computing report", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rep)
+}
+
 // SantaEffectiveRulesResponse is what a machine gets at its next sync.
 type SantaEffectiveRulesResponse struct {
 	Rules      []santa.Rule `json:"rules"`

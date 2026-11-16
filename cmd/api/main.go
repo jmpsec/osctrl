@@ -646,6 +646,8 @@ func osctrlAPIService() {
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to initialize Santa")
 		}
+		// The report index, built in the background like the other secondary indexes.
+		dbutil.BuildIndexes(db.Conn, santa.Indexes()...)
 		log.Info().Msg("Santa enabled")
 	}
 	// Vulnerability findings count toward the posture risk score when both
@@ -1196,6 +1198,9 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/binaries/{sha256}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaBinaryHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiSantaPath)+"/{env}/reports",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaReportHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/requests",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
