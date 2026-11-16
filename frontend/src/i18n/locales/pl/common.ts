@@ -1016,6 +1016,7 @@ export const pl: Messages = {
       overridden: 'Zatwierdzono mimo oznaczonego werdyktu ryzyka',
       verdicts: { clean: 'Czysty', flagged: 'Oznaczony', unknown: 'Nieznany', error: 'Kontrola nie powiodła się', unchecked: 'Nie sprawdzono' },
     },
+    carve: { retrieve: 'Pobierz plik', view: 'Pokaż pobranie', fromLatest: 'Ostatnio uruchomiony na {machine}' },
     notifyChannels: 'Powiadamiaj o nowych prośbach',
     notifyChannelsHint: 'Każda nowa prośba jest wysyłana do tych kanałów alertów z linkiem do zatwierdzenia i linkiem do odrzucenia. Link działa raz, wygasa po 72 godzinach i wymaga zalogowanego administratora środowiska. Zmiana kanałów wymaga superużytkownika.',
     link: {

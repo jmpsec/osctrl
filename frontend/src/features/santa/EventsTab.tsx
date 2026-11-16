@@ -9,6 +9,7 @@ import { Pagination } from '$/components/data/Pagination';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { useLocale } from '$/i18n/useLocale';
 import { BinaryModal } from './BinaryModal';
+import { CarveRetrieve } from './CarveRetrieve';
 import { EMPTY_RULE } from './RulesTab';
 import { BINARY_LINK, MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
@@ -74,7 +75,8 @@ export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRu
                   <td className={TD}>{e.executing_user}</td>
                   <td className={TD}>{e.decision}</td>
                   <td className={`${TD} whitespace-nowrap text-end`}>
-                    <div className="flex justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {e.file_path && <CarveRetrieve env={env} eventId={e.id} carve={e.carve_name} />}
                       <Button size="sm" disabled={!e.file_sha256} onClick={() => onRule(ruleFor(e, 'ALLOWLIST'))}>
                         {t('santa.allow')}
                       </Button>

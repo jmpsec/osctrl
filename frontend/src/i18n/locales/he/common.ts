@@ -1016,6 +1016,7 @@ export const he: Messages = {
       overridden: 'אושר למרות פסיקת סיכון מסומנת',
       verdicts: { clean: 'נקי', flagged: 'מסומן', unknown: 'לא ידוע', error: 'הבדיקה נכשלה', unchecked: 'לא נבדק' },
     },
+    carve: { retrieve: 'אחזור הקובץ', view: 'הצגת החילוץ', fromLatest: 'הורץ לאחרונה ב-{machine}' },
     notifyChannels: 'התראה על בקשות חדשות',
     notifyChannelsHint: 'כל בקשה חדשה נשלחת לערוצי ההתראות האלה עם קישור לאישור וקישור לדחייה. קישור פועל פעם אחת, פג לאחר 72 שעות ודורש מנהל סביבה מחובר. שינוי הערוצים דורש משתמש-על.',
     link: {

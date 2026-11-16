@@ -1016,6 +1016,7 @@ export const ca: Messages = {
       overridden: 'Aprovat malgrat un veredicte de risc marcat',
       verdicts: { clean: 'Net', flagged: 'Marcat', unknown: 'Desconegut', error: 'Comprovació fallida', unchecked: 'Sense comprovar' },
     },
+    carve: { retrieve: 'Recupera el fitxer', view: "Mostra l'extracció", fromLatest: 'Última execució a {machine}' },
     notifyChannels: 'Avisa de sol·licituds noves',
     notifyChannelsHint: "Cada sol·licitud nova s'envia a aquests canals d'alertes amb un enllaç per aprovar i un altre per denegar. Un enllaç funciona una vegada, caduca al cap de 72 hores i requereix un administrador de l'entorn amb la sessió iniciada. Canviar els canals requereix un superusuari.",
     link: {

@@ -42,8 +42,12 @@ vi.mock('$/api/santa', async () => {
     listSantaModeOverrides: () => mockModes(),
     setSantaModeOverride: (env: string, body: unknown) => mockSetMode(env, body),
     deleteSantaModeOverride: (env: string, id: number) => mockDeleteMode(env, id),
+    carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
   };
 });
+const mockCarve = vi.fn<(env: string, id: number) => Promise<{ query_name: string }>>();
+const mockGetCarve = vi.fn<(env: string, name: string) => Promise<unknown>>();
+vi.mock('$/api/carves', () => ({ getCarve: (env: string, name: string) => mockGetCarve(env, name) }));
 vi.mock('$/api/environments', () => ({
   getEnvironment: () => Promise.resolve({ id: 5, uuid: 'ENV-UUID', hostname: 'tls.example.com' }),
 }));
@@ -90,7 +94,7 @@ describe('SantaPage', () => {
       events: [{
         id: 1, file_sha256: 'b'.repeat(64), file_path: '/tmp/bad', file_name: 'bad', executing_user: 'bob',
         decision: 'BLOCK_BINARY', team_id: '', signing_id: '', cd_hash: '', bundle_id: '', machine_id: 'M1',
-        executed_at: '2026-01-01T00:00:00Z',
+        executed_at: '2026-01-01T00:00:00Z', carve_name: '',
       }],
       total: 1, page: 1,
     });
@@ -227,6 +231,28 @@ describe('SantaPage', () => {
     expect(within(dialog).getByLabelText('Rule type')).toHaveValue('BINARY');
     expect(within(dialog).getByLabelText('Policy')).toHaveValue('ALLOWLIST');
     expect(within(dialog).getByLabelText('Scope')).toHaveValue('env');
+  });
+
+  it('retrieves an event\'s file with a carve and shows its status', async () => {
+    mockCarve.mockResolvedValue({ query_name: 'carve_abc' });
+    mockGetCarve.mockResolvedValue({ query: { carve_status: 'ACTIVE' }, files: [] });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Events' }));
+    await user.click(await screen.findByRole('button', { name: 'Retrieve file' }));
+    await waitFor(() => expect(mockCarve).toHaveBeenCalledWith('dev', 1));
+    expect(await screen.findByRole('link', { name: 'View carve' })).toHaveAttribute('href', expect.stringContaining('carve_abc'));
+    expect(await screen.findByText('Active')).toBeInTheDocument();
+    expect(mockGetCarve).toHaveBeenCalledWith('dev', 'carve_abc');
+  });
+
+  it('shows the API error when the file cannot be retrieved', async () => {
+    mockCarve.mockRejectedValue(new ApiError('the machine is not an osquery node of this environment', 409));
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Events' }));
+    await user.click(await screen.findByRole('button', { name: 'Retrieve file' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('not an osquery node');
   });
 
   it('shows machines', async () => {

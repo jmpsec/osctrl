@@ -1016,6 +1016,7 @@ export const nl: Messages = {
       overridden: 'Goedgekeurd ondanks een gemarkeerd risico-oordeel',
       verdicts: { clean: 'Schoon', flagged: 'Gemarkeerd', unknown: 'Onbekend', error: 'Controle mislukt', unchecked: 'Niet gecontroleerd' },
     },
+    carve: { retrieve: 'Bestand ophalen', view: 'Carve bekijken', fromLatest: 'Laatst uitgevoerd op {machine}' },
     notifyChannels: 'Melden bij nieuwe verzoeken',
     notifyChannelsHint: 'Elk nieuw verzoek wordt naar deze waarschuwingskanalen gestuurd met een link om goed te keuren en een om te weigeren. Een link werkt één keer, verloopt na 72 uur en vereist een aangemelde omgevingsbeheerder. Het wijzigen van de kanalen vereist een superuser.',
     link: {

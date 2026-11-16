@@ -8840,6 +8840,70 @@ paths:
       summary: List Santa execution events
       tags:
         - santa
+  "/api/v1/santa/{env}/events/{id}/carve":
+    post:
+      description: "Requires environment admin. Starts an osquery file carve of the
+        event's file on the machine that reported it, through the carves
+        endpoint: the caller also needs carve access, sensitive paths stay
+        refused, and the carve is stored and audited like any other. The carve
+        name is recorded on the event. 409 when the event has no path or its
+        machine is not an osquery node of the environment. The path is written
+        by the Santa client."
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Event ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiQueriesResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Retrieve the file of a Santa event from its machine
+      tags:
+        - santa
   "/api/v1/santa/{env}/machines":
     get:
       parameters:
@@ -14369,6 +14433,14 @@ components:
           type: string
         last_seen:
           type: string
+        latest_carve:
+          type: string
+        latest_event_id:
+          description: The newest event, to retrieve the file from the machine that last
+            ran it
+          type: integer
+        latest_machine_id:
+          type: string
         machines:
           description: Distinct machines that reported the file
           type: integer
@@ -14418,6 +14490,10 @@ components:
         bundle_path:
           type: string
         bundle_version:
+          type: string
+        carve_name:
+          description: Name of the osquery carve started from this event to retrieve the
+            file; set by osctrl.
           type: string
         cd_hash:
           type: string

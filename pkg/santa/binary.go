@@ -2,6 +2,7 @@ package santa
 
 import (
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -35,6 +36,10 @@ type Binary struct {
 	Rules []Rule `json:"rules"`
 	// Cached risk verdict, when risk checks are on
 	Risk *Risk `json:"risk,omitempty"`
+	// The newest event, to retrieve the file from the machine that last ran it
+	LatestEventID   uint   `json:"latest_event_id"`
+	LatestMachineID string `json:"latest_machine_id"`
+	LatestCarve     string `json:"latest_carve"`
 }
 
 // ruleMatch narrows a rule query to the rules that name the file of ev: by its
@@ -76,6 +81,7 @@ func (m *Manager) Binary(envID uint, sha256 string) (Binary, error) {
 		SHA256: sha256, FileName: newest.FileName, FilePath: newest.FilePath, TeamID: newest.TeamID, SigningID: newest.SigningID,
 		CDHash: newest.CDHash, BundleID: newest.BundleID, BundleName: newest.BundleName, BundleVersion: newest.BundleVersion,
 		BundlePath: newest.BundlePath, SigningChain: newest.SigningChain, FirstSeen: oldest.ExecutedAt, LastSeen: newest.ExecutedAt,
+		LatestEventID: newest.ID, LatestMachineID: newest.MachineID, LatestCarve: newest.CarveName,
 	}
 	if err := events().Count(&b.Events).Error; err != nil {
 		return Binary{}, err
@@ -95,4 +101,25 @@ func (m *Manager) Binary(envID uint, sha256 string) (Binary, error) {
 	}
 	b.Risk = risk[sha256]
 	return b, nil
+}
+
+// Event returns one stored event of the environment.
+func (m *Manager) Event(envID, id uint) (Event, error) {
+	var ev Event
+	err := m.DB.Where("environment_id = ? AND id = ?", envID, id).First(&ev).Error
+	return ev, err
+}
+
+// FullPath is the path of the event's file: Santa reports the directory and
+// the file name apart.
+func (e Event) FullPath() string {
+	if e.FilePath == "" || e.FileName == "" || path.Base(e.FilePath) == e.FileName {
+		return e.FilePath
+	}
+	return path.Join(e.FilePath, e.FileName)
+}
+
+// SetEventCarve records the carve started to retrieve the event's file.
+func (m *Manager) SetEventCarve(envID, id uint, name string) error {
+	return m.DB.Model(&Event{}).Where("environment_id = ? AND id = ?", envID, id).Update("carve_name", name).Error
 }

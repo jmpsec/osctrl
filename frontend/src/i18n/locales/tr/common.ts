@@ -1016,6 +1016,7 @@ export const tr: Messages = {
       overridden: 'İşaretli risk kararına rağmen onaylandı',
       verdicts: { clean: 'Temiz', flagged: 'İşaretli', unknown: 'Bilinmiyor', error: 'Denetim başarısız', unchecked: 'Denetlenmedi' },
     },
+    carve: { retrieve: 'Dosyayı al', view: 'Çıkarmayı görüntüle', fromLatest: 'En son {machine} üzerinde çalıştı' },
     notifyChannels: 'Yeni istekleri bildir',
     notifyChannelsHint: 'Her yeni istek, bir onay ve bir ret bağlantısıyla bu uyarı kanallarına gönderilir. Bağlantı bir kez çalışır, 72 saat sonra sona erer ve oturum açmış bir ortam yöneticisi gerektirir. Kanalları değiştirmek için süper kullanıcı gerekir.',
     link: {
