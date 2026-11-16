@@ -135,6 +135,14 @@ service:
   # VULN_NVD_API_KEY environment variable, not here.
   vulnNVDEnabled: false
   vulnNVDURL: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+  # Santa risk checks, run before a vote or an approval allows a file. Off
+  # until a check is configured. Set the secrets through the environment, not
+  # here: SANTA_VIRUSTOTAL_KEY turns on VirusTotal, SANTA_RISK_WEBHOOK_URL
+  # (and optionally SANTA_RISK_WEBHOOK_SECRET) a custom webhook. Only file
+  # hashes are sent.
+  santaVirusTotalThreshold: 3
+  santaRiskTTLHours: 24
+  santaRiskTimeoutSeconds: 10
   # DB health monitor. When enabled, osctrl-api pings the database
   # every dbHealthInterval seconds. After dbHealthThreshold
   # consecutive failures, EnvCache switches to stale-serve mode:

@@ -1008,6 +1008,14 @@ export const zh: Messages = {
       binaries: '二进制文件',
       footnote: '根据 osctrl 在时间范围内收到的事件计算，每个列表最多 20 项。名称和 Team ID 由 Santa 客户端上报。',
     },
+    risk: {
+      title: '风险检查',
+      checkNow: '立即检查',
+      flaggedWarning: '风险检查标记了此文件。批准需要填写理由并覆盖判定，并会写入审计日志。',
+      override: '覆盖风险判定并仍然批准',
+      overridden: '在风险判定为已标记的情况下批准',
+      verdicts: { clean: '安全', flagged: '已标记', unknown: '未知', error: '检查失败', unchecked: '未检查' },
+    },
     notifyChannels: '通知新请求',
     notifyChannelsHint: '每个新请求都会连同批准链接和拒绝链接发送到这些告警渠道。链接只能使用一次，72 小时后过期，并且需要环境管理员登录。更改渠道需要超级用户。',
     link: {

@@ -1019,6 +1019,14 @@ export const en = {
       binaries: 'Binaries',
       footnote: 'Computed from the events osctrl received in the window, at most 20 per list. Names and team IDs are reported by Santa clients.',
     },
+    risk: {
+      title: 'Risk checks',
+      checkNow: 'Check now',
+      flaggedWarning: 'A risk check flagged this file. Approving it needs an override and a reason, and is written to the audit log.',
+      override: 'Override the risk verdict and approve anyway',
+      overridden: 'Approved over a flagged risk verdict',
+      verdicts: { clean: 'Clean', flagged: 'Flagged', unknown: 'Unknown', error: 'Check failed', unchecked: 'Not checked' },
+    },
     notifyChannels: 'Notify about new requests',
     notifyChannelsHint: 'Each new request is sent to these alert channels with an approve and a deny link. A link works once, expires after 72 hours and needs an environment admin signed in. Changing the channels requires a superuser.',
     link: {

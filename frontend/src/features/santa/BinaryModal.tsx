@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { getSantaBinary, santaQueryKey } from '$/api/santa';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { checkSantaRisk, getSantaBinary, santaQueryKey, type SantaBinary } from '$/api/santa';
+import { Button } from '$/components/atoms/Button';
 import { Skeleton } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { useLocale } from '$/i18n/useLocale';
+import { RiskBadge } from './RiskBadge';
 import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
 const SUB = 'text-xs text-[color:var(--text-3)] [overflow-wrap:anywhere]';
@@ -32,7 +34,16 @@ export function BinaryModal({ env, sha256, onClose }: {
 }) {
   const { t } = useTranslation();
   const { formatDateTime } = useLocale();
-  const binary = useQuery({ queryKey: santaQueryKey(env, 'binaries', sha256), queryFn: () => getSantaBinary(env, sha256), retry: false });
+  const qc = useQueryClient();
+  const key = santaQueryKey(env, 'binaries', sha256);
+  const binary = useQuery({ queryKey: key, queryFn: () => getSantaBinary(env, sha256), retry: false });
+  const check = useMutation({
+    mutationFn: () => checkSantaRisk(env, sha256),
+    onSuccess: (risk) => {
+      qc.setQueryData<SantaBinary>(key, (prev) => (prev ? { ...prev, risk } : prev));
+      void qc.invalidateQueries({ queryKey: santaQueryKey(env, 'requests') });
+    },
+  });
   const b = binary.data;
   const chain = b?.signing_chain ?? [];
   const rules = b?.rules ?? [];
@@ -66,6 +77,22 @@ export function BinaryModal({ env, sha256, onClose }: {
             <Field label={t('santa.binary.blocked')} value={String(b.blocked)} />
           </dl>
           <p className={SUB}>{t('santa.binary.retention')}</p>
+
+          {b.risk && (
+            <section className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h3 className={HEADING}>{t('santa.risk.title')}</h3>
+                <RiskBadge risk={b.risk} />
+                <Button size="sm" variant="ghost" className="ms-auto" disabled={check.isPending} onClick={() => check.mutate()}>
+                  {t('santa.risk.checkNow')}
+                </Button>
+              </div>
+              {(b.risk.checks ?? []).map((c) => (
+                <div key={c.check} className={SUB}>{c.check}: {t(`santa.risk.verdicts.${c.verdict}`)}{c.detail && ` — ${c.detail}`}</div>
+              ))}
+              {check.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(check.error)}</p>}
+            </section>
+          )}
 
           <section className="space-y-1">
             <h3 className={HEADING}>{t('santa.binary.signingChain')}</h3>

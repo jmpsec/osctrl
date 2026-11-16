@@ -1008,6 +1008,14 @@ export const es: Messages = {
       binaries: 'Binarios',
       footnote: 'Calculado a partir de los eventos que osctrl recibió en el periodo, como máximo 20 por lista. Los nombres y los team IDs los informan los clientes de Santa.',
     },
+    risk: {
+      title: 'Comprobaciones de riesgo',
+      checkNow: 'Comprobar ahora',
+      flaggedWarning: 'Una comprobación de riesgo marcó este archivo. Aprobarlo requiere anular el veredicto con un motivo, y queda en el registro de auditoría.',
+      override: 'Anular el veredicto de riesgo y aprobar igualmente',
+      overridden: 'Aprobado pese a un veredicto de riesgo marcado',
+      verdicts: { clean: 'Limpio', flagged: 'Marcado', unknown: 'Desconocido', error: 'Comprobación fallida', unchecked: 'Sin comprobar' },
+    },
     notifyChannels: 'Avisar de nuevas solicitudes',
     notifyChannelsHint: 'Cada solicitud nueva se envía a estos canales de alertas con un enlace para aprobar y otro para denegar. Un enlace funciona una vez, caduca a las 72 horas y requiere un administrador del entorno con sesión iniciada. Cambiar los canales requiere un superusuario.',
     link: {

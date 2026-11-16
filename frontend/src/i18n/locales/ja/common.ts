@@ -1008,6 +1008,14 @@ export const ja: Messages = {
       binaries: 'バイナリ',
       footnote: '期間内に osctrl が受信したイベントから算出し、各リスト最大 20 件です。名前と Team ID は Santa クライアントの報告です。',
     },
+    risk: {
+      title: 'リスクチェック',
+      checkNow: '今すぐチェック',
+      flaggedWarning: 'リスクチェックがこのファイルを検出しました。承認するには理由を添えて判定を上書きする必要があり、監査ログに記録されます。',
+      override: 'リスク判定を上書きして承認する',
+      overridden: '検出されたリスク判定を上書きして承認',
+      verdicts: { clean: '問題なし', flagged: '検出', unknown: '不明', error: 'チェック失敗', unchecked: '未チェック' },
+    },
     notifyChannels: '新しいリクエストを通知',
     notifyChannelsHint: '新しいリクエストは、承認リンクと拒否リンクを付けてこれらのアラートチャンネルに送信されます。リンクは 1 回だけ使用でき、72 時間で失効し、環境管理者のサインインが必要です。チャンネルの変更にはスーパーユーザー権限が必要です。',
     link: {

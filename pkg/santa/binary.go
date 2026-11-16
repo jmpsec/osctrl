@@ -33,6 +33,8 @@ type Binary struct {
 	Machines int64 `json:"machines"`
 	// Rules of any scope naming the file, its team ID, signing ID, CDHash or leaf certificate
 	Rules []Rule `json:"rules"`
+	// Cached risk verdict, when risk checks are on
+	Risk *Risk `json:"risk,omitempty"`
 }
 
 // ruleMatch narrows a rule query to the rules that name the file of ev: by its
@@ -84,6 +86,13 @@ func (m *Manager) Binary(envID uint, sha256 string) (Binary, error) {
 	if err := events().Distinct("machine_id").Count(&b.Machines).Error; err != nil {
 		return Binary{}, err
 	}
-	err := m.DB.Where("environment_id = ?", envID).Where(ruleMatch(m.DB, newest)).Order("id").Find(&b.Rules).Error
-	return b, err
+	if err := m.DB.Where("environment_id = ?", envID).Where(ruleMatch(m.DB, newest)).Order("id").Find(&b.Rules).Error; err != nil {
+		return Binary{}, err
+	}
+	risk, err := m.cachedRisk([]string{sha256})
+	if err != nil {
+		return Binary{}, err
+	}
+	b.Risk = risk[sha256]
+	return b, nil
 }

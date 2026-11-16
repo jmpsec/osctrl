@@ -159,6 +159,8 @@ export interface SantaBinary {
   blocked: number;
   machines: number;
   rules: SantaRule[] | null;
+  /** Cached verdict; absent when no risk check is configured. */
+  risk?: SantaRisk;
 }
 
 /** GET /api/v1/santa/{env}/binaries/{sha256} — 404 when no event has the hash. */
@@ -319,6 +321,23 @@ export interface SantaRequest extends SantaOwnRequest {
   decided_at: string | null;
   /** The allow rule an approval created or reused; 0 otherwise. */
   rule_id: number;
+  /** The approver allowed the file although a risk check flagged it. */
+  risk_override: boolean;
+  /** Cached verdict; absent when no risk check is configured. */
+  risk?: SantaRisk;
+}
+
+export type SantaRiskVerdict = 'clean' | 'flagged' | 'unknown' | 'error' | 'unchecked';
+
+export interface SantaRisk {
+  /** flagged if any check flagged, error if any failed, clean if any found it clean. */
+  verdict: SantaRiskVerdict;
+  checks: { check: string; verdict: SantaRiskVerdict; detail: string; checked_at: string; expires_at: string }[] | null;
+}
+
+/** POST /api/v1/santa/{env}/binaries/{sha256}/risk — runs the checks that have no fresh verdict. */
+export function checkSantaRisk(env: string, sha256: string): Promise<SantaRisk> {
+  return apiFetch<SantaRisk>(`${envPath(env)}/binaries/${encodeURIComponent(sha256)}/risk`, { method: 'POST' });
 }
 
 export interface SantaDecision {
@@ -329,6 +348,8 @@ export interface SantaDecision {
   scope_value?: string;
   /** Required to deny; the requester sees it. */
   reason: string;
+  /** Approve although a risk check flagged the file; needs a reason. */
+  override?: boolean;
 }
 
 /**

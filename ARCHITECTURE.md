@@ -482,6 +482,11 @@ Feature-owned tables are migrated only when their manager is initialized. In par
   - `pkg/santa.Rule` -> `santa_rules`
   - `pkg/santa.Machine` -> `santa_machines`
   - `pkg/santa.Event` -> `santa_events`
+  - `pkg/santa.ModeOverride` -> `santa_mode_overrides`
+  - `pkg/santa.Request` -> `santa_requests`
+  - `pkg/santa.RequestLink` -> `santa_request_links`
+  - `pkg/santa.Vote` -> `santa_votes`
+  - `pkg/santa.Verdict` -> `santa_verdicts` (risk check cache)
 - Vulnerabilities (only with `--vuln-enabled`):
   - `pkg/vulns.NodeSoftware` -> `node_software`
   - `pkg/vulns.NodeState` -> `vuln_node_state`

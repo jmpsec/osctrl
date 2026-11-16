@@ -20,8 +20,33 @@ var ErrLinkInvalid = errors.New("santa: link is not valid any more")
 // Request returns one request, gorm.ErrRecordNotFound if it is not in envID.
 func (m *Manager) Request(envID, id uint) (Request, error) {
 	var req Request
-	err := m.DB.Where("environment_id = ? AND id = ?", envID, id).First(&req).Error
-	return req, err
+	if err := m.DB.Where("environment_id = ? AND id = ?", envID, id).First(&req).Error; err != nil {
+		return req, err
+	}
+	reqs := []Request{req}
+	err := m.attachRisk(reqs)
+	return reqs[0], err
+}
+
+// attachRisk fills the cached risk verdict of file requests; it leaves Risk
+// nil when risk checks are off.
+func (m *Manager) attachRisk(reqs []Request) error {
+	var shas []string
+	for _, r := range reqs {
+		if r.Kind != RequestKindMonitor && r.FileSHA256 != "" {
+			shas = append(shas, r.FileSHA256)
+		}
+	}
+	risk, err := m.cachedRisk(shas)
+	if err != nil || risk == nil {
+		return err
+	}
+	for i := range reqs {
+		if reqs[i].Kind != RequestKindMonitor {
+			reqs[i].Risk = risk[strings.ToLower(reqs[i].FileSHA256)]
+		}
+	}
+	return nil
 }
 
 // NewRequestLinks stores an approve and a deny link for req and returns their
@@ -45,6 +70,20 @@ func (m *Manager) NewRequestLinks(req Request) (approve, deny string, err error)
 // unused, unexpired, in envID and for the action in d. It is consumed in the
 // same transaction as the decision, so a decision that fails leaves it usable.
 func (m *Manager) DecideByLink(envID uint, token string, d Decision) (Request, error) {
+	// Risk checks call out over the network, so they run before the
+	// transaction, on the request the link names; the link is checked again inside.
+	if m.Risk != nil && d.Approve {
+		var links []RequestLink
+		if err := m.DB.Where("environment_id = ? AND token_hash = ?", envID, hashToken(token)).Limit(1).Find(&links).Error; err != nil {
+			return Request{}, err
+		}
+		if len(links) == 0 {
+			return Request{}, ErrLinkInvalid
+		}
+		if err := m.riskForDecision(m.DB, envID, links[0].RequestID, &d); err != nil {
+			return Request{}, err
+		}
+	}
 	var req Request
 	err := m.DB.Transaction(func(tx *gorm.DB) error {
 		var links []RequestLink

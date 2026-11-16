@@ -89,8 +89,10 @@ func (m *Manager) Requests(envID uint, status, requester string) ([]Request, err
 		q = q.Where("requester = ?", requester)
 	}
 	var reqs []Request
-	err := q.Order("id DESC").Limit(maxPageSize).Find(&reqs).Error
-	return reqs, err
+	if err := q.Order("id DESC").Limit(maxPageSize).Find(&reqs).Error; err != nil {
+		return nil, err
+	}
+	return reqs, m.attachRisk(reqs)
 }
 
 var (
@@ -113,13 +115,23 @@ type Decision struct {
 	Reason string
 	// The approver.
 	By string
+	// Approve although a risk check flagged the file; needs a reason.
+	Override bool
+	// Aggregated risk verdict, set by riskForDecision before the transaction.
+	risk string
 }
+
+// ErrOverrideReason is returned for a risk override without a reason.
+var ErrOverrideReason = errors.New("santa: overriding a flagged risk verdict needs a reason")
 
 // DecideRequest approves or denies a pending request. An approval stores one
 // BINARY allow rule for the file in the chosen scope, or reuses an allow rule
 // that is already there, in the same transaction as the status change.
 // Returns gorm.ErrRecordNotFound if the request is not in envID.
 func (m *Manager) DecideRequest(envID, id uint, d Decision) (Request, error) {
+	if err := m.riskForDecision(m.DB, envID, id, &d); err != nil {
+		return Request{}, err
+	}
 	return m.decideIn(m.DB, envID, id, d)
 }
 
@@ -150,6 +162,17 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 			}
 			req.Status = RequestApproved
 		case d.Approve:
+			// A failed check is shown to the approver but does not stop them;
+			// a flagged file needs an explicit, reasoned override.
+			if d.risk == RiskFlagged {
+				switch {
+				case !d.Override:
+					return ErrRiskFlagged
+				case d.Reason == "":
+					return ErrOverrideReason
+				}
+				req.RiskOverride = true
+			}
 			rule := Rule{
 				EnvironmentID: envID, Identifier: req.FileSHA256, RuleType: "BINARY", Policy: "ALLOWLIST",
 				Scope: d.Scope, ScopeValue: d.ScopeValue, CreatedBy: d.By,
@@ -173,7 +196,7 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 		// never produces two rules.
 		res := tx.Model(&Request{}).Where("id = ? AND status = ?", req.ID, RequestPending).Updates(map[string]any{
 			"status": req.Status, "decided_by": req.DecidedBy, "decided_at": req.DecidedAt,
-			"reason": req.Reason, "rule_id": req.RuleID, "updated_at": now,
+			"reason": req.Reason, "rule_id": req.RuleID, "risk_override": req.RiskOverride, "updated_at": now,
 		})
 		if res.Error != nil {
 			return res.Error

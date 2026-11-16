@@ -1008,6 +1008,14 @@ export const ca: Messages = {
       binaries: 'Binaris',
       footnote: 'Calculat a partir dels esdeveniments que osctrl ha rebut en el període, com a màxim 20 per llista. Els noms i els team IDs els informen els clients de Santa.',
     },
+    risk: {
+      title: 'Comprovacions de risc',
+      checkNow: 'Comprova ara',
+      flaggedWarning: "Una comprovació de risc ha marcat aquest fitxer. Aprovar-lo requereix anul·lar el veredicte amb un motiu, i queda al registre d'auditoria.",
+      override: 'Anul·la el veredicte de risc i aprova igualment',
+      overridden: 'Aprovat malgrat un veredicte de risc marcat',
+      verdicts: { clean: 'Net', flagged: 'Marcat', unknown: 'Desconegut', error: 'Comprovació fallida', unchecked: 'Sense comprovar' },
+    },
     notifyChannels: 'Avisa de sol·licituds noves',
     notifyChannelsHint: "Cada sol·licitud nova s'envia a aquests canals d'alertes amb un enllaç per aprovar i un altre per denegar. Un enllaç funciona una vegada, caduca al cap de 72 hores i requereix un administrador de l'entorn amb la sessió iniciada. Canviar els canals requereix un superusuari.",
     link: {

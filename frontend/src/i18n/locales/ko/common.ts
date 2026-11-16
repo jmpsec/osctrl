@@ -1008,6 +1008,14 @@ export const ko: Messages = {
       binaries: '바이너리',
       footnote: '기간 내에 osctrl이 받은 이벤트로 계산하며 목록마다 최대 20개입니다. 이름과 Team ID는 Santa 클라이언트가 보고합니다.',
     },
+    risk: {
+      title: '위험 검사',
+      checkNow: '지금 검사',
+      flaggedWarning: '위험 검사에서 이 파일을 표시했습니다. 승인하려면 사유와 함께 판정을 재정의해야 하며 감사 로그에 기록됩니다.',
+      override: '위험 판정을 재정의하고 그래도 승인',
+      overridden: '표시된 위험 판정을 무시하고 승인됨',
+      verdicts: { clean: '정상', flagged: '표시됨', unknown: '알 수 없음', error: '검사 실패', unchecked: '검사 안 함' },
+    },
     notifyChannels: '새 요청 알림',
     notifyChannelsHint: '새 요청은 승인 링크와 거부 링크와 함께 이 알림 채널로 전송됩니다. 링크는 한 번만 사용할 수 있고 72시간 후 만료되며 환경 관리자의 로그인이 필요합니다. 채널을 변경하려면 슈퍼유저 권한이 필요합니다.',
     link: {

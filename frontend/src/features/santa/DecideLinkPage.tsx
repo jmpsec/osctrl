@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { ApiError } from '$/api/client';
 import { decideSantaRequestByLink, getSantaRequest, type SantaDecision } from '$/api/santa';
 import { DecisionForm, requestName } from './RequestsTab';
+import { RiskBadge } from './RiskBadge';
 import { MONO, errorText } from './table';
 
 /**
@@ -39,13 +40,14 @@ export function DecideLinkPage({ env, requestId, approve, token }: { env: string
               {r.file_path && <div className={sub}>{r.file_path}</div>}
               {r.file_sha256 && <div className={`${MONO} ${sub}`}>{r.file_sha256}</div>}
               <div className={`${MONO} ${sub}`}>{r.machine_id}</div>
+              {r.risk && <div className="mt-1"><RiskBadge risk={r.risk} /></div>}
             </div>
             <div className="text-sm">
               <div className="text-[color:var(--text-1)]">{r.requester}</div>
               <div className={sub}>{r.justification}</div>
             </div>
             {r.status === 'pending' ? (
-              <DecisionForm approve={approve} monitor={r.kind === 'monitor'} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} />
+              <DecisionForm approve={approve} monitor={r.kind === 'monitor'} flagged={r.risk?.verdict === 'flagged'} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} />
             ) : (
               <p role="status" className="text-sm text-[color:var(--text-1)]">
                 {t('santa.request.status')}: {t(`santa.request.statuses.${r.status}`)}

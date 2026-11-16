@@ -158,6 +158,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initConfigFlags(params, ServiceAPI)...)
 	allFlags = append(allFlags, initServiceFlags(params)...)
 	allFlags = append(allFlags, initVulnFlags(params)...)
+	allFlags = append(allFlags, initSantaRiskFlags(params)...)
 	allFlags = append(allFlags, initAuthFlag(params, AuthJWT, "Authentication mechanism for the service (jwt|none — `none` requires OSCTRL_INSECURE_NO_AUTH=1)"))
 	allFlags = append(allFlags, initLoggingFlags(params)...)
 	allFlags = append(allFlags, initRedisFlags(params)...)
@@ -465,6 +466,52 @@ func initVulnFlags(params *ServiceParameters) []cli.Flag {
 			Usage:       "Optional NVD API key for ten times the request rate. Prefer the environment variable: a flag value shows in the process list.",
 			Sources:     cli.EnvVars("VULN_NVD_API_KEY"),
 			Destination: &params.Service.VulnNVDAPIKey,
+		},
+	}
+}
+
+// initSantaRiskFlags holds the Santa risk checks. Only osctrl-api decides
+// approvals and votes, so only InitAPIFlags includes them.
+func initSantaRiskFlags(params *ServiceParameters) []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{
+			Name:        "santa-virustotal-key",
+			Usage:       "VirusTotal API key; turns on the VirusTotal risk check for Santa approvals and votes. Only file hashes are sent. Prefer the environment variable: a flag value shows in the process list.",
+			Sources:     cli.EnvVars("SANTA_VIRUSTOTAL_KEY"),
+			Destination: &params.Service.SantaVirusTotalKey,
+		},
+		&cli.IntFlag{
+			Name:        "santa-virustotal-threshold",
+			Value:       3,
+			Usage:       "Engines that must flag a file for the VirusTotal check to report it flagged.",
+			Sources:     cli.EnvVars("SANTA_VIRUSTOTAL_THRESHOLD"),
+			Destination: &params.Service.SantaVirusTotalThreshold,
+		},
+		&cli.StringFlag{
+			Name:        "santa-risk-webhook-url",
+			Usage:       "URL of a custom Santa risk check; osctrl-api POSTs {\"sha256\": ...} and expects {\"verdict\": \"clean|flagged|unknown\", \"detail\": ...}. Treated as a secret.",
+			Sources:     cli.EnvVars("SANTA_RISK_WEBHOOK_URL"),
+			Destination: &params.Service.SantaRiskWebhookURL,
+		},
+		&cli.StringFlag{
+			Name:        "santa-risk-webhook-secret",
+			Usage:       "When set, the risk webhook request is signed with X-Osctrl-Signature (HMAC-SHA256, hex). Prefer the environment variable.",
+			Sources:     cli.EnvVars("SANTA_RISK_WEBHOOK_SECRET"),
+			Destination: &params.Service.SantaRiskWebhookSecret,
+		},
+		&cli.IntFlag{
+			Name:        "santa-risk-ttl-hours",
+			Value:       24,
+			Usage:       "Hours a Santa risk verdict is cached. A failed check is cached for 5 minutes.",
+			Sources:     cli.EnvVars("SANTA_RISK_TTL_HOURS"),
+			Destination: &params.Service.SantaRiskTTLHours,
+		},
+		&cli.IntFlag{
+			Name:        "santa-risk-timeout-seconds",
+			Value:       10,
+			Usage:       "Timeout of each Santa risk check request.",
+			Sources:     cli.EnvVars("SANTA_RISK_TIMEOUT_SECONDS"),
+			Destination: &params.Service.SantaRiskTimeoutSeconds,
 		},
 	}
 }
