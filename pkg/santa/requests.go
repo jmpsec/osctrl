@@ -101,6 +101,9 @@ var (
 	// ErrRuleConflict is returned when a rule that does not allow the file
 	// already exists for the same file and scope.
 	ErrRuleConflict = errors.New("santa: a rule that does not allow this file already exists for this scope")
+	// ErrSelfApproval is returned when, with RequireSecondAdmin on, an admin
+	// approves their own request for MONITOR or an environment-wide rule.
+	ErrSelfApproval = errors.New("santa: another admin must approve your own request")
 )
 
 // Decision is an approver's answer to a pending request.
@@ -151,6 +154,17 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 	err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("environment_id = ? AND id = ?", envID, id).First(&req).Error; err != nil {
 			return err
+		}
+		// An admin's own request for MONITOR or an environment-wide rule is one
+		// person loosening enforcement, the change a second admin must approve.
+		if d.Approve && req.Requester == d.By && (req.Kind == RequestKindMonitor || d.Scope == "env") {
+			var n int64
+			if err := tx.Model(&EnvConfig{}).Where("environment_id = ? AND require_second_admin = ?", envID, true).Count(&n).Error; err != nil {
+				return err
+			}
+			if n > 0 {
+				return ErrSelfApproval
+			}
 		}
 		now := m.now()
 		req.Status, req.DecidedBy, req.DecidedAt, req.Reason = RequestDenied, d.By, &now, d.Reason

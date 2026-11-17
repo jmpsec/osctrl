@@ -95,6 +95,8 @@ export class ApiError extends Error {
 // ---------------------------------------------------------------------------
 
 const MUTATING_VERBS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+/** ApiError code of an action held for another admin's approval. */
+export const PENDING_APPROVAL = 'pending_approval';
 
 export async function apiFetch<T>(
   path: string,
@@ -159,7 +161,13 @@ export async function apiFetch<T>(
   // caller's onError reported as a failure even though the request had
   // succeeded. Parse only when there are bytes.
   const text = await res.text();
-  return (text ? (JSON.parse(text) as T) : (undefined as T));
+  const data = text ? JSON.parse(text) : undefined;
+  // A 202 with pending_change: the action waits for a second admin and did
+  // not happen, so callers must not treat it as done.
+  if (res.status === 202 && data?.pending_change) {
+    throw new ApiError(data.message, 202, PENDING_APPROVAL);
+  }
+  return data as T;
 }
 
 // ---------------------------------------------------------------------------

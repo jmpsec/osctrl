@@ -62,6 +62,8 @@ export interface SantaConfig {
   event_detail_url: string;
   event_detail_text: string;
   group_tags?: SantaGroupTag[];
+  /** Changes that weaken enforcement wait for a second environment admin. */
+  require_second_admin?: boolean;
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }

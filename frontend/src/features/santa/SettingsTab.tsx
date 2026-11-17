@@ -156,6 +156,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         event_detail_url: form.event_detail_url ?? '',
         event_detail_text: form.event_detail_text ?? '',
         group_tags: form.group_tags ?? [],
+        require_second_admin: !!form.require_second_admin,
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -212,6 +213,17 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         />
         {t('santa.transitiveRules')}
       </label>
+      <div>
+        <label className="flex items-center gap-2 text-sm text-[color:var(--text-2)]">
+          <input
+            type="checkbox"
+            checked={!!form.require_second_admin}
+            onChange={(e) => setForm({ ...form, require_second_admin: e.target.checked })}
+          />
+          {t('santa.secondAdmin.label')}
+        </label>
+        <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.secondAdmin.hint')}</p>
+      </div>
       {(['enable_bundles', 'enable_all_event_upload', 'disable_unknown_event_upload'] as const).map((field) => (
         <label key={field} className="flex items-center gap-2 text-sm text-[color:var(--text-2)]">
           <input type="checkbox" checked={!!form[field]} onChange={(e) => setForm({ ...form, [field]: e.target.checked })} />
@@ -560,7 +572,7 @@ function TokenCard({ env, tokenSet }: { env: string; tokenSet: boolean }) {
   );
 }
 
-function TokenDialog({ token, onClose }: { token: string; onClose: () => void }) {
+export function TokenDialog({ token, onClose }: { token: string; onClose: () => void }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 

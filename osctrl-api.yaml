@@ -1915,6 +1915,116 @@ paths:
       summary: List carve samples
       tags:
         - carves
+  "/api/v1/changes/{env}":
+    get:
+      description: Newest first, at most 200. Requires environment admin.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/handlers.ChangeView"
+                type: array
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List changes held for a second admin
+      tags:
+        - changes
+  "/api/v1/changes/{env}/{id}/decision":
+    post:
+      description: Requires environment admin. Only someone other than the requester
+        can approve; the requester can deny to withdraw it. An approved change
+        is applied by the requester sending the same request again within 24
+        hours of the request.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Change ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.ChangeDecision"
+        description: Decision
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/changes.Change"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Approve or deny a change held for a second admin
+      tags:
+        - changes
   /api/v1/checks-auth:
     get:
       description: Returns API availability for an authenticated user.
@@ -8741,6 +8851,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/handlers.SantaConfigResponse"
+        "202":
+          description: Held for a second admin (require_second_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.PendingChangeResponse"
         "400":
           description: Bad Request
           content:
@@ -9125,6 +9241,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/santa.ModeOverride"
+        "202":
+          description: Held for a second admin (require_second_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.PendingChangeResponse"
         "400":
           description: Bad Request
           content:
@@ -9657,6 +9779,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/santa.Rule"
+        "202":
+          description: Held for a second admin (require_second_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.PendingChangeResponse"
         "400":
           description: Bad Request
           content:
@@ -9762,6 +9890,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/santa.Rule"
+        "202":
+          description: Held for a second admin (require_second_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.PendingChangeResponse"
         "400":
           description: Bad Request
           content:
@@ -9833,6 +9967,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/santa.ImportResult"
+        "202":
+          description: Held for a second admin (require_second_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.PendingChangeResponse"
         "400":
           description: Bad Request
           content:
@@ -9880,6 +10020,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/handlers.SantaTokenResponse"
+        "202":
+          description: Held for a second admin (require_second_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.PendingChangeResponse"
         "403":
           description: Forbidden
           content:
@@ -13302,6 +13448,33 @@ components:
         - CarvePlatformLinux
         - CarvePlatformDarwin
         - CarvePlatformWindows
+    changes.Change:
+      properties:
+        action:
+          description: What the change does, as it appears in the audit log
+          type: string
+        body:
+          description: The request body, sent again unchanged to apply the change
+          type: string
+        created_at:
+          type: string
+        decided_at:
+          type: string
+        decided_by:
+          type: string
+        expires_at:
+          type: string
+        id:
+          type: integer
+        method:
+          type: string
+        path:
+          type: string
+        requested_by:
+          type: string
+        status:
+          type: string
+      type: object
     environments.EnvironmentPackage:
       properties:
         architecture:
@@ -13452,6 +13625,42 @@ components:
           type: integer
         query:
           type: integer
+      type: object
+    handlers.ChangeDecision:
+      properties:
+        decision:
+          description: approve | deny; the requester can only deny (withdraw) their own
+            change
+          type: string
+      type: object
+    handlers.ChangeView:
+      properties:
+        action:
+          description: What the change does, as it appears in the audit log
+          type: string
+        body:
+          description: The request body, sent again unchanged to apply the change
+          type: string
+        created_at:
+          type: string
+        decided_at:
+          type: string
+        decided_by:
+          type: string
+        expires_at:
+          type: string
+        id:
+          type: integer
+        method:
+          type: string
+        mine:
+          type: boolean
+        path:
+          type: string
+        requested_by:
+          type: string
+        status:
+          type: string
       type: object
     handlers.EnvStats:
       properties:
@@ -13703,6 +13912,13 @@ components:
         uuid:
           type: string
       type: object
+    handlers.PendingChangeResponse:
+      properties:
+        message:
+          type: string
+        pending_change:
+          $ref: "#/components/schemas/changes.Change"
+      type: object
     handlers.SantaConfigRequest:
       properties:
         allowed_path_regex:
@@ -13782,6 +13998,11 @@ components:
           items:
             type: string
           type: array
+        require_second_admin:
+          description: Hold changes that weaken enforcement until another environment
+            admin approves them (see /api/v1/changes). Turning it off is one of
+            them
+          type: boolean
         vote_global_threshold:
           description: Votes that allow the file in the whole environment; 0 is off, and
             it cannot be below the local threshold. Needs approval_url
@@ -13886,6 +14107,9 @@ components:
           items:
             type: string
           type: array
+        require_second_admin:
+          description: Changes that weaken enforcement wait for a second environment admin
+          type: boolean
         token_set:
           type: boolean
         updated_at:

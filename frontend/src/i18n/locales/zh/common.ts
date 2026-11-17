@@ -1020,6 +1020,8 @@ export const zh: Messages = {
       verdicts: { clean: '安全', flagged: '已标记', unknown: '未知', error: '检查失败', unchecked: '未检查' },
     },
     carve: { retrieve: '获取文件', view: '查看提取', fromLatest: '最近运行于 {machine}' },
+    secondAdmin: { label: '需要第二位管理员', hint: '切换到 MONITOR（环境、标签或机器）、全环境允许规则、新的允许路径正则、轮换同步令牌以及关闭此选项，都需要等待此环境的另一位管理员批准。管理员也不能批准自己的 MONITOR 或全环境请求。' },
+    changes: { tab: '变更', hint: '等待第二位管理员的变更。由环境中的另一位管理员批准，申请人随后在 24 小时内应用。', empty: '没有待处理的变更', action: '变更', requestedBy: '申请人', status: '状态', actions: '操作', approve: '批准', deny: '拒绝', withdraw: '撤回', apply: '应用', statuses: { pending: '待处理', approved: '已批准', denied: '已拒绝', applied: '已应用', expired: '已过期' } },
     groupTags: { title: 'IdP 组标签', group: 'IdP 组', tag: '标签', add: '添加组', hint: 'Santa 主用户属于该组的机器会在下次同步时获得该标签，离开该组后失去标签。主用户必须与 osctrl 用户名完全一致，组信息取自该用户最近一次 SSO 登录。手动添加的标签不会被移除。' },
     settings: { enable_bundles: '捆绑包：上传被阻止应用所在捆绑包中的所有二进制文件', enable_all_event_upload: '上传所有执行事件，而不仅是阻止事件', disable_unknown_event_upload: '不上传 LOCKDOWN 会阻止的执行', allowed_path_regex: '允许路径正则表达式', blocked_path_regex: '阻止路径正则表达式', pathRegexHint: '没有规则匹配时，来自匹配路径的执行将被允许或阻止；先检查阻止正则表达式。留空即关闭。风险高于规则。', event_detail_url: '阻止对话框 URL', event_detail_text: '按钮文字', eventDetailHint: '替换审批请求链接。Santa 会填充 %file_sha% 和 %machine_id% 等占位符。留空则使用上面的审批 URL。' },
     fileAccess: { override: '文件访问规则覆盖', overrideHint: '更改通过 FileAccessPolicy 配置描述文件部署的文件访问规则的操作。客户端在下次同步时应用。', none: '没有文件访问事件', noneHint: '文件访问规则通过 MDM 以 FileAccessPolicy 配置描述文件部署。违规会显示在这里。', rule: '规则', target: '路径', process: '进程', actions: { unset: '未设置（客户端不变）', NONE: '无（按规则执行）', AUDIT_ONLY: '仅审计（记录并允许）', DISABLE: '禁用规则' } },

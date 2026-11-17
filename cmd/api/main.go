@@ -23,6 +23,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/changes"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/dbutil"
@@ -130,6 +131,8 @@ const (
 	apiAlertsPath   = "/alerts"
 	// API Santa sync server management path
 	apiSantaPath = "/santa"
+	// API changes path
+	apiChangesPath = "/changes"
 	// API osquery extensions library path
 	apiExtensionsPath = "/extensions"
 	// API health / system status path
@@ -639,6 +642,11 @@ func osctrlAPIService() {
 	} else {
 		log.Info().Msg("Vulnerability monitoring disabled (enable with --vuln-enabled)")
 	}
+	// Changes held for a second admin's approval (Santa is the first user).
+	changesMgr, err := changes.NewManager(db.Conn)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize change approval")
+	}
 	// Santa sync server management (disabled by default); no tables otherwise.
 	var santaMgr *santa.Manager
 	if flagParams.Service.SantaEnabled {
@@ -693,6 +701,10 @@ func osctrlAPIService() {
 				// Same window: a pending request whose event is gone has nothing left to decide on.
 				if _, err := santaMgr.ExpireRequests(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
 					log.Err(err).Msg("error expiring santa requests")
+				}
+				// ponytail: pruned here because Santa is the only action held today.
+				if _, err := changesMgr.Prune(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
+					log.Err(err).Msg("error pruning held changes")
 				}
 				if _, err := santaMgr.PruneLinks(time.Now()); err != nil {
 					log.Err(err).Msg("error pruning santa approval links")
@@ -817,6 +829,7 @@ func osctrlAPIService() {
 		handlers.WithPostureEnabled(flagParams.Service.PostureEnabled),
 		handlers.WithVulns(vulnReader),
 		handlers.WithSanta(santaMgr),
+		handlers.WithChanges(changesMgr),
 		handlers.WithSantaNotifier(alertsMgr),
 		handlers.WithMFA(mfamgr, webAuthn, flagParams.Service.MFARequired, mfaIssuerName(flagParams)),
 		handlers.WithVersion(buildVersion),
@@ -1240,6 +1253,13 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 			"GET "+_apiPath(apiSantaPath)+"/{env}/votes",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVoteStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	}
+	// API: changes held for a second admin
+	muxAPI.Handle(
+		"GET "+_apiPath(apiChangesPath)+"/{env}",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ChangesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiChangesPath)+"/{env}/{id}/decision",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.ChangeDecideHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: node logs
 	muxAPI.Handle(
 		"GET "+_apiPath(apiLogsPath)+"/{type}/{env}/{uuid}",

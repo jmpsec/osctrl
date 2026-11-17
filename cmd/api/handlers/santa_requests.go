@@ -304,6 +304,9 @@ func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env e
 	case errors.Is(err, santa.ErrRiskFlagged):
 		apiErrorResponse(w, "a risk check flagged this file; approve with override and a reason to allow it anyway", http.StatusConflict, err)
 		return
+	case errors.Is(err, santa.ErrSelfApproval):
+		apiErrorResponse(w, err.Error(), http.StatusForbidden, nil)
+		return
 	case errors.Is(err, santa.ErrOverrideReason):
 		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
 		return

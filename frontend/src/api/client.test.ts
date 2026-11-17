@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { apiFetch, ApiError, isAuthenticated, setCsrfToken, primeCsrfFromCookie } from './client';
+import { apiFetch, ApiError, isAuthenticated, setCsrfToken, primeCsrfFromCookie, PENDING_APPROVAL } from './client';
 
 // Tests for the cookie-priming bootstrap. The OIDC flow finishes with
 // a server 302 to "/" and the SPA boots fresh — the in-memory CSRF
@@ -71,6 +71,20 @@ describe('apiFetch response bodies', () => {
       new Response(JSON.stringify({ id: 7 }), { status: 200 }),
     ) as unknown as typeof fetch;
     await expect(apiFetch<{ id: number }>('/api/v1/alerts/rules/7')).resolves.toEqual({ id: 7 });
+  });
+
+  it('rejects an action held for a second admin', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Change 3 needs approval', pending_change: { id: 3 } }), { status: 202 }),
+    ) as unknown as typeof fetch;
+    await expect(apiFetch('/api/v1/santa/dev/token', { method: 'POST' })).rejects.toMatchObject({
+      status: 202, code: PENDING_APPROVAL, message: 'Change 3 needs approval',
+    });
+    // Other 202 answers still resolve.
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ applied: true }), { status: 202 }),
+    ) as unknown as typeof fetch;
+    await expect(apiFetch('/api/v1/service-config/apply', { method: 'POST' })).resolves.toEqual({ applied: true });
   });
 
   it('still reports the error message on a failure', async () => {
