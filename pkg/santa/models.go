@@ -54,7 +54,25 @@ type EnvConfig struct {
 	// approval request link. EventDetailText is the button label.
 	EventDetailURL  string `gorm:"type:varchar(1024)" json:"event_detail_url"`
 	EventDetailText string `gorm:"type:varchar(64)" json:"event_detail_text"`
+	// IdP groups whose members' machines get a tag, matched on the Santa primary user
+	GroupTags []GroupTag `gorm:"serializer:json;type:text" json:"group_tags"`
 }
+
+// GroupTag maps an IdP group to a node tag of the environment.
+type GroupTag struct {
+	Group string `json:"group"`
+	Tag   string `json:"tag"`
+}
+
+// UserGroups holds the IdP groups of an osctrl user from their last SSO login.
+type UserGroups struct {
+	Username  string    `gorm:"type:varchar(255);primaryKey" json:"username"` // lowercase
+	Groups    []string  `gorm:"serializer:json;type:text" json:"groups"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// TableName for UserGroups
+func (UserGroups) TableName() string { return "santa_user_groups" }
 
 // TableName for EnvConfig
 func (EnvConfig) TableName() string { return "santa_env_configs" }
@@ -282,7 +300,7 @@ func (Vote) TableName() string { return "santa_votes" }
 // Migrate creates the Santa tables and fills RemovableMedia for configs saved
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}, &FileAccessEvent{}); err != nil {
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}, &FileAccessEvent{}, &UserGroups{}); err != nil {
 		return err
 	}
 	const unset = "(removable_media = '' OR removable_media IS NULL)"

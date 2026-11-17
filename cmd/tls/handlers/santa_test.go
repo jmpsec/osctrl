@@ -210,3 +210,47 @@ func TestSantaOversizedBody(t *testing.T) {
 	require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
 	require.Empty(t, w.Body.String())
 }
+
+func TestSantaGroupTags(t *testing.T) {
+	f := newSantaFixture(t)
+	for _, name := range []string{"finance", "eng", "pilot"} {
+		require.NoError(t, f.h.Tags.NewTag(name, "", "", "", "alice", f.env.ID, false, tags.TagTypeTag, ""))
+	}
+	node, err := f.h.Nodes.GetByUUIDEnv(santaMachineID, f.env.ID)
+	require.NoError(t, err)
+	// A manual tag that is also mapped is never removed by the mapping.
+	require.NoError(t, f.h.Tags.TagNode("pilot", node, "alice", false, tags.TagTypeTag, ""))
+	require.NoError(t, f.h.Santa.SaveConfig(santa.EnvConfig{EnvironmentID: f.env.ID, ClientMode: "MONITOR", GroupTags: []santa.GroupTag{
+		{Group: "Finance", Tag: "finance"}, {Group: "Engineering", Tag: "eng"}, {Group: "Pilots", Tag: "pilot"},
+	}}))
+	require.NoError(t, f.h.Santa.SetModeOverride(&santa.ModeOverride{EnvironmentID: f.env.ID, Scope: "tag", ScopeValue: "finance", ClientMode: "LOCKDOWN"}))
+	preflight := func() string {
+		w := f.post(santaEnvUUID, "preflight", santaMachineID, f.token, []byte(`{"primary_user":"jdoe"}`))
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		return w.Body.String()
+	}
+	nodeTags := func() []string {
+		m, err := f.h.Tags.GetTagsByNodeIDs([]uint{node.ID})
+		require.NoError(t, err)
+		var names []string
+		for _, t := range m[node.ID] {
+			names = append(names, t.Name)
+		}
+		return names
+	}
+
+	require.NoError(t, f.h.Santa.SetUserGroups("JDoe", []string{"Finance"}))
+	require.Contains(t, preflight(), `"client_mode":"LOCKDOWN"`)
+	require.ElementsMatch(t, []string{"pilot", "finance"}, nodeTags())
+
+	// Moving the user to another group moves the tags and the mode at the next sync.
+	require.NoError(t, f.h.Santa.SetUserGroups("jdoe", []string{"Engineering"}))
+	require.Contains(t, preflight(), `"client_mode":"MONITOR"`)
+	require.ElementsMatch(t, []string{"pilot", "eng"}, nodeTags())
+
+	// A mapped tag deleted from the environment is not recreated.
+	require.NoError(t, f.h.Tags.DeleteGet("finance", f.env.ID))
+	require.NoError(t, f.h.Santa.SetUserGroups("jdoe", []string{"Finance"}))
+	preflight()
+	require.ElementsMatch(t, []string{"pilot"}, nodeTags())
+}

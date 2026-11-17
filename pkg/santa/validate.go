@@ -120,6 +120,22 @@ func ValidateConfig(c *EnvConfig) error {
 	if s := c.FullSyncIntervalSeconds; s != 0 && (s < MinSyncInterval || s > MaxSyncInterval) {
 		return fmt.Errorf("sync interval is 0 (Santa default) or %d to %d seconds", MinSyncInterval, MaxSyncInterval)
 	}
+	if len(c.GroupTags) > MaxGroupTags {
+		return fmt.Errorf("at most %d group tags", MaxGroupTags)
+	}
+	seen := map[GroupTag]bool{}
+	gts := c.GroupTags[:0]
+	for _, gt := range c.GroupTags {
+		gt.Group, gt.Tag = strings.TrimSpace(gt.Group), strings.TrimSpace(gt.Tag)
+		if gt.Group == "" || gt.Tag == "" || len(gt.Group) > 255 || len(gt.Tag) > 255 || strings.ContainsAny(gt.Group+gt.Tag, "\r\n") {
+			return errors.New("group tags need a group and a tag of at most 255 characters")
+		}
+		if !seen[gt] {
+			seen[gt] = true
+			gts = append(gts, gt)
+		}
+	}
+	c.GroupTags = gts
 	if a := c.OverrideFileAccessAction; a != "" && a != "NONE" && a != "AUDIT_ONLY" && a != "DISABLE" {
 		return fmt.Errorf("invalid file access override %q", a)
 	}
@@ -149,6 +165,9 @@ const (
 	MinSyncInterval = 60
 	MaxSyncInterval = 86400
 )
+
+// MaxGroupTags caps the group-to-tag mappings of an environment.
+const MaxGroupTags = 100
 
 // MaxVoteThreshold caps both vote thresholds.
 const MaxVoteThreshold = 10000

@@ -1020,6 +1020,7 @@ export const ko: Messages = {
       verdicts: { clean: '정상', flagged: '표시됨', unknown: '알 수 없음', error: '검사 실패', unchecked: '검사 안 함' },
     },
     carve: { retrieve: '파일 가져오기', view: '추출 보기', fromLatest: '마지막 실행: {machine}' },
+    groupTags: { title: 'IdP 그룹 태그', group: 'IdP 그룹', tag: '태그', add: '그룹 추가', hint: 'Santa 기본 사용자가 그룹 구성원인 머신은 다음 동기화 때 태그를 받고, 그룹을 떠나면 태그를 잃습니다. 기본 사용자는 osctrl 사용자 이름과 정확히 일치해야 하며, 그룹은 해당 사용자의 마지막 SSO 로그인에서 읽습니다. 수동으로 추가한 태그는 제거되지 않습니다.' },
     settings: { enable_bundles: '번들: 차단된 앱 번들의 모든 바이너리 업로드', enable_all_event_upload: '차단뿐 아니라 모든 실행 이벤트 업로드', disable_unknown_event_upload: 'LOCKDOWN이 차단할 실행은 업로드하지 않음', allowed_path_regex: '허용 경로 정규식', blocked_path_regex: '차단 경로 정규식', pathRegexHint: '일치하는 규칙이 없을 때 일치하는 경로의 실행을 허용하거나 차단합니다. 차단 정규식을 먼저 확인합니다. 비우면 꺼집니다. 규칙보다 위험합니다.', event_detail_url: '차단 대화 상자 URL', event_detail_text: '버튼 레이블', eventDetailHint: '승인 요청 링크를 대체합니다. Santa가 %file_sha%, %machine_id% 같은 자리표시자를 채웁니다. 비우면 위의 승인 URL을 사용합니다.' },
     fileAccess: { override: '파일 접근 규칙 재정의', overrideHint: 'FileAccessPolicy 프로필로 배포된 파일 접근 규칙의 동작을 변경합니다. 클라이언트는 다음 동기화 때 적용합니다.', none: '파일 접근 이벤트가 없습니다', noneHint: '파일 접근 규칙은 MDM을 통해 FileAccessPolicy 프로필로 배포됩니다. 위반 사항이 여기에 표시됩니다.', rule: '규칙', target: '경로', process: '프로세스', actions: { unset: '설정 안 함(클라이언트 변경 없음)', NONE: '없음(규칙대로 적용)', AUDIT_ONLY: '감사만(기록 후 허용)', DISABLE: '규칙 비활성화' } },
     notifyChannels: '새 요청 알림',

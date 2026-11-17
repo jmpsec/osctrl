@@ -14,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -69,6 +70,8 @@ type SantaConfigRequest struct {
 	EventDetailURL string `json:"event_detail_url"`
 	// Label of the block dialog button, at most 32 characters
 	EventDetailText string `json:"event_detail_text"`
+	// IdP groups whose members' machines get a tag of the environment (at most 100), matched on Santa's primary user
+	GroupTags []santa.GroupTag `json:"group_tags"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -217,10 +220,17 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		DisableUnknownEventUpload: req.DisableUnknownEventUpload,
 		AllowedPathRegex:          req.AllowedPathRegex, BlockedPathRegex: req.BlockedPathRegex,
 		EventDetailURL: req.EventDetailURL, EventDetailText: req.EventDetailText,
+		GroupTags: req.GroupTags,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
 		return
+	}
+	for _, gt := range cfg.GroupTags {
+		if !h.Tags.ExistsByEnv(gt.Tag, env.ID) {
+			apiErrorResponse(w, fmt.Sprintf("invalid config: tag %q does not exist in the environment", gt.Tag), http.StatusBadRequest, nil)
+			return
+		}
 	}
 	if code, err := h.santaCheckNotifyChannels(r, env, user, cfg.NotifyChannels); err != nil {
 		apiErrorResponse(w, err.Error(), code, fmt.Errorf("attempt by %s", user))
@@ -232,6 +242,18 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 	}
 	h.santaAudit(user, "update config", r, env)
 	h.writeSantaConfig(w, env)
+}
+
+// santaRecordGroups keeps the IdP groups of an SSO login for Santa group tags.
+// nil groups mean the provider has no groups claim configured, so the stored
+// groups are left as they are. A failure is logged and never blocks the login.
+func (h *HandlersApi) santaRecordGroups(username string, groups []string) {
+	if h.Santa == nil || groups == nil {
+		return
+	}
+	if err := h.Santa.SetUserGroups(username, groups); err != nil {
+		log.Err(err).Str("username", username).Msg("santa: error storing IdP groups")
+	}
 }
 
 // santaCheckNotifyChannels guards a change of the notification channels.

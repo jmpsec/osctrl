@@ -130,6 +130,15 @@ Rule and setting changes reach a machine at its next full sync. `full_sync_inter
 
 There is no push. v1's `push_token` only works with a token chain signed by North Pole Security, and NATS push is v2-only, so a third-party server like osctrl cannot wake a client; a shorter interval is the only lever. Santa's other v2-only features (network-flow rules and the network extension, file access rule delivery, telemetry signal rules, Santa-side mode transitions, package rules) are out of scope for the same reason: the client enables v2 only for Workshop domains or an NPS-signed token.
 
+### IdP group tags
+
+Tag-scoped rules and mode overrides can follow department membership. **Settings → IdP group tags** maps IdP groups to existing tags of the environment (`group_tags` in the config, at most 100); at each preflight the machine gets the tags of its primary user's groups and loses the ones it no longer qualifies for, before rules and mode are computed.
+
+- **Groups come from SSO login.** Each OIDC or SAML login stores the user's groups from the provider's groups claim or attribute (`santa_user_groups`); a provider without one configured stores nothing and keeps what was there. A user who has never signed in to osctrl has no groups, and a change at the IdP reaches osctrl at their next login, then the machine at its next sync. There is no SCIM endpoint.
+- **Matching** is the Santa `primary_user` against the osctrl username, exact and case-insensitive (`jdoe` matches `JDoe`, not `jdoe@example.com`). Fleets whose Mac accounts differ from IdP usernames need Platform SSO or matching usernames.
+- **Only tags the mapping added are removed** (`tagged_by` = `santa:idp-groups`); a tag set by hand stays even when the user leaves the group. A mapped tag that was deleted is not recreated, and the config rejects tags that do not exist in the environment.
+- **Trust.** `primary_user` is reported by the client. A host holding the environment token can claim any user and get that user's group tags, so map groups to tags that loosen rules (allow rules, MONITOR overrides) only where that is acceptable, and prefer mapping groups to tags that tighten them.
+
 ### Removable media
 
 Each environment sets a removable media policy, sent at every preflight as `removable_media_policy`:

@@ -55,6 +55,7 @@ vi.mock('$/api/environments', () => ({
 }));
 const mockChannels = vi.fn<() => Promise<unknown[]>>();
 vi.mock('$/api/alerts', () => ({ listAlertChannels: () => mockChannels() }));
+vi.mock('$/api/tags', () => ({ listEnvTags: () => Promise.resolve([{ name: 'finance' }, { name: 'eng' }]) }));
 
 const rule: SantaRule = {
   id: 7, created_at: '', created_by: 'admin', identifier: 'a'.repeat(64), rule_type: 'BINARY',
@@ -359,6 +360,19 @@ describe('SantaPage', () => {
     await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({
       full_sync_interval_seconds: 120, enable_bundles: true, enable_all_event_upload: false, disable_unknown_event_upload: true,
       allowed_path_regex: '', blocked_path_regex: '^/tmp/', event_detail_url: 'https://wiki.example.com/', event_detail_text: 'Help',
+    })));
+  });
+
+  it('saves IdP group tags', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    await user.click(await screen.findByRole('button', { name: 'Add group' }));
+    await user.type(screen.getByLabelText('IdP group'), 'Finance');
+    await user.selectOptions(screen.getByLabelText('Tag'), await screen.findByRole('option', { name: 'finance' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({
+      group_tags: [{ group: 'Finance', tag: 'finance' }],
     })));
   });
 

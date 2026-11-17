@@ -466,6 +466,13 @@ func (m *TagManager) TagNode(name string, node nodes.OsqueryNode, user string, a
 	return nil
 }
 
+// TaggedBy returns the names of the node's tags applied by the given tagger.
+func (m *TagManager) TaggedBy(nodeID uint, by string) ([]string, error) {
+	var names []string
+	err := m.DB.Model(&TaggedNode{}).Where("node_id = ? AND tagged_by = ?", nodeID, by).Pluck("tag", &names).Error
+	return names, err
+}
+
 // IsTagged to check if a node is already tagged
 func (m *TagManager) IsTagged(name string, node nodes.OsqueryNode) bool {
 	return m.IsTaggedID(name, node.ID)

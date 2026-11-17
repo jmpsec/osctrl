@@ -241,6 +241,7 @@ func (h *HandlersApi) OIDCCallbackHandler(w http.ResponseWriter, r *http.Request
 		http.Redirect(w, r, h.pub("/"), http.StatusFound)
 		return
 	}
+	h.santaRecordGroups(user.Username, identity.Groups)
 
 	// expHours=0 → use JWTConfig.HoursToExpire default.
 	if _, err := h.userJWTSessionTokens(w, user, 0, utils.GetIP(r), r.UserAgent()); err != nil {
