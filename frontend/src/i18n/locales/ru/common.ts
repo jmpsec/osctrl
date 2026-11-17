@@ -913,6 +913,8 @@ export const ru: Messages = {
     never: 'Никогда',
     batchSize: 'Размер пакета',
     batchSizeHint: '0 означает значение Santa по умолчанию (50)',
+    syncInterval: 'Интервал синхронизации (секунды)',
+    syncIntervalHint: '0 — значение Santa по умолчанию (600); иначе от 60 до 86400. Чем короче, тем быстрее применяются правила и выше нагрузка',
     transitiveRules: 'Включить транзитивные правила',
     removableMedia: 'Съёмные носители',
     encryptedRemovableMedia: 'Зашифрованные съёмные носители',

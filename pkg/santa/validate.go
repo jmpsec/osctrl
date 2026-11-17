@@ -117,6 +117,9 @@ func ValidateConfig(c *EnvConfig) error {
 	case (local > 0 || global > 0) && c.ApprovalURL == "":
 		return errors.New("voting needs the approval URL")
 	}
+	if s := c.FullSyncIntervalSeconds; s != 0 && (s < MinSyncInterval || s > MaxSyncInterval) {
+		return fmt.Errorf("sync interval is 0 (Santa default) or %d to %d seconds", MinSyncInterval, MaxSyncInterval)
+	}
 	if a := c.OverrideFileAccessAction; a != "" && a != "NONE" && a != "AUDIT_ONLY" && a != "DISABLE" {
 		return fmt.Errorf("invalid file access override %q", a)
 	}
@@ -140,6 +143,12 @@ func ValidateConfig(c *EnvConfig) error {
 	}
 	return nil
 }
+
+// Bounds for a custom full sync interval: every client hits the server this often.
+const (
+	MinSyncInterval = 60
+	MaxSyncInterval = 86400
+)
 
 // MaxVoteThreshold caps both vote thresholds.
 const MaxVoteThreshold = 10000

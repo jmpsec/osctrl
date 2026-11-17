@@ -119,7 +119,16 @@ Each machine records the mode osctrl sent at its last preflight (`assigned_mode`
 - An environment admin grants it with `PUT /api/v1/santa/{env}/modes` and `hours` (scope `node`, `MONITOR` only), or with a duration in **Settings > Mode overrides**. A user asks for it from the request page (`POST /api/v1/santa/{env}/requests` with `kind: "monitor"` and `hours`); it goes through the approval queue and notifications like a file request, and the hours count from the approval.
 - The machine must have synced with the environment. A grant replaces a temporary override of the machine, never a permanent one (`409`): change or delete that instead. Setting a permanent override replaces a temporary one.
 - Expiry is server-side and needs nobody: from `expires_at` the override no longer applies or appears in the list. `osctrl-api` removes expired overrides every minute and writes each expiry to the audit log; the grant, the request and the approval are audited too.
-- The machine switches at its next preflight and goes back at its first preflight after the expiry, so both changes wait for the client's sync interval (`FullSyncInterval`, 10 minutes by default in Santa). A machine that does not sync stays in MONITOR until it does.
+- The machine switches at its next preflight and goes back at its first preflight after the expiry, so both changes wait for the client's sync interval (see [Sync interval](#sync-interval)). A machine that does not sync stays in MONITOR until it does.
+
+### Sync interval
+
+Rule and setting changes reach a machine at its next full sync. `full_sync_interval_seconds` (**Settings → Sync interval**) is sent at every preflight and takes effect from the following sync:
+
+- `0` (default) leaves Santa's own interval, 600 seconds.
+- Otherwise 60 to 86400 seconds. Each full sync is three or four requests per machine (preflight, ruledownload, postflight, and eventupload when there are events), so load scales with machines ÷ interval: 1,000 Macs at 60 seconds is 50 to 67 requests a second, against 5 to 7 at the default.
+
+There is no push. v1's `push_token` only works with a token chain signed by North Pole Security, and NATS push is v2-only, so a third-party server like osctrl cannot wake a client; a shorter interval is the only lever. Santa's other v2-only features (network-flow rules and the network extension, file access rule delivery, telemetry signal rules, Santa-side mode transitions, package rules) are out of scope for the same reason: the client enables v2 only for Workshop domains or an NPS-signed token.
 
 ### Removable media
 
@@ -345,4 +354,4 @@ The `WatchItems` key (here `ChromeCookies`) is the rule name that osctrl shows, 
 
 ## Not implemented
 
-The `commands`, `metrics` and `signalupload` stages; FCM/NATS push; delivering file access rules (a v2-only stage; deploy them with MDM), network-flow and telemetry rules; `export_configuration` (telemetry export to a signed POST URL; no osctrl log sink issues one); one-step rules for a whole bundle.
+The `commands`, `metrics` and `signalupload` stages; FCM/NATS push (see [Sync interval](#sync-interval)); delivering file access rules (a v2-only stage; deploy them with MDM), network-flow, telemetry signal and package rules; Santa-side mode transitions; `export_configuration` (telemetry export to a signed POST URL; no osctrl log sink issues one); one-step rules for a whole bundle.

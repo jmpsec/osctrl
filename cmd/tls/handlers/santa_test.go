@@ -189,9 +189,10 @@ func TestSantaFileAccessJSON(t *testing.T) {
 
 func TestSantaV1SettingsJSON(t *testing.T) {
 	f := newSantaFixture(t)
-	require.NoError(t, f.h.Santa.SaveConfig(santa.EnvConfig{EnvironmentID: f.env.ID, ClientMode: "MONITOR", EnableBundles: true, BlockedPathRegex: `^/tmp/.*`}))
+	require.NoError(t, f.h.Santa.SaveConfig(santa.EnvConfig{EnvironmentID: f.env.ID, ClientMode: "MONITOR", EnableBundles: true, BlockedPathRegex: `^/tmp/.*`, FullSyncIntervalSeconds: 120}))
 	w := f.post(santaEnvUUID, "preflight", santaMachineID, f.token, []byte(`{"hostname":"h"}`))
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Contains(t, w.Body.String(), `"full_sync_interval_seconds":120`)
 	require.Contains(t, w.Body.String(), `"enable_bundles":true`)
 	require.Contains(t, w.Body.String(), `"blocked_path_regex":"^/tmp/.*"`)
 

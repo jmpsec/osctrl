@@ -33,6 +33,8 @@ type SantaConfigRequest struct {
 	ClientMode            string `json:"client_mode"`
 	BatchSize             uint32 `json:"batch_size"`
 	EnableTransitiveRules bool   `json:"enable_transitive_rules"`
+	// Seconds between full syncs: 0 for the Santa default (600), otherwise 60 to 86400.
+	FullSyncIntervalSeconds uint32 `json:"full_sync_interval_seconds"`
 	// Deprecated: use removable_media; only read when it is empty (true means BLOCK).
 	BlockUSBMount bool `json:"block_usb_mount"`
 	// ALLOW | BLOCK | REMOUNT; empty means ALLOW
@@ -204,7 +206,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		media = santa.MediaBlock
 	}
 	cfg := santa.EnvConfig{
-		EnvironmentID: env.ID, ClientMode: req.ClientMode, BatchSize: req.BatchSize,
+		EnvironmentID: env.ID, ClientMode: req.ClientMode, BatchSize: req.BatchSize, FullSyncIntervalSeconds: req.FullSyncIntervalSeconds,
 		EnableTransitiveRules: req.EnableTransitiveRules,
 		RemovableMedia:        media, RemovableMediaFlags: req.RemovableMediaFlags,
 		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,

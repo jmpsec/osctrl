@@ -913,6 +913,8 @@ export const tr: Messages = {
     never: 'Hiçbir zaman',
     batchSize: 'Toplu iş boyutu',
     batchSizeHint: '0, Santa varsayılanını (50) kullanır',
+    syncInterval: 'Eşitleme aralığı (saniye)',
+    syncIntervalHint: '0 Santa varsayılanını (600) kullanır; aksi halde 60 ile 86400 arası. Daha kısa, daha hızlı kural değişikliği ve daha fazla yük demektir',
     transitiveRules: 'Geçişli kuralları etkinleştir',
     removableMedia: 'Çıkarılabilir medya',
     encryptedRemovableMedia: 'Şifreli çıkarılabilir medya',

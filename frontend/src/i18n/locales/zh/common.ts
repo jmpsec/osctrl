@@ -913,6 +913,8 @@ export const zh: Messages = {
     never: '从未',
     batchSize: '批大小',
     batchSizeHint: '0 表示使用 Santa 默认值 (50)',
+    syncInterval: '同步间隔（秒）',
+    syncIntervalHint: '0 使用 Santa 默认值（600）；否则为 60 到 86400。越短规则生效越快，负载越高',
     transitiveRules: '启用传递规则',
     removableMedia: '可移动介质',
     encryptedRemovableMedia: '加密的可移动介质',

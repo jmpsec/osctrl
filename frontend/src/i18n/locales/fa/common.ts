@@ -913,6 +913,8 @@ export const fa: Messages = {
     never: 'هرگز',
     batchSize: 'اندازه دسته',
     batchSizeHint: 'مقدار 0 یعنی پیش‌فرض Santa (50)',
+    syncInterval: 'فاصله همگام‌سازی (ثانیه)',
+    syncIntervalHint: '0 از مقدار پیش‌فرض Santa (600) استفاده می‌کند؛ در غیر این صورت 60 تا 86400. کوتاه‌تر یعنی اعمال سریع‌تر قوانین و بار بیشتر',
     transitiveRules: 'فعال‌سازی قوانین انتقالی',
     removableMedia: 'رسانه‌های جداشدنی',
     encryptedRemovableMedia: 'رسانه‌های جداشدنی رمزگذاری‌شده',

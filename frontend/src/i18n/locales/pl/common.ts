@@ -913,6 +913,8 @@ export const pl: Messages = {
     never: 'Nigdy',
     batchSize: 'Rozmiar partii',
     batchSizeHint: '0 oznacza domyślną wartość Santa (50)',
+    syncInterval: 'Interwał synchronizacji (sekundy)',
+    syncIntervalHint: '0 oznacza domyślną wartość Santa (600); w przeciwnym razie od 60 do 86400. Krótszy oznacza szybsze zmiany reguł i większe obciążenie',
     transitiveRules: 'Włącz reguły przechodnie',
     removableMedia: 'Nośniki wymienne',
     encryptedRemovableMedia: 'Szyfrowane nośniki wymienne',

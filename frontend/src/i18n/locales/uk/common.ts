@@ -913,6 +913,8 @@ export const uk: Messages = {
     never: 'Ніколи',
     batchSize: 'Розмір пакета',
     batchSizeHint: '0 означає типове значення Santa (50)',
+    syncInterval: 'Інтервал синхронізації (секунди)',
+    syncIntervalHint: '0 — типове значення Santa (600); інакше від 60 до 86400. Коротший інтервал — швидші зміни правил і більше навантаження',
     transitiveRules: 'Увімкнути транзитивні правила',
     removableMedia: 'Знімні носії',
     encryptedRemovableMedia: 'Зашифровані знімні носії',

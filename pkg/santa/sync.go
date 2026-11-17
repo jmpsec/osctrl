@@ -128,6 +128,8 @@ func (m *Manager) Preflight(n SyncNode, req *syncv1.PreflightRequest) (*syncv1.P
 	if cfg.BatchSize > 0 {
 		resp.BatchSize = cfg.BatchSize
 	}
+	// 0 is omitted on the wire, so the client falls back to its own default.
+	resp.FullSyncIntervalSeconds = cfg.FullSyncIntervalSeconds
 	if a, ok := syncv1.FileAccessAction_value[cfg.OverrideFileAccessAction]; ok && a != 0 {
 		resp.OverrideFileAccessAction = syncv1.FileAccessAction(a).Enum()
 	}
