@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/carves"
+	"github.com/jmpsec/osctrl/pkg/changes"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/console"
 	"github.com/jmpsec/osctrl/pkg/environments"
@@ -97,6 +98,7 @@ type HandlersApi struct {
 	PostureEnabled       bool
 	Vulns                *vulns.Reader  // nil when --vuln-enabled is off
 	Santa                *santa.Manager // nil when --santa-enabled is off
+	Changes              *changes.Manager
 	// SantaNotify sends approval request notifications to alert channels. Nil
 	// when alerts are off.
 	SantaNotify     santaNotifier
@@ -348,6 +350,13 @@ func WithOsqueryVersions(m *osqueryversions.Manager) HandlersOption {
 func WithExtensions(m *extensions.Manager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Extensions = m
+	}
+}
+
+// WithChanges wires the store of changes waiting for a second admin.
+func WithChanges(m *changes.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.Changes = m
 	}
 }
 

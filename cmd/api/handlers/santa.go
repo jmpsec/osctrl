@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"slices"
 	"strconv"
@@ -72,6 +73,8 @@ type SantaConfigRequest struct {
 	EventDetailText string `json:"event_detail_text"`
 	// IdP groups whose members' machines get a tag of the environment (at most 100), matched on Santa's primary user
 	GroupTags []santa.GroupTag `json:"group_tags"`
+	// Hold changes that weaken enforcement until another environment admin approves them (see /api/v1/changes). Turning it off is one of them
+	RequireSecondAdmin bool `json:"require_second_admin"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -144,6 +147,54 @@ func (h *HandlersApi) santaAudit(user, action string, r *http.Request, env envir
 	h.AuditLog.EnvAction(user, "santa: "+action, utils.GetIP(r), env.ID)
 }
 
+// readJSONBody reads at most max bytes and decodes them into v. The raw bytes
+// identify the request for change approval.
+func readJSONBody(w http.ResponseWriter, r *http.Request, max int64, v any) ([]byte, error) {
+	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, max))
+	if err != nil {
+		return nil, err
+	}
+	return b, json.Unmarshal(b, v)
+}
+
+// santaHeld holds a Santa action that weakens enforcement for a second admin
+// when the environment requires one. It returns true when the caller must stop:
+// the response (202 or an error) is written.
+func (h *HandlersApi) santaHeld(w http.ResponseWriter, r *http.Request, env environments.TLSEnvironment, user, action string, body []byte) bool {
+	cfg, err := h.Santa.Config(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error getting config", http.StatusInternalServerError, err)
+		return true
+	}
+	if !cfg.RequireSecondAdmin {
+		return false
+	}
+	return !h.secondAdmin(w, r, env, user, "santa: "+action, body)
+}
+
+// santaConfigRisks lists what a config update weakens: switching the
+// environment to MONITOR, a new allowed path regex, or turning off the second
+// admin requirement. Empty means nothing.
+func santaConfigRisks(prev, next santa.EnvConfig) string {
+	s := ""
+	if next.ClientMode == "MONITOR" && prev.ClientMode != "MONITOR" {
+		s += " client_mode=MONITOR"
+	}
+	if next.AllowedPathRegex != "" && next.AllowedPathRegex != prev.AllowedPathRegex {
+		s += " allowed_path_regex=" + next.AllowedPathRegex
+	}
+	if prev.RequireSecondAdmin && !next.RequireSecondAdmin {
+		s += " require_second_admin=false"
+	}
+	return s
+}
+
+// santaEnvAllow reports whether a rule can allow executions environment-wide.
+// CEL rules count: their expression may allow.
+func santaEnvAllow(scope, policy string) bool {
+	return scope == "env" && policy != "BLOCKLIST" && policy != "SILENT_BLOCKLIST"
+}
+
 func scopeValueSuffix(v string) string {
 	if v == "" {
 		return ""
@@ -188,6 +239,7 @@ func (h *HandlersApi) writeSantaConfig(w http.ResponseWriter, env environments.T
 // @Param env path string true "Environment name or UUID"
 // @Param body body SantaConfigRequest true "Config"
 // @Success 200 {object} SantaConfigResponse
+// @Success 202 {object} PendingChangeResponse "Held for a second admin (require_second_admin)"
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
@@ -200,7 +252,8 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	var req SantaConfigRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&req); err != nil {
+	body, err := readJSONBody(w, r, santaMaxBody, &req)
+	if err != nil {
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
@@ -220,7 +273,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		DisableUnknownEventUpload: req.DisableUnknownEventUpload,
 		AllowedPathRegex:          req.AllowedPathRegex, BlockedPathRegex: req.BlockedPathRegex,
 		EventDetailURL: req.EventDetailURL, EventDetailText: req.EventDetailText,
-		GroupTags: req.GroupTags,
+		GroupTags: req.GroupTags, RequireSecondAdmin: req.RequireSecondAdmin,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
@@ -234,6 +287,14 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 	}
 	if code, err := h.santaCheckNotifyChannels(r, env, user, cfg.NotifyChannels); err != nil {
 		apiErrorResponse(w, err.Error(), code, fmt.Errorf("attempt by %s", user))
+		return
+	}
+	prev, err := h.Santa.Config(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error getting config", http.StatusInternalServerError, err)
+		return
+	}
+	if risky := santaConfigRisks(prev, cfg); risky != "" && h.santaHeld(w, r, env, user, "update config"+risky, body) {
 		return
 	}
 	if err := h.Santa.SaveConfig(cfg); err != nil {
@@ -290,6 +351,7 @@ func (h *HandlersApi) santaCheckNotifyChannels(r *http.Request, env environments
 // @Produce json
 // @Param env path string true "Environment name or UUID"
 // @Success 200 {object} SantaTokenResponse
+// @Success 202 {object} PendingChangeResponse "Held for a second admin (require_second_admin)"
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
 // @Failure 503 {object} types.ApiErrorResponse
@@ -298,6 +360,9 @@ func (h *HandlersApi) santaCheckNotifyChannels(r *http.Request, env environments
 func (h *HandlersApi) SantaTokenHandler(w http.ResponseWriter, r *http.Request) {
 	env, user, ok := h.santaEnvironment(w, r)
 	if !ok {
+		return
+	}
+	if h.santaHeld(w, r, env, user, "rotate token", nil) {
 		return
 	}
 	token, err := h.Santa.RotateToken(env.ID)
@@ -342,6 +407,7 @@ func (h *HandlersApi) SantaRulesHandler(w http.ResponseWriter, r *http.Request) 
 // @Param env path string true "Environment name or UUID"
 // @Param body body SantaRuleRequest true "Rule"
 // @Success 201 {object} santa.Rule
+// @Success 202 {object} PendingChangeResponse "Held for a second admin (require_second_admin)"
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
@@ -355,7 +421,8 @@ func (h *HandlersApi) SantaRuleCreateHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	var req SantaRuleRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&req); err != nil {
+	body, err := readJSONBody(w, r, santaMaxBody, &req)
+	if err != nil {
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
@@ -364,7 +431,15 @@ func (h *HandlersApi) SantaRuleCreateHandler(w http.ResponseWriter, r *http.Requ
 		Identifier: req.Identifier, RuleType: req.RuleType, Policy: req.Policy, CELExpr: req.CELExpr,
 		CustomMsg: req.CustomMsg, CustomURL: req.CustomURL, Scope: req.Scope, ScopeValue: req.ScopeValue,
 	}
-	err := h.Santa.CreateRule(&rule)
+	// Validate first so an invalid rule is not held for approval.
+	if err := santa.ValidateRule(&rule); err != nil {
+		apiErrorResponse(w, "invalid rule: "+err.Error(), http.StatusBadRequest, err)
+		return
+	}
+	if santaEnvAllow(rule.Scope, rule.Policy) && h.santaHeld(w, r, env, user, "create rule "+ruleAuditString(rule), body) {
+		return
+	}
+	err = h.Santa.CreateRule(&rule)
 	switch {
 	case errors.Is(err, santa.ErrInvalidRule):
 		apiErrorResponse(w, "invalid rule: "+err.Error(), http.StatusBadRequest, err)
@@ -393,6 +468,7 @@ func ruleAuditString(r santa.Rule) string {
 // @Param id path int true "Rule id"
 // @Param body body SantaRuleRequest true "Rule"
 // @Success 200 {object} santa.Rule
+// @Success 202 {object} PendingChangeResponse "Held for a second admin (require_second_admin)"
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
@@ -411,7 +487,8 @@ func (h *HandlersApi) SantaRuleUpdateHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	var req SantaRuleRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&req); err != nil {
+	body, err := readJSONBody(w, r, santaMaxBody, &req)
+	if err != nil {
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
@@ -427,6 +504,18 @@ func (h *HandlersApi) SantaRuleUpdateHandler(w http.ResponseWriter, r *http.Requ
 	rule := before
 	rule.Identifier, rule.RuleType, rule.Policy, rule.CELExpr = req.Identifier, req.RuleType, req.Policy, req.CELExpr
 	rule.CustomMsg, rule.CustomURL, rule.Scope, rule.ScopeValue = req.CustomMsg, req.CustomURL, req.Scope, req.ScopeValue
+	if err := santa.ValidateRule(&rule); err != nil {
+		apiErrorResponse(w, "invalid rule: "+err.Error(), http.StatusBadRequest, err)
+		return
+	}
+	// Editing the message of an existing environment-wide allow rule is not
+	// held; making one, or changing what it allows, is.
+	sameAllow := santaEnvAllow(before.Scope, before.Policy) && before.RuleType == rule.RuleType &&
+		before.Identifier == rule.Identifier && before.Policy == rule.Policy && before.CELExpr == rule.CELExpr
+	if santaEnvAllow(rule.Scope, rule.Policy) && !sameAllow &&
+		h.santaHeld(w, r, env, user, fmt.Sprintf("update rule %d -> %s", id, ruleAuditString(rule)), body) {
+		return
+	}
 	err = h.Santa.UpdateRule(&rule)
 	switch {
 	case errors.Is(err, santa.ErrInvalidRule):
@@ -494,6 +583,7 @@ func (h *HandlersApi) SantaRuleDeleteHandler(w http.ResponseWriter, r *http.Requ
 // @Param dry_run query bool false "Report only, store nothing"
 // @Param body body []santa.RuleSpec true "Rules"
 // @Success 200 {object} santa.ImportResult
+// @Success 202 {object} PendingChangeResponse "Held for a second admin (require_second_admin)"
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
@@ -506,11 +596,23 @@ func (h *HandlersApi) SantaRulesImportHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	var specs []santa.RuleSpec
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaImportMaxBody)).Decode(&specs); err != nil {
+	body, err := readJSONBody(w, r, santaImportMaxBody, &specs)
+	if err != nil {
 		apiErrorResponse(w, "invalid request: expected a JSON list of rules of at most 4 MiB", http.StatusBadRequest, err)
 		return
 	}
 	dryRun, _ := strconv.ParseBool(r.URL.Query().Get("dry_run"))
+	if !dryRun {
+		allow := 0
+		for _, s := range specs {
+			if santaEnvAllow(s.Scope, s.Policy) {
+				allow++
+			}
+		}
+		if allow > 0 && h.santaHeld(w, r, env, user, fmt.Sprintf("import rules count=%d env_allow=%d", len(specs), allow), body) {
+			return
+		}
+	}
 	res, err := h.Santa.ImportRules(env.ID, user, specs, !dryRun)
 	if err != nil {
 		apiErrorResponse(w, "error importing rules", http.StatusInternalServerError, err)
@@ -555,6 +657,7 @@ func (h *HandlersApi) SantaModeOverridesHandler(w http.ResponseWriter, r *http.R
 // @Param env path string true "Environment name or UUID"
 // @Param body body SantaModeOverrideRequest true "Override"
 // @Success 200 {object} santa.ModeOverride
+// @Success 202 {object} PendingChangeResponse "Held for a second admin (require_second_admin)"
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
@@ -568,12 +671,16 @@ func (h *HandlersApi) SantaModeOverrideSetHandler(w http.ResponseWriter, r *http
 		return
 	}
 	var req SantaModeOverrideRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, santaMaxBody)).Decode(&req); err != nil {
+	body, err := readJSONBody(w, r, santaMaxBody, &req)
+	if err != nil {
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
+	if req.ClientMode == "MONITOR" && h.santaHeld(w, r, env, user,
+		fmt.Sprintf("set mode override MONITOR scope=%s scope_value=%s hours=%d", req.Scope, req.ScopeValue, req.Hours), body) {
+		return
+	}
 	o := santa.ModeOverride{EnvironmentID: env.ID, CreatedBy: user, Scope: req.Scope, ScopeValue: req.ScopeValue, ClientMode: req.ClientMode}
-	var err error
 	switch {
 	case req.Hours == 0:
 		err = h.Santa.SetModeOverride(&o)

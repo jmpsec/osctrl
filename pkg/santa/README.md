@@ -139,6 +139,24 @@ Tag-scoped rules and mode overrides can follow department membership. **Settings
 - **Only tags the mapping added are removed** (`tagged_by` = `santa:idp-groups`); a tag set by hand stays even when the user leaves the group. A mapped tag that was deleted is not recreated, and the config rejects tags that do not exist in the environment.
 - **Trust.** `primary_user` is reported by the client. A host holding the environment token can claim any user and get that user's group tags, so map groups to tags that loosen rules (allow rules, MONITOR overrides) only where that is acceptable, and prefer mapping groups to tags that tighten them.
 
+### Second admin approval
+
+With **Settings → Require a second admin** (`require_second_admin`), one compromised admin cannot switch enforcement off alone. These actions are held instead of applied:
+
+- switching the environment to MONITOR, or a new `allowed_path_regex` (config PUT);
+- turning `require_second_admin` off (turning it on is immediate);
+- any MONITOR mode override, permanent or temporary, for a tag or a machine;
+- creating an environment-wide rule that can allow (`ALLOWLIST`, `ALLOWLIST_COMPILER`, `CEL`), changing a rule into one or changing what it allows, and a rules import that contains one (not a dry run);
+- rotating the sync token.
+
+A held action answers `202` with the pending change and leaves everything as it was. It appears in **Santa → Changes** (`GET /api/v1/changes/{env}`), where another admin of the environment approves or denies it (`POST /api/v1/changes/{env}/{id}/decision`). The requester can deny their own change to withdraw it but cannot approve it. Once approved, the requester applies it with **Apply**, or by sending the exact same request again (same method, path and body). The handler then runs as usual, with its own validation, and the approval is used up. A change expires 24 hours after it was requested, approved or not. The request, the decision and the apply are each in the audit log (`change: request|approve|deny|apply`), and the apply line names the approver.
+
+With the setting on, an admin also cannot approve their own approval request for MONITOR or with scope `env`.
+
+Not held: deleting rules or LOCKDOWN overrides, other config settings, rules created by votes (the vote threshold is its own multi-party check), and approving someone else's request. A second account under the same person's control defeats the check; it is meant for separate people.
+
+The mechanism is `pkg/changes` and is not Santa-specific: another feature can hold its actions by calling `secondAdmin` in its handler.
+
 ### Removable media
 
 Each environment sets a removable media policy, sent at every preflight as `removable_media_policy`:

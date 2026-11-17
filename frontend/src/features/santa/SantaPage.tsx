@@ -4,6 +4,7 @@ import { useParams } from '@tanstack/react-router';
 import { ShieldCheck } from 'lucide-react';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { StatusTabs } from '$/components/data/StatusTabs';
+import { ChangesTab } from './ChangesTab';
 import { EventsTab } from './EventsTab';
 import { FileAccessTab } from './FileAccessTab';
 import { MachinesTab } from './MachinesTab';
@@ -12,7 +13,7 @@ import { RequestsTab } from './RequestsTab';
 import { EMPTY_RULE, RuleFormModal, RulesTab, type RuleDraft } from './RulesTab';
 import { SettingsTab } from './SettingsTab';
 
-type Tab = 'rules' | 'events' | 'file-access' | 'requests' | 'reports' | 'machines' | 'settings';
+type Tab = 'rules' | 'events' | 'file-access' | 'requests' | 'changes' | 'reports' | 'machines' | 'settings';
 
 export function SantaPage() {
   const { t } = useTranslation();
@@ -28,6 +29,7 @@ export function SantaPage() {
     { value: 'events', label: t('santa.tabEvents') },
     { value: 'file-access', label: t('santa.tabFileAccess') },
     { value: 'requests', label: t('santa.tabRequests') },
+    { value: 'changes', label: t('santa.changes.tab') },
     { value: 'reports', label: t('santa.tabReports') },
     { value: 'machines', label: t('santa.tabMachines') },
     { value: 'settings', label: t('santa.tabSettings') },
@@ -49,6 +51,7 @@ export function SantaPage() {
       {tab === 'events' && <EventsTab env={env} onRule={setDraft} />}
       {tab === 'file-access' && <FileAccessTab env={env} />}
       {tab === 'requests' && <RequestsTab env={env} />}
+      {tab === 'changes' && <ChangesTab env={env} />}
       {tab === 'reports' && <ReportsTab env={env} />}
       {tab === 'machines' && <MachinesTab env={env} />}
       {tab === 'settings' && <SettingsTab env={env} />}
