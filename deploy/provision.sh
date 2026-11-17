@@ -240,7 +240,7 @@ function prepare_system() {
     sudo yum install -y ca-certificates curl git tar gzip xz gcc glibc-devel make
   else
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl git tar gzip xz-utils build-essential
+      ca-certificates sudo curl git tar gzip xz-utils build-essential
   fi
   if ! command -v go >/dev/null 2>&1; then
     install_go_27

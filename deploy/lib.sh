@@ -20,6 +20,7 @@ function _log() {
 function package_repo_update() {
   if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
     log "Running apt-get update"
+    package sudo
     sudo DEBIAN_FRONTEND=noninteractive apt-get update
   elif [[ "$DISTRO" == "centos" ]]; then
     log "Running yum check-update"
