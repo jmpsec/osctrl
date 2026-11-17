@@ -913,6 +913,8 @@ export const he: Messages = {
     never: 'אף פעם',
     batchSize: 'גודל אצווה',
     batchSizeHint: '0 משתמש בברירת המחדל של Santa (50)',
+    syncInterval: 'מרווח סנכרון (שניות)',
+    syncIntervalHint: '0 משתמש בברירת המחדל של Santa (600); אחרת 60 עד 86400. קצר יותר פירושו שינויי כללים מהירים יותר ועומס גבוה יותר',
     transitiveRules: 'הפעלת כללים טרנזיטיביים',
     removableMedia: 'מדיה נשלפת',
     encryptedRemovableMedia: 'מדיה נשלפת מוצפנת',

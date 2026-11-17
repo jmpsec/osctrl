@@ -913,6 +913,8 @@ export const ja: Messages = {
     never: 'なし',
     batchSize: 'バッチサイズ',
     batchSizeHint: '0 の場合は Santa の既定値 (50) を使用します',
+    syncInterval: '同期間隔（秒）',
+    syncIntervalHint: '0 で Santa の既定値（600）。それ以外は 60〜86400。短いほどルールの反映が速く、負荷が増えます',
     transitiveRules: '推移的ルールを有効にする',
     removableMedia: 'リムーバブルメディア',
     encryptedRemovableMedia: '暗号化されたリムーバブルメディア',

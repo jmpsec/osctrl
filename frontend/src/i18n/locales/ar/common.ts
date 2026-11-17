@@ -913,6 +913,8 @@ export const ar: Messages = {
     never: 'أبدًا',
     batchSize: 'حجم الدفعة',
     batchSizeHint: 'القيمة 0 تعني الافتراضي في Santa (50)',
+    syncInterval: 'فاصل المزامنة (بالثواني)',
+    syncIntervalHint: '0 يستخدم القيمة الافتراضية لـ Santa (600)؛ وإلا من 60 إلى 86400. الأقصر يعني تغييرات أسرع في القواعد وحملًا أكبر',
     transitiveRules: 'تفعيل القواعد المتعدية',
     removableMedia: 'الوسائط القابلة للإزالة',
     encryptedRemovableMedia: 'الوسائط القابلة للإزالة المشفرة',

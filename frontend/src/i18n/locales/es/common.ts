@@ -913,6 +913,8 @@ export const es: Messages = {
     never: 'Nunca',
     batchSize: 'Tamaño de lote',
     batchSizeHint: '0 usa el valor predeterminado de Santa (50)',
+    syncInterval: 'Intervalo de sincronización (segundos)',
+    syncIntervalHint: '0 usa el valor predeterminado de Santa (600); si no, de 60 a 86400. Más corto significa cambios de reglas más rápidos y más carga',
     transitiveRules: 'Activar reglas transitivas',
     removableMedia: 'Medios extraíbles',
     encryptedRemovableMedia: 'Medios extraíbles cifrados',

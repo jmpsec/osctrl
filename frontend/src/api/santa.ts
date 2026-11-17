@@ -29,6 +29,7 @@ export const SANTA_FILE_ACCESS_ACTIONS: SantaFileAccessAction[] = ['', 'NONE', '
 export interface SantaConfig {
   client_mode: SantaClientMode;
   batch_size: number;
+  full_sync_interval_seconds?: number;
   enable_transitive_rules: boolean;
   removable_media: SantaMediaAction;
   removable_media_flags: string[] | null;

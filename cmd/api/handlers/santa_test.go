@@ -174,10 +174,12 @@ func TestSantaConfigV1Settings(t *testing.T) {
 	}
 	require.Equal(t, http.StatusBadRequest, put(`"allowed_path_regex":"(unclosed"`))
 	require.Equal(t, http.StatusBadRequest, put(`"event_detail_url":"javascript:alert(1)"`))
-	require.Equal(t, http.StatusOK, put(`"enable_bundles":true,"disable_unknown_event_upload":true,"allowed_path_regex":"^/opt/.*",`+
+	require.Equal(t, http.StatusBadRequest, put(`"full_sync_interval_seconds":30`))
+	require.Equal(t, http.StatusOK, put(`"full_sync_interval_seconds":120,"enable_bundles":true,"disable_unknown_event_upload":true,"allowed_path_regex":"^/opt/.*",`+
 		`"event_detail_url":"https://x.example.com/%file_sha%","event_detail_text":"Details"`))
 	cfg, err := h.Santa.Config(envA.ID)
 	require.NoError(t, err)
+	require.Equal(t, uint32(120), cfg.FullSyncIntervalSeconds)
 	require.True(t, cfg.EnableBundles)
 	require.True(t, cfg.DisableUnknownEventUpload)
 	require.False(t, cfg.EnableAllEventUpload)

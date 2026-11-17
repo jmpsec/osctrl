@@ -79,6 +79,30 @@ func TestValidateV1Settings(t *testing.T) {
 	require.NoError(t, ValidateConfig(&ok))
 }
 
+func TestPreflightSyncInterval(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		seconds uint32
+		ok      bool
+	}{
+		{"default", 0, true},
+		{"minimum", MinSyncInterval, true},
+		{"custom", 300, true},
+		{"maximum", MaxSyncInterval, true},
+		{"below minimum", MinSyncInterval - 1, false},
+		{"above maximum", MaxSyncInterval + 1, false},
+	} {
+		m := newTestManager(t)
+		err := m.SaveConfig(EnvConfig{EnvironmentID: 1, ClientMode: "MONITOR", FullSyncIntervalSeconds: tt.seconds})
+		if !tt.ok {
+			require.Error(t, err, tt.name)
+			continue
+		}
+		require.NoError(t, err, tt.name)
+		require.Equal(t, tt.seconds, mustPreflight(t, m, testNode(), false).GetFullSyncIntervalSeconds(), tt.name)
+	}
+}
+
 func TestEventUploadBundles(t *testing.T) {
 	m := newTestManager(t)
 	n := testNode()

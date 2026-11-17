@@ -16,6 +16,8 @@ type EnvConfig struct {
 	ClientMode            string    `gorm:"type:varchar(16)" json:"client_mode"` // MONITOR | LOCKDOWN
 	BatchSize             uint32    `json:"batch_size"`                          // 0 means the Santa default (50)
 	EnableTransitiveRules bool      `json:"enable_transitive_rules"`
+	// 0 means the Santa default (600); otherwise MinSyncInterval..MaxSyncInterval
+	FullSyncIntervalSeconds uint32 `json:"full_sync_interval_seconds"`
 	// Deprecated: derived from removable_media, sent only for older Santa clients
 	BlockUSBMount bool `json:"block_usb_mount"`
 	// ALLOW | BLOCK | REMOUNT

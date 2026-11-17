@@ -352,9 +352,12 @@ describe('SantaPage', () => {
     await user.type(screen.getByLabelText('Blocked path regex'), '^/tmp/');
     await user.type(screen.getByLabelText('Block dialog URL'), 'https://wiki.example.com/');
     await user.type(screen.getByLabelText('Button label'), 'Help');
+    const interval = screen.getByLabelText('Sync interval (seconds)');
+    await user.clear(interval);
+    await user.type(interval, '120');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({
-      enable_bundles: true, enable_all_event_upload: false, disable_unknown_event_upload: true,
+      full_sync_interval_seconds: 120, enable_bundles: true, enable_all_event_upload: false, disable_unknown_event_upload: true,
       allowed_path_regex: '', blocked_path_regex: '^/tmp/', event_detail_url: 'https://wiki.example.com/', event_detail_text: 'Help',
     })));
   });

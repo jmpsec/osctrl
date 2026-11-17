@@ -913,6 +913,8 @@ export const nl: Messages = {
     never: 'Nooit',
     batchSize: 'Batchgrootte',
     batchSizeHint: '0 gebruikt de Santa-standaard (50)',
+    syncInterval: 'Synchronisatie-interval (seconden)',
+    syncIntervalHint: '0 gebruikt de Santa-standaard (600); anders 60 tot 86400. Korter betekent snellere regelwijzigingen en meer belasting',
     transitiveRules: 'Transitieve regels inschakelen',
     removableMedia: 'Verwisselbare media',
     encryptedRemovableMedia: 'Versleutelde verwisselbare media',

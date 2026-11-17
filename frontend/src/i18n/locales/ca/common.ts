@@ -913,6 +913,8 @@ export const ca: Messages = {
     never: 'Mai',
     batchSize: 'Mida del lot',
     batchSizeHint: '0 utilitza el valor per defecte de Santa (50)',
+    syncInterval: 'Interval de sincronització (segons)',
+    syncIntervalHint: '0 fa servir el valor per defecte de Santa (600); si no, de 60 a 86400. Més curt vol dir canvis de regles més ràpids i més càrrega',
     transitiveRules: 'Activa les regles transitives',
     removableMedia: 'Suports extraïbles',
     encryptedRemovableMedia: 'Suports extraïbles xifrats',

@@ -103,6 +103,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
       putSantaConfig(env, {
         client_mode: form.client_mode,
         batch_size: form.batch_size,
+        full_sync_interval_seconds: form.full_sync_interval_seconds ?? 0,
         enable_transitive_rules: form.enable_transitive_rules,
         removable_media: form.removable_media,
         removable_media_flags: form.removable_media === 'REMOUNT' ? form.removable_media_flags : [],
@@ -154,6 +155,18 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
             onChange={(e) => setForm({ ...form, batch_size: Math.max(0, Number(e.target.value) || 0) })}
           />
           <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.batchSizeHint')}</p>
+        </div>
+        <div>
+          <Label htmlFor="santa-sync-interval">{t('santa.syncInterval')}</Label>
+          <Input
+            id="santa-sync-interval"
+            type="number"
+            min={0}
+            max={86400}
+            value={form.full_sync_interval_seconds ?? 0}
+            onChange={(e) => setForm({ ...form, full_sync_interval_seconds: Math.max(0, Number(e.target.value) || 0) })}
+          />
+          <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.syncIntervalHint')}</p>
         </div>
       </div>
       <label className="flex items-center gap-2 text-sm text-[color:var(--text-2)]">

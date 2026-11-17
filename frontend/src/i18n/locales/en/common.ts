@@ -924,6 +924,8 @@ export const en = {
     never: 'Never',
     batchSize: 'Batch size',
     batchSizeHint: '0 uses the Santa default (50)',
+    syncInterval: 'Sync interval (seconds)',
+    syncIntervalHint: '0 uses the Santa default (600); otherwise 60 to 86400. Shorter means faster rule changes and more load',
     transitiveRules: 'Enable transitive rules',
     removableMedia: 'Removable media',
     encryptedRemovableMedia: 'Encrypted removable media',

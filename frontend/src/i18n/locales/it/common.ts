@@ -913,6 +913,8 @@ export const it: Messages = {
     never: 'Mai',
     batchSize: 'Dimensione del batch',
     batchSizeHint: '0 usa il valore predefinito di Santa (50)',
+    syncInterval: 'Intervallo di sincronizzazione (secondi)',
+    syncIntervalHint: '0 usa il valore predefinito di Santa (600); altrimenti da 60 a 86400. Più breve significa regole applicate prima e più carico',
     transitiveRules: 'Abilita le regole transitive',
     removableMedia: 'Supporti rimovibili',
     encryptedRemovableMedia: 'Supporti rimovibili cifrati',

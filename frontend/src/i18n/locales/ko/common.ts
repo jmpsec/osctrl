@@ -913,6 +913,8 @@ export const ko: Messages = {
     never: '없음',
     batchSize: '배치 크기',
     batchSizeHint: '0이면 Santa 기본값(50)을 사용합니다',
+    syncInterval: '동기화 간격(초)',
+    syncIntervalHint: '0이면 Santa 기본값(600) 사용, 그 외에는 60~86400. 짧을수록 규칙 반영이 빠르고 부하가 늘어납니다',
     transitiveRules: '전이 규칙 사용',
     removableMedia: '이동식 미디어',
     encryptedRemovableMedia: '암호화된 이동식 미디어',

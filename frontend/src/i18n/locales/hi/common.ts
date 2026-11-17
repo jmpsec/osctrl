@@ -913,6 +913,8 @@ export const hi: Messages = {
     never: 'कभी नहीं',
     batchSize: 'बैच आकार',
     batchSizeHint: '0 का मतलब Santa का डिफ़ॉल्ट (50) है',
+    syncInterval: 'सिंक अंतराल (सेकंड)',
+    syncIntervalHint: '0 Santa का डिफ़ॉल्ट (600) उपयोग करता है; अन्यथा 60 से 86400. छोटा अंतराल यानी नियम जल्दी लागू और अधिक लोड',
     transitiveRules: 'ट्रांज़िटिव नियम सक्षम करें',
     removableMedia: 'रिमूवेबल मीडिया',
     encryptedRemovableMedia: 'एन्क्रिप्टेड रिमूवेबल मीडिया',
