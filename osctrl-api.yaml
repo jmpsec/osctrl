@@ -13757,6 +13757,12 @@ components:
           description: "Seconds between full syncs: 0 for the Santa default (600),
             otherwise 60 to 86400."
           type: integer
+        group_tags:
+          description: IdP groups whose members' machines get a tag of the environment (at
+            most 100), matched on Santa's primary user
+          items:
+            $ref: "#/components/schemas/santa.GroupTag"
+          type: array
         notify_channels:
           description: Alert channel IDs told about each new approval request, at most 10.
             Needs approval_url. Changing it requires superuser
@@ -13848,6 +13854,12 @@ components:
           description: 0 means the Santa default (600); otherwise
             MinSyncInterval..MaxSyncInterval
           type: integer
+        group_tags:
+          description: IdP groups whose members' machines get a tag, matched on the Santa
+            primary user
+          items:
+            $ref: "#/components/schemas/santa.GroupTag"
+          type: array
         id:
           type: integer
         notify_channels:
@@ -14708,6 +14720,13 @@ components:
           type: string
         target:
           description: The path that was accessed
+          type: string
+      type: object
+    santa.GroupTag:
+      properties:
+        group:
+          type: string
+        tag:
           type: string
       type: object
     santa.ImportIssue:

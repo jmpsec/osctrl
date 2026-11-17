@@ -188,6 +188,33 @@ func TestSantaConfigV1Settings(t *testing.T) {
 	require.Equal(t, "Details", cfg.EventDetailText)
 }
 
+func TestSantaConfigGroupTags(t *testing.T) {
+	h, _, envA, envB := setupSantaHandlers(t)
+	require.NoError(t, h.Tags.NewTag("finance", "", "", "", "alice", envA.ID, false, tags.TagTypeTag, ""))
+	require.NoError(t, h.Tags.NewTag("other-env", "", "", "", "alice", envB.ID, false, tags.TagTypeTag, ""))
+	put := func(body string) int {
+		return santaDo(h.SantaConfigPutHandler, "PUT", "alice", `{"client_mode":"MONITOR","group_tags":`+body+`}`, map[string]string{"env": envA.Name}).Code
+	}
+	require.Equal(t, http.StatusBadRequest, put(`[{"group":"Finance","tag":"missing"}]`))
+	require.Equal(t, http.StatusBadRequest, put(`[{"group":"Finance","tag":"other-env"}]`))
+	require.Equal(t, http.StatusBadRequest, put(`[{"group":"","tag":"finance"}]`))
+	require.Equal(t, http.StatusOK, put(`[{"group":"Finance","tag":"finance"}]`))
+	cfg, err := h.Santa.Config(envA.ID)
+	require.NoError(t, err)
+	require.Equal(t, []santa.GroupTag{{Group: "Finance", Tag: "finance"}}, cfg.GroupTags)
+
+	// SSO login stores groups; nil (no groups claim configured) keeps them.
+	h.santaRecordGroups("jdoe", []string{"Finance"})
+	h.santaRecordGroups("jdoe", nil)
+	got, err := h.Santa.GroupTags(envA.ID, "jdoe")
+	require.NoError(t, err)
+	require.Equal(t, []string{"finance"}, got)
+	h.santaRecordGroups("jdoe", []string{})
+	got, err = h.Santa.GroupTags(envA.ID, "jdoe")
+	require.NoError(t, err)
+	require.Empty(t, got)
+}
+
 func TestSantaEffectiveRules(t *testing.T) {
 	h, db, envA, envB := setupSantaHandlers(t)
 	uuid := "22222222-2222-4222-8222-222222222222"

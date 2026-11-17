@@ -26,6 +26,11 @@ export const SANTA_REMOUNT_FLAGS = ['rdonly', 'noexec', 'nosuid', 'nodev', 'nobr
 export type SantaFileAccessAction = '' | 'NONE' | 'AUDIT_ONLY' | 'DISABLE';
 export const SANTA_FILE_ACCESS_ACTIONS: SantaFileAccessAction[] = ['', 'NONE', 'AUDIT_ONLY', 'DISABLE'];
 
+export interface SantaGroupTag {
+  group: string;
+  tag: string;
+}
+
 export interface SantaConfig {
   client_mode: SantaClientMode;
   batch_size: number;
@@ -56,6 +61,7 @@ export interface SantaConfig {
   /** Block dialog button URL, with Santa placeholders; overrides the approval link. */
   event_detail_url: string;
   event_detail_text: string;
+  group_tags?: SantaGroupTag[];
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }

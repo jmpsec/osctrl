@@ -16,11 +16,13 @@ import {
   SANTA_FILE_ACCESS_ACTIONS,
   type SantaConfig,
   type SantaFileAccessAction,
+  type SantaGroupTag,
   type SantaMediaAction,
   type SantaModeOverrideInput,
 } from '$/api/santa';
 import { listAlertChannels } from '$/api/alerts';
 import { getEnvironment } from '$/api/environments';
+import { listEnvTags } from '$/api/tags';
 import { Button } from '$/components/atoms/Button';
 import { Input } from '$/components/atoms/Input';
 import { Label } from '$/components/atoms/Label';
@@ -94,6 +96,38 @@ function NotifyChannels({ envId, selected, onChange }: { envId?: number; selecte
   );
 }
 
+function GroupTags({ env, value, onChange }: { env: string; value: SantaGroupTag[]; onChange: (v: SantaGroupTag[]) => void }) {
+  const { t } = useTranslation();
+  const envTags = useQuery({ queryKey: ['tags', env], queryFn: () => listEnvTags(env), staleTime: 60_000 });
+  const set = (i: number, gt: SantaGroupTag) => onChange(value.map((v, j) => (j === i ? gt : v)));
+  const select = 'h-8 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]';
+  return (
+    <fieldset>
+      <legend className="text-sm font-medium text-[color:var(--text-2)]">{t('santa.groupTags.title')}</legend>
+      <div className="mt-1 space-y-2">
+        {value.map((gt, i) => (
+          <div key={i} className="grid gap-2 sm:grid-cols-[1fr_12rem_auto]">
+            <Input
+              aria-label={t('santa.groupTags.group')}
+              placeholder={t('santa.groupTags.group')}
+              maxLength={255}
+              value={gt.group}
+              onChange={(e) => set(i, { ...gt, group: e.target.value })}
+            />
+            <select aria-label={t('santa.groupTags.tag')} className={select} value={gt.tag} onChange={(e) => set(i, { ...gt, tag: e.target.value })}>
+              <option value="" />
+              {(envTags.data ?? []).map((tag) => <option key={tag.name} value={tag.name}>{tag.name}</option>)}
+            </select>
+            <Button type="button" variant="ghost" onClick={() => onChange(value.filter((_, j) => j !== i))}>{t('commonExt.remove')}</Button>
+          </div>
+        ))}
+        <Button type="button" variant="ghost" onClick={() => onChange([...value, { group: '', tag: '' }])}>{t('santa.groupTags.add')}</Button>
+      </div>
+      <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.groupTags.hint')}</p>
+    </fieldset>
+  );
+}
+
 function ConfigForm({ env, envId, config }: { env: string; envId?: number; config: SantaConfig }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -121,6 +155,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         blocked_path_regex: form.blocked_path_regex ?? '',
         event_detail_url: form.event_detail_url ?? '',
         event_detail_text: form.event_detail_text ?? '',
+        group_tags: form.group_tags ?? [],
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -265,6 +300,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         </div>
         <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.settings.eventDetailHint')}</p>
       </div>
+      <GroupTags env={env} value={form.group_tags ?? []} onChange={(gts) => setForm({ ...form, group_tags: gts })} />
       <NotifyChannels envId={envId} selected={form.notify_channels ?? []} onChange={(ids) => setForm({ ...form, notify_channels: ids })} />
       <div>
         <div className="grid gap-3 sm:grid-cols-2">

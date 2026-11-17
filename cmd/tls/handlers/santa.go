@@ -6,11 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"github.com/jmpsec/osctrl/pkg/environments"
+	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/santa"
+	"github.com/jmpsec/osctrl/pkg/tags"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -84,6 +87,9 @@ func (h *HandlersTLS) SantaHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.PathValue("stage") {
 	case "preflight":
 		err = santaStage(w, r, &syncv1.PreflightRequest{}, func(q *syncv1.PreflightRequest) (proto.Message, error) {
+			if err := h.santaGroupTags(node, q.GetPrimaryUser(), &sn); err != nil {
+				return nil, err
+			}
 			return h.Santa.Preflight(sn, q)
 		})
 	case "eventupload":
@@ -115,6 +121,41 @@ func (h *HandlersTLS) SantaHandler(w http.ResponseWriter, r *http.Request) {
 		log.Err(err).Str("stage", r.PathValue("stage")).Msg("santa: sync error")
 		fail(santaErrorStatus(err))
 	}
+}
+
+// santaGroupTags brings the node's IdP group tags in line with the groups of
+// its primary user, before preflight computes rules and mode from sn.Tags.
+// Only tags applied by santa.GroupTagger are removed, and a mapped tag that no
+// longer exists is not recreated.
+func (h *HandlersTLS) santaGroupTags(node nodes.OsqueryNode, primaryUser string, sn *santa.SyncNode) error {
+	want, err := h.Santa.GroupTags(sn.EnvID, primaryUser)
+	if err != nil {
+		return err
+	}
+	have, err := h.Tags.TaggedBy(node.ID, santa.GroupTagger)
+	if err != nil {
+		return err
+	}
+	for _, t := range have {
+		if !slices.Contains(want, t) {
+			if err := h.Tags.UntagNode(t, node); err != nil {
+				return err
+			}
+			sn.Tags = slices.DeleteFunc(sn.Tags, func(s string) bool { return s == t })
+			log.Info().Str("node", node.UUID).Str("tag", t).Msg("santa: removed IdP group tag")
+		}
+	}
+	for _, t := range want {
+		if slices.Contains(sn.Tags, t) || !h.Tags.ExistsByEnv(t, sn.EnvID) {
+			continue
+		}
+		if err := h.Tags.TagNode(t, node, santa.GroupTagger, true, tags.TagTypeTag, ""); err != nil {
+			return err
+		}
+		sn.Tags = append(sn.Tags, t)
+		log.Info().Str("node", node.UUID).Str("tag", t).Msg("santa: applied IdP group tag")
+	}
+	return nil
 }
 
 // santaForward hands stored events to the alert rules and the log sinks. The
