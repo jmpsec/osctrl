@@ -64,7 +64,8 @@ type AdminUser struct {
 	SAMLSubject string `gorm:"column:saml_subject" json:"-"`
 	// Disabled accounts cannot log in by any method and their tokens stop
 	// validating. SCIM sets it when the identity provider deactivates a user.
-	Disabled bool
+	// The default fills existing rows when AutoMigrate adds the column.
+	Disabled bool `gorm:"default:false"`
 	// PreferredLanguage is the UI language the operator picked in
 	// the SPA (BCP-47 base tag, e.g. "en", "es", "pt"). It is
 	// cross-device state: the frontend reconciles its local
@@ -428,7 +429,8 @@ func (m *UserManager) CountAdmins() (int64, error) {
 // lets the next federated login become one.
 func (m *UserManager) CountActiveAdmins() (int64, error) {
 	var results int64
-	if err := m.DB.Model(&AdminUser{}).Where("admin = ? AND disabled = ?", true, false).Count(&results).Error; err != nil {
+	// NULL is an account from before the column existed, so not disabled.
+	if err := m.DB.Model(&AdminUser{}).Where("admin = ? AND (disabled = ? OR disabled IS NULL)", true, false).Count(&results).Error; err != nil {
 		return 0, fmt.Errorf("count active admins: %w", err)
 	}
 	return results, nil

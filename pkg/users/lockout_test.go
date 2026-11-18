@@ -24,6 +24,17 @@ func lockoutManager(t *testing.T, admins []string, plain []string) *UserManager 
 	return m
 }
 
+// Upgraded databases have NULL in admin_users.disabled for accounts created
+// before the column existed; those superusers are active.
+func TestCountActiveAdminsNullDisabled(t *testing.T) {
+	m := lockoutManager(t, []string{"a", "b", "c"}, []string{"bob"})
+	require.NoError(t, m.DB.Exec("UPDATE admin_users SET disabled = NULL WHERE username IN ('a', 'b')").Error)
+	require.NoError(t, m.SetDisabled("c", true))
+	n, err := m.CountActiveAdmins()
+	require.NoError(t, err)
+	require.EqualValues(t, 2, n)
+}
+
 func TestCheckLockout(t *testing.T) {
 	demote := EnvAccess{User: true}
 	cases := []struct {
