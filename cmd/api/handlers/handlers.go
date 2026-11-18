@@ -28,6 +28,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/posture"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/santa"
+	"github.com/jmpsec/osctrl/pkg/scim"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -99,6 +100,9 @@ type HandlersApi struct {
 	Vulns                *vulns.Reader  // nil when --vuln-enabled is off
 	Santa                *santa.Manager // nil when --santa-enabled is off
 	Changes              *changes.Manager
+	// SCIM is the identity provider's provisioned users and groups (nil when
+	// Santa is disabled).
+	SCIM *scim.Manager
 	// SantaNotify sends approval request notifications to alert channels. Nil
 	// when alerts are off.
 	SantaNotify     santaNotifier
@@ -357,6 +361,13 @@ func WithExtensions(m *extensions.Manager) HandlersOption {
 func WithChanges(m *changes.Manager) HandlersOption {
 	return func(h *HandlersApi) {
 		h.Changes = m
+	}
+}
+
+// WithSCIM wires the SCIM store (nil when Santa is disabled).
+func WithSCIM(m *scim.Manager) HandlersOption {
+	return func(h *HandlersApi) {
+		h.SCIM = m
 	}
 }
 

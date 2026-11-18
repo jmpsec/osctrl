@@ -10472,6 +10472,689 @@ paths:
       summary: Update saved query
       tags:
         - saved-queries
+  /api/v1/scim:
+    get:
+      description: Requires superuser.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMStatusResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: SCIM provisioning status
+      tags:
+        - scim
+  /api/v1/scim/token:
+    delete:
+      description: POST makes a new token, which turns SCIM on and replaces any
+        previous token; it is shown once. DELETE removes it, which turns SCIM
+        off. Requires superuser.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMTokenResponse"
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Rotate or remove the SCIM token
+      tags:
+        - scim
+    post:
+      description: POST makes a new token, which turns SCIM on and replaces any
+        previous token; it is shown once. DELETE removes it, which turns SCIM
+        off. Requires superuser.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMTokenResponse"
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Rotate or remove the SCIM token
+      tags:
+        - scim
+  /api/v1/scim/v2/Groups:
+    get:
+      description: GET supports `filter=displayName eq "x"` (also externalId, id),
+        startIndex, count and excludedAttributes=members. POST provisions a
+        group; every member must be a provisioned user. Authenticated with the
+        SCIM bearer token.
+      parameters:
+        - description: attribute eq \
+          in: query
+          name: filter
+          schema:
+            type: string
+        - description: 1-based index
+          in: query
+          name: startIndex
+          schema:
+            type: integer
+        - description: Page size, at most 200
+          in: query
+          name: count
+          schema:
+            type: integer
+        - description: members to leave members out
+          in: query
+          name: excludedAttributes
+          schema:
+            type: string
+      requestBody:
+        $ref: "#/components/requestBodies/scim.GroupResource"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMListResponse"
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.GroupResource"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: List or provision SCIM groups
+      tags:
+        - scim
+    post:
+      description: GET supports `filter=displayName eq "x"` (also externalId, id),
+        startIndex, count and excludedAttributes=members. POST provisions a
+        group; every member must be a provisioned user. Authenticated with the
+        SCIM bearer token.
+      parameters:
+        - description: attribute eq \
+          in: query
+          name: filter
+          schema:
+            type: string
+        - description: 1-based index
+          in: query
+          name: startIndex
+          schema:
+            type: integer
+        - description: Page size, at most 200
+          in: query
+          name: count
+          schema:
+            type: integer
+        - description: members to leave members out
+          in: query
+          name: excludedAttributes
+          schema:
+            type: string
+      requestBody:
+        $ref: "#/components/requestBodies/scim.GroupResource"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMListResponse"
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.GroupResource"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: List or provision SCIM groups
+      tags:
+        - scim
+  "/api/v1/scim/v2/Groups/{id}":
+    delete:
+      description: PATCH adds, removes and replaces members (including `members[value
+        eq "id"]` paths) and sets displayName and externalId. Authenticated with
+        the SCIM bearer token.
+      parameters:
+        - description: SCIM group ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.GroupResource"
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: Read, replace, patch or delete a SCIM group
+      tags:
+        - scim
+    get:
+      description: PATCH adds, removes and replaces members (including `members[value
+        eq "id"]` paths) and sets displayName and externalId. Authenticated with
+        the SCIM bearer token.
+      parameters:
+        - description: SCIM group ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.GroupResource"
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: Read, replace, patch or delete a SCIM group
+      tags:
+        - scim
+    patch:
+      description: PATCH adds, removes and replaces members (including `members[value
+        eq "id"]` paths) and sets displayName and externalId. Authenticated with
+        the SCIM bearer token.
+      parameters:
+        - description: SCIM group ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.GroupResource"
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: Read, replace, patch or delete a SCIM group
+      tags:
+        - scim
+    put:
+      description: PATCH adds, removes and replaces members (including `members[value
+        eq "id"]` paths) and sets displayName and externalId. Authenticated with
+        the SCIM bearer token.
+      parameters:
+        - description: SCIM group ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.GroupResource"
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: Read, replace, patch or delete a SCIM group
+      tags:
+        - scim
+  /api/v1/scim/v2/ServiceProviderConfig:
+    get:
+      description: What the SCIM endpoint supports. Authenticated with the SCIM bearer
+        token.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: SCIM service provider configuration
+      tags:
+        - scim
+  /api/v1/scim/v2/Users:
+    get:
+      description: GET supports `filter=userName eq "x"` (also externalId, id),
+        startIndex and count. POST provisions a user. Authenticated with the
+        SCIM bearer token.
+      parameters:
+        - description: attribute eq \
+          in: query
+          name: filter
+          schema:
+            type: string
+        - description: 1-based index
+          in: query
+          name: startIndex
+          schema:
+            type: integer
+        - description: Page size, at most 200
+          in: query
+          name: count
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/scim.UserResource"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMListResponse"
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.UserResource"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: List or provision SCIM users
+      tags:
+        - scim
+    post:
+      description: GET supports `filter=userName eq "x"` (also externalId, id),
+        startIndex and count. POST provisions a user. Authenticated with the
+        SCIM bearer token.
+      parameters:
+        - description: attribute eq \
+          in: query
+          name: filter
+          schema:
+            type: string
+        - description: 1-based index
+          in: query
+          name: startIndex
+          schema:
+            type: integer
+        - description: Page size, at most 200
+          in: query
+          name: count
+          schema:
+            type: integer
+      requestBody:
+        $ref: "#/components/requestBodies/scim.UserResource"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMListResponse"
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.UserResource"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: List or provision SCIM users
+      tags:
+        - scim
+  "/api/v1/scim/v2/Users/{id}":
+    delete:
+      description: PATCH sets active, userName and externalId; other attributes are
+        accepted and ignored. A user that is inactive or deleted has no groups.
+        Authenticated with the SCIM bearer token.
+      parameters:
+        - description: SCIM user ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.UserResource"
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: Read, replace, patch or delete a SCIM user
+      tags:
+        - scim
+    get:
+      description: PATCH sets active, userName and externalId; other attributes are
+        accepted and ignored. A user that is inactive or deleted has no groups.
+        Authenticated with the SCIM bearer token.
+      parameters:
+        - description: SCIM user ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.UserResource"
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: Read, replace, patch or delete a SCIM user
+      tags:
+        - scim
+    patch:
+      description: PATCH sets active, userName and externalId; other attributes are
+        accepted and ignored. A user that is inactive or deleted has no groups.
+        Authenticated with the SCIM bearer token.
+      parameters:
+        - description: SCIM user ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.UserResource"
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: Read, replace, patch or delete a SCIM user
+      tags:
+        - scim
+    put:
+      description: PATCH sets active, userName and externalId; other attributes are
+        accepted and ignored. A user that is inactive or deleted has no groups.
+        Authenticated with the SCIM bearer token.
+      parameters:
+        - description: SCIM user ID
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/scim.UserResource"
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SCIMErrorResponse"
+      summary: Read, replace, patch or delete a SCIM user
+      tags:
+        - scim
   /api/v1/service-config:
     get:
       description: Returns all service configuration sections across all services.
@@ -12270,6 +12953,35 @@ paths:
       summary: Execute user action
       tags:
         - users
+  "/api/v1/users/{username}/groups":
+    get:
+      description: The groups Santa group tags use, from the user's last SSO login or
+        from SCIM. Requires the same access as reading the user.
+      parameters:
+        - description: Username
+          in: path
+          name: username
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.UserGroupsResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: IdP groups stored for a user
+      tags:
+        - users
   "/api/v1/users/{username}/permissions":
     get:
       description: Returns per-environment permissions for a user.
@@ -13235,6 +13947,12 @@ components:
             $ref: "#/components/schemas/handlers.MFAWebAuthnRequest"
       description: Request body
       required: true
+    scim.UserResource:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/scim.UserResource"
+      description: User (POST)
     types.ApiActionsRequest:
       content:
         application/json:
@@ -13291,6 +14009,12 @@ components:
             $ref: "#/components/schemas/handlers.SantaRuleRequest"
       description: Rule
       required: true
+    scim.GroupResource:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/scim.GroupResource"
+      description: Group (POST)
   securitySchemes:
     ApiKeyAuth:
       in: header
@@ -13919,6 +14643,50 @@ components:
         pending_change:
           $ref: "#/components/schemas/changes.Change"
       type: object
+    handlers.SCIMErrorResponse:
+      properties:
+        detail:
+          type: string
+        schemas:
+          items:
+            type: string
+          type: array
+        scimType:
+          type: string
+        status:
+          type: string
+      type: object
+    handlers.SCIMListResponse:
+      properties:
+        Resources: {}
+        itemsPerPage:
+          type: integer
+        schemas:
+          items:
+            type: string
+          type: array
+        startIndex:
+          type: integer
+        totalResults:
+          type: integer
+      type: object
+    handlers.SCIMStatusResponse:
+      properties:
+        available:
+          description: Available is false when Santa is disabled; SCIM only feeds Santa
+            group tags.
+          type: boolean
+        enabled:
+          type: boolean
+        token_created_at:
+          description: TokenCreatedAt is when the current token was made.
+          type: string
+      type: object
+    handlers.SCIMTokenResponse:
+      properties:
+        token:
+          type: string
+      type: object
     handlers.SantaConfigRequest:
       properties:
         allowed_path_regex:
@@ -14324,6 +15092,20 @@ components:
         total_nodes:
           description: Cross-env totals (the user's allowed envs only).
           type: integer
+      type: object
+    handlers.UserGroupsResponse:
+      properties:
+        groups:
+          items:
+            type: string
+          type: array
+        scim:
+          description: |-
+            SCIM is true when SCIM provisions the user, so SSO logins leave the
+            groups alone.
+          type: boolean
+        updated_at:
+          type: string
       type: object
     handlers.VulnFindingsResponse:
       properties:
@@ -15305,6 +16087,62 @@ components:
           type: boolean
         votes:
           type: integer
+      type: object
+    scim.GroupResource:
+      properties:
+        displayName:
+          type: string
+        externalId:
+          type: string
+        id:
+          type: string
+        members:
+          items:
+            $ref: "#/components/schemas/scim.Ref"
+          type: array
+        meta:
+          $ref: "#/components/schemas/scim.Meta"
+        schemas:
+          items:
+            type: string
+          type: array
+      type: object
+    scim.Meta:
+      properties:
+        created:
+          type: string
+        lastModified:
+          type: string
+        resourceType:
+          type: string
+      type: object
+    scim.Ref:
+      properties:
+        display:
+          type: string
+        value:
+          type: string
+      type: object
+    scim.UserResource:
+      properties:
+        active:
+          type: boolean
+        externalId:
+          type: string
+        groups:
+          items:
+            $ref: "#/components/schemas/scim.Ref"
+          type: array
+        id:
+          type: string
+        meta:
+          $ref: "#/components/schemas/scim.Meta"
+        schemas:
+          items:
+            type: string
+          type: array
+        userName:
+          type: string
       type: object
     serviceconfig.ServiceConfig:
       properties:

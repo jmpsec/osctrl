@@ -35,6 +35,16 @@ func (m *Manager) SetUserGroups(username string, groups []string) error {
 	}).Create(&ug).Error
 }
 
+// UserGroupsOf returns the stored groups of a user; none stored is a zero value.
+func (m *Manager) UserGroupsOf(username string) (UserGroups, error) {
+	var ugs []UserGroups
+	err := m.DB.Where("username = ?", strings.ToLower(username)).Limit(1).Find(&ugs).Error
+	if err != nil || len(ugs) == 0 {
+		return UserGroups{Username: strings.ToLower(username), Groups: []string{}}, err
+	}
+	return ugs[0], nil
+}
+
 // GroupTags returns the tags the environment maps to the groups of the user
 // osctrl knows as primaryUser (exact username, any case). An unknown user has
 // no groups, so no tags.
