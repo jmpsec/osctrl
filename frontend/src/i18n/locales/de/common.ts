@@ -547,8 +547,10 @@ export const de: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'SCIM-Bereitstellung',
-    intro: 'Ihr Identitätsanbieter überträgt Benutzer und Gruppenmitgliedschaften hierher, sodass Santa-Gruppen-Tags Änderungen ohne osctrl-Anmeldung folgen.',
-    unavailable: 'SCIM erfordert Santa in osctrl-api.',
+    intro: 'Ihr Identitätsanbieter legt hier SSO-Konten an, deaktiviert und löscht sie und hält ihre Gruppen aktuell. Neue Konten haben keinen Zugriff, bis ihn jemand gewährt.',
+    provisioned: 'Per SCIM bereitgestellt; Anmeldung per SSO',
+    disabled: 'Deaktiviert',
+    disabledHint: 'Kann sich nicht anmelden: Der Identitätsanbieter hat diesen Benutzer deaktiviert.',
     off: 'Aus. Erstellen Sie ein Token, um es einzuschalten.',
     on: 'An seit {{date}}.',
     baseUrl: 'Basis-URL',

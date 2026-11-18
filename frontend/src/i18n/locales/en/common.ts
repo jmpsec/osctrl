@@ -556,8 +556,10 @@ export const en = {
   scim: {
     button: 'SCIM…',
     title: 'SCIM provisioning',
-    intro: 'Your identity provider pushes users and group membership here, so Santa group tags follow changes without an osctrl login.',
-    unavailable: 'SCIM needs Santa enabled on osctrl-api.',
+    intro: 'Your identity provider creates, disables and deletes SSO accounts here and keeps their groups current. New accounts get no access until someone grants it.',
+    provisioned: 'Provisioned by SCIM; signs in with SSO',
+    disabled: 'Disabled',
+    disabledHint: 'Cannot log in: the identity provider deactivated this user.',
     off: 'Off. Create a token to turn it on.',
     on: 'On since {{date}}.',
     baseUrl: 'Base URL',

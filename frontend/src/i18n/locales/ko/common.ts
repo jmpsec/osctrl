@@ -547,8 +547,10 @@ export const ko: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'SCIM 프로비저닝',
-    intro: 'ID 공급자가 사용자와 그룹 멤버십을 이곳으로 보내므로, osctrl 로그인 없이도 Santa 그룹 태그가 변경을 따라갑니다.',
-    unavailable: 'SCIM을 사용하려면 osctrl-api에서 Santa를 활성화해야 합니다.',
+    intro: 'ID 공급자가 이곳에서 SSO 계정을 만들고 비활성화하고 삭제하며 그룹을 최신 상태로 유지합니다. 새 계정은 누군가 권한을 부여할 때까지 접근 권한이 없습니다.',
+    provisioned: 'SCIM으로 프로비저닝됨, SSO로 로그인',
+    disabled: '비활성화됨',
+    disabledHint: '로그인할 수 없음: ID 공급자가 이 사용자를 비활성화했습니다.',
     off: '꺼짐. 토큰을 만들어 켜세요.',
     on: '{{date}}부터 켜짐.',
     baseUrl: '기본 URL',

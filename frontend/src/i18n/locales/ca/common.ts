@@ -547,8 +547,10 @@ export const ca: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'Aprovisionament SCIM',
-    intro: 'El teu proveïdor d\'identitat envia aquí usuaris i pertinença a grups, així les etiquetes de grup de Santa segueixen els canvis sense iniciar sessió a osctrl.',
-    unavailable: 'SCIM necessita Santa activat a osctrl-api.',
+    intro: 'El teu proveïdor d\'identitat crea, desactiva i elimina aquí comptes SSO i en manté els grups al dia. Els comptes nous no tenen accés fins que algú el concedeix.',
+    provisioned: 'Aprovisionat per SCIM; inicia sessió amb SSO',
+    disabled: 'Desactivat',
+    disabledHint: 'No pot iniciar sessió: el proveïdor d\'identitat ha desactivat aquest usuari.',
     off: 'Desactivat. Crea un token per activar-lo.',
     on: 'Activat des de {{date}}.',
     baseUrl: 'URL base',

@@ -134,21 +134,11 @@ There is no push. v1's `push_token` only works with a token chain signed by Nort
 
 Tag-scoped rules and mode overrides can follow department membership. **Settings → IdP group tags** maps IdP groups to existing tags of the environment (`group_tags` in the config, at most 100); at each preflight the machine gets the tags of its primary user's groups and loses the ones it no longer qualifies for, before rules and mode are computed.
 
-- **Groups come from SSO login or SCIM.** Each OIDC or SAML login stores the user's groups from the provider's groups claim or attribute (`santa_user_groups`); a provider without one configured stores nothing and keeps what was there. With SSO alone, a user who has never signed in to osctrl has no groups, and a change at the IdP reaches osctrl at their next login. With [SCIM](#scim-provisioning) the IdP pushes changes as they happen, with no login. Either way the machine picks them up at its next sync. **Users → user → Groups** shows what is stored, when, and whether SCIM manages it.
-- **Matching** is the Santa `primary_user` against the osctrl username (or the SCIM `userName`), exact and case-insensitive (`jdoe` matches `JDoe`, not `jdoe@example.com`). Fleets whose Mac accounts differ from IdP usernames need Platform SSO or matching usernames.
+- **Groups come from SSO login or SCIM.** Each OIDC or SAML login stores the user's groups from the provider's groups claim or attribute (`santa_user_groups`); a provider without one configured stores nothing and keeps what was there. With SSO alone, a user who has never signed in to osctrl has no groups, and a change at the IdP reaches osctrl at their next login. With [SCIM provisioning](../../docs/auth-providers.md#scim-provisioning) the IdP pushes changes as they happen, with no login; once SCIM manages a user, SSO logins no longer change their groups, and a user that is deactivated or deleted has none. Either way the machine picks them up at its next sync. **Users → user → Groups…** shows what is stored and where it came from. Map tags to the group's display name as the IdP sends it.
+- **Matching** is the Santa `primary_user` against the osctrl username (for SCIM users, the account named from their `userName`), exact and case-insensitive (`jdoe` matches `JDoe`, not `jdoe@example.com`). Fleets whose Mac accounts differ from IdP usernames need Platform SSO or matching usernames.
 - **Only tags the mapping added are removed** (`tagged_by` = `santa:idp-groups`); a tag set by hand stays even when the user leaves the group. A mapped tag that was deleted is not recreated, and the config rejects tags that do not exist in the environment.
 - **Trust.** `primary_user` is reported by the client. A host holding the environment token can claim any user and get that user's group tags, so map groups to tags that loosen rules (allow rules, MONITOR overrides) only where that is acceptable, and prefer mapping groups to tags that tighten them.
-
-#### SCIM provisioning
-
-osctrl-api serves a SCIM 2.0 endpoint (Users and Groups) so the IdP keeps group membership current. It exists only with Santa enabled and stays off until a superuser creates a token in **Users → SCIM**.
-
-- **Setup.** Base URL `https://<osctrl>/api/v1/scim/v2`, authentication "HTTP header / bearer token" with the token from osctrl. The token is shown once and stored hashed; rotating replaces it, and removing it turns SCIM off. Push the users first, then the groups.
-- **What is kept.** For users, `userName`, `externalId` and `active`; other attributes (names, emails) are accepted and dropped. For groups, `displayName`, `externalId` and members. Map tags to the group's display name as the IdP sends it. Filters are `attribute eq "value"` only, which is what Okta and Entra ID send; PATCH supports their membership forms, including `members[value eq "id"]`.
-- **Effect.** Every change rewrites the stored groups of the users it touches. A user that is deactivated or deleted has no groups, so the machine loses its group tags at the next sync. Once SCIM manages a user, SSO logins no longer change their groups.
-- **Audit.** Token changes are logged under the superuser; each SCIM change under the user `scim` (`scim: create user jdoe`, `scim: update group Finance members=12`).
-- **Trust.** The token can change any user's groups, and so their machines' group tags. Treat it like the IdP admin credential it effectively is, and see the trust note above about mapping groups to tags that loosen rules.
-- **SCIM users are not osctrl accounts.** They only carry groups; signing in still needs SSO or a local account.
+- **SCIM token.** It can change any user's groups, and so their machines' group tags; see the trust note above about mapping groups to tags that loosen rules.
 
 ### Second admin approval
 

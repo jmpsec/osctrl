@@ -97,16 +97,31 @@ func TestUsersAndGroupsExternalBackend(t *testing.T) {
 	}
 }
 
+func TestAccountName(t *testing.T) {
+	for in, want := range map[string]string{
+		"JDoe@Example.com": "jdoe@example.com", // email-shaped names are lowercased, as in SSO
+		"jdoe":             "jdoe",
+		"j doe":            "",
+		" ":                "",
+	} {
+		require.Equal(t, want, AccountName(in), in)
+	}
+}
+
 func testUsersAndGroups(t *testing.T, m *Manager) {
-	alice, names, err := m.CreateUser(UserResource{UserName: "Alice@Example.com", ExternalID: "a1"})
+	alice, acct, err := m.CreateUser(UserResource{UserName: "Alice@Example.com", ExternalID: "a1",
+		Emails: []Email{{Value: "a@home.example"}, {Value: "alice@example.com", Primary: true}}, Name: &Name{GivenName: "Alice", FamilyName: "A"}})
 	require.NoError(t, err)
-	require.Equal(t, []string{"alice@example.com"}, names)
 	require.True(t, *alice.Active)
+	require.Equal(t, "alice@example.com", acct.Username)
+	require.Equal(t, "alice@example.com", acct.Email)
+	require.Equal(t, "Alice A", acct.DisplayName)
+	require.Equal(t, []Email{{Value: "alice@example.com", Primary: true}}, alice.Emails)
 	_, _, err = m.CreateUser(UserResource{UserName: "alice@example.com"})
 	require.ErrorIs(t, err, ErrConflict)
-	_, _, err = m.CreateUser(UserResource{UserName: " "})
+	_, _, err = m.CreateUser(UserResource{UserName: "not a name"})
 	require.ErrorIs(t, err, ErrInvalid)
-	bob, _, err := m.CreateUser(UserResource{UserName: "bob"})
+	bob, _, err := m.CreateUser(UserResource{UserName: "bob", DisplayName: "Bob"})
 	require.NoError(t, err)
 
 	got, total, err := m.ListUsers(Filter{"username", "ALICE@example.com"}, 1, 100)
@@ -126,7 +141,7 @@ func testUsersAndGroups(t *testing.T, m *Manager) {
 	_, names, err = m.PatchGroup(fin.ID, ops(t, `{"Operations":[{"op":"Add","path":"members","value":[{"value":"`+bob.ID+`"}]}]}`))
 	require.NoError(t, err)
 	require.Equal(t, []string{"alice@example.com", "bob"}, names)
-	g, err := m.Groups("BOB")
+	g, err := m.Groups("bob")
 	require.NoError(t, err)
 	require.Equal(t, []string{"Finance"}, g)
 
@@ -143,24 +158,31 @@ func testUsersAndGroups(t *testing.T, m *Manager) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"Finance EU"}, g)
 
-	// Entra ID deactivates with a string; an inactive user has no groups.
-	u, names, err := m.PatchUser(alice.ID, ops(t, `{"Operations":[{"op":"Replace","path":"active","value":"False"}]}`))
+	// Entra ID deactivates with a string and sets the work email by path; an
+	// inactive user has no groups.
+	u, acct, err := m.PatchUser(alice.ID, ops(t, `{"Operations":[
+		{"op":"Replace","path":"active","value":"False"},
+		{"op":"Replace","path":"emails[type eq \"work\"].value","value":"alice@corp.example"},
+		{"op":"Replace","path":"displayName","value":"Alice Anders"}]}`))
 	require.NoError(t, err)
 	require.False(t, *u.Active)
-	require.Equal(t, []string{"alice@example.com"}, names)
+	require.False(t, acct.Active)
+	require.Equal(t, "alice@corp.example", acct.Email)
+	require.Equal(t, "Alice Anders", acct.DisplayName)
 	g, err = m.Groups("alice@example.com")
 	require.NoError(t, err)
 	require.Empty(t, g)
-	// Okta reactivates and renames with a pathless replace; both names change.
-	u, names, err = m.PatchUser(alice.ID, ops(t, `{"Operations":[{"op":"replace","value":{"active":true,"userName":"alice2","name":{"givenName":"A"}}}]}`))
+	// Okta reactivates and renames; the osctrl account keeps its name.
+	u, acct, err = m.PatchUser(alice.ID, ops(t, `{"Operations":[{"op":"replace","value":{"active":true,"userName":"alice2","name":{"givenName":"A"}}}]}`))
 	require.NoError(t, err)
 	require.Equal(t, "alice2", u.UserName)
-	require.Equal(t, []string{"alice2", "alice@example.com"}, names)
+	require.Equal(t, "alice@example.com", acct.Username)
+	require.Equal(t, "Alice Anders", acct.DisplayName)
 	require.Equal(t, []Ref{{Value: fin.ID, Display: "Finance EU"}}, u.Groups)
 	_, _, err = m.PatchUser(alice.ID, ops(t, `{"Operations":[{"op":"replace","path":"userName","value":"bob"}]}`))
 	require.ErrorIs(t, err, ErrConflict)
 
-	ok, err := m.Managed("ALICE2")
+	ok, err := m.Managed("alice@example.com")
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -168,7 +190,7 @@ func testUsersAndGroups(t *testing.T, m *Manager) {
 	gr, names, err := m.ReplaceGroup(fin.ID, GroupResource{DisplayName: "Finance", Members: []Ref{{Value: bob.ID}}})
 	require.NoError(t, err)
 	require.Equal(t, []Ref{{Value: bob.ID, Display: "bob"}}, gr.Members)
-	require.Equal(t, []string{"alice2", "bob"}, names)
+	require.Equal(t, []string{"alice@example.com", "bob"}, names)
 
 	names, err = m.DeleteGroup(fin.ID)
 	require.NoError(t, err)
@@ -176,9 +198,9 @@ func testUsersAndGroups(t *testing.T, m *Manager) {
 	_, err = m.GetGroup(fin.ID, true)
 	require.ErrorIs(t, err, ErrNotFound)
 
-	names, err = m.DeleteUser(bob.ID)
+	gone, err := m.DeleteUser(bob.ID)
 	require.NoError(t, err)
-	require.Equal(t, []string{"bob"}, names)
+	require.Equal(t, "bob", gone.Username)
 	ok, err = m.Managed("bob")
 	require.NoError(t, err)
 	require.False(t, ok)

@@ -547,8 +547,10 @@ export const pl: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'Provisioning SCIM',
-    intro: 'Dostawca tożsamości wysyła tu użytkowników i członkostwo w grupach, więc tagi grup Santa nadążają za zmianami bez logowania do osctrl.',
-    unavailable: 'SCIM wymaga włączonego Santa w osctrl-api.',
+    intro: 'Dostawca tożsamości tworzy tu, wyłącza i usuwa konta SSO oraz aktualizuje ich grupy. Nowe konta nie mają dostępu, dopóki ktoś go nie nada.',
+    provisioned: 'Utworzone przez SCIM; logowanie przez SSO',
+    disabled: 'Wyłączone',
+    disabledHint: 'Nie może się zalogować: dostawca tożsamości dezaktywował tego użytkownika.',
     off: 'Wyłączone. Utwórz token, aby włączyć.',
     on: 'Włączone od {{date}}.',
     baseUrl: 'Bazowy URL',

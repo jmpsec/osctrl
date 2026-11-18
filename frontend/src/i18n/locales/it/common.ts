@@ -547,8 +547,10 @@ export const it: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'Provisioning SCIM',
-    intro: 'Il tuo identity provider invia qui utenti e appartenenza ai gruppi, così i tag di gruppo di Santa seguono le modifiche senza accedere a osctrl.',
-    unavailable: 'SCIM richiede Santa attivo in osctrl-api.',
+    intro: 'Il tuo identity provider crea, disattiva ed elimina qui account SSO e ne tiene aggiornati i gruppi. I nuovi account non hanno accesso finché qualcuno non lo concede.',
+    provisioned: 'Provisioning tramite SCIM; accede con SSO',
+    disabled: 'Disattivato',
+    disabledHint: 'Non può accedere: l\'identity provider ha disattivato questo utente.',
     off: 'Disattivato. Crea un token per attivarlo.',
     on: 'Attivo dal {{date}}.',
     baseUrl: 'URL di base',

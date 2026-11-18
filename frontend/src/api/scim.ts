@@ -1,8 +1,6 @@
 import { apiFetch } from './client';
 
 export interface ScimStatus {
-  /** False when Santa is disabled; SCIM only feeds Santa group tags. */
-  available: boolean;
   enabled: boolean;
   token_created_at?: string;
 }

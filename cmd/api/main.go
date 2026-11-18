@@ -662,13 +662,10 @@ func osctrlAPIService() {
 		santaMgr.Risk = santaRiskEngine(flagParams.Service)
 		log.Info().Msg("Santa enabled")
 	}
-	// SCIM keeps Santa's IdP groups current, so it exists only with Santa.
-	var scimMgr *scim.Manager
-	if santaMgr != nil {
-		scimMgr, err = scim.NewManager(db.Conn)
-		if err != nil {
-			log.Fatal().Err(err).Msg("Failed to initialize SCIM")
-		}
+	// SCIM provisioning of SSO accounts (off until a superuser makes a token).
+	scimMgr, err := scim.NewManager(db.Conn)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize SCIM")
 	}
 	// Vulnerability findings count toward the posture risk score when both
 	// features are on (posture.EvidenceSource).
@@ -1264,20 +1261,20 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/votes",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVoteStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
-		// SCIM 2.0 for the identity provider: its own bearer token, not a user
-		// session, and off until a superuser makes one.
-		scimV2 := _apiPath(apiSCIMPath) + "/v2"
-		muxAPI.Handle("GET "+scimV2+"/ServiceProviderConfig", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMServiceProviderConfigHandler)))
-		for _, m := range []string{"GET", "POST"} {
-			muxAPI.Handle(m+" "+scimV2+"/Users", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMUsersHandler)))
-			muxAPI.Handle(m+" "+scimV2+"/Groups", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMGroupsHandler)))
-		}
-		for _, m := range []string{"GET", "PUT", "PATCH", "DELETE"} {
-			muxAPI.Handle(m+" "+scimV2+"/Users/{id}", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMUserHandler)))
-			muxAPI.Handle(m+" "+scimV2+"/Groups/{id}", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMGroupHandler)))
-		}
 	}
-	// API: SCIM token management (reports unavailable without Santa)
+	// SCIM 2.0 for the identity provider: its own bearer token, not a user
+	// session, and off until a superuser makes one.
+	scimV2 := _apiPath(apiSCIMPath) + "/v2"
+	muxAPI.Handle("GET "+scimV2+"/ServiceProviderConfig", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMServiceProviderConfigHandler)))
+	for _, m := range []string{"GET", "POST"} {
+		muxAPI.Handle(m+" "+scimV2+"/Users", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMUsersHandler)))
+		muxAPI.Handle(m+" "+scimV2+"/Groups", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMGroupsHandler)))
+	}
+	for _, m := range []string{"GET", "PUT", "PATCH", "DELETE"} {
+		muxAPI.Handle(m+" "+scimV2+"/Users/{id}", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMUserHandler)))
+		muxAPI.Handle(m+" "+scimV2+"/Groups/{id}", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMGroupHandler)))
+	}
+	// API: SCIM token management
 	muxAPI.Handle(
 		"GET "+_apiPath(apiSCIMPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.SCIMStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

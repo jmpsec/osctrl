@@ -993,11 +993,13 @@ type AdminUserView struct {
 	UUID          string    `json:"uuid"`
 	TokenExpire   time.Time `json:"token_expire"`
 	EnvironmentID uint      `json:"environment_id"`
-	// AuthSource is empty for the password-login path (the default)
-	// and "oidc" for users JIT-provisioned through the federated
-	// callback. Surfaced so the SPA Users page can show an "OIDC"
-	// badge alongside the existing admin/service labels.
+	// AuthSource is empty for the password-login path (the default),
+	// "oidc" or "saml" for users of federated login, and "scim" for users
+	// SCIM created that have not signed in yet. Surfaced so the SPA Users
+	// page can show a badge alongside the existing admin/service labels.
 	AuthSource string `json:"auth_source"`
+	// Disabled accounts cannot log in; SCIM sets it on deactivation.
+	Disabled bool `json:"disabled"`
 }
 
 // LogSinkFieldSpec is one field in a sink type's config schema. The SPA

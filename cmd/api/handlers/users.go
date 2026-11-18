@@ -59,6 +59,7 @@ func projectAdminUserView(u users.AdminUser) types.AdminUserView {
 		TokenExpire:   u.TokenExpire,
 		EnvironmentID: u.EnvironmentID,
 		AuthSource:    u.AuthSource,
+		Disabled:      u.Disabled,
 	}
 }
 

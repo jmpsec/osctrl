@@ -88,9 +88,15 @@ func (h *HandlersApi) resolveFederatedUser(identity auth.ResolvedIdentity, polic
 	}
 	binding := identity.Issuer + "#" + identity.Subject
 	if bound, err := h.Users.GetByFederatedSubject(policy.authSource, binding); err == nil {
+		if bound.Disabled {
+			return users.AdminUser{}, fmt.Errorf("%w: account %q is disabled", ErrAuthUserRejected, bound.Username)
+		}
 		return bound, nil
 	}
 	if exists, existing := h.Users.ExistsGet(identity.PreferredUsername); exists {
+		if existing.Disabled {
+			return users.AdminUser{}, fmt.Errorf("%w: account %q is disabled", ErrAuthUserRejected, existing.Username)
+		}
 		if stored := existing.FederatedSubject(policy.authSource); stored != "" {
 			// Bound to a different identity (the binding lookup above missed).
 			return users.AdminUser{}, fmt.Errorf("%w: username %q is bound to another %s identity",

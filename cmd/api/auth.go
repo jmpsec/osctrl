@@ -147,7 +147,7 @@ func handlerAuthCheck(h http.Handler, auth, jwtSecret string) http.Handler {
 			// stored token are rejected immediately. Constant-time comparison guards
 			// against timing-side-channel leaks of the stored token.
 			user, uerr := apiUsers.Get(claims.Username)
-			tokenMatches := uerr == nil && user.APIToken != "" &&
+			tokenMatches := uerr == nil && user.APIToken != "" && !user.Disabled &&
 				subtle.ConstantTimeCompare([]byte(user.APIToken), []byte(token)) == 1
 			if !tokenMatches {
 				if utils.AcceptsJSON(r) || r.URL.Path == "/api/v1/events" {
@@ -197,7 +197,7 @@ func eventSessionValid(r *http.Request, auth, secret string) bool {
 	}
 	user, err := apiUsers.Get(claims.Username)
 	ctx, ok := r.Context().Value(handlers.ContextKey(contextAPI)).(handlers.ContextValue)
-	valid = ok && ctx["user"] == claims.Username && err == nil && user.APIToken != "" && subtle.ConstantTimeCompare([]byte(user.APIToken), []byte(token)) == 1
+	valid = ok && ctx["user"] == claims.Username && err == nil && user.APIToken != "" && !user.Disabled && subtle.ConstantTimeCompare([]byte(user.APIToken), []byte(token)) == 1
 	if valid {
 		users.CacheAuthenticatedUser(r.Context(), user)
 	}

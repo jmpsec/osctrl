@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/scim"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -40,9 +41,7 @@ type SCIMErrorResponse struct {
 
 // SCIMStatusResponse says whether SCIM provisioning is on.
 type SCIMStatusResponse struct {
-	// Available is false when Santa is disabled; SCIM only feeds Santa group tags.
-	Available bool `json:"available"`
-	Enabled   bool `json:"enabled"`
+	Enabled bool `json:"enabled"`
 	// TokenCreatedAt is when the current token was made.
 	TokenCreatedAt *time.Time `json:"token_created_at,omitempty"`
 }
@@ -52,12 +51,14 @@ type SCIMTokenResponse struct {
 	Token string `json:"token"`
 }
 
-// UserGroupsResponse is the IdP groups stored for a user.
+// UserGroupsResponse is the IdP groups known for a user.
 type UserGroupsResponse struct {
-	Groups    []string   `json:"groups"`
+	Groups []string `json:"groups"`
+	// UpdatedAt is when the last SSO login stored the groups; empty for
+	// SCIM, which keeps them current.
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
-	// SCIM is true when SCIM provisions the user, so SSO logins leave the
-	// groups alone.
+	// SCIM is true when SCIM provisions the user: the groups come from SCIM
+	// and SSO logins leave them alone.
 	SCIM bool `json:"scim"`
 }
 
@@ -67,8 +68,19 @@ func scimFail(w http.ResponseWriter, status int, scimType, detail string) {
 	})
 }
 
+// Account errors: SCIM never takes over a local or service account, and never
+// disables or deletes the last active superuser.
+var (
+	errSCIMLocalAccount = errors.New("scim: a local or service account has this username")
+	errSCIMLastAdmin    = errors.New("scim: refusing to disable or delete the last active superuser")
+)
+
 func scimError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, errSCIMLocalAccount):
+		scimFail(w, http.StatusConflict, "uniqueness", "a local or service account has this username")
+	case errors.Is(err, errSCIMLastAdmin):
+		scimFail(w, http.StatusConflict, "mutability", "this is the last active superuser")
 	case errors.Is(err, scim.ErrNotFound):
 		scimFail(w, http.StatusNotFound, "", "resource not found")
 	case errors.Is(err, scim.ErrConflict):
@@ -106,14 +118,17 @@ func (h *HandlersApi) SCIMAuth(next http.Handler) http.Handler {
 	})
 }
 
-// scimApplied audits a change and rewrites the Santa groups of the users it
-// touched. A failure answers 500 so the identity provider retries; the
-// rewrite is idempotent.
+// scimApplied audits a change and, with Santa enabled, rewrites the Santa
+// groups of the accounts it touched. A failure answers 500 so the identity
+// provider retries; the rewrite is idempotent.
 func (h *HandlersApi) scimApplied(w http.ResponseWriter, r *http.Request, action string, names []string) bool {
 	h.AuditLog.UserAction("scim", "scim: "+action, utils.GetIP(r))
 	for _, n := range names {
+		if h.Santa == nil {
+			break
+		}
 		groups, err := h.SCIM.Groups(n)
-		if err == nil && h.Santa != nil {
+		if err == nil {
 			err = h.Santa.SetUserGroups(n, groups)
 		}
 		if err != nil {
@@ -122,6 +137,87 @@ func (h *HandlersApi) scimApplied(w http.ResponseWriter, r *http.Request, action
 		}
 	}
 	return true
+}
+
+// scimLastAdmin reports whether a is the only superuser left enabled.
+func (h *HandlersApi) scimLastAdmin(a users.AdminUser) (bool, error) {
+	if !a.Admin || a.Disabled {
+		return false, nil
+	}
+	n, err := h.Users.CountActiveAdmins()
+	return n <= 1, err
+}
+
+// scimAccount brings the osctrl account of a SCIM user in line with it: it
+// creates the account with no access (like JIT, never a superuser), copies the
+// email and name, and disables or re-enables it. It is idempotent.
+func (h *HandlersApi) scimAccount(u scim.User) error {
+	exists, a := h.Users.ExistsGet(u.Username)
+	if !exists {
+		acct, err := h.Users.New(u.Username, "", u.Email, u.DisplayName, false, false)
+		if err != nil {
+			return err
+		}
+		acct.AuthSource, acct.Disabled = "scim", !u.Active
+		return h.Users.Create(acct)
+	}
+	if a.AuthSource == "" || a.Service {
+		return errSCIMLocalAccount
+	}
+	if u.Email != "" && u.Email != a.Email {
+		if err := h.Users.ChangeEmail(a.Username, u.Email); err != nil {
+			return err
+		}
+	}
+	if u.DisplayName != "" && u.DisplayName != a.Fullname {
+		if err := h.Users.ChangeFullname(a.Username, u.DisplayName); err != nil {
+			return err
+		}
+	}
+	if a.Disabled == u.Active {
+		if !u.Active {
+			last, err := h.scimLastAdmin(a)
+			if err != nil {
+				return err
+			}
+			if last {
+				return errSCIMLastAdmin
+			}
+		}
+		return h.Users.SetDisabled(a.Username, !u.Active)
+	}
+	return nil
+}
+
+// scimDeleteAccount removes the osctrl account of a deleted SCIM user with its
+// permissions and second factors, as removing a user from the Users page does.
+func (h *HandlersApi) scimDeleteAccount(username string) error {
+	exists, a := h.Users.ExistsGet(username)
+	if !exists {
+		return nil
+	}
+	if a.AuthSource == "" || a.Service {
+		return errSCIMLocalAccount
+	}
+	last, err := h.scimLastAdmin(a)
+	if err != nil {
+		return err
+	}
+	if last {
+		return errSCIMLastAdmin
+	}
+	if err := h.Users.DeleteAllPermissions(username); err != nil {
+		return err
+	}
+	if err := h.Users.Delete(username); err != nil {
+		return err
+	}
+	if h.MFA != nil {
+		if err := h.MFA.DeleteUser(username); err != nil {
+			log.Err(err).Msgf("scim: error removing MFA factors for %s", username)
+		}
+	}
+	return nil
 }
 
 // scimPage reads filter, startIndex and count.
@@ -170,7 +266,7 @@ func (h *HandlersApi) SCIMServiceProviderConfigHandler(w http.ResponseWriter, r 
 
 // SCIMUsersHandler — GET and POST /api/v1/scim/v2/Users
 // @Summary List or provision SCIM users
-// @Description GET supports `filter=userName eq "x"` (also externalId, id), startIndex and count. POST provisions a user. Authenticated with the SCIM bearer token.
+// @Description GET supports `filter=userName eq "x"` (also externalId, id), startIndex and count. POST provisions a user and its osctrl account (no access until granted; 409 when a local or service account has the name). Authenticated with the SCIM bearer token.
 // @Tags scim
 // @Accept json
 // @Produce json
@@ -191,12 +287,23 @@ func (h *HandlersApi) SCIMUsersHandler(w http.ResponseWriter, r *http.Request) {
 		if !scimDecode(w, r, &in) {
 			return
 		}
-		u, names, err := h.SCIM.CreateUser(in)
+		if exists, a := h.Users.ExistsGet(scim.AccountName(in.UserName)); exists && (a.AuthSource == "" || a.Service) {
+			scimError(w, errSCIMLocalAccount)
+			return
+		}
+		u, acct, err := h.SCIM.CreateUser(in)
 		if err != nil {
 			scimError(w, err)
 			return
 		}
-		if h.scimApplied(w, r, "create user "+u.UserName, names) {
+		if err := h.scimAccount(acct); err != nil {
+			if _, derr := h.SCIM.DeleteUser(acct.ID); derr != nil {
+				log.Err(derr).Msgf("scim: error undoing user %s", acct.UserName)
+			}
+			scimError(w, err)
+			return
+		}
+		if h.scimApplied(w, r, fmt.Sprintf("create user %s account=%s active=%t", u.UserName, acct.Username, acct.Active), []string{acct.Username}) {
 			utils.HTTPResponse(w, scimJSON, http.StatusCreated, u)
 		}
 		return
@@ -216,7 +323,7 @@ func (h *HandlersApi) SCIMUsersHandler(w http.ResponseWriter, r *http.Request) {
 
 // SCIMUserHandler — GET, PUT, PATCH and DELETE /api/v1/scim/v2/Users/{id}
 // @Summary Read, replace, patch or delete a SCIM user
-// @Description PATCH sets active, userName and externalId; other attributes are accepted and ignored. A user that is inactive or deleted has no groups. Authenticated with the SCIM bearer token.
+// @Description PATCH sets active, userName, externalId, displayName, name and emails; other attributes are accepted and ignored. active=false disables the osctrl account and ends its sessions; DELETE deletes the account and its permissions. The last active superuser is never disabled or deleted (409). Authenticated with the SCIM bearer token.
 // @Tags scim
 // @Accept json
 // @Produce json
@@ -234,9 +341,9 @@ func (h *HandlersApi) SCIMUsersHandler(w http.ResponseWriter, r *http.Request) {
 func (h *HandlersApi) SCIMUserHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var (
-		u     scim.UserResource
-		names []string
-		err   error
+		u    scim.UserResource
+		acct scim.User
+		err  error
 	)
 	switch r.Method {
 	case http.MethodGet:
@@ -247,14 +354,17 @@ func (h *HandlersApi) SCIMUserHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, scimJSON, http.StatusOK, u)
 		return
 	case http.MethodDelete:
-		if u, err = h.SCIM.GetUser(id); err == nil {
-			names, err = h.SCIM.DeleteUser(id)
+		// The account goes first, so a refusal (last superuser) keeps both.
+		if acct, err = h.SCIM.User(id); err == nil {
+			if err = h.scimDeleteAccount(acct.Username); err == nil {
+				_, err = h.SCIM.DeleteUser(id)
+			}
 		}
 		if err != nil {
 			scimError(w, err)
 			return
 		}
-		if h.scimApplied(w, r, "delete user "+u.UserName, names) {
+		if h.scimApplied(w, r, fmt.Sprintf("delete user %s account=%s", acct.UserName, acct.Username), []string{acct.Username}) {
 			w.WriteHeader(http.StatusNoContent)
 		}
 		return
@@ -263,19 +373,22 @@ func (h *HandlersApi) SCIMUserHandler(w http.ResponseWriter, r *http.Request) {
 		if !scimDecode(w, r, &in) {
 			return
 		}
-		u, names, err = h.SCIM.ReplaceUser(id, in)
+		u, acct, err = h.SCIM.ReplaceUser(id, in)
 	default:
 		var in scim.PatchRequest
 		if !scimDecode(w, r, &in) {
 			return
 		}
-		u, names, err = h.SCIM.PatchUser(id, in.Operations)
+		u, acct, err = h.SCIM.PatchUser(id, in.Operations)
+	}
+	if err == nil {
+		err = h.scimAccount(acct)
 	}
 	if err != nil {
 		scimError(w, err)
 		return
 	}
-	if h.scimApplied(w, r, fmt.Sprintf("update user %s active=%t", u.UserName, *u.Active), names) {
+	if h.scimApplied(w, r, fmt.Sprintf("update user %s account=%s active=%t", u.UserName, acct.Username, acct.Active), []string{acct.Username}) {
 		utils.HTTPResponse(w, scimJSON, http.StatusOK, u)
 	}
 }
@@ -428,7 +541,6 @@ func (h *HandlersApi) SCIMStatusHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	var out SCIMStatusResponse
 	if h.SCIM != nil {
-		out.Available = true
 		created, err := h.SCIM.TokenCreated()
 		if err != nil {
 			apiErrorResponse(w, "error reading SCIM status", http.StatusInternalServerError, err)
@@ -459,7 +571,7 @@ func (h *HandlersApi) SCIMTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.SCIM == nil {
-		apiErrorResponse(w, "SCIM needs Santa enabled", http.StatusServiceUnavailable, nil)
+		apiErrorResponse(w, "SCIM is not available", http.StatusServiceUnavailable, nil)
 		return
 	}
 	if r.Method == http.MethodDelete {
@@ -483,7 +595,7 @@ func (h *HandlersApi) SCIMTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 // UserGroupsHandler — GET /api/v1/users/{username}/groups
 // @Summary IdP groups stored for a user
-// @Description The groups Santa group tags use, from the user's last SSO login or from SCIM. Requires the same access as reading the user.
+// @Description From SCIM when SCIM provisions the user, otherwise from their last SSO login (stored only with Santa enabled). Requires the same access as reading the user.
 // @Tags users
 // @Produce json
 // @Param username path string true "Username"
@@ -504,24 +616,24 @@ func (h *HandlersApi) UserGroupsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	username := r.PathValue("username")
 	out := UserGroupsResponse{Groups: []string{}}
-	if h.Santa != nil {
-		ug, err := h.Santa.UserGroupsOf(username)
-		if err != nil {
-			apiErrorResponse(w, "error getting groups", http.StatusInternalServerError, err)
-			return
-		}
-		out.Groups = ug.Groups
-		if !ug.UpdatedAt.IsZero() {
-			out.UpdatedAt = &ug.UpdatedAt
+	var err error
+	if h.SCIM != nil {
+		if out.SCIM, err = h.SCIM.Managed(username); err == nil && out.SCIM {
+			out.Groups, err = h.SCIM.Groups(username)
 		}
 	}
-	if h.SCIM != nil {
-		managed, err := h.SCIM.Managed(username)
-		if err != nil {
-			apiErrorResponse(w, "error getting groups", http.StatusInternalServerError, err)
-			return
+	if err == nil && !out.SCIM && h.Santa != nil {
+		var ug santa.UserGroups
+		if ug, err = h.Santa.UserGroupsOf(username); err == nil {
+			out.Groups = ug.Groups
+			if !ug.UpdatedAt.IsZero() {
+				out.UpdatedAt = &ug.UpdatedAt
+			}
 		}
-		out.SCIM = managed
+	}
+	if err != nil {
+		apiErrorResponse(w, "error getting groups", http.StatusInternalServerError, err)
+		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, out)
 }
