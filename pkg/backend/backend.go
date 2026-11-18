@@ -7,7 +7,6 @@ import (
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/spf13/viper"
 
-	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -16,8 +15,11 @@ import (
 const (
 	// DBString to format connection string to database for postgres
 	PostgresDBString = "host=%s port=%d dbname=%s user=%s password=%s sslmode=%s"
-	// MySQLDBString to format connection string for MySQL
-	MySQLDBString = "%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local"
+	// MySQLDBString to format connection string for MySQL. sql_mode is the
+	// MySQL 8 default minus NO_ZERO_DATE and NO_ZERO_IN_DATE: the driver writes
+	// an unset time.Time as '0000-00-00', which those modes reject.
+	MySQLDBString = "%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local" +
+		"&sql_mode=%%27ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION%%27"
 	// DBKey to identify the configuration JSON key
 	DBKey = "db"
 	// Database types
@@ -110,7 +112,7 @@ func openDB(cfg config.YAMLConfigurationDB, dsn string) (*gorm.DB, error) {
 	case DBTypePostgres:
 		dbConn, err = gorm.Open(postgres.Open(dsn), gormConfig)
 	case DBTypeMySQL:
-		dbConn, err = gorm.Open(mysql.Open(dsn), gormConfig)
+		dbConn, err = gorm.Open(openMySQL(dsn), gormConfig)
 	case DBTypeSQLite:
 		dbConn, err = gorm.Open(sqlite.Open(dsn), gormConfig)
 	default:
