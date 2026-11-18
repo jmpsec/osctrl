@@ -547,8 +547,10 @@ export const nl: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'SCIM-provisioning',
-    intro: 'Je identiteitsprovider stuurt gebruikers en groepslidmaatschap hierheen, zodat Santa-groepstags wijzigingen volgen zonder osctrl-login.',
-    unavailable: 'SCIM vereist dat Santa aan staat in osctrl-api.',
+    intro: 'Je identiteitsprovider maakt hier SSO-accounts aan, schakelt ze uit en verwijdert ze, en houdt hun groepen actueel. Nieuwe accounts hebben geen toegang tot iemand die verleent.',
+    provisioned: 'Geprovisioned via SCIM; meldt aan met SSO',
+    disabled: 'Uitgeschakeld',
+    disabledHint: 'Kan niet inloggen: de identiteitsprovider heeft deze gebruiker gedeactiveerd.',
     off: 'Uit. Maak een token aan om het in te schakelen.',
     on: 'Aan sinds {{date}}.',
     baseUrl: 'Basis-URL',

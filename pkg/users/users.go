@@ -62,6 +62,9 @@ type AdminUser struct {
 	// the next login over that protocol binds it.
 	OIDCSubject string `gorm:"column:oidc_subject" json:"-"`
 	SAMLSubject string `gorm:"column:saml_subject" json:"-"`
+	// Disabled accounts cannot log in by any method and their tokens stop
+	// validating. SCIM sets it when the identity provider deactivates a user.
+	Disabled bool
 	// PreferredLanguage is the UI language the operator picked in
 	// the SPA (BCP-47 base tag, e.g. "en", "es", "pt"). It is
 	// cross-device state: the frontend reconciles its local
@@ -210,7 +213,7 @@ func (m *UserManager) CheckLoginCredentials(username, password string) (bool, Ad
 	// Check for hash matching
 	p := []byte(password)
 	existing := []byte(user.PassHash)
-	if err := bcrypt.CompareHashAndPassword(existing, p); err != nil {
+	if err := bcrypt.CompareHashAndPassword(existing, p); err != nil || user.Disabled {
 		return false, AdminUser{}
 	}
 	// Successful login — rehash if the stored cost is below current.
@@ -418,6 +421,34 @@ func (m *UserManager) CountAdmins() (int64, error) {
 		return 0, fmt.Errorf("count admins: %w", err)
 	}
 	return results, nil
+}
+
+// CountActiveAdmins returns the number of superusers that are not disabled.
+// CountAdmins stays the bootstrap check, so disabling every superuser never
+// lets the next federated login become one.
+func (m *UserManager) CountActiveAdmins() (int64, error) {
+	var results int64
+	if err := m.DB.Model(&AdminUser{}).Where("admin = ? AND disabled = ?", true, false).Count(&results).Error; err != nil {
+		return 0, fmt.Errorf("count active admins: %w", err)
+	}
+	return results, nil
+}
+
+// SetDisabled disables or re-enables an account. Disabling also clears its
+// API and CSRF tokens, so open sessions end at once.
+func (m *UserManager) SetDisabled(username string, disabled bool) error {
+	user, err := m.Get(username)
+	if err != nil {
+		return fmt.Errorf("error getting user %w", err)
+	}
+	up := map[string]interface{}{"disabled": disabled}
+	if disabled {
+		up["api_token"], up["token_expire"], up["csrf_token"] = "", time.Time{}, ""
+	}
+	if err := m.DB.Model(&user).Updates(up).Error; err != nil {
+		return fmt.Errorf("update %w", err)
+	}
+	return nil
 }
 
 // ChangeAdmin to modify the admin setting for a user

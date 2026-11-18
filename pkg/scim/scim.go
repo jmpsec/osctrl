@@ -1,6 +1,7 @@
 // Package scim stores the users and groups an identity provider provisions
-// over SCIM 2.0 (RFC 7643, RFC 7644): enough to know each user's groups. Users
-// are not osctrl accounts; a SCIM user is matched to other data by userName.
+// over SCIM 2.0 (RFC 7643, RFC 7644). Each SCIM user is linked to one osctrl
+// account, named from userName the way federated login names accounts; the
+// API keeps that account in step (create, disable, delete).
 package scim
 
 import (
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmpsec/osctrl/pkg/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -49,8 +51,14 @@ type User struct {
 	UserName   string `gorm:"type:varchar(255);uniqueIndex"` // lowercase
 	ExternalID string `gorm:"type:varchar(255)"`
 	Active     bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	// Username is the linked osctrl account. It is set at creation and kept
+	// when userName changes: federated login matches the IdP subject, and
+	// permissions are keyed by the account name.
+	Username    string `gorm:"type:varchar(255);uniqueIndex"`
+	Email       string `gorm:"type:varchar(255)"`
+	DisplayName string `gorm:"type:varchar(255)"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // TableName for User
@@ -100,16 +108,57 @@ type Meta struct {
 	LastModified time.Time `json:"lastModified"`
 }
 
-// UserResource is a user on the wire. Attributes osctrl does not store, such
-// as name and emails, are accepted and dropped.
+// Name is the user's name. Only a full name is kept.
+type Name struct {
+	Formatted  string `json:"formatted,omitempty"`
+	GivenName  string `json:"givenName,omitempty"`
+	FamilyName string `json:"familyName,omitempty"`
+}
+
+// Email is one of the user's addresses. Only one address is kept: the
+// primary, or else the first.
+type Email struct {
+	Value   string `json:"value"`
+	Type    string `json:"type,omitempty"`
+	Primary bool   `json:"primary,omitempty"`
+}
+
+// UserResource is a user on the wire. Attributes osctrl does not store are
+// accepted and dropped.
 type UserResource struct {
-	Schemas    []string `json:"schemas"`
-	ID         string   `json:"id,omitempty"`
-	ExternalID string   `json:"externalId,omitempty"`
-	UserName   string   `json:"userName"`
-	Active     *bool    `json:"active,omitempty"`
-	Groups     []Ref    `json:"groups,omitempty"`
-	Meta       *Meta    `json:"meta,omitempty"`
+	Schemas     []string `json:"schemas"`
+	ID          string   `json:"id,omitempty"`
+	ExternalID  string   `json:"externalId,omitempty"`
+	UserName    string   `json:"userName"`
+	DisplayName string   `json:"displayName,omitempty"`
+	Name        *Name    `json:"name,omitempty"`
+	Emails      []Email  `json:"emails,omitempty"`
+	Active      *bool    `json:"active,omitempty"`
+	Groups      []Ref    `json:"groups,omitempty"`
+	Meta        *Meta    `json:"meta,omitempty"`
+}
+
+// fullName picks the displayName, or else a name built from its parts.
+func (r UserResource) fullName() string {
+	if r.DisplayName != "" || r.Name == nil {
+		return r.DisplayName
+	}
+	if r.Name.Formatted != "" {
+		return r.Name.Formatted
+	}
+	return strings.TrimSpace(r.Name.GivenName + " " + r.Name.FamilyName)
+}
+
+func pickEmail(es []Email) string {
+	for _, e := range es {
+		if e.Primary {
+			return e.Value
+		}
+	}
+	if len(es) > 0 {
+		return es[0].Value
+	}
+	return ""
 }
 
 // GroupResource is a group on the wire.
@@ -210,23 +259,30 @@ func (m *Manager) CheckToken(presented string) bool {
 	return subtle.ConstantTimeCompare([]byte(ts[0].Hash), []byte(hashToken(presented))) == 1
 }
 
-// Groups returns the display names of username's groups, sorted. A user SCIM
-// does not know, or that is inactive, has none.
+// Groups returns the display names of the groups of the osctrl account
+// username, sorted. An account SCIM does not provision, or whose user is
+// inactive, has none.
 func (m *Manager) Groups(username string) ([]string, error) {
 	names := []string{}
 	err := m.DB.Model(&Group{}).
 		Joins("JOIN scim_members ON scim_members.group_id = scim_groups.id").
 		Joins("JOIN scim_users ON scim_users.id = scim_members.user_id").
-		Where("scim_users.user_name = ? AND scim_users.active = ?", strings.ToLower(username), true).
-		Distinct().Order("display_name").Pluck("display_name", &names).Error
+		Where("scim_users.username = ? AND scim_users.active = ?", username, true).
+		Distinct().Order("scim_groups.display_name").Pluck("scim_groups.display_name", &names).Error
 	return names, err
 }
 
-// Managed reports whether SCIM provisions username.
+// Managed reports whether SCIM provisions the osctrl account username.
 func (m *Manager) Managed(username string) (bool, error) {
 	var n int64
-	err := m.DB.Model(&User{}).Where("user_name = ?", strings.ToLower(username)).Count(&n).Error
+	err := m.DB.Model(&User{}).Where("username = ?", username).Count(&n).Error
 	return n > 0, err
+}
+
+// AccountName is the osctrl account name for a SCIM userName, by the rules
+// federated login applies to IdP usernames; empty when it is not usable.
+func AccountName(userName string) string {
+	return utils.SanitizeUsername(userName)
 }
 
 func checkName(s string) (string, error) {
@@ -253,7 +309,10 @@ func page(q *gorm.DB, start, count int) *gorm.DB {
 func (m *Manager) userResource(tx *gorm.DB, u User) (UserResource, error) {
 	active := u.Active
 	r := UserResource{Schemas: []string{SchemaUser}, ID: u.ID, ExternalID: u.ExternalID, UserName: u.UserName, Active: &active,
-		Meta: &Meta{ResourceType: "User", Created: u.CreatedAt, LastModified: u.UpdatedAt}}
+		DisplayName: u.DisplayName, Meta: &Meta{ResourceType: "User", Created: u.CreatedAt, LastModified: u.UpdatedAt}}
+	if u.Email != "" {
+		r.Emails = []Email{{Value: u.Email, Primary: true}}
+	}
 	var gs []Group
 	err := tx.Joins("JOIN scim_members ON scim_members.group_id = scim_groups.id").
 		Where("scim_members.user_id = ?", u.ID).Order("display_name").Find(&gs).Error
@@ -272,10 +331,11 @@ func getUser(tx *gorm.DB, id string) (User, error) {
 	return u, err
 }
 
-// saveUser writes u, failing with ErrConflict when another user has its name.
+// saveUser writes u, failing with ErrConflict when another user has its
+// userName or its osctrl account.
 func saveUser(tx *gorm.DB, u *User) error {
 	var n int64
-	if err := tx.Model(&User{}).Where("user_name = ? AND id <> ?", u.UserName, u.ID).Count(&n).Error; err != nil {
+	if err := tx.Model(&User{}).Where("(user_name = ? OR username = ?) AND id <> ?", u.UserName, u.Username, u.ID).Count(&n).Error; err != nil {
 		return err
 	}
 	if n > 0 {
@@ -289,27 +349,48 @@ func affected(names ...string) []string {
 	return slices.Compact(names)
 }
 
-// CreateUser provisions a user. It is active unless the request says otherwise.
-func (m *Manager) CreateUser(in UserResource) (UserResource, []string, error) {
+// setProfile copies userName, externalId, active, email and full name from a
+// create or replace request.
+func setProfile(u *User, in UserResource) error {
 	name, err := checkName(in.UserName)
 	if err != nil {
-		return UserResource{}, nil, err
+		return err
 	}
-	ext, err := checkExternal(in.ExternalID)
-	if err != nil {
-		return UserResource{}, nil, err
+	if u.ExternalID, err = checkExternal(in.ExternalID); err != nil {
+		return err
 	}
+	if u.Email, err = checkExternal(pickEmail(in.Emails)); err != nil {
+		return err
+	}
+	if u.DisplayName, err = checkExternal(in.fullName()); err != nil {
+		return err
+	}
+	u.UserName = strings.ToLower(name)
+	u.Active = in.Active == nil || *in.Active
+	return nil
+}
+
+// CreateUser provisions a user, active unless the request says otherwise,
+// linked to the osctrl account AccountName(userName).
+func (m *Manager) CreateUser(in UserResource) (UserResource, User, error) {
 	now := m.now()
-	u := User{ID: uuid.NewString(), UserName: strings.ToLower(name), ExternalID: ext, Active: in.Active == nil || *in.Active, CreatedAt: now, UpdatedAt: now}
+	u := User{ID: uuid.NewString(), CreatedAt: now, UpdatedAt: now}
+	if err := setProfile(&u, in); err != nil {
+		return UserResource{}, User{}, err
+	}
+	if u.Username = AccountName(in.UserName); u.Username == "" {
+		return UserResource{}, User{}, ErrInvalid
+	}
 	var out UserResource
-	err = m.DB.Transaction(func(tx *gorm.DB) error {
+	err := m.DB.Transaction(func(tx *gorm.DB) error {
 		if err := saveUser(tx, &u); err != nil {
 			return err
 		}
+		var err error
 		out, err = m.userResource(tx, u)
 		return err
 	})
-	return out, affected(u.UserName), err
+	return out, u, err
 }
 
 // GetUser returns a user.
@@ -319,6 +400,11 @@ func (m *Manager) GetUser(id string) (UserResource, error) {
 		return UserResource{}, err
 	}
 	return m.userResource(m.DB, u)
+}
+
+// User returns the stored user, with its linked account.
+func (m *Manager) User(id string) (User, error) {
+	return getUser(m.DB, id)
 }
 
 // ListUsers returns a page of users and how many match the filter. start is
@@ -355,25 +441,15 @@ func (m *Manager) ListUsers(f Filter, start, count int) ([]UserResource, int64, 
 	return out, total, nil
 }
 
-// ReplaceUser sets a user's userName, externalId and active.
-func (m *Manager) ReplaceUser(id string, in UserResource) (UserResource, []string, error) {
-	return m.changeUser(id, func(u *User) error {
-		name, err := checkName(in.UserName)
-		if err != nil {
-			return err
-		}
-		if u.ExternalID, err = checkExternal(in.ExternalID); err != nil {
-			return err
-		}
-		u.UserName = strings.ToLower(name)
-		u.Active = in.Active == nil || *in.Active
-		return nil
-	})
+// ReplaceUser sets a user's userName, externalId, active, email and name. The
+// linked osctrl account keeps its name.
+func (m *Manager) ReplaceUser(id string, in UserResource) (UserResource, User, error) {
+	return m.changeUser(id, func(u *User) error { return setProfile(u, in) })
 }
 
 // PatchUser applies PATCH operations to a user. Paths osctrl does not store
 // are accepted and ignored.
-func (m *Manager) PatchUser(id string, ops []Operation) (UserResource, []string, error) {
+func (m *Manager) PatchUser(id string, ops []Operation) (UserResource, User, error) {
 	return m.changeUser(id, func(u *User) error {
 		for _, op := range ops {
 			switch strings.ToLower(op.Op) {
@@ -404,7 +480,41 @@ func (m *Manager) PatchUser(id string, ops []Operation) (UserResource, []string,
 }
 
 func setUserAttr(u *User, attr string, v json.RawMessage) error {
-	switch strings.ToLower(attr) {
+	attr = strings.ToLower(attr)
+	if strings.HasPrefix(attr, "emails") {
+		// "emails", or a filtered path such as emails[type eq "work"].value.
+		var s string
+		if json.Unmarshal(v, &s) != nil {
+			var es []Email
+			if json.Unmarshal(v, &es) != nil {
+				return ErrInvalid
+			}
+			s = pickEmail(es)
+		}
+		e, err := checkExternal(s)
+		u.Email = e
+		return err
+	}
+	switch attr {
+	case "displayname":
+		var s string
+		if json.Unmarshal(v, &s) != nil {
+			return ErrInvalid
+		}
+		s, err := checkExternal(s)
+		u.DisplayName = s
+		return err
+	case "name", "name.formatted":
+		// displayName wins; a name only fills in when there is none.
+		var n Name
+		if attr == "name" && json.Unmarshal(v, &n) != nil || attr != "name" && json.Unmarshal(v, &n.Formatted) != nil {
+			return ErrInvalid
+		}
+		if u.DisplayName == "" {
+			s, err := checkExternal(UserResource{Name: &n}.fullName())
+			u.DisplayName = s
+			return err
+		}
 	case "active":
 		b, err := parseBool(v)
 		if err != nil {
@@ -450,15 +560,14 @@ func parseBool(v json.RawMessage) (bool, error) {
 	return false, ErrInvalid
 }
 
-func (m *Manager) changeUser(id string, change func(*User) error) (UserResource, []string, error) {
+func (m *Manager) changeUser(id string, change func(*User) error) (UserResource, User, error) {
 	var out UserResource
-	var names []string
+	var u User
 	err := m.DB.Transaction(func(tx *gorm.DB) error {
-		u, err := getUser(tx, id)
-		if err != nil {
+		var err error
+		if u, err = getUser(tx, id); err != nil {
 			return err
 		}
-		old := u.UserName
 		if err := change(&u); err != nil {
 			return err
 		}
@@ -466,28 +575,26 @@ func (m *Manager) changeUser(id string, change func(*User) error) (UserResource,
 		if err := saveUser(tx, &u); err != nil {
 			return err
 		}
-		names = affected(old, u.UserName)
 		out, err = m.userResource(tx, u)
 		return err
 	})
-	return out, names, err
+	return out, u, err
 }
 
-// DeleteUser removes a user and its memberships.
-func (m *Manager) DeleteUser(id string) ([]string, error) {
-	var name string
+// DeleteUser removes a user and its memberships, and returns it.
+func (m *Manager) DeleteUser(id string) (User, error) {
+	var u User
 	err := m.DB.Transaction(func(tx *gorm.DB) error {
-		u, err := getUser(tx, id)
-		if err != nil {
+		var err error
+		if u, err = getUser(tx, id); err != nil {
 			return err
 		}
-		name = u.UserName
 		if err := tx.Where("user_id = ?", id).Delete(&Member{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&u).Error
 	})
-	return affected(name), err
+	return u, err
 }
 
 // --- groups ---
@@ -501,11 +608,11 @@ func getGroup(tx *gorm.DB, id string) (Group, error) {
 	return g, err
 }
 
-// memberNames returns the userNames of a group's members.
+// memberNames returns the osctrl accounts of a group's members.
 func memberNames(tx *gorm.DB, groupID string) ([]string, error) {
 	var names []string
 	err := tx.Model(&User{}).Joins("JOIN scim_members ON scim_members.user_id = scim_users.id").
-		Where("scim_members.group_id = ?", groupID).Pluck("user_name", &names).Error
+		Where("scim_members.group_id = ?", groupID).Pluck("scim_users.username", &names).Error
 	return names, err
 }
 

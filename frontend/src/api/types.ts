@@ -523,8 +523,11 @@ export interface AdminUser {
   environment_id: number;
   // Empty / undefined for the password-login path (default).
   // "oidc" or "saml" for users JIT-provisioned through the federated
-  // callback. Used by UsersPage to render the OIDC/SAML badge.
+  // callback, "scim" for SCIM-provisioned users that have not signed in
+  // yet. Used by UsersPage to render the OIDC/SAML/SCIM badge.
   auth_source?: string;
+  /** Cannot log in; SCIM sets it when the IdP deactivates the user. */
+  disabled?: boolean;
 }
 
 export interface EnvAccess {

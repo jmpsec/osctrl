@@ -95,6 +95,20 @@ func TestHashPasswordWithSalt(t *testing.T) {
 	assert.Equal(t, hashed[0:7], "$2a$12$")
 }
 
+// A disabled account fails even with the right password.
+func TestCheckLoginCredentialsDisabled(t *testing.T) {
+	manager, mock := setupTestManager(t)
+	hashed, err := manager.HashPasswordWithSalt("testPassword")
+	assert.NoError(t, err)
+	mock.ExpectQuery(
+		regexp.QuoteMeta(`SELECT * FROM "admin_users" WHERE username = $1 AND "admin_users"."deleted_at" IS NULL ORDER BY "admin_users"."id" LIMIT $2`)).
+		WithArgs("testUser", 1).
+		WillReturnRows(sqlmock.NewRows([]string{"username", "pass_hash", "disabled"}).AddRow("testUser", hashed, true))
+	access, user := manager.CheckLoginCredentials("testUser", "testPassword")
+	assert.False(t, access)
+	assert.Empty(t, user.Username)
+}
+
 func TestCheckLoginCredentials(t *testing.T) {
 	manager, mock := setupTestManager(t)
 	hashed, err := manager.HashPasswordWithSalt("testPassword")
@@ -178,8 +192,8 @@ func TestCreateUser(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery(
-		regexp.QuoteMeta(`INSERT INTO "admin_users" ("created_at","updated_at","deleted_at","username","email","fullname","pass_hash","api_token","token_expire","admin","service","user_admin","env_manager","read_only_admin","alert_admin","uuid","csrf_token","last_ip_address","last_user_agent","last_access","last_token_use","environment_id","auth_source","oidc_subject","saml_subject","preferred_language") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING "id"`)).
-		WithArgs(tt, tt, nil, user.Username, user.Email, user.Fullname, user.PassHash, user.APIToken, tt, user.Admin, user.Service, user.UserAdmin, user.EnvManager, user.ReadOnlyAdmin, user.AlertAdmin, user.UUID, user.CSRFToken, user.LastIPAddress, user.LastUserAgent, tt, tt, user.EnvironmentID, user.AuthSource, user.OIDCSubject, user.SAMLSubject, user.PreferredLanguage).
+		regexp.QuoteMeta(`INSERT INTO "admin_users" ("created_at","updated_at","deleted_at","username","email","fullname","pass_hash","api_token","token_expire","admin","service","user_admin","env_manager","read_only_admin","alert_admin","uuid","csrf_token","last_ip_address","last_user_agent","last_access","last_token_use","environment_id","auth_source","oidc_subject","saml_subject","disabled","preferred_language") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING "id"`)).
+		WithArgs(tt, tt, nil, user.Username, user.Email, user.Fullname, user.PassHash, user.APIToken, tt, user.Admin, user.Service, user.UserAdmin, user.EnvManager, user.ReadOnlyAdmin, user.AlertAdmin, user.UUID, user.CSRFToken, user.LastIPAddress, user.LastUserAgent, tt, tt, user.EnvironmentID, user.AuthSource, user.OIDCSubject, user.SAMLSubject, user.Disabled, user.PreferredLanguage).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(456))
 	mock.ExpectCommit()
 	err := manager.Create(user)

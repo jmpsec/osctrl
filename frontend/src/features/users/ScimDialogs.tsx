@@ -57,8 +57,7 @@ export function ScimModal({ onClose }: { onClose: () => void }) {
       <div className="space-y-4 text-sm text-[color:var(--text-1)]">
         <p>{t('scim.intro')}</p>
         <ErrorLine err={status.error ?? rotate.error ?? remove.error} />
-        {s && !s.available && <p className="text-[color:var(--text-2)]">{t('scim.unavailable')}</p>}
-        {s?.available && (
+        {s && (
           <>
             <p className="text-[color:var(--text-2)]">
               {s.enabled && s.token_created_at
@@ -88,7 +87,7 @@ export function ScimModal({ onClose }: { onClose: () => void }) {
           <button type="button" onClick={onClose} className={ghost}>
             {t('common.close')}
           </button>
-          {s?.available && (
+          {s && (
             <button type="button" className={primary} disabled={rotate.isPending} onClick={() => rotate.mutate()}>
               {s.enabled ? t('scim.rotate') : t('scim.create')}
             </button>

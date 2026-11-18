@@ -29,16 +29,9 @@ function wrap(node: ReactNode) {
 describe('ScimModal', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('says SCIM needs Santa when unavailable', async () => {
-    mockStatus.mockResolvedValue({ available: false, enabled: false });
-    wrap(<ScimModal onClose={() => {}} />);
-    expect(await screen.findByText('SCIM needs Santa enabled on osctrl-api.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Create token' })).not.toBeInTheDocument();
-  });
-
   it('creates a token and shows it once with the base URL', async () => {
-    mockStatus.mockResolvedValueOnce({ available: true, enabled: false });
-    mockStatus.mockResolvedValue({ available: true, enabled: true, token_created_at: '2026-11-18T10:00:00Z' });
+    mockStatus.mockResolvedValueOnce({ enabled: false });
+    mockStatus.mockResolvedValue({ enabled: true, token_created_at: '2026-11-18T10:00:00Z' });
     mockRotate.mockResolvedValue({ token: 'scim-tok' });
     wrap(<ScimModal onClose={() => {}} />);
     expect(await screen.findByText('Off. Create a token to turn it on.')).toBeInTheDocument();

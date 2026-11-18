@@ -51,6 +51,36 @@ func TestEventSessionRechecksStoredTokenAndIdentity(t *testing.T) {
 	require.False(t, eventSessionValid(r, config.AuthJWT, "event-test-secret-at-least-thirty-two-bytes"))
 }
 
+// A disabled account is refused even while its token is still stored.
+func TestDisabledAccountTokenRejected(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	require.NoError(t, err)
+	previous := apiUsers
+	t.Cleanup(func() { apiUsers = previous })
+	secret := "event-test-secret-at-least-thirty-two-bytes"
+	apiUsers = users.CreateUserManager(db).WithJWT(&config.YAMLConfigurationJWT{JWTSecret: secret, HoursToExpire: 1})
+	require.NoError(t, apiUsers.Create(users.AdminUser{Username: "alice"}))
+	token, expiry, err := apiUsers.CreateToken("alice", "api", 1)
+	require.NoError(t, err)
+	require.NoError(t, apiUsers.UpdateToken("alice", token, expiry))
+	call := func() int {
+		r := httptest.NewRequest("GET", "/api/v1/anything", nil)
+		r.Header.Set("Authorization", "Bearer "+token)
+		r.Header.Set("Accept", "application/json")
+		w := httptest.NewRecorder()
+		handlerAuthCheck(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) }), config.AuthJWT, secret).ServeHTTP(w, r)
+		return w.Code
+	}
+	stream := httptest.NewRequest("GET", "/api/v1/events", nil)
+	stream.Header.Set("Authorization", "Bearer "+token)
+	stream = stream.WithContext(context.WithValue(stream.Context(), handlers.ContextKey(contextAPI), handlers.ContextValue{"user": "alice"}))
+	require.Equal(t, http.StatusTeapot, call())
+	require.True(t, eventSessionValid(stream, config.AuthJWT, secret))
+	require.NoError(t, db.Model(&users.AdminUser{}).Where("username = ?", "alice").Update("disabled", true).Error)
+	require.Equal(t, http.StatusUnauthorized, call())
+	require.False(t, eventSessionValid(stream, config.AuthJWT, secret))
+}
+
 func TestEventPermissionSnapshotReusesAuthenticatedUser(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)

@@ -203,6 +203,7 @@ details intentionally omit users, environment UUIDs, query names, and payloads.
 - Cookie-authenticated mutations use a double-submit `osctrl_csrf` token that is also checked against the value stored on the user row. Bearer-only clients are exempt from CSRF checks.
 - Password users can enroll TOTP, WebAuthn credentials, and recovery codes. MFA can be required deployment-wide; service users and federated logins follow separate policies.
 - OIDC and SAML login providers can be built from persisted `auth_providers` rows. Provider login state is signed, audience-bound, short-lived, and stored in Secure cookies; optional JIT user provisioning and group gates are enforced by the provider layer. Current activation limitations are documented below and in [docs/auth-providers.md](./docs/auth-providers.md).
+- SCIM 2.0 (`/api/v1/scim/v2`, [`pkg/scim`](./pkg/scim)) lets the IdP create, disable and delete SSO accounts and keep their groups. It authenticates with its own hashed bearer token (no cookies, so outside the CSRF model), is off until a superuser creates one, and never grants roles or permissions. `admin_users.disabled` is enforced by password login, federated login, `handlerAuthCheck` and the event stream re-check.
 
 ### MCP
 

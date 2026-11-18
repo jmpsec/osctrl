@@ -232,3 +232,27 @@ func TestFederatedLoginBindsLegacyRowOnFirstLogin(t *testing.T) {
 	require.Equal(t, "https://idp#sub-bob", stored.OIDCSubject)
 	require.Equal(t, "urn:idp#bob@corp", stored.SAMLSubject)
 }
+
+// A SCIM-provisioned account is claimed by its first SSO login, and a
+// disabled account is refused whether matched by username or by subject.
+func TestFederatedLoginRefusesDisabledAccount(t *testing.T) {
+	db := setupResolveTestDB(t)
+	userMgr := users.CreateUserManager(db)
+	h := &HandlersApi{Users: userMgr}
+	pre, err := userMgr.New("jdoe", "", "", "", false, false)
+	require.NoError(t, err)
+	pre.AuthSource, pre.Disabled = "scim", true
+	require.NoError(t, userMgr.Create(pre))
+	identity := auth.ResolvedIdentity{Issuer: "https://idp", Subject: "sub-j", PreferredUsername: "jdoe"}
+	policy := federatedPolicy{authSource: "oidc"}
+
+	_, err = h.resolveFederatedUser(identity, policy, "10.0.0.1")
+	require.ErrorIs(t, err, ErrAuthUserRejected)
+	require.NoError(t, userMgr.SetDisabled("jdoe", false))
+	u, err := h.resolveFederatedUser(identity, policy, "10.0.0.1")
+	require.NoError(t, err)
+	require.Equal(t, "oidc", u.AuthSource)
+	require.NoError(t, userMgr.SetDisabled("jdoe", true))
+	_, err = h.resolveFederatedUser(identity, policy, "10.0.0.1")
+	require.ErrorIs(t, err, ErrAuthUserRejected)
+}

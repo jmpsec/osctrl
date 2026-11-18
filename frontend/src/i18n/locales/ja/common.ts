@@ -547,8 +547,10 @@ export const ja: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'SCIM プロビジョニング',
-    intro: 'ID プロバイダーがユーザーとグループのメンバーシップをここに送信するため、osctrl へのログインなしで Santa のグループタグが変更に追従します。',
-    unavailable: 'SCIM には osctrl-api で Santa を有効にする必要があります。',
+    intro: 'ID プロバイダーがここで SSO アカウントを作成・無効化・削除し、グループを最新に保ちます。新しいアカウントには、誰かが付与するまでアクセス権がありません。',
+    provisioned: 'SCIM でプロビジョニング済み。SSO でサインイン',
+    disabled: '無効',
+    disabledHint: 'ログインできません: ID プロバイダーがこのユーザーを無効化しました。',
     off: 'オフ。トークンを作成すると有効になります。',
     on: '{{date}} から有効。',
     baseUrl: 'ベース URL',

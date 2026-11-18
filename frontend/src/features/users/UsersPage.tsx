@@ -337,6 +337,16 @@ export function UsersPage() {
                           SAML
                         </MetadataBadge>
                       )}
+                      {u.auth_source === 'scim' && (
+                        <MetadataBadge className="cursor-help" title={t('scim.provisioned')}>
+                          SCIM
+                        </MetadataBadge>
+                      )}
+                      {u.disabled && (
+                        <MetadataBadge className="cursor-help" title={t('scim.disabledHint')}>
+                          {t('scim.disabled')}
+                        </MetadataBadge>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 tnum text-xs text-[color:var(--text-2)] text-right">

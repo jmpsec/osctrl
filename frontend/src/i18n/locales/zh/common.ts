@@ -547,8 +547,10 @@ export const zh: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'SCIM 预配',
-    intro: '身份提供商会将用户和组成员关系推送到这里，因此无需登录 osctrl，Santa 组标签即可跟随变更。',
-    unavailable: 'SCIM 需要在 osctrl-api 中启用 Santa。',
+    intro: '身份提供商在此创建、停用和删除 SSO 账户，并保持其组信息最新。新账户在有人授予权限前没有任何访问权限。',
+    provisioned: '由 SCIM 预配，使用 SSO 登录',
+    disabled: '已停用',
+    disabledHint: '无法登录：身份提供商已停用此用户。',
     off: '已关闭。创建令牌即可开启。',
     on: '自 {{date}} 起开启。',
     baseUrl: '基础 URL',

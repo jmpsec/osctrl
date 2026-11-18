@@ -144,6 +144,18 @@ describe('UsersPage', () => {
     mockEditRoles.mockResolvedValue(undefined);
   });
 
+  it('marks SCIM-provisioned and disabled accounts', async () => {
+    mockListUsers.mockResolvedValue([
+      makeUser({ username: 'bob' }),
+      makeUser({ username: 'jdoe', auth_source: 'scim', disabled: true }),
+    ]);
+    renderPage();
+    const jdoe = await row('jdoe');
+    expect(within(jdoe).getByText('SCIM')).toBeInTheDocument();
+    expect(within(jdoe).getByText('Disabled')).toBeInTheDocument();
+    expect(within(await row('bob')).queryByText('Disabled')).toBeNull();
+  });
+
   it('user admin: create modal offers roles but not Superuser; superuser rows have no actions', async () => {
     mockGetMe.mockResolvedValue(makeMe({ user_admin: true }));
     const user = userEvent.setup();

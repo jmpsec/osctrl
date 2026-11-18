@@ -10856,8 +10856,9 @@ paths:
   /api/v1/scim/v2/Users:
     get:
       description: GET supports `filter=userName eq "x"` (also externalId, id),
-        startIndex and count. POST provisions a user. Authenticated with the
-        SCIM bearer token.
+        startIndex and count. POST provisions a user and its osctrl account (no
+        access until granted; 409 when a local or service account has the name).
+        Authenticated with the SCIM bearer token.
       parameters:
         - description: attribute eq \
           in: query
@@ -10912,8 +10913,9 @@ paths:
         - scim
     post:
       description: GET supports `filter=userName eq "x"` (also externalId, id),
-        startIndex and count. POST provisions a user. Authenticated with the
-        SCIM bearer token.
+        startIndex and count. POST provisions a user and its osctrl account (no
+        access until granted; 409 when a local or service account has the name).
+        Authenticated with the SCIM bearer token.
       parameters:
         - description: attribute eq \
           in: query
@@ -10968,9 +10970,11 @@ paths:
         - scim
   "/api/v1/scim/v2/Users/{id}":
     delete:
-      description: PATCH sets active, userName and externalId; other attributes are
-        accepted and ignored. A user that is inactive or deleted has no groups.
-        Authenticated with the SCIM bearer token.
+      description: PATCH sets active, userName, externalId, displayName, name and
+        emails; other attributes are accepted and ignored. active=false disables
+        the osctrl account and ends its sessions; DELETE deletes the account and
+        its permissions. The last active superuser is never disabled or deleted
+        (409). Authenticated with the SCIM bearer token.
       parameters:
         - description: SCIM user ID
           in: path
@@ -11015,9 +11019,11 @@ paths:
       tags:
         - scim
     get:
-      description: PATCH sets active, userName and externalId; other attributes are
-        accepted and ignored. A user that is inactive or deleted has no groups.
-        Authenticated with the SCIM bearer token.
+      description: PATCH sets active, userName, externalId, displayName, name and
+        emails; other attributes are accepted and ignored. active=false disables
+        the osctrl account and ends its sessions; DELETE deletes the account and
+        its permissions. The last active superuser is never disabled or deleted
+        (409). Authenticated with the SCIM bearer token.
       parameters:
         - description: SCIM user ID
           in: path
@@ -11062,9 +11068,11 @@ paths:
       tags:
         - scim
     patch:
-      description: PATCH sets active, userName and externalId; other attributes are
-        accepted and ignored. A user that is inactive or deleted has no groups.
-        Authenticated with the SCIM bearer token.
+      description: PATCH sets active, userName, externalId, displayName, name and
+        emails; other attributes are accepted and ignored. active=false disables
+        the osctrl account and ends its sessions; DELETE deletes the account and
+        its permissions. The last active superuser is never disabled or deleted
+        (409). Authenticated with the SCIM bearer token.
       parameters:
         - description: SCIM user ID
           in: path
@@ -11109,9 +11117,11 @@ paths:
       tags:
         - scim
     put:
-      description: PATCH sets active, userName and externalId; other attributes are
-        accepted and ignored. A user that is inactive or deleted has no groups.
-        Authenticated with the SCIM bearer token.
+      description: PATCH sets active, userName, externalId, displayName, name and
+        emails; other attributes are accepted and ignored. active=false disables
+        the osctrl account and ends its sessions; DELETE deletes the account and
+        its permissions. The last active superuser is never disabled or deleted
+        (409). Authenticated with the SCIM bearer token.
       parameters:
         - description: SCIM user ID
           in: path
@@ -12955,8 +12965,9 @@ paths:
         - users
   "/api/v1/users/{username}/groups":
     get:
-      description: The groups Santa group tags use, from the user's last SSO login or
-        from SCIM. Requires the same access as reading the user.
+      description: From SCIM when SCIM provisions the user, otherwise from their last
+        SSO login (stored only with Santa enabled). Requires the same access as
+        reading the user.
       parameters:
         - description: Username
           in: path
@@ -14672,10 +14683,6 @@ components:
       type: object
     handlers.SCIMStatusResponse:
       properties:
-        available:
-          description: Available is false when Santa is disabled; SCIM only feeds Santa
-            group tags.
-          type: boolean
         enabled:
           type: boolean
         token_created_at:
@@ -15100,11 +15107,16 @@ components:
             type: string
           type: array
         scim:
-          description: |-
-            SCIM is true when SCIM provisions the user, so SSO logins leave the
-            groups alone.
+          description: >-
+            SCIM is true when SCIM provisions the user: the groups come from
+            SCIM
+
+            and SSO logins leave them alone.
           type: boolean
         updated_at:
+          description: |-
+            UpdatedAt is when the last SSO login stored the groups; empty for
+            SCIM, which keeps them current.
           type: string
       type: object
     handlers.VulnFindingsResponse:
@@ -16088,6 +16100,15 @@ components:
         votes:
           type: integer
       type: object
+    scim.Email:
+      properties:
+        primary:
+          type: boolean
+        type:
+          type: string
+        value:
+          type: string
+      type: object
     scim.GroupResource:
       properties:
         displayName:
@@ -16116,6 +16137,15 @@ components:
         resourceType:
           type: string
       type: object
+    scim.Name:
+      properties:
+        familyName:
+          type: string
+        formatted:
+          type: string
+        givenName:
+          type: string
+      type: object
     scim.Ref:
       properties:
         display:
@@ -16127,6 +16157,12 @@ components:
       properties:
         active:
           type: boolean
+        displayName:
+          type: string
+        emails:
+          items:
+            $ref: "#/components/schemas/scim.Email"
+          type: array
         externalId:
           type: string
         groups:
@@ -16137,6 +16173,8 @@ components:
           type: string
         meta:
           $ref: "#/components/schemas/scim.Meta"
+        name:
+          $ref: "#/components/schemas/scim.Name"
         schemas:
           items:
             type: string
@@ -16275,13 +16313,16 @@ components:
           type: boolean
         auth_source:
           description: |-
-            AuthSource is empty for the password-login path (the default)
-            and "oidc" for users JIT-provisioned through the federated
-            callback. Surfaced so the SPA Users page can show an "OIDC"
-            badge alongside the existing admin/service labels.
+            AuthSource is empty for the password-login path (the default),
+            "oidc" or "saml" for users of federated login, and "scim" for users
+            SCIM created that have not signed in yet. Surfaced so the SPA Users
+            page can show a badge alongside the existing admin/service labels.
           type: string
         created_at:
           type: string
+        disabled:
+          description: Disabled accounts cannot log in; SCIM sets it on deactivation.
+          type: boolean
         email:
           type: string
         env_manager:

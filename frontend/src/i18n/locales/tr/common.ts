@@ -547,8 +547,10 @@ export const tr: Messages = {
   scim: {
     button: 'SCIM…',
     title: 'SCIM sağlama',
-    intro: 'Kimlik sağlayıcınız kullanıcıları ve grup üyeliklerini buraya gönderir; böylece Santa grup etiketleri osctrl girişi olmadan değişiklikleri izler.',
-    unavailable: 'SCIM için osctrl-api üzerinde Santa etkin olmalı.',
+    intro: 'Kimlik sağlayıcınız burada SSO hesapları oluşturur, devre dışı bırakır, siler ve gruplarını güncel tutar. Yeni hesaplar biri erişim verene kadar erişimsizdir.',
+    provisioned: 'SCIM ile sağlandı; SSO ile giriş yapar',
+    disabled: 'Devre dışı',
+    disabledHint: 'Giriş yapamaz: kimlik sağlayıcı bu kullanıcıyı devre dışı bıraktı.',
     off: 'Kapalı. Açmak için bir token oluşturun.',
     on: '{{date}} tarihinden beri açık.',
     baseUrl: 'Temel URL',
