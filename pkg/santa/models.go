@@ -56,6 +56,8 @@ type EnvConfig struct {
 	EventDetailText string `gorm:"type:varchar(64)" json:"event_detail_text"`
 	// IdP groups whose members' machines get a tag, matched on the Santa primary user
 	GroupTags []GroupTag `gorm:"serializer:json;type:text" json:"group_tags"`
+	// How the primary user matches an osctrl user: "" (exact username) | local_part | email
+	GroupMatch string `gorm:"type:varchar(16)" json:"group_match"`
 	// Changes that weaken enforcement wait for a second environment admin
 	RequireSecondAdmin bool `json:"require_second_admin"`
 }

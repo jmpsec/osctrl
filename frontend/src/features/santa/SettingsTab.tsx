@@ -96,7 +96,9 @@ function NotifyChannels({ envId, selected, onChange }: { envId?: number; selecte
   );
 }
 
-function GroupTags({ env, value, onChange }: { env: string; value: SantaGroupTag[]; onChange: (v: SantaGroupTag[]) => void }) {
+function GroupTags({ env, value, onChange, match, onMatch }: {
+  env: string; value: SantaGroupTag[]; onChange: (v: SantaGroupTag[]) => void; match: string; onMatch: (m: string) => void;
+}) {
   const { t } = useTranslation();
   const envTags = useQuery({ queryKey: ['tags', env], queryFn: () => listEnvTags(env), staleTime: 60_000 });
   const set = (i: number, gt: SantaGroupTag) => onChange(value.map((v, j) => (j === i ? gt : v)));
@@ -123,6 +125,11 @@ function GroupTags({ env, value, onChange }: { env: string; value: SantaGroupTag
         ))}
         <Button type="button" variant="ghost" onClick={() => onChange([...value, { group: '', tag: '' }])}>{t('santa.groupTags.add')}</Button>
       </div>
+      <Label htmlFor="santa-group-match" className="mt-2 block">{t('santa.groupTags.match')}</Label>
+      <select id="santa-group-match" className={select} value={match} onChange={(e) => onMatch(e.target.value)}>
+        {(['', 'local_part', 'email'] as const).map((m) => <option key={m} value={m}>{t(`santa.groupTags.matches.${m || 'exact'}`)}</option>)}
+      </select>
+      <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.groupTags.matchHint')}</p>
       <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.groupTags.hint')}</p>
     </fieldset>
   );
@@ -156,6 +163,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         event_detail_url: form.event_detail_url ?? '',
         event_detail_text: form.event_detail_text ?? '',
         group_tags: form.group_tags ?? [],
+        group_match: form.group_match ?? '',
         require_second_admin: !!form.require_second_admin,
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
@@ -312,7 +320,8 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         </div>
         <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.settings.eventDetailHint')}</p>
       </div>
-      <GroupTags env={env} value={form.group_tags ?? []} onChange={(gts) => setForm({ ...form, group_tags: gts })} />
+      <GroupTags env={env} value={form.group_tags ?? []} onChange={(gts) => setForm({ ...form, group_tags: gts })}
+        match={form.group_match ?? ''} onMatch={(m) => setForm({ ...form, group_match: m })} />
       <NotifyChannels envId={envId} selected={form.notify_channels ?? []} onChange={(ids) => setForm({ ...form, notify_channels: ids })} />
       <div>
         <div className="grid gap-3 sm:grid-cols-2">

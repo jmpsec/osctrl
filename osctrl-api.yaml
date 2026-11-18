@@ -14748,6 +14748,11 @@ components:
           description: "Seconds between full syncs: 0 for the Santa default (600),
             otherwise 60 to 86400."
           type: integer
+        group_match:
+          description: 'How the primary user matches an osctrl user for group_tags: ""
+            (exact username, any case), local_part (username before "@") or
+            email (account email). Ambiguous matches get no tags'
+          type: string
         group_tags:
           description: IdP groups whose members' machines get a tag of the environment (at
             most 100), matched on Santa's primary user
@@ -14850,6 +14855,10 @@ components:
           description: 0 means the Santa default (600); otherwise
             MinSyncInterval..MaxSyncInterval
           type: integer
+        group_match:
+          description: 'How the primary user matches an osctrl user: "" (exact username) |
+            local_part | email'
+          type: string
         group_tags:
           description: IdP groups whose members' machines get a tag, matched on the Santa
             primary user
