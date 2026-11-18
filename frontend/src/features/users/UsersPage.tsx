@@ -31,6 +31,7 @@ import { ModalShell } from '$/components/feedback/ModalShell';
 import { MetadataBadge } from '$/components/data/MetadataBadge';
 import { Button } from '$/components/atoms/Button';
 import { appPath } from '$/lib/base-path'
+import { GroupsModal, ScimModal } from './ScimDialogs';
 
 // Global roles in display order, shared by the badges and the role checkboxes.
 const ROLES = [
@@ -48,7 +49,9 @@ type ModalMode =
   | { kind: 'token'; user: AdminUser }
   | { kind: 'create' }
   | { kind: 'delete'; user: AdminUser }
-  | { kind: 'reset-pw'; user: AdminUser };
+  | { kind: 'reset-pw'; user: AdminUser }
+  | { kind: 'groups'; user: AdminUser }
+  | { kind: 'scim' };
 
 export function UsersPage() {
   const { t } = useTranslation();
@@ -181,6 +184,11 @@ export function UsersPage() {
         <p className="text-xs text-[color:var(--text-3)] flex-1">
           {t('usersPage.superAdminView')}
         </p>
+        {superuser && (
+          <Button type="button" variant="ghost" onClick={() => setModal({ kind: 'scim' })}>
+            {t('scim.button')}
+          </Button>
+        )}
         {canWrite && (
           <Button
             type="button"
@@ -335,6 +343,13 @@ export function UsersPage() {
                     <span title={u.last_access}>{formatRelative(u.last_access)}</span>
                   </td>
                   <td className="px-2 py-3 text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => setModal({ kind: 'groups', user: u })}
+                      className="px-2 py-1 text-xs font-medium rounded text-[color:var(--text-2)] hover:text-[color:var(--text-1)] hover:bg-[color:var(--bg-3)] transition-colors"
+                    >
+                      {t('scim.groups')}
+                    </button>
                     {canManage(u) && (<>
                     <button
                       type="button"
@@ -483,6 +498,10 @@ export function UsersPage() {
           onDeleted={invalidate}
         />
       )}
+      {modal.kind === 'groups' && (
+        <GroupsModal username={modal.user.username} onClose={() => setModal({ kind: 'closed' })} />
+      )}
+      {modal.kind === 'scim' && <ScimModal onClose={() => setModal({ kind: 'closed' })} />}
       {modal.kind === 'reset-pw' && (
         <ResetPasswordModal
           user={modal.user}

@@ -44,6 +44,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/ratelimit"
 	"github.com/jmpsec/osctrl/pkg/santa"
+	"github.com/jmpsec/osctrl/pkg/scim"
 	"github.com/jmpsec/osctrl/pkg/servicecommands"
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
@@ -131,6 +132,8 @@ const (
 	apiAlertsPath   = "/alerts"
 	// API Santa sync server management path
 	apiSantaPath = "/santa"
+	// SCIM path: token management, and the SCIM 2.0 base URL under /v2
+	apiSCIMPath = "/scim"
 	// API changes path
 	apiChangesPath = "/changes"
 	// API osquery extensions library path
@@ -659,6 +662,14 @@ func osctrlAPIService() {
 		santaMgr.Risk = santaRiskEngine(flagParams.Service)
 		log.Info().Msg("Santa enabled")
 	}
+	// SCIM keeps Santa's IdP groups current, so it exists only with Santa.
+	var scimMgr *scim.Manager
+	if santaMgr != nil {
+		scimMgr, err = scim.NewManager(db.Conn)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to initialize SCIM")
+		}
+	}
 	// Vulnerability findings count toward the posture risk score when both
 	// features are on (posture.EvidenceSource).
 	if posturemgr != nil && vulnReader != nil {
@@ -830,6 +841,7 @@ func osctrlAPIService() {
 		handlers.WithVulns(vulnReader),
 		handlers.WithSanta(santaMgr),
 		handlers.WithChanges(changesMgr),
+		handlers.WithSCIM(scimMgr),
 		handlers.WithSantaNotifier(alertsMgr),
 		handlers.WithMFA(mfamgr, webAuthn, flagParams.Service.MFARequired, mfaIssuerName(flagParams)),
 		handlers.WithVersion(buildVersion),
@@ -1252,7 +1264,29 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/votes",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVoteStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		// SCIM 2.0 for the identity provider: its own bearer token, not a user
+		// session, and off until a superuser makes one.
+		scimV2 := _apiPath(apiSCIMPath) + "/v2"
+		muxAPI.Handle("GET "+scimV2+"/ServiceProviderConfig", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMServiceProviderConfigHandler)))
+		for _, m := range []string{"GET", "POST"} {
+			muxAPI.Handle(m+" "+scimV2+"/Users", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMUsersHandler)))
+			muxAPI.Handle(m+" "+scimV2+"/Groups", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMGroupsHandler)))
+		}
+		for _, m := range []string{"GET", "PUT", "PATCH", "DELETE"} {
+			muxAPI.Handle(m+" "+scimV2+"/Users/{id}", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMUserHandler)))
+			muxAPI.Handle(m+" "+scimV2+"/Groups/{id}", handlersApi.SCIMAuth(http.HandlerFunc(handlersApi.SCIMGroupHandler)))
+		}
 	}
+	// API: SCIM token management (reports unavailable without Santa)
+	muxAPI.Handle(
+		"GET "+_apiPath(apiSCIMPath),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SCIMStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"POST "+_apiPath(apiSCIMPath)+"/token",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SCIMTokenHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"DELETE "+_apiPath(apiSCIMPath)+"/token",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.SCIMTokenHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: changes held for a second admin
 	muxAPI.Handle(
 		"GET "+_apiPath(apiChangesPath)+"/{env}",
@@ -1453,6 +1487,9 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 	muxAPI.Handle(
 		"GET "+_apiPath(apiUsersPath),
 		handlerAuthCheck(http.HandlerFunc(handlersApi.UsersHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"GET "+_apiPath(apiUsersPath)+"/{username}/groups",
+		handlerAuthCheck(http.HandlerFunc(handlersApi.UserGroupsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	muxAPI.Handle(
 		"GET "+_apiPath(apiUsersPath)+"/{username}/permissions",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.GetUserPermissionsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))

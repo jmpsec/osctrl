@@ -149,7 +149,8 @@ describe('UsersPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(within(await row('alice')).queryAllByRole('button')).toHaveLength(0);
+    // Only the read-only Groups view.
+    expect(within(await row('alice')).getAllByRole('button').map((b) => b.textContent)).toEqual(['Groups…']);
     const bobRow = await row('bob');
     expect(within(bobRow).getByRole('button', { name: /roles/i })).toBeInTheDocument();
     expect(within(bobRow).getByRole('button', { name: /permissions/i })).toBeInTheDocument();
@@ -165,8 +166,9 @@ describe('UsersPage', () => {
   it('read-only admin sees the list without write actions', async () => {
     mockGetMe.mockResolvedValue(makeMe({ read_only_admin: true }));
     renderPage();
-    expect(within(await row('bob')).queryAllByRole('button')).toHaveLength(0);
+    expect(within(await row('bob')).getAllByRole('button').map((b) => b.textContent)).toEqual(['Groups…']);
     expect(screen.queryByRole('button', { name: 'Add operator' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'SCIM…' })).toBeNull();
     // bob is not a superuser, so the superuser label must not appear on his row.
     expect(within(await row('bob')).queryByLabelText(/superuser/i)).toBeNull();
     expect(within(await row('bob')).getByLabelText("You can't manage users")).toBeInTheDocument();

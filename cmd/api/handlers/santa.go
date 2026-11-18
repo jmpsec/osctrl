@@ -307,10 +307,19 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 
 // santaRecordGroups keeps the IdP groups of an SSO login for Santa group tags.
 // nil groups mean the provider has no groups claim configured, so the stored
-// groups are left as they are. A failure is logged and never blocks the login.
+// groups are left as they are, and so are the groups of a user SCIM provisions.
+// A failure is logged and never blocks the login.
 func (h *HandlersApi) santaRecordGroups(username string, groups []string) {
 	if h.Santa == nil || groups == nil {
 		return
+	}
+	if h.SCIM != nil {
+		if managed, err := h.SCIM.Managed(username); err != nil || managed {
+			if err != nil {
+				log.Err(err).Str("username", username).Msg("santa: error checking SCIM")
+			}
+			return
+		}
 	}
 	if err := h.Santa.SetUserGroups(username, groups); err != nil {
 		log.Err(err).Str("username", username).Msg("santa: error storing IdP groups")
