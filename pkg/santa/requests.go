@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -228,17 +229,22 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 // is already there for the same file and scope (created is false). A rule that
 // does not allow the file is ErrRuleConflict.
 func allowRule(tx *gorm.DB, rule Rule) (_ Rule, created bool, err error) {
-	// Looked up before the insert: a failed insert would abort the transaction.
-	var existing []Rule
-	if err := tx.Where("environment_id = ? AND rule_type = ? AND identifier = ? AND scope = ? AND scope_value = ?",
-		rule.EnvironmentID, rule.RuleType, rule.Identifier, rule.Scope, rule.ScopeValue).Limit(1).Find(&existing).Error; err != nil {
+	// Insert first and skip on the unique key, so a vote or approval that
+	// created the same rule a moment earlier is not an error (#1214).
+	ins := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&rule)
+	if ins.Error != nil || ins.RowsAffected > 0 {
+		return rule, ins.Error == nil, ins.Error
+	}
+	// A locking read sees a row committed after this transaction's first read,
+	// which a plain read under MySQL's repeatable read would not.
+	var existing Rule
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("environment_id = ? AND rule_type = ? AND identifier = ? AND scope = ? AND scope_value = ?",
+			rule.EnvironmentID, rule.RuleType, rule.Identifier, rule.Scope, rule.ScopeValue).First(&existing).Error; err != nil {
 		return rule, false, err
 	}
-	switch {
-	case len(existing) == 0:
-		return rule, true, tx.Create(&rule).Error
-	case strings.HasPrefix(existing[0].Policy, "ALLOWLIST"):
-		return existing[0], false, nil
+	if strings.HasPrefix(existing.Policy, "ALLOWLIST") {
+		return existing, false, nil
 	}
 	return rule, false, ErrRuleConflict
 }
