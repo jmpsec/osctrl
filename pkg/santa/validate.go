@@ -136,6 +136,9 @@ func ValidateConfig(c *EnvConfig) error {
 		}
 	}
 	c.GroupTags = gts
+	if m := c.GroupMatch; m != MatchExact && m != MatchLocalPart && m != MatchEmail {
+		return fmt.Errorf("invalid group match %q", m)
+	}
 	if a := c.OverrideFileAccessAction; a != "" && a != "NONE" && a != "AUDIT_ONLY" && a != "DISABLE" {
 		return fmt.Errorf("invalid file access override %q", a)
 	}

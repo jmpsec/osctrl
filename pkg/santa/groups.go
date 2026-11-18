@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -45,16 +46,57 @@ func (m *Manager) UserGroupsOf(username string) (UserGroups, error) {
 	return ugs[0], nil
 }
 
-// GroupTags returns the tags the environment maps to the groups of the user
-// osctrl knows as primaryUser (exact username, any case). An unknown user has
-// no groups, so no tags.
+// How GroupTags matches the Santa primary user to an osctrl user.
+const (
+	MatchExact     = ""           // the username, any case
+	MatchLocalPart = "local_part" // the part of the username before "@"
+	MatchEmail     = "email"      // the email of the osctrl account
+)
+
+// groupUsers returns the osctrl usernames primaryUser matches.
+func (m *Manager) groupUsers(match, primaryUser string) ([]string, error) {
+	p := strings.ToLower(primaryUser)
+	var names []string
+	switch match {
+	case MatchLocalPart:
+		p, _, _ = strings.Cut(p, "@")
+		var all []string
+		// LIKE narrows the scan; the exact check is in Go, so wildcards in p only widen it.
+		if err := m.DB.Model(&UserGroups{}).Where("username = ? OR username LIKE ?", p, p+"@%").Pluck("username", &all).Error; err != nil {
+			return nil, err
+		}
+		for _, n := range all {
+			if local, _, _ := strings.Cut(n, "@"); local == p {
+				names = append(names, n)
+			}
+		}
+		return names, nil
+	case MatchEmail:
+		err := m.DB.Table("admin_users").Where("LOWER(email) = ?", p).Pluck("username", &names).Error
+		return names, err
+	}
+	return []string{p}, nil
+}
+
+// GroupTags returns the tags the environment maps to the groups of the osctrl
+// user that primaryUser matches under the environment's GroupMatch. An unknown
+// user has no groups, so no tags; neither does a primary user matching more
+// than one osctrl user.
 func (m *Manager) GroupTags(envID uint, primaryUser string) ([]string, error) {
 	cfg, err := m.Config(envID)
 	if err != nil || len(cfg.GroupTags) == 0 || primaryUser == "" {
 		return nil, err
 	}
+	names, err := m.groupUsers(cfg.GroupMatch, primaryUser)
+	if err != nil || len(names) == 0 {
+		return nil, err
+	}
+	if len(names) > 1 {
+		log.Warn().Uint("env", envID).Str("primary_user", primaryUser).Strs("matches", names).Msg("santa: primary user matches several osctrl users, no IdP group tags")
+		return nil, nil
+	}
 	var ug UserGroups
-	err = m.DB.Where("username = ?", strings.ToLower(primaryUser)).First(&ug).Error
+	err = m.DB.Where("username = ?", strings.ToLower(names[0])).First(&ug).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}

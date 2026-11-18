@@ -73,6 +73,8 @@ type SantaConfigRequest struct {
 	EventDetailText string `json:"event_detail_text"`
 	// IdP groups whose members' machines get a tag of the environment (at most 100), matched on Santa's primary user
 	GroupTags []santa.GroupTag `json:"group_tags"`
+	// How the primary user matches an osctrl user for group_tags: "" (exact username, any case), local_part (username before "@") or email (account email). Ambiguous matches get no tags
+	GroupMatch string `json:"group_match"`
 	// Hold changes that weaken enforcement until another environment admin approves them (see /api/v1/changes). Turning it off is one of them
 	RequireSecondAdmin bool `json:"require_second_admin"`
 }
@@ -273,7 +275,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		DisableUnknownEventUpload: req.DisableUnknownEventUpload,
 		AllowedPathRegex:          req.AllowedPathRegex, BlockedPathRegex: req.BlockedPathRegex,
 		EventDetailURL: req.EventDetailURL, EventDetailText: req.EventDetailText,
-		GroupTags: req.GroupTags, RequireSecondAdmin: req.RequireSecondAdmin,
+		GroupTags: req.GroupTags, GroupMatch: req.GroupMatch, RequireSecondAdmin: req.RequireSecondAdmin,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)

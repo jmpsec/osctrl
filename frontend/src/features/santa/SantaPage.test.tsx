@@ -370,9 +370,11 @@ describe('SantaPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Add group' }));
     await user.type(screen.getByLabelText('IdP group'), 'Finance');
     await user.selectOptions(screen.getByLabelText('Tag'), await screen.findByRole('option', { name: 'finance' }));
+    await user.selectOptions(screen.getByLabelText('Match the primary user to'), 'local_part');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({
       group_tags: [{ group: 'Finance', tag: 'finance' }],
+      group_match: 'local_part',
     })));
   });
 

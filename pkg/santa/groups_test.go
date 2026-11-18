@@ -39,6 +39,44 @@ func TestGroupTags(t *testing.T) {
 	require.Equal(t, []string{"eng"}, got)
 }
 
+func TestGroupTagsMatch(t *testing.T) {
+	m := newTestManager(t)
+	type adminUser struct{ Username, Email string }
+	require.NoError(t, m.DB.Table("admin_users").AutoMigrate(&adminUser{}))
+	require.NoError(t, m.DB.Table("admin_users").Create([]adminUser{
+		{"jdoe@example.com", "jdoe@example.com"}, {"asmith", "Ann.Smith@Example.com"},
+		{"x1", "dup@example.com"}, {"x2", "dup@example.com"},
+	}).Error)
+	for u, g := range map[string]string{
+		"jdoe@example.com": "Finance", "asmith": "Finance", "x1": "Finance", "x2": "Finance",
+		"bob@a.example": "Finance", "bob@b.example": "Finance", "j_doe@example.com": "Finance",
+	} {
+		require.NoError(t, m.SetUserGroups(u, []string{g}))
+	}
+	finance := []string{"finance"}
+	for _, tt := range []struct {
+		name, match, user string
+		want              []string
+	}{
+		{"exact ignores local part", MatchExact, "jdoe", nil},
+		{"local part", MatchLocalPart, "JDoe", finance},
+		{"local part of an email", MatchLocalPart, "jdoe@corp.example", finance},
+		{"local part, plain username", MatchLocalPart, "asmith", finance},
+		{"local part, LIKE wildcard is literal", MatchLocalPart, "j%", nil},
+		{"local part, ambiguous", MatchLocalPart, "bob", nil},
+		{"email, any case", MatchEmail, "ann.smith@example.com", finance},
+		{"email, not the username", MatchEmail, "asmith", nil},
+		{"email, ambiguous", MatchEmail, "dup@example.com", nil},
+	} {
+		require.NoError(t, m.SaveConfig(EnvConfig{EnvironmentID: 1, ClientMode: "MONITOR", GroupMatch: tt.match,
+			GroupTags: []GroupTag{{Group: "Finance", Tag: "finance"}}}), tt.name)
+		got, err := m.GroupTags(1, tt.user)
+		require.NoError(t, err, tt.name)
+		require.Equal(t, tt.want, got, tt.name)
+	}
+	require.Error(t, ValidateConfig(&EnvConfig{ClientMode: "MONITOR", GroupMatch: "domain"}))
+}
+
 func TestValidateGroupTags(t *testing.T) {
 	many := make([]GroupTag, MaxGroupTags+1)
 	for i := range many {

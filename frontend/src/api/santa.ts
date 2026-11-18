@@ -62,6 +62,8 @@ export interface SantaConfig {
   event_detail_url: string;
   event_detail_text: string;
   group_tags?: SantaGroupTag[];
+  /** How the primary user matches an osctrl user: '' exact, 'local_part' or 'email'. */
+  group_match?: string;
   /** Changes that weaken enforcement wait for a second environment admin. */
   require_second_admin?: boolean;
   /** The token itself is never returned, only whether one exists. */

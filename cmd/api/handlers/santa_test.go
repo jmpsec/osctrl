@@ -202,6 +202,16 @@ func TestSantaConfigGroupTags(t *testing.T) {
 	cfg, err := h.Santa.Config(envA.ID)
 	require.NoError(t, err)
 	require.Equal(t, []santa.GroupTag{{Group: "Finance", Tag: "finance"}}, cfg.GroupTags)
+	require.Equal(t, santa.MatchExact, cfg.GroupMatch)
+	putMatch := func(m string) int {
+		return put(`[{"group":"Finance","tag":"finance"}],"group_match":"` + m + `"`)
+	}
+	require.Equal(t, http.StatusBadRequest, putMatch("domain"))
+	require.Equal(t, http.StatusOK, putMatch(santa.MatchLocalPart))
+	cfg, err = h.Santa.Config(envA.ID)
+	require.NoError(t, err)
+	require.Equal(t, santa.MatchLocalPart, cfg.GroupMatch)
+	require.Equal(t, http.StatusOK, putMatch(santa.MatchExact))
 
 	// SSO login stores groups; nil (no groups claim configured) keeps them.
 	h.santaRecordGroups("jdoe", []string{"Finance"})
