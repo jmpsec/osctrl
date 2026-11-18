@@ -10,6 +10,7 @@ import (
 
 	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"github.com/jmpsec/osctrl/pkg/logging"
+	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/nodes"
 	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/types"
@@ -112,17 +113,25 @@ func TestSantaEventUploadWithoutLogger(t *testing.T) {
 	require.Equal(t, http.StatusOK, f.post(santaEnvUUID, "eventupload", santaMachineID, f.token, santaUpload(t)).Code)
 }
 
-// An osquery node cannot forge Santa events into the sinks through the
-// osquery log endpoint.
-func TestLogHandlerRejectsSantaLogType(t *testing.T) {
+// An osquery node cannot forge the log types osctrl emits itself (Santa
+// events, carve lifecycle, query results) into the sinks through the osquery
+// log endpoint; only result and status logs get through.
+func TestLogHandlerRejectsForgedLogTypes(t *testing.T) {
 	f := newSantaFixture(t)
 	sink := &santaSink{}
 	f.h.Logs = logging.CreateLoggerTLSWith(map[uint]*logging.MultiExporter{0: logging.NewMultiExporter(sink)}, nodes.CreateNodes(f.db), nil)
 	require.NoError(t, f.db.Model(&nodes.OsqueryNode{}).Where("uuid = ?", strings.ToUpper(santaMachineID)).Update("node_key", "key-a").Error)
-	r := httptest.NewRequest(http.MethodPost, "/log", strings.NewReader(`{"node_key":"key-a","log_type":"santa","data":[{"decision":"BLOCK_BINARY"}]}`))
-	r.SetPathValue("env", santaEnvUUID)
-	w := httptest.NewRecorder()
-	f.h.LogHandler(w, r)
-	require.Equal(t, http.StatusBadRequest, w.Code)
+	post := func(logType string) int {
+		r := httptest.NewRequest(http.MethodPost, "/log", strings.NewReader(`{"node_key":"key-a","log_type":"`+logType+`","data":[{"name":"x"}]}`))
+		r.SetPathValue("env", santaEnvUUID)
+		w := httptest.NewRecorder()
+		f.h.LogHandler(w, r)
+		return w.Code
+	}
+	for _, lt := range []string{types.SantaLog, logsinks.CatCarveMeta, logsinks.CatCarveData, logsinks.CatQuery, "", "Result"} {
+		require.Equal(t, http.StatusBadRequest, post(lt), lt)
+	}
 	require.Empty(t, sink.types)
+	require.Equal(t, http.StatusOK, post(types.ResultLog))
+	require.Equal(t, []string{types.ResultLog}, sink.types)
 }
