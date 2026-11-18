@@ -388,9 +388,10 @@ func (h *HandlersTLS) LogHandler(w http.ResponseWriter, r *http.Request) {
 		utils.HTTPResponse(w, "", http.StatusInternalServerError, []byte(""))
 		return
 	}
-	// Santa events reach the sinks only through the Santa sync endpoint; an
-	// osquery node must not be able to forge them here.
-	if t.LogType == types.SantaLog {
+	// osquery's TLS logger sends only result and status logs. Every other log
+	// type is a sink category osctrl emits itself (query, carve.meta,
+	// carve.data, santa), which an osquery node must not be able to forge.
+	if t.LogType != types.ResultLog && t.LogType != types.StatusLog {
 		utils.HTTPResponse(w, "", http.StatusBadRequest, []byte(""))
 		return
 	}
