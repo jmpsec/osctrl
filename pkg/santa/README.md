@@ -228,7 +228,7 @@ Such an account is still an osctrl account. It can open the rest of the UI, wher
 - The `404` for a block osctrl has not seen tells a requester whether a given file was blocked on a given machine.
 - Two people asking for the same file at the same instant can each get a pending request. Each is decided on its own; approving both for the same scope still leaves one rule.
 
-**Deciding requests.** Environment admins decide requests in the **Requests** tab of the Santa page. It lists pending requests first, with the file name, path, hash and signing ID from the blocked event, the machine, the user who ran the file, the requester and the justification. The list can be searched, filtered by status, and decided one request at a time or several at once. The API is `GET /api/v1/santa/{env}/requests` (optional `status`, newest 500) and `POST /api/v1/santa/{env}/requests/{id}/decision`:
+**Deciding requests.** Environment admins and approvers (below) decide requests in the **Requests** tab of the Santa page. It lists pending requests first, with the file name, path, hash and signing ID from the blocked event, the machine, the user who ran the file, the requester and the justification. The list can be searched, filtered by status, and decided one request at a time or several at once. The API is `GET /api/v1/santa/{env}/requests` (optional `status`, newest 500) and `POST /api/v1/santa/{env}/requests/{id}/decision`:
 
 ```json
 { "decision": "approve", "scope": "node", "scope_value": "", "reason": "" }
@@ -244,6 +244,13 @@ Such an account is still an osctrl account. It can open the rest of the UI, wher
 - Deleting the rule later does not change the request; it stays `approved` with the old rule ID.
 - Bulk decisions in the UI are one API call per request, so a failure on one does not undo the others.
 
+**Approvers.** A team such as IT helpdesk can decide requests without being environment admins. In **Settings → Approvers**, list osctrl users (`approver_users`, matched in any case) and IdP groups (`approver_groups`, matched exactly against the groups stored from SCIM or the user's last SSO login), at most 100 each. Each listed user must exist.
+
+- Approvers see the Santa page with the **Requests** tab only, and can use notification links. `GET /api/v1/santa/{env}/access` tells the UI whether the caller is an admin or an approver.
+- They can list and read requests, and approve or deny them with any scope, like an admin. They cannot override a flagged risk check (`403`), cannot approve their own request, and get `403` from every other Santa route: rules, settings, token, events, machines and binary details. The queue shows them machine IDs instead of host names.
+- Group membership is checked on every call, so removing someone from the group in the IdP takes effect at their next SCIM update or SSO login.
+- Adding approvers widens who can allow files, so with **Require a second admin** it is held like the other weakening changes. Removing approvers is not.
+
 **Notifying approvers.** Approvers do not have to watch the queue: each new request can be sent to alert channels (email or webhook). It needs alerts enabled in `osctrl-api` (`--alerts-enabled`) and the approval URL set.
 
 - In **Settings**, tick the channels under **Notify about new requests** (`notify_channels` in the config API, at most 10). A channel must be global or belong to the environment.
@@ -256,7 +263,7 @@ https://osctrl.example.com/santa/decide/ENVIRONMENT-UUID?request=12&action=appro
 ```
 
 - Opening a link decides nothing. It shows the request and the same choices as the queue (scope for an approval, reason for a denial); the approver confirms there. The page asks them to sign in first.
-- A link is not a credential. `POST /api/v1/santa/{env}/requests/link` requires an environment admin session like every other decision, and the token only proves the link came from the notification. Anyone else who gets the link can do nothing with it.
+- A link is not a credential. `POST /api/v1/santa/{env}/requests/link` requires an environment admin or approver session like every other decision, and the token only proves the link came from the notification. Anyone else who gets the link can do nothing with it.
 - A link works once, for the action it was made for, for 72 hours. A used, expired, unknown or other-environment link, or an approve link used to deny, answers `410`. Once the request is decided the other link answers `409`. A decision that fails (for example a block rule in the way) leaves the link usable.
 - Only the SHA-256 of each token is stored. The token is the URL fragment, so the browser does not send it with the page request; it is posted in the request body. The alert history keeps the message without the links.
 

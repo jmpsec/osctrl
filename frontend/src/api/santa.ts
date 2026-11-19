@@ -66,6 +66,9 @@ export interface SantaConfig {
   group_match?: string;
   /** Changes that weaken enforcement wait for a second environment admin. */
   require_second_admin?: boolean;
+  /** osctrl users and IdP groups who decide approval requests without being environment admins. */
+  approver_users?: string[];
+  approver_groups?: string[];
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }
@@ -257,7 +260,7 @@ export interface SantaEventsPage {
   page: number;
 }
 
-export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries' | 'reports' | 'file-access', ...rest: unknown[]) =>
+export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries' | 'reports' | 'file-access' | 'access', ...rest: unknown[]) =>
   ['santa', env, part, ...rest] as const;
 
 function envPath(env: string): string {
@@ -269,6 +272,18 @@ function jsonInit(method: string, body: unknown): RequestInit {
 }
 
 /** GET /api/v1/santa/{env}/config */
+export interface SantaAccess {
+  /** Environment admin: the whole Santa page. */
+  admin: boolean;
+  /** Approver: the Requests tab only. */
+  approver: boolean;
+}
+
+/** GET /api/v1/santa/{env}/access — any signed-in account. */
+export function getSantaAccess(env: string): Promise<SantaAccess> {
+  return apiFetch<SantaAccess>(`${envPath(env)}/access`);
+}
+
 export function getSantaConfig(env: string): Promise<SantaConfig> {
   return apiFetch<SantaConfig>(`${envPath(env)}/config`);
 }

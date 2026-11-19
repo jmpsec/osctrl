@@ -42,8 +42,11 @@ export function requestName(r: SantaRequest, t: (key: string, o?: Record<string,
   return r.kind === 'monitor' ? t('santa.monitor.name', { n: r.monitor_hours }) : r.file_name || r.file_sha256;
 }
 
-/** The approval queue: requests from blocked users, decided one at a time or in bulk. */
-export function RequestsTab({ env }: { env: string }) {
+/**
+ * The approval queue: requests from blocked users, decided one at a time or in bulk.
+ * Approvers who are not environment admins (admin false) get no machine names or binary details.
+ */
+export function RequestsTab({ env, admin = true }: { env: string; admin?: boolean }) {
   const { t } = useTranslation();
   const { formatDateTime } = useLocale();
   const [status, setStatus] = useState<SantaRequestStatus | ''>('pending');
@@ -57,7 +60,7 @@ export function RequestsTab({ env }: { env: string }) {
     setSelected(new Set());
   }, []);
   const requests = useQuery({ queryKey: santaQueryKey(env, 'requests', status), queryFn: () => listSantaRequests(env, status) });
-  const machines = useQuery({ queryKey: santaQueryKey(env, 'machines'), queryFn: () => listSantaMachines(env) });
+  const machines = useQuery({ queryKey: santaQueryKey(env, 'machines'), queryFn: () => listSantaMachines(env), enabled: admin });
   const hostnames = useMemo(() => new Map((machines.data ?? []).map((m) => [m.machine_id, m.hostname])), [machines.data]);
 
   // The API returns at most 500 requests, so searching them here is enough.
@@ -149,7 +152,7 @@ export function RequestsTab({ env }: { env: string }) {
                     when={formatDateTime(new Date(r.created_at))}
                     selected={selected.has(r.id)}
                     onToggle={() => toggle(r.id)}
-                    onBinary={() => setBinary(r.file_sha256)}
+                    onBinary={admin ? () => setBinary(r.file_sha256) : undefined}
                     onDecide={(approve) => setDialog({ approve, ids: [r.id], monitor: r.kind === 'monitor', flagged: r.risk?.verdict === 'flagged' })}
                   />
                 ))}
@@ -178,7 +181,8 @@ function RequestRow({
   when: string;
   selected: boolean;
   onToggle: () => void;
-  onBinary: () => void;
+  /** Opens the binary details; without it the name is plain text. */
+  onBinary?: () => void;
   onDecide: (approve: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -191,7 +195,7 @@ function RequestRow({
       </td>
       {/* File names, paths, signing IDs and the justification come from clients and users: React text only. */}
       <td className={TD}>
-        {r.file_sha256 ? (
+        {r.file_sha256 && onBinary ? (
           <button type="button" className={BINARY_LINK} aria-label={`${t('santa.binary.title')}: ${name}`} onClick={onBinary}>{name}</button>
         ) : (
           <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{name}</div>

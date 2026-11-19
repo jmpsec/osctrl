@@ -8678,6 +8678,42 @@ paths:
       summary: List query samples
       tags:
         - queries
+  "/api/v1/santa/{env}/access":
+    get:
+      description: Any signed-in account. admin is environment admin; approver is a
+        listed approver user or a member of an approver group (by the groups
+        last stored from SSO or SCIM).
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.SantaAccessResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: What the caller may do on the Santa page
+      tags:
+        - santa
   "/api/v1/santa/{env}/binaries/{sha256}":
     get:
       description: Requires environment admin. Identity fields (names, signing chain,
@@ -9389,7 +9425,7 @@ paths:
         - santa
   "/api/v1/santa/{env}/requests":
     get:
-      description: Newest first, at most 500. Requires environment admin.
+      description: Newest first, at most 500. Requires environment admin or approver.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -9499,7 +9535,7 @@ paths:
         - santa
   "/api/v1/santa/{env}/requests/{id}":
     get:
-      description: Requires environment admin.
+      description: Requires environment admin or approver.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -9551,10 +9587,12 @@ paths:
         - santa
   "/api/v1/santa/{env}/requests/{id}/decision":
     post:
-      description: Requires environment admin. Approving creates one BINARY allow rule
-        for the file in the chosen scope, or reuses an allow rule that is
-        already there; clients get it on their next sync. Denying needs a
-        reason.
+      description: Requires environment admin or approver (see approver_users and
+        approver_groups); only admins can override a flagged risk check, and
+        approvers cannot approve their own request. Approving creates one BINARY
+        allow rule for the file in the chosen scope, or reuses an allow rule
+        that is already there; clients get it on their next sync. Denying needs
+        a reason.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -9619,9 +9657,10 @@ paths:
         - santa
   "/api/v1/santa/{env}/requests/link":
     post:
-      description: "Requires environment admin: the link token alone decides nothing.
-        A link works once, for the action it was made for, until it expires (72
-        hours). A used, expired or unknown link answers 410."
+      description: "Requires environment admin or approver: the link token alone
+        decides nothing. A link works once, for the action it was made for,
+        until it expires (72 hours). A used, expired or unknown link answers
+        410."
       parameters:
         - description: Environment name or UUID
           in: path
@@ -14694,6 +14733,15 @@ components:
         token:
           type: string
       type: object
+    handlers.SantaAccessResponse:
+      properties:
+        admin:
+          description: "Environment admin: the whole Santa page"
+          type: boolean
+        approver:
+          description: "Approver: the Requests tab only"
+          type: boolean
+      type: object
     handlers.SantaConfigRequest:
       properties:
         allowed_path_regex:
@@ -14704,6 +14752,19 @@ components:
           description: Base https URL of the osctrl UI; when set, the block dialog links
             to the approval request page. Empty turns requests off
           type: string
+        approver_groups:
+          description: IdP groups whose members (by the groups last stored from SSO or
+            SCIM) decide approval requests, at most 100. Adding one counts as
+            weakening enforcement
+          items:
+            type: string
+          type: array
+        approver_users:
+          description: osctrl users who decide approval requests without being environment
+            admins, at most 100. Adding one counts as weakening enforcement
+          items:
+            type: string
+          type: array
         batch_size:
           type: integer
         block_usb_mount:
@@ -14805,6 +14866,17 @@ components:
 
             its approval request page; empty turns approval requests off.
           type: string
+        approver_groups:
+          items:
+            type: string
+          type: array
+        approver_users:
+          description: |-
+            osctrl users and IdP groups who decide approval requests
+            without being environment admins
+          items:
+            type: string
+          type: array
         batch_size:
           description: 0 means the Santa default (50)
           type: integer

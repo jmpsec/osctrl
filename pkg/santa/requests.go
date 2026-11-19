@@ -105,6 +105,9 @@ var (
 	// ErrSelfApproval is returned when, with RequireSecondAdmin on, an admin
 	// approves their own request for MONITOR or an environment-wide rule.
 	ErrSelfApproval = errors.New("santa: another admin must approve your own request")
+	// ErrOwnRequest is returned when an approver who is not an environment
+	// admin approves their own request.
+	ErrOwnRequest = errors.New("santa: approvers cannot approve their own request")
 )
 
 // Decision is an approver's answer to a pending request.
@@ -121,6 +124,8 @@ type Decision struct {
 	By string
 	// Approve although a risk check flagged the file; needs a reason.
 	Override bool
+	// By is an approver, not an environment admin: never their own request.
+	NotOwn bool
 	// Aggregated risk verdict, set by riskForDecision before the transaction.
 	risk string
 }
@@ -155,6 +160,9 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 	err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("environment_id = ? AND id = ?", envID, id).First(&req).Error; err != nil {
 			return err
+		}
+		if d.Approve && d.NotOwn && strings.EqualFold(req.Requester, d.By) {
+			return ErrOwnRequest
 		}
 		// An admin's own request for MONITOR or an environment-wide rule is one
 		// person loosening enforcement, the change a second admin must approve.

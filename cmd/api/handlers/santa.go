@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/alerts"
@@ -77,6 +78,10 @@ type SantaConfigRequest struct {
 	GroupMatch string `json:"group_match"`
 	// Hold changes that weaken enforcement until another environment admin approves them (see /api/v1/changes). Turning it off is one of them
 	RequireSecondAdmin bool `json:"require_second_admin"`
+	// osctrl users who decide approval requests without being environment admins, at most 100. Adding one counts as weakening enforcement
+	ApproverUsers []string `json:"approver_users"`
+	// IdP groups whose members (by the groups last stored from SSO or SCIM) decide approval requests, at most 100. Adding one counts as weakening enforcement
+	ApproverGroups []string `json:"approver_groups"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -145,6 +150,76 @@ func (h *HandlersApi) santaEnvironment(w http.ResponseWriter, r *http.Request) (
 	return env, user, true
 }
 
+// santaDecider is santaEnvironment for the approval queue: environment admins
+// and the environment's approvers pass. admin tells them apart.
+func (h *HandlersApi) santaDecider(w http.ResponseWriter, r *http.Request) (env environments.TLSEnvironment, user string, admin bool, ok bool) {
+	env, user, admin, approver, ok := h.santaAccess(w, r)
+	if ok && !admin && !approver {
+		apiErrorResponse(w, "no access", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
+		return env, user, false, false
+	}
+	return env, user, admin, ok
+}
+
+// santaAccess resolves {env} and the caller's Santa roles without refusing
+// either; it writes the error response itself when ok is false.
+func (h *HandlersApi) santaAccess(w http.ResponseWriter, r *http.Request) (env environments.TLSEnvironment, user string, admin, approver, ok bool) {
+	ctxVal := r.Context().Value(ContextKey(contextAPI))
+	if ctxVal == nil {
+		apiErrorResponse(w, "missing auth context", http.StatusUnauthorized, nil)
+		return
+	}
+	if h.Santa == nil {
+		apiErrorResponse(w, "santa not enabled", http.StatusServiceUnavailable, nil)
+		return
+	}
+	user = ctxVal.(ContextValue)[ctxUser]
+	env, err := h.Envs.Get(r.PathValue("env"))
+	if err != nil {
+		apiErrorResponse(w, "error getting environment", http.StatusNotFound, err)
+		return
+	}
+	if h.Users.CheckPermissionsContext(r.Context(), user, users.AdminLevel, env.UUID) {
+		return env, user, true, false, true
+	}
+	cfg, err := h.Santa.Config(env.ID)
+	if err == nil {
+		approver, err = h.Santa.IsApprover(cfg, user)
+	}
+	if err != nil {
+		apiErrorResponse(w, "error checking approvers", http.StatusInternalServerError, err)
+		return env, user, false, false, false
+	}
+	return env, user, false, approver, true
+}
+
+// SantaAccessResponse is what the caller may do on the Santa page.
+type SantaAccessResponse struct {
+	// Environment admin: the whole Santa page
+	Admin bool `json:"admin"`
+	// Approver: the Requests tab only
+	Approver bool `json:"approver"`
+}
+
+// SantaAccessHandler — GET /api/v1/santa/{env}/access
+// @Summary What the caller may do on the Santa page
+// @Description Any signed-in account. admin is environment admin; approver is a listed approver user or a member of an approver group (by the groups last stored from SSO or SCIM).
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Success 200 {object} SantaAccessResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/access [get]
+func (h *HandlersApi) SantaAccessHandler(w http.ResponseWriter, r *http.Request) {
+	_, _, admin, approver, ok := h.santaAccess(w, r)
+	if !ok {
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, SantaAccessResponse{Admin: admin, Approver: approver})
+}
+
 func (h *HandlersApi) santaAudit(user, action string, r *http.Request, env environments.TLSEnvironment) {
 	h.AuditLog.EnvAction(user, "santa: "+action, utils.GetIP(r), env.ID)
 }
@@ -175,8 +250,8 @@ func (h *HandlersApi) santaHeld(w http.ResponseWriter, r *http.Request, env envi
 }
 
 // santaConfigRisks lists what a config update weakens: switching the
-// environment to MONITOR, a new allowed path regex, or turning off the second
-// admin requirement. Empty means nothing.
+// environment to MONITOR, a new allowed path regex, turning off the second
+// admin requirement, or new approvers. Empty means nothing.
 func santaConfigRisks(prev, next santa.EnvConfig) string {
 	s := ""
 	if next.ClientMode == "MONITOR" && prev.ClientMode != "MONITOR" {
@@ -188,7 +263,24 @@ func santaConfigRisks(prev, next santa.EnvConfig) string {
 	if prev.RequireSecondAdmin && !next.RequireSecondAdmin {
 		s += " require_second_admin=false"
 	}
+	if added := addedNames(prev.ApproverUsers, next.ApproverUsers); added != "" {
+		s += " approver_users+=" + added
+	}
+	if added := addedNames(prev.ApproverGroups, next.ApproverGroups); added != "" {
+		s += " approver_groups+=" + added
+	}
 	return s
+}
+
+// addedNames lists the names in next that prev lacks, comma-separated.
+func addedNames(prev, next []string) string {
+	var added []string
+	for _, n := range next {
+		if !slices.Contains(prev, n) {
+			added = append(added, n)
+		}
+	}
+	return strings.Join(added, ",")
 }
 
 // santaEnvAllow reports whether a rule can allow executions environment-wide.
@@ -276,6 +368,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		AllowedPathRegex:          req.AllowedPathRegex, BlockedPathRegex: req.BlockedPathRegex,
 		EventDetailURL: req.EventDetailURL, EventDetailText: req.EventDetailText,
 		GroupTags: req.GroupTags, GroupMatch: req.GroupMatch, RequireSecondAdmin: req.RequireSecondAdmin,
+		ApproverUsers: req.ApproverUsers, ApproverGroups: req.ApproverGroups,
 	}
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
@@ -284,6 +377,12 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 	for _, gt := range cfg.GroupTags {
 		if !h.Tags.ExistsByEnv(gt.Tag, env.ID) {
 			apiErrorResponse(w, fmt.Sprintf("invalid config: tag %q does not exist in the environment", gt.Tag), http.StatusBadRequest, nil)
+			return
+		}
+	}
+	for _, u := range cfg.ApproverUsers {
+		if !h.Users.Exists(u) {
+			apiErrorResponse(w, fmt.Sprintf("invalid config: user %q does not exist", u), http.StatusBadRequest, nil)
 			return
 		}
 	}

@@ -165,6 +165,8 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         group_tags: form.group_tags ?? [],
         group_match: form.group_match ?? '',
         require_second_admin: !!form.require_second_admin,
+        approver_users: names(form.approver_users),
+        approver_groups: names(form.approver_groups),
       }),
     onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
   });
@@ -322,6 +324,24 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
       </div>
       <GroupTags env={env} value={form.group_tags ?? []} onChange={(gts) => setForm({ ...form, group_tags: gts })}
         match={form.group_match ?? ''} onMatch={(m) => setForm({ ...form, group_match: m })} />
+      <div>
+        <h3 className="text-sm font-medium text-[color:var(--text-1)]">{t('santa.approvers.title')}</h3>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          {(['approver_users', 'approver_groups'] as const).map((field) => (
+            <div key={field}>
+              <Label htmlFor={`santa-${field}`}>{t(field === 'approver_users' ? 'santa.approvers.users' : 'santa.approvers.groups')}</Label>
+              <textarea
+                id={`santa-${field}`}
+                rows={3}
+                value={(form[field] ?? []).join('\n')}
+                onChange={(e) => setForm({ ...form, [field]: e.target.value.split('\n') })}
+                className="w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 py-1 text-sm text-[color:var(--text-1)]"
+              />
+            </div>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.approvers.hint')}</p>
+      </div>
       <NotifyChannels envId={envId} selected={form.notify_channels ?? []} onChange={(ids) => setForm({ ...form, notify_channels: ids })} />
       <div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -608,4 +628,9 @@ export function TokenDialog({ token, onClose }: { token: string; onClose: () => 
       </div>
     </ModalShell>
   );
+}
+
+/** One name per line in the form; blank lines are dropped. */
+function names(lines?: string[]): string[] {
+  return (lines ?? []).map((n) => n.trim()).filter(Boolean);
 }

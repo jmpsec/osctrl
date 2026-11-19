@@ -136,6 +136,12 @@ func ValidateConfig(c *EnvConfig) error {
 		}
 	}
 	c.GroupTags = gts
+	if c.ApproverUsers, err = cleanNames(c.ApproverUsers); err != nil {
+		return fmt.Errorf("approver users: %w", err)
+	}
+	if c.ApproverGroups, err = cleanNames(c.ApproverGroups); err != nil {
+		return fmt.Errorf("approver groups: %w", err)
+	}
 	if m := c.GroupMatch; m != MatchExact && m != MatchLocalPart && m != MatchEmail {
 		return fmt.Errorf("invalid group match %q", m)
 	}
@@ -171,6 +177,27 @@ const (
 
 // MaxGroupTags caps the group-to-tag mappings of an environment.
 const MaxGroupTags = 100
+
+// MaxApprovers caps each approver list of an environment.
+const MaxApprovers = 100
+
+// cleanNames trims, dedupes and sorts names.
+func cleanNames(names []string) ([]string, error) {
+	out := []string{}
+	for _, n := range names {
+		n = strings.TrimSpace(n)
+		if n == "" || len(n) > 255 || strings.ContainsAny(n, "\r\n") {
+			return nil, errors.New("names are 1 to 255 characters on one line")
+		}
+		out = append(out, n)
+	}
+	slices.Sort(out)
+	out = slices.Compact(out)
+	if len(out) > MaxApprovers {
+		return nil, fmt.Errorf("at most %d", MaxApprovers)
+	}
+	return out, nil
+}
 
 // MaxVoteThreshold caps both vote thresholds.
 const MaxVoteThreshold = 10000

@@ -204,7 +204,7 @@ func (h *HandlersApi) SantaMyRequestsHandler(w http.ResponseWriter, r *http.Requ
 
 // SantaRequestsHandler — GET /api/v1/santa/{env}/requests
 // @Summary List Santa approval requests
-// @Description Newest first, at most 500. Requires environment admin.
+// @Description Newest first, at most 500. Requires environment admin or approver.
 // @Tags santa
 // @Produce json
 // @Param env path string true "Environment name or UUID"
@@ -216,7 +216,7 @@ func (h *HandlersApi) SantaMyRequestsHandler(w http.ResponseWriter, r *http.Requ
 // @Security ApiKeyAuth
 // @Router /api/v1/santa/{env}/requests [get]
 func (h *HandlersApi) SantaRequestsHandler(w http.ResponseWriter, r *http.Request) {
-	env, _, ok := h.santaEnvironment(w, r)
+	env, _, _, ok := h.santaDecider(w, r)
 	if !ok {
 		return
 	}
@@ -230,7 +230,7 @@ func (h *HandlersApi) SantaRequestsHandler(w http.ResponseWriter, r *http.Reques
 
 // SantaRequestDecideHandler — POST /api/v1/santa/{env}/requests/{id}/decision
 // @Summary Approve or deny a Santa approval request
-// @Description Requires environment admin. Approving creates one BINARY allow rule for the file in the chosen scope, or reuses an allow rule that is already there; clients get it on their next sync. Denying needs a reason.
+// @Description Requires environment admin or approver (see approver_users and approver_groups); only admins can override a flagged risk check, and approvers cannot approve their own request. Approving creates one BINARY allow rule for the file in the chosen scope, or reuses an allow rule that is already there; clients get it on their next sync. Denying needs a reason.
 // @Tags santa
 // @Accept json
 // @Produce json
@@ -246,7 +246,7 @@ func (h *HandlersApi) SantaRequestsHandler(w http.ResponseWriter, r *http.Reques
 // @Security ApiKeyAuth
 // @Router /api/v1/santa/{env}/requests/{id}/decision [post]
 func (h *HandlersApi) SantaRequestDecideHandler(w http.ResponseWriter, r *http.Request) {
-	env, user, ok := h.santaEnvironment(w, r)
+	env, user, admin, ok := h.santaDecider(w, r)
 	if !ok {
 		return
 	}
@@ -260,7 +260,7 @@ func (h *HandlersApi) SantaRequestDecideHandler(w http.ResponseWriter, r *http.R
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
-	d, ok := santaDecision(w, body, user)
+	d, ok := santaDecision(w, body, user, admin)
 	if !ok {
 		return
 	}
@@ -268,14 +268,20 @@ func (h *HandlersApi) SantaRequestDecideHandler(w http.ResponseWriter, r *http.R
 	h.santaDecided(w, r, env, d, "", req, err)
 }
 
-func santaDecision(w http.ResponseWriter, body SantaRequestDecision, user string) (santa.Decision, bool) {
+// santaDecision checks a decision body; approvers who are not environment
+// admins cannot override a flagged risk check.
+func santaDecision(w http.ResponseWriter, body SantaRequestDecision, user string, admin bool) (santa.Decision, bool) {
 	if body.Decision != "approve" && body.Decision != "deny" {
 		apiErrorResponse(w, "decision must be approve or deny", http.StatusBadRequest, nil)
 		return santa.Decision{}, false
 	}
+	if body.Override && !admin {
+		apiErrorResponse(w, "only environment admins can override a risk check", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
+		return santa.Decision{}, false
+	}
 	return santa.Decision{
 		Approve: body.Decision == "approve", Scope: body.Scope, ScopeValue: body.ScopeValue, Reason: body.Reason, By: user,
-		Override: body.Override,
+		Override: body.Override, NotOwn: !admin,
 	}, true
 }
 
@@ -304,7 +310,7 @@ func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env e
 	case errors.Is(err, santa.ErrRiskFlagged):
 		apiErrorResponse(w, "a risk check flagged this file; approve with override and a reason to allow it anyway", http.StatusConflict, err)
 		return
-	case errors.Is(err, santa.ErrSelfApproval):
+	case errors.Is(err, santa.ErrSelfApproval), errors.Is(err, santa.ErrOwnRequest):
 		apiErrorResponse(w, err.Error(), http.StatusForbidden, nil)
 		return
 	case errors.Is(err, santa.ErrOverrideReason):
@@ -338,7 +344,7 @@ type SantaLinkDecision struct {
 
 // SantaRequestLinkHandler — POST /api/v1/santa/{env}/requests/link
 // @Summary Approve or deny a Santa approval request through a notification link
-// @Description Requires environment admin: the link token alone decides nothing. A link works once, for the action it was made for, until it expires (72 hours). A used, expired or unknown link answers 410.
+// @Description Requires environment admin or approver: the link token alone decides nothing. A link works once, for the action it was made for, until it expires (72 hours). A used, expired or unknown link answers 410.
 // @Tags santa
 // @Accept json
 // @Produce json
@@ -354,7 +360,7 @@ type SantaLinkDecision struct {
 // @Security ApiKeyAuth
 // @Router /api/v1/santa/{env}/requests/link [post]
 func (h *HandlersApi) SantaRequestLinkHandler(w http.ResponseWriter, r *http.Request) {
-	env, user, ok := h.santaEnvironment(w, r)
+	env, user, admin, ok := h.santaDecider(w, r)
 	if !ok {
 		return
 	}
@@ -363,7 +369,7 @@ func (h *HandlersApi) SantaRequestLinkHandler(w http.ResponseWriter, r *http.Req
 		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
 		return
 	}
-	d, ok := santaDecision(w, body.SantaRequestDecision, user)
+	d, ok := santaDecision(w, body.SantaRequestDecision, user, admin)
 	if !ok {
 		return
 	}
@@ -373,7 +379,7 @@ func (h *HandlersApi) SantaRequestLinkHandler(w http.ResponseWriter, r *http.Req
 
 // SantaRequestGetHandler — GET /api/v1/santa/{env}/requests/{id}
 // @Summary Get one Santa approval request
-// @Description Requires environment admin.
+// @Description Requires environment admin or approver.
 // @Tags santa
 // @Produce json
 // @Param env path string true "Environment name or UUID"
@@ -386,7 +392,7 @@ func (h *HandlersApi) SantaRequestLinkHandler(w http.ResponseWriter, r *http.Req
 // @Security ApiKeyAuth
 // @Router /api/v1/santa/{env}/requests/{id} [get]
 func (h *HandlersApi) SantaRequestGetHandler(w http.ResponseWriter, r *http.Request) {
-	env, _, ok := h.santaEnvironment(w, r)
+	env, _, _, ok := h.santaDecider(w, r)
 	if !ok {
 		return
 	}
@@ -431,7 +437,7 @@ func (h *HandlersApi) santaNotify(env environments.TLSEnvironment, req santa.Req
 		Detail: notice +
 			"\nApprove: " + santa.DecisionLink(cfg.ApprovalURL, env.UUID, req.ID, true, approve) +
 			"\nDeny: " + santa.DecisionLink(cfg.ApprovalURL, env.UUID, req.ID, false, deny) +
-			"\nEach link works once, expires in 72 hours and needs an environment admin signed in to osctrl.",
+			"\nEach link works once, expires in 72 hours and needs an environment admin or approver signed in to osctrl.",
 		// The links stay out of the alert history.
 		HistoryDetail: notice,
 	}
