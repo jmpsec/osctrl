@@ -60,6 +60,10 @@ type EnvConfig struct {
 	GroupMatch string `gorm:"type:varchar(16)" json:"group_match"`
 	// Changes that weaken enforcement wait for a second environment admin
 	RequireSecondAdmin bool `json:"require_second_admin"`
+	// osctrl users and IdP groups who decide approval requests
+	// without being environment admins
+	ApproverUsers  []string `gorm:"serializer:json;type:text" json:"approver_users"`
+	ApproverGroups []string `gorm:"serializer:json;type:text" json:"approver_groups"`
 }
 
 // GroupTag maps an IdP group to a node tag of the environment.

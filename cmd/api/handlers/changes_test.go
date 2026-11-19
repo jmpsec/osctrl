@@ -98,6 +98,8 @@ func TestSantaSecondAdmin(t *testing.T) {
 		{"MONITOR override", h.SantaModeOverrideSetHandler, "PUT", `{"scope":"tag","scope_value":"pilot","client_mode":"MONITOR"}`, p},
 		{"turn the setting off", h.SantaConfigPutHandler, "PUT", `{"client_mode":"LOCKDOWN"}`, p},
 		{"allowed path regex", h.SantaConfigPutHandler, "PUT", `{"client_mode":"LOCKDOWN","require_second_admin":true,"allowed_path_regex":"^/tmp/"}`, p},
+		{"approver user", h.SantaConfigPutHandler, "PUT", `{"client_mode":"LOCKDOWN","require_second_admin":true,"approver_users":["carol"]}`, p},
+		{"approver group", h.SantaConfigPutHandler, "PUT", `{"client_mode":"LOCKDOWN","require_second_admin":true,"approver_groups":["helpdesk"]}`, p},
 	}
 	for _, tt := range held202 {
 		require.Equal(t, http.StatusAccepted, santaDo(tt.fn, tt.method, "alice", tt.body, tt.path).Code, tt.name)

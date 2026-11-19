@@ -111,3 +111,19 @@ func (m *Manager) GroupTags(envID uint, primaryUser string) ([]string, error) {
 	}
 	return tags, nil
 }
+
+// IsApprover reports whether username is in cfg's approver users (any case),
+// or in one of its approver groups by the groups last stored from SSO or SCIM.
+func (m *Manager) IsApprover(cfg EnvConfig, username string) (bool, error) {
+	if slices.ContainsFunc(cfg.ApproverUsers, func(u string) bool { return strings.EqualFold(u, username) }) {
+		return true, nil
+	}
+	if len(cfg.ApproverGroups) == 0 {
+		return false, nil
+	}
+	ug, err := m.UserGroupsOf(username)
+	if err != nil {
+		return false, err
+	}
+	return slices.ContainsFunc(ug.Groups, func(g string) bool { return slices.Contains(cfg.ApproverGroups, g) }), nil
+}

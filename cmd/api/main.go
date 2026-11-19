@@ -1250,6 +1250,9 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestDecideHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		// Approval requests: any signed-in account, no environment permission.
 		muxAPI.Handle(
+			"GET "+_apiPath(apiSantaPath)+"/{env}/access",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaAccessHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"POST "+_apiPath(apiSantaPath)+"/{env}/requests",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRequestCreateHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(

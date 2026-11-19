@@ -25,6 +25,8 @@ const mockModes = vi.fn<() => Promise<SantaModeOverride[]>>();
 const mockSetMode = vi.fn<(env: string, body: unknown) => Promise<unknown>>();
 const mockDeleteMode = vi.fn<(env: string, id: number) => Promise<unknown>>();
 const mockFileAccess = vi.fn<() => Promise<unknown>>();
+const mockAccess = vi.fn<() => Promise<{ admin: boolean; approver: boolean }>>();
+const mockRequests = vi.fn<() => Promise<unknown[]>>();
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -45,6 +47,8 @@ vi.mock('$/api/santa', async () => {
     deleteSantaModeOverride: (env: string, id: number) => mockDeleteMode(env, id),
     carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
     listSantaFileAccessEvents: () => mockFileAccess(),
+    getSantaAccess: () => mockAccess(),
+    listSantaRequests: () => mockRequests(),
   };
 });
 const mockCarve = vi.fn<(env: string, id: number) => Promise<{ query_name: string }>>();
@@ -115,6 +119,36 @@ describe('SantaPage', () => {
     // By default the caller has no alerts role: the channel list is refused.
     mockChannels.mockReset().mockRejectedValue(new Error('no access'));
     mockRotate.mockResolvedValue({ token: 'SECRET-TOKEN-123' });
+    mockAccess.mockResolvedValue({ admin: true, approver: false });
+    mockRequests.mockResolvedValue([]);
+  });
+
+  it('shows approvers the approval queue only', async () => {
+    mockAccess.mockResolvedValue({ admin: false, approver: true });
+    renderPage();
+    expect(await screen.findByRole('tab', { name: 'Requests' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab')).toHaveLength(1);
+    await waitFor(() => expect(mockRequests).toHaveBeenCalled());
+    expect(mockRules).not.toHaveBeenCalled();
+    expect(mockMachines).not.toHaveBeenCalled();
+  });
+
+  it('says so when the caller is neither admin nor approver', async () => {
+    mockAccess.mockResolvedValue({ admin: false, approver: false });
+    renderPage();
+    expect(await screen.findByText('You do not have access to Santa in this environment.')).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+  });
+
+  it('sends approver lists one name per line, without blank lines', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    await user.type(await screen.findByLabelText('Approver users'), 'erin{Enter}{Enter} frank ');
+    await user.type(screen.getByLabelText('Approver IdP groups'), 'helpdesk');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalled());
+    expect(mockPutConfig.mock.calls[0][1]).toMatchObject({ approver_users: ['erin', 'frank'], approver_groups: ['helpdesk'] });
   });
 
   it('lists rules and deletes one after confirmation', async () => {

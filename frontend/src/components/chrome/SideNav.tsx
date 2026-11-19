@@ -30,6 +30,7 @@ import { Logo } from '$/components/atoms/Logo';
 import { EnvSwitcher } from './EnvSwitcher';
 import { listEnvironments } from '$/api/environments';
 import { getFeatures } from '$/api/features';
+import { getSantaAccess, santaQueryKey } from '$/api/santa';
 import { useOsctrldEnabled } from '$/lib/useOsctrldEnabled';
 import { useMe } from '$/lib/useMe';
 import { canSeePage, envCaps, isReadOnlyAdmin, type Page } from '$/lib/access';
@@ -219,6 +220,14 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
   const canQueryPages = caps.query || (roAdmin && caps.view);
   const canCarvePages = caps.carve || (roAdmin && caps.view);
   const canManageEnv = caps.manage;
+  // Santa approvers decide requests without managing the environment.
+  const { data: santaAccess } = useQuery({
+    queryKey: santaQueryKey(currentEnv, 'access'),
+    queryFn: () => getSantaAccess(currentEnv),
+    enabled: !!features?.santa && !canManageEnv,
+    staleTime: 60_000,
+  });
+  const canSanta = !!features?.santa && (canManageEnv || !!santaAccess?.approver);
   const adminPages: Page[] = ['users', 'environments', 'settings', 'serviceConfig', 'logSinks', 'extensions', 'osqueryVersions', 'alerts', 'health', 'authProviders'];
   const showAdmin = adminPages.some(can);
 
@@ -464,7 +473,7 @@ export function SideNav({ className, collapsed, previewsEnabled = true }: SideNa
             {t('nav.vulnerabilities')}
           </NavItem>
         )}
-        {canManageEnv && features?.santa && (
+        {canSanta && (
           <NavItem
             collapsed={collapsed}
             active={isSantaActive}

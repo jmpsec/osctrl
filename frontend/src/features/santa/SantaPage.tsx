@@ -1,7 +1,10 @@
 import { useCallback, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useParams } from '@tanstack/react-router';
 import { ShieldCheck } from 'lucide-react';
+import { getSantaAccess, santaQueryKey } from '$/api/santa';
+import { EmptyState } from '$/components/data/EmptyState';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { StatusTabs } from '$/components/data/StatusTabs';
 import { ChangesTab } from './ChangesTab';
@@ -23,6 +26,8 @@ export function SantaPage() {
   // One rule form for every entry point: "Add rule", Edit, and the Allow/Block shortcuts on events.
   const [draft, setDraft] = useState<RuleDraft | null>(null);
   const closeDraft = useCallback(() => setDraft(null), []);
+  const access = useQuery({ queryKey: santaQueryKey(env, 'access'), queryFn: () => getSantaAccess(env) });
+  const admin = access.data?.admin ?? false;
 
   const tabs: { value: Tab; label: string }[] = [
     { value: 'rules', label: t('santa.tabRules') },
@@ -34,6 +39,10 @@ export function SantaPage() {
     { value: 'machines', label: t('santa.tabMachines') },
     { value: 'settings', label: t('santa.tabSettings') },
   ];
+  // Approvers who are not environment admins see the approval queue only.
+  const shown = admin ? tabs : tabs.filter((x) => x.value === 'requests');
+  const current = admin ? tab : 'requests';
+  const denied = access.isError || (access.data && !access.data.admin && !access.data.approver);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6">
@@ -45,16 +54,22 @@ export function SantaPage() {
         <p className="mt-1 text-sm text-[color:var(--text-3)]">{t('santa.description')}</p>
       </header>
 
-      <StatusTabs tabs={tabs} value={tab} onChange={setTab} />
+      {denied ? (
+        <EmptyState icon={<ShieldCheck />} title={t('santa.approvers.noAccess')} />
+      ) : access.data && (
+        <>
+          <StatusTabs tabs={shown} value={current} onChange={setTab} />
+          {current === 'requests' && <RequestsTab env={env} admin={admin} />}
+        </>
+      )}
 
-      {tab === 'rules' && <RulesTab env={env} onAdd={() => setDraft(EMPTY_RULE)} onEdit={setDraft} />}
-      {tab === 'events' && <EventsTab env={env} onRule={setDraft} />}
-      {tab === 'file-access' && <FileAccessTab env={env} />}
-      {tab === 'requests' && <RequestsTab env={env} />}
-      {tab === 'changes' && <ChangesTab env={env} />}
-      {tab === 'reports' && <ReportsTab env={env} />}
-      {tab === 'machines' && <MachinesTab env={env} />}
-      {tab === 'settings' && <SettingsTab env={env} />}
+      {admin && tab === 'rules' && <RulesTab env={env} onAdd={() => setDraft(EMPTY_RULE)} onEdit={setDraft} />}
+      {admin && tab === 'events' && <EventsTab env={env} onRule={setDraft} />}
+      {admin && tab === 'file-access' && <FileAccessTab env={env} />}
+      {admin && tab === 'changes' && <ChangesTab env={env} />}
+      {admin && tab === 'reports' && <ReportsTab env={env} />}
+      {admin && tab === 'machines' && <MachinesTab env={env} />}
+      {admin && tab === 'settings' && <SettingsTab env={env} />}
 
       {draft && <RuleFormModal env={env} initial={draft} onClose={closeDraft} />}
     </div>
