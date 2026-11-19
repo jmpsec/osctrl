@@ -103,7 +103,7 @@ make docker_dev_down
 
 ## Staging (published release)
 
-The root `docker-compose-staging.yml` assembles the four published Docker Hub images (`osctrl-tls`, `osctrl-api`, `osctrl-cli`, and `osctrl-frontend`). It does not compile local source or mount the source tree. Configuration files and the bootstrap script are mounted read-only. Use a release that publishes all four images with the current API/frontend split, such as `0.6.2`.
+The root `docker-compose-staging.yml` assembles the four published Docker Hub images (`osctrl-tls`, `osctrl-api`, `osctrl-cli`, and `osctrl-frontend`). It does not compile local source or mount the source tree. Configuration files and the bootstrap script are mounted read-only. Use a release that publishes all four images with the current API/frontend split, such as `0.7.0`.
 
 ### Configure and start
 
