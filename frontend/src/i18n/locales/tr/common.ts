@@ -980,6 +980,7 @@ export const tr: Messages = {
     voteLocal: 'Oy verenlerin makinelerinde izin için gereken oy',
     voteGlobal: 'Ortamda izin için gereken oy',
     voteExpiry: 'Oyların sona ermesine kadar gün (0 saklar)',
+    maxMonitorHours: 'En uzun geçici MONITOR, saat (0, 24 demektir)',
     voteHint: 'Kullanıcılar Santa’nın makinelerinde engellediği bir dosya için oy verebilir; kullanıcı ve dosya başına bir oy. 0 eşiği kapatır. Bir kuralın engellediği dosyalar için oy verilemez. Onay URL’si gerekir.',
     vote: {
       title: 'Bu yazılım için oy verin',
@@ -1002,6 +1003,10 @@ export const tr: Messages = {
       approveHint: 'Onaylamak makineyi şu andan itibaren istenen saatler boyunca MONITOR moduna alır. Ardından ilk Santa eşitlemesinde geri döner.',
       permanent: 'Kalıcı',
       until: '{time} tarihine kadar',
+      extend: 'Uzat',
+      extendBy: 'Uzatma süresi',
+      end: 'Şimdi bitir',
+      confirmEnd: '{value} üzerindeki MONITOR modu şimdi bitirilsin mi? Bir sonraki eşitlemede geri döner.',
     },
     binary: {
       title: 'İkili dosya ayrıntıları',

@@ -44,6 +44,8 @@ type EnvConfig struct {
 	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
 	// Votes older than this many days are deleted; 0 keeps them
 	VoteExpiryDays uint32 `json:"vote_expiry_days"`
+	// Longest temporary MONITOR mode in hours, at most MaxMonitorHours; 0 is MaxMonitorHours
+	MaxMonitorHours uint32 `json:"max_monitor_hours"`
 	// Overrides the action of MDM-deployed file access rules: NONE | AUDIT_ONLY | DISABLE;
 	// empty sends nothing, leaving each client's setting unchanged
 	OverrideFileAccessAction string `gorm:"type:varchar(16)" json:"override_file_access_action"`

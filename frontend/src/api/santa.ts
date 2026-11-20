@@ -53,6 +53,8 @@ export interface SantaConfig {
   vote_global_threshold: number;
   /** Votes older than this many days are deleted; 0 keeps them. */
   vote_expiry_days?: number;
+  /** Longest temporary MONITOR mode in hours, at most 24; 0 is 24. */
+  max_monitor_hours?: number;
   /** Overrides the action of MDM-deployed file access rules; empty leaves clients unchanged. */
   override_file_access_action: SantaFileAccessAction;
   /** Clients hash the bundle of a blocked binary and upload its other binaries. */
@@ -131,11 +133,11 @@ export interface SantaModeOverrideInput {
   scope: 'tag' | 'node';
   scope_value: string;
   client_mode: SantaClientMode;
-  /** Temporary MONITOR mode for 1 to 24 hours (node scope only); omitted or 0 is permanent. */
+  /** Temporary MONITOR mode for 1 to max_monitor_hours (node scope only); omitted or 0 is permanent. */
   hours?: number;
 }
 
-/** Hours offered for temporary MONITOR mode; the API accepts 1 to 24. */
+/** Hours offered for temporary MONITOR mode; the API accepts 1 to the environment's max_monitor_hours (24 by default). */
 export const SANTA_MONITOR_HOURS = [1, 2, 4, 8, 24];
 
 export interface SantaModeOverride extends SantaModeOverrideInput {
@@ -340,9 +342,14 @@ export function setSantaModeOverride(env: string, body: SantaModeOverrideInput):
   return apiFetch<SantaModeOverride>(`${envPath(env)}/modes`, jsonInit('PUT', body));
 }
 
-/** DELETE /api/v1/santa/{env}/modes/{id} */
+/** DELETE /api/v1/santa/{env}/modes/{id} — on a temporary MONITOR override, ends it now. */
 export function deleteSantaModeOverride(env: string, id: number): Promise<unknown> {
   return apiFetch<unknown>(`${envPath(env)}/modes/${id}`, { method: 'DELETE' });
+}
+
+/** POST /api/v1/santa/{env}/modes/{id}/extend — adds hours to a temporary MONITOR override. */
+export function extendSantaMonitor(env: string, id: number, hours: number): Promise<SantaModeOverride> {
+  return apiFetch<SantaModeOverride>(`${envPath(env)}/modes/${id}/extend`, jsonInit('POST', { hours }));
 }
 
 /** GET /api/v1/santa/{env}/machines */

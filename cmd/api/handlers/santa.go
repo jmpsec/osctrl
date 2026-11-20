@@ -60,6 +60,8 @@ type SantaConfigRequest struct {
 	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
 	// Votes older than this many days are deleted, at most 3650; 0 keeps them
 	VoteExpiryDays uint32 `json:"vote_expiry_days"`
+	// Longest temporary MONITOR mode in hours, at most 24; 0 is 24
+	MaxMonitorHours uint32 `json:"max_monitor_hours"`
 	// Overrides the action of MDM-deployed file access rules: NONE | AUDIT_ONLY | DISABLE; empty leaves the clients unchanged
 	OverrideFileAccessAction string `json:"override_file_access_action"`
 	// Clients hash the bundle of a blocked binary and upload its other binaries when osctrl asks
@@ -113,7 +115,13 @@ type SantaModeOverrideRequest struct {
 	ScopeValue string `json:"scope_value"`
 	// MONITOR | LOCKDOWN
 	ClientMode string `json:"client_mode"`
-	// Temporary MONITOR mode for 1 to 24 hours, with scope node and MONITOR only; 0 is permanent
+	// Temporary MONITOR mode for 1 to max_monitor_hours (24 by default), with scope node and MONITOR only; 0 is permanent
+	Hours uint `json:"hours"`
+}
+
+// SantaMonitorExtendRequest moves the end of a temporary MONITOR override.
+type SantaMonitorExtendRequest struct {
+	// Hours added to the current expiry; it can end at most max_monitor_hours from now
 	Hours uint `json:"hours"`
 }
 
@@ -365,7 +373,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		RemovableMedia:        media, RemovableMediaFlags: req.RemovableMediaFlags,
 		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,
 		ApprovalURL: req.ApprovalURL, NotifyChannels: req.NotifyChannels, RequesterChannel: req.RequesterChannel,
-		VoteLocalThreshold: req.VoteLocalThreshold, VoteGlobalThreshold: req.VoteGlobalThreshold, VoteExpiryDays: req.VoteExpiryDays,
+		VoteLocalThreshold: req.VoteLocalThreshold, VoteGlobalThreshold: req.VoteGlobalThreshold, VoteExpiryDays: req.VoteExpiryDays, MaxMonitorHours: req.MaxMonitorHours,
 		OverrideFileAccessAction: req.OverrideFileAccessAction,
 		EnableBundles:            req.EnableBundles, EnableAllEventUpload: req.EnableAllEventUpload,
 		DisableUnknownEventUpload: req.DisableUnknownEventUpload,
@@ -792,7 +800,7 @@ func (h *HandlersApi) SantaModeOverridesHandler(w http.ResponseWriter, r *http.R
 
 // SantaModeOverrideSetHandler — PUT /api/v1/santa/{env}/modes
 // @Summary Set the Santa client mode for a tag or a node
-// @Description Creates the override, or replaces the mode of the existing one for the same tag or node; the result is permanent. With hours (1 to 24), scope node and MONITOR, it is temporary instead: the machine must have synced, it cannot replace a permanent node override (409), and it stops applying when it expires, reverting at the machine's first sync after that.
+// @Description Creates the override, or replaces the mode of the existing one for the same tag or node; the result is permanent. With hours (1 to the environment's max_monitor_hours, 24 by default), scope node and MONITOR, it is temporary instead: the machine must have synced, it cannot replace a permanent node override (409), and it stops applying when it expires, reverting at the machine's first sync after that.
 // @Tags santa
 // @Accept json
 // @Produce json
@@ -855,6 +863,7 @@ func (h *HandlersApi) SantaModeOverrideSetHandler(w http.ResponseWriter, r *http
 
 // SantaModeOverrideDeleteHandler — DELETE /api/v1/santa/{env}/modes/{id}
 // @Summary Delete a Santa client mode override
+// @Description Deleting a temporary MONITOR override ends it now: the machine switches back at its next sync, and the requester, if any, is told.
 // @Tags santa
 // @Param env path string true "Environment name or UUID"
 // @Param id path int true "Override id"
@@ -884,8 +893,65 @@ func (h *HandlersApi) SantaModeOverrideDeleteHandler(w http.ResponseWriter, r *h
 		apiErrorResponse(w, "error deleting mode override", http.StatusInternalServerError, err)
 		return
 	}
-	h.santaAudit(user, fmt.Sprintf("delete mode override %s scope=%s scope_value=%s", o.ClientMode, o.Scope, o.ScopeValue), r, env)
+	if o.ExpiresAt != nil {
+		h.santaAudit(user, "end temporary MONITOR machine="+o.ScopeValue, r, env)
+		h.SantaMonitorEnded(o)
+	} else {
+		h.santaAudit(user, fmt.Sprintf("delete mode override %s scope=%s scope_value=%s", o.ClientMode, o.Scope, o.ScopeValue), r, env)
+	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// SantaMonitorExtendHandler — POST /api/v1/santa/{env}/modes/{id}/extend
+// @Summary Extend a temporary Santa MONITOR override
+// @Description Adds hours to the expiry of an unexpired temporary MONITOR override. The new expiry can be at most the environment's max_monitor_hours from now.
+// @Tags santa
+// @Accept json
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param id path int true "Override id"
+// @Param body body SantaMonitorExtendRequest true "Hours to add"
+// @Success 200 {object} santa.ModeOverride
+// @Success 202 {object} PendingChangeResponse "Held for a second admin (require_second_admin)"
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/modes/{id}/extend [post]
+func (h *HandlersApi) SantaMonitorExtendHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
+	if err != nil {
+		apiErrorResponse(w, "invalid override id", http.StatusBadRequest, err)
+		return
+	}
+	var req SantaMonitorExtendRequest
+	body, err := readJSONBody(w, r, santaMaxBody, &req)
+	if err != nil {
+		apiErrorResponse(w, "invalid request", http.StatusBadRequest, err)
+		return
+	}
+	if h.santaHeld(w, r, env, user, fmt.Sprintf("extend temporary MONITOR override=%d hours=%d", id, req.Hours), body) {
+		return
+	}
+	o, err := h.Santa.ExtendMonitor(env.ID, uint(id), req.Hours)
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		apiErrorResponse(w, "temporary override not found or expired", http.StatusNotFound, err)
+		return
+	case errors.Is(err, santa.ErrInvalidOverride):
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, err)
+		return
+	case err != nil:
+		apiErrorResponse(w, "error extending override", http.StatusInternalServerError, err)
+		return
+	}
+	h.santaAudit(user, fmt.Sprintf("extend temporary MONITOR machine=%s hours=%d expires=%s", o.ScopeValue, req.Hours, o.ExpiresAt.UTC().Format(time.RFC3339)), r, env)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, o)
 }
 
 // SantaMachinesHandler — GET /api/v1/santa/{env}/machines

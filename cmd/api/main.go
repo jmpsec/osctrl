@@ -1220,6 +1220,9 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 			"DELETE "+_apiPath(apiSantaPath)+"/{env}/modes/{id}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaModeOverrideDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"POST "+_apiPath(apiSantaPath)+"/{env}/modes/{id}/extend",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaMonitorExtendHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/machines",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaMachinesHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(

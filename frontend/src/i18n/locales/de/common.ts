@@ -980,6 +980,7 @@ export const de: Messages = {
     voteLocal: 'Stimmen für Freigabe auf den Rechnern der Abstimmenden',
     voteGlobal: 'Stimmen für Freigabe in der Umgebung',
     voteExpiry: 'Tage bis Stimmen verfallen (0 behält sie)',
+    maxMonitorHours: 'Längster temporärer MONITOR, Stunden (0 ist 24)',
     voteHint: 'Benutzer können für eine Datei stimmen, die Santa auf ihrem Rechner blockiert hat, eine Stimme pro Benutzer und Datei. 0 schaltet eine Schwelle aus. Für Dateien, die eine Regel blockiert, kann nicht gestimmt werden. Erfordert die Genehmigungs-URL.',
     vote: {
       title: 'Für diese Software stimmen',
@@ -1002,6 +1003,10 @@ export const de: Messages = {
       approveHint: 'Die Genehmigung schaltet den Rechner ab jetzt für die beantragten Stunden auf MONITOR. Er wechselt bei der ersten Santa-Synchronisierung danach zurück.',
       permanent: 'Dauerhaft',
       until: 'bis {time}',
+      extend: 'Verlängern',
+      extendBy: 'Verlängern um',
+      end: 'Jetzt beenden',
+      confirmEnd: 'MONITOR-Modus auf {value} jetzt beenden? Er wechselt bei der nächsten Synchronisierung zurück.',
     },
     binary: {
       title: 'Binärdatei-Details',

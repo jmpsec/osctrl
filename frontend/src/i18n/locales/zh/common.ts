@@ -980,6 +980,7 @@ export const zh: Messages = {
     voteLocal: '在投票者机器上允许所需的票数',
     voteGlobal: '在整个环境中允许所需的票数',
     voteExpiry: '投票过期天数（0 表示保留）',
+    maxMonitorHours: '临时 MONITOR 最长时长（小时，0 表示 24）',
     voteHint: '用户可以为 Santa 在其机器上阻止的文件投票，每个用户对每个文件一票。0 表示关闭该阈值。被规则阻止的文件不能投票。需要设置审批 URL。',
     vote: {
       title: '为此软件投票',
@@ -1002,6 +1003,10 @@ export const zh: Messages = {
       approveHint: '批准后机器从现在起按请求的小时数切换为 MONITOR，之后在第一次 Santa 同步时恢复。',
       permanent: '永久',
       until: '直到 {time}',
+      extend: '延长',
+      extendBy: '延长时长',
+      end: '立即结束',
+      confirmEnd: '立即结束 {value} 上的 MONITOR 模式？它会在下次同步时切换回来。',
     },
     binary: {
       title: '二进制文件详情',

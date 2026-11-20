@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   deleteSantaModeOverride,
+  extendSantaMonitor,
   getSantaConfig,
   listSantaModeOverrides,
   setSantaModeOverride,
@@ -170,6 +171,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         vote_local_threshold: form.vote_local_threshold ?? 0,
         vote_global_threshold: form.vote_global_threshold ?? 0,
         vote_expiry_days: form.vote_expiry_days ?? 0,
+        max_monitor_hours: form.max_monitor_hours ?? 0,
         override_file_access_action: form.override_file_access_action ?? '',
         enable_bundles: !!form.enable_bundles,
         enable_all_event_upload: !!form.enable_all_event_upload,
@@ -382,6 +384,17 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         </div>
         <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.voteHint')}</p>
       </div>
+      <div className="sm:w-1/3">
+        <Label htmlFor="santa-max-monitor-hours">{t('santa.maxMonitorHours')}</Label>
+        <Input
+          id="santa-max-monitor-hours"
+          type="number"
+          min={0}
+          max={24}
+          value={form.max_monitor_hours ?? 0}
+          onChange={(e) => setForm({ ...form, max_monitor_hours: Math.max(0, Math.floor(Number(e.target.value)) || 0) })}
+        />
+      </div>
 
       {save.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(save.error)}</p>}
       {save.isSuccess && <p role="status" className="text-sm text-[color:var(--text-3)]">{t('santa.saved')}</p>}
@@ -413,8 +426,11 @@ function ModeOverridesCard({ env }: { env: string }) {
     },
   });
   const remove = useMutation({ mutationFn: (id: number) => deleteSantaModeOverride(env, id), onSuccess: refresh });
+  // Hours to add, per override.
+  const [extendBy, setExtendBy] = useState<Record<number, number>>({});
+  const extend = useMutation({ mutationFn: (id: number) => extendSantaMonitor(env, id, extendBy[id] ?? SANTA_MONITOR_HOURS[0]), onSuccess: refresh });
   const rows = overrides.data ?? [];
-  const error = save.error ?? remove.error ?? overrides.error;
+  const error = save.error ?? remove.error ?? extend.error ?? overrides.error;
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -454,17 +470,50 @@ function ModeOverridesCard({ env }: { env: string }) {
                   </td>
                   <td className={TD}>{o.created_by}</td>
                   <td className={`${TD} text-end`}>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      disabled={remove.isPending}
-                      aria-label={`${t('santa.delete')} ${o.scope_value}`}
-                      onClick={() => {
-                        if (confirm(t('santa.confirmDeleteOverride', { value: o.scope_value }))) remove.mutate(o.id);
-                      }}
-                    >
-                      {t('santa.delete')}
-                    </Button>
+                    {o.expires_at ? (
+                      <div className="flex justify-end gap-2">
+                        <select
+                          className={`${SELECT} w-auto`}
+                          aria-label={`${t('santa.monitor.extendBy')} ${o.scope_value}`}
+                          value={extendBy[o.id] ?? SANTA_MONITOR_HOURS[0]}
+                          onChange={(e) => setExtendBy({ ...extendBy, [o.id]: Number(e.target.value) })}
+                        >
+                          {SANTA_MONITOR_HOURS.map((h) => <option key={h} value={h}>{t('santa.monitor.hours', { n: h })}</option>)}
+                        </select>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={extend.isPending}
+                          aria-label={`${t('santa.monitor.extend')} ${o.scope_value}`}
+                          onClick={() => extend.mutate(o.id)}
+                        >
+                          {t('santa.monitor.extend')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          disabled={remove.isPending}
+                          aria-label={`${t('santa.monitor.end')} ${o.scope_value}`}
+                          onClick={() => {
+                            if (confirm(t('santa.monitor.confirmEnd', { value: o.scope_value }))) remove.mutate(o.id);
+                          }}
+                        >
+                          {t('santa.monitor.end')}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={remove.isPending}
+                        aria-label={`${t('santa.delete')} ${o.scope_value}`}
+                        onClick={() => {
+                          if (confirm(t('santa.confirmDeleteOverride', { value: o.scope_value }))) remove.mutate(o.id);
+                        }}
+                      >
+                        {t('santa.delete')}
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

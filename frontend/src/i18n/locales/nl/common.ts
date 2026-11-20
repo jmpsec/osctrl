@@ -980,6 +980,7 @@ export const nl: Messages = {
     voteLocal: 'Stemmen om toe te staan op de machines van stemmers',
     voteGlobal: 'Stemmen om toe te staan in de omgeving',
     voteExpiry: 'Dagen tot stemmen verlopen (0 bewaart ze)',
+    maxMonitorHours: 'Langste tijdelijke MONITOR, uren (0 is 24)',
     voteHint: 'Gebruikers kunnen stemmen op een bestand dat Santa op hun machine heeft geblokkeerd, één stem per gebruiker en bestand. 0 schakelt een drempel uit. Op bestanden die door een regel zijn geblokkeerd kan niet worden gestemd. Vereist de goedkeurings-URL.',
     vote: {
       title: 'Stem op deze software',
@@ -1002,6 +1003,10 @@ export const nl: Messages = {
       approveHint: 'Goedkeuren zet de machine vanaf nu voor de gevraagde uren in MONITOR. Bij de eerste Santa-synchronisatie daarna gaat hij terug.',
       permanent: 'Permanent',
       until: 'tot {time}',
+      extend: 'Verlengen',
+      extendBy: 'Verlengen met',
+      end: 'Nu beëindigen',
+      confirmEnd: 'MONITOR-modus op {value} nu beëindigen? Hij schakelt terug bij de volgende synchronisatie.',
     },
     binary: {
       title: 'Details van binair bestand',

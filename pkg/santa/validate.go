@@ -118,6 +118,8 @@ func ValidateConfig(c *EnvConfig) error {
 		return errors.New("voting needs the approval URL")
 	case c.VoteExpiryDays > MaxVoteExpiryDays:
 		return fmt.Errorf("votes expire after at most %d days", MaxVoteExpiryDays)
+	case c.MaxMonitorHours > MaxMonitorHours:
+		return fmt.Errorf("temporary MONITOR mode lasts at most %d hours", MaxMonitorHours)
 	}
 	if s := c.FullSyncIntervalSeconds; s != 0 && (s < MinSyncInterval || s > MaxSyncInterval) {
 		return fmt.Errorf("sync interval is 0 (Santa default) or %d to %d seconds", MinSyncInterval, MaxSyncInterval)

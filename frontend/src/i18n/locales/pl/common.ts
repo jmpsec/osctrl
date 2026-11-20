@@ -980,6 +980,7 @@ export const pl: Messages = {
     voteLocal: 'Głosy, aby zezwolić na komputerach głosujących',
     voteGlobal: 'Głosy, aby zezwolić w środowisku',
     voteExpiry: 'Dni do wygaśnięcia głosów (0 je zachowuje)',
+    maxMonitorHours: 'Najdłuższy tymczasowy MONITOR, godziny (0 to 24)',
     voteHint: 'Użytkownicy mogą głosować na plik zablokowany przez Santa na ich komputerze, jeden głos na użytkownika i plik. 0 wyłącza próg. Nie można głosować na pliki zablokowane regułą. Wymaga adresu URL zatwierdzania.',
     vote: {
       title: 'Zagłosuj na to oprogramowanie',
@@ -1002,6 +1003,10 @@ export const pl: Messages = {
       approveHint: 'Zatwierdzenie przełącza komputer w tryb MONITOR na żądane godziny, od teraz. Wraca przy pierwszej synchronizacji Santa po tym czasie.',
       permanent: 'Na stałe',
       until: 'do {time}',
+      extend: 'Przedłuż',
+      extendBy: 'Przedłuż o',
+      end: 'Zakończ teraz',
+      confirmEnd: 'Zakończyć teraz tryb MONITOR na {value}? Wróci przy następnej synchronizacji.',
     },
     binary: {
       title: 'Szczegóły pliku binarnego',

@@ -79,7 +79,7 @@ func TestSantaRoutesRequireEnvAdmin(t *testing.T) {
 		"token": {h.SantaTokenHandler, "POST"}, "rules": {h.SantaRulesHandler, "GET"},
 		"rule create": {h.SantaRuleCreateHandler, "POST"}, "rule update": {h.SantaRuleUpdateHandler, "PUT"}, "rule delete": {h.SantaRuleDeleteHandler, "DELETE"},
 		"modes": {h.SantaModeOverridesHandler, "GET"}, "mode set": {h.SantaModeOverrideSetHandler, "PUT"},
-		"mode delete": {h.SantaModeOverrideDeleteHandler, "DELETE"}, "rules import": {h.SantaRulesImportHandler, "POST"},
+		"mode delete": {h.SantaModeOverrideDeleteHandler, "DELETE"}, "mode extend": {h.SantaMonitorExtendHandler, "POST"}, "rules import": {h.SantaRulesImportHandler, "POST"},
 		"machines": {h.SantaMachinesHandler, "GET"}, "events": {h.SantaEventsHandler, "GET"},
 		"effective rules": {h.SantaEffectiveRulesHandler, "GET"}, "file access events": {h.SantaFileAccessEventsHandler, "GET"},
 	}
