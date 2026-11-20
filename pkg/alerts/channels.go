@@ -18,6 +18,7 @@ import (
 const (
 	ChannelWebhook = "webhook"
 	ChannelEmail   = "email"
+	ChannelSlack   = "slack"
 )
 
 // ChannelSpec describes one supported channel type.
@@ -80,6 +81,21 @@ var ChannelRegistry = map[string]ChannelSpec{
 		Decode: decodeTyped[EmailConfig](),
 		Build: func(cfg any) (ChannelSender, error) {
 			return buildEmail(*cfg.(*EmailConfig))
+		},
+	},
+	ChannelSlack: {
+		Type:         ChannelSlack,
+		Description:  "Slack message posted by a bot, with Approve and Deny buttons on Santa approval requests",
+		HasSecret:    true,
+		SecretFields: []string{"token", "signingSecret"},
+		Fields: []FieldSpec{
+			{Name: "token", Label: "Bot token", Type: FieldSecret, Required: true, Placeholder: "xoxb-...", Help: "Bot token of the Slack app, with the chat:write scope, and users:read.email for buttons."},
+			{Name: "channel", Label: "Channel ID", Type: FieldString, Required: true, Placeholder: "C0123456789", Help: "ID of the channel the bot posts to; invite the bot to it."},
+			{Name: "signingSecret", Label: "Signing secret", Type: FieldSecret, Help: "Signing secret of the Slack app. When set, Santa approval requests get Approve and Deny buttons; set the app's interactivity request URL to https://<osctrl-api>/api/v1/slack/interact/<channel id>."},
+		},
+		Decode: decodeTyped[SlackConfig](),
+		Build: func(cfg any) (ChannelSender, error) {
+			return buildSlack(*cfg.(*SlackConfig))
 		},
 	},
 }

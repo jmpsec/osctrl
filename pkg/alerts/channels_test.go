@@ -208,7 +208,7 @@ func TestEmailBadConfig(t *testing.T) {
 
 func TestChannelRegistryComplete(t *testing.T) {
 	types := SupportedChannelTypes()
-	if len(types) != 2 || types[0] != ChannelEmail || types[1] != ChannelWebhook {
+	if len(types) != 3 || types[0] != ChannelEmail || types[1] != ChannelSlack || types[2] != ChannelWebhook {
 		t.Fatalf("registry types: %v", types)
 	}
 	if !ValidateChannelType("WEBHOOK") || !ValidateChannelType(" email ") {

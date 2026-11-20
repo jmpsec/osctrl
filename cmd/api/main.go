@@ -1268,6 +1268,8 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/votes",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVoteStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		// Slack button callbacks: authenticated by the Slack signing secret, not a session.
+		muxAPI.Handle("POST "+_apiPath("/slack/interact/{channel}"), preAuthRateLimit(http.HandlerFunc(handlersApi.SlackInteractHandler)))
 	}
 	// SCIM 2.0 for the identity provider: its own bearer token, not a user
 	// session, and off until a superuser makes one.

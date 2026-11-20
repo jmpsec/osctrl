@@ -11867,6 +11867,51 @@ paths:
       summary: Update setting
       tags:
         - settings
+  "/api/v1/slack/interact/{channel}":
+    post:
+      description: "Called by Slack, not by users: authenticated by the signing secret
+        of the Slack alert channel in the path, with a timestamp at most 5
+        minutes old. The Slack user is matched by their Slack-verified email to
+        exactly one osctrl user, who must be an environment admin or approver.
+        Each button carries a single-use link token. The result is posted to the
+        callback's response_url."
+      parameters:
+        - description: Slack alert channel ID
+          in: path
+          name: channel
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      summary: Slack button callback for Santa approval requests
+      tags:
+        - santa
   /api/v1/stats:
     get:
       description: Returns cross-environment dashboard statistics.
