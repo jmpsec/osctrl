@@ -289,4 +289,5 @@ type FeaturesResponse struct {
 	Accelerated   bool `json:"accelerated"`
 	Console       bool `json:"console"`
 	FileExplorer  bool `json:"file_explorer"`
+	Santa         bool `json:"santa"`
 }

@@ -24,6 +24,10 @@ type santaCalls struct {
 	manyRules      int
 	created        *santa.RuleSpec
 	deleted        uint
+	days           int
+	mode           *apiclient.SantaModeInput
+	modeHeld       bool
+	modeDeleted    uint
 }
 
 var santaLast = &santaCalls{}
@@ -62,6 +66,45 @@ func (f *fakeBackend) GetSantaEffectiveRules(env, machineID string) (apiclient.S
 	return apiclient.SantaEffectiveRules{ClientMode: "LOCKDOWN", ModeSource: "tag", Rules: []santa.Rule{
 		{ID: 2, RuleType: "TEAMID", Identifier: "EQHXZ8M8AV", Policy: "ALLOWLIST", Scope: "tag", ScopeValue: "pilot"},
 	}}, f.err
+}
+
+func (f *fakeBackend) GetSantaConfig(env string) (apiclient.SantaConfig, error) {
+	return apiclient.SantaConfig{EnvConfig: santa.EnvConfig{ClientMode: "LOCKDOWN", TokenHash: "secret-hash", RequireSecondAdmin: true}, TokenSet: true}, f.err
+}
+
+func (f *fakeBackend) GetSantaModeOverrides(env string) ([]santa.ModeOverride, error) {
+	return []santa.ModeOverride{{ID: 4, Scope: "tag", ScopeValue: "pilot", ClientMode: "LOCKDOWN", CreatedBy: "alice"}}, f.err
+}
+
+func (f *fakeBackend) GetSantaReport(env string, days int) (santa.Report, error) {
+	santaLast.days = days
+	return santa.Report{Days: 14, TopBlocked: []santa.RankedBinary{{SHA256: santaSHA, FileName: "evil", Events: 3, Machines: 2}}}, f.err
+}
+
+func (f *fakeBackend) GetSantaFileAccessEvents(env, machineID string, page, pageSize int) (apiclient.SantaFileAccessEvents, error) {
+	santaLast.machineID, santaLast.page, santaLast.pageSize = machineID, page, pageSize
+	return apiclient.SantaFileAccessEvents{Total: 1, Page: page, Events: []santa.FileAccessEvent{
+		{ID: 3, MachineID: "M-1", RuleName: "ssh keys", Target: "/Users/a/.ssh/id_ed25519", Decision: "DENIED",
+			ProcessChain: []santa.Process{{Pid: 7, FilePath: "/tmp/evil"}}},
+	}}, f.err
+}
+
+func (f *fakeBackend) GetSantaBinary(env, sha256 string) (santa.Binary, error) {
+	return santa.Binary{SHA256: sha256, FileName: "evil", Events: 3, Blocked: 3,
+		Risk: &santa.Risk{Verdict: "flagged", Checks: []santa.Verdict{{CheckName: "virustotal", Verdict: "flagged", Detail: "12/70"}}}}, f.err
+}
+
+func (f *fakeWrites) SetSantaModeOverride(env string, in apiclient.SantaModeInput) (apiclient.SantaModeResult, error) {
+	santaLast.mode = &in
+	if santaLast.modeHeld {
+		return apiclient.SantaModeResult{Message: "Change 5 needs approval by another admin of this environment; apply it once approved"}, nil
+	}
+	return apiclient.SantaModeResult{ModeOverride: santa.ModeOverride{ID: 8, Scope: in.Scope, ScopeValue: in.ScopeValue, ClientMode: in.ClientMode}}, nil
+}
+
+func (f *fakeWrites) DeleteSantaModeOverride(env string, id uint) error {
+	santaLast.modeDeleted = id
+	return nil
 }
 
 func (f *fakeWrites) CreateSantaRule(env string, spec santa.RuleSpec) (santa.Rule, error) {
@@ -252,5 +295,114 @@ func TestDeleteSantaRule(t *testing.T) {
 	call(t, s, "delete_santa_rule", map[string]any{"environment": "dev", "id": 7}, nil)
 	if santaLast.deleted != 7 {
 		t.Fatalf("deleted %d, want 7", santaLast.deleted)
+	}
+}
+
+func TestSantaToolsHiddenWithoutSanta(t *testing.T) {
+	ctx := context.Background()
+	serverT, clientT := sdk.NewInMemoryTransports()
+	srv := NewServer(newFake(), "test", WithWrites(&fakeWrites{}), WithoutSanta())
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	session, err := sdk.NewClient(&sdk.Implementation{Name: "test-client", Version: "test"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	for name := range toolNames(t, session) {
+		if strings.Contains(name, "santa") {
+			t.Errorf("Santa tool %s registered with WithoutSanta", name)
+		}
+	}
+	if strings.Contains(session.InitializeResult().Instructions, "Santa") {
+		t.Error("instructions mention Santa with WithoutSanta")
+	}
+	if !toolNames(t, session)["run_query"] {
+		t.Error("other write tools disappeared with WithoutSanta")
+	}
+}
+
+func TestSantaReadTools(t *testing.T) {
+	santaLast = &santaCalls{}
+	s := connect(t, newFake())
+
+	var cfg santaConfigOut
+	res := call(t, s, "get_santa_config", map[string]any{"environment": "dev"}, &cfg)
+	if cfg.Config.ClientMode != "LOCKDOWN" || !cfg.TokenSet || !cfg.Config.RequireSecondAdmin {
+		t.Fatalf("config = %+v", cfg)
+	}
+	if strings.Contains(fmt.Sprint(res.StructuredContent), "secret-hash") {
+		t.Fatal("the token hash reached the model")
+	}
+
+	var modes santaModesOut
+	call(t, s, "list_santa_mode_overrides", map[string]any{"environment": "dev"}, &modes)
+	if len(modes.Overrides) != 1 || modes.Overrides[0].ScopeValue != "pilot" {
+		t.Fatalf("overrides = %+v", modes.Overrides)
+	}
+
+	var rep santa.Report
+	call(t, s, "get_santa_report", map[string]any{"environment": "dev", "days": 7}, &rep)
+	if santaLast.days != 7 || len(rep.TopBlocked) != 1 {
+		t.Fatalf("days %d, report %+v", santaLast.days, rep)
+	}
+	if msg := callFails(t, s, "get_santa_report", map[string]any{"environment": "dev", "days": 31}); !strings.Contains(msg, "days") {
+		t.Fatalf("days 31: %s", msg)
+	}
+
+	var fa santaFileAccessOut
+	call(t, s, "list_santa_file_access_events", map[string]any{"environment": "dev", "machine_id": " M-1 "}, &fa)
+	if santaLast.machineID != "M-1" || santaLast.page != 1 || santaLast.pageSize != defaultSantaEventPage || fa.Returned != 1 || fa.Total != 1 {
+		t.Fatalf("calls %+v, out %+v", santaLast, fa)
+	}
+	if msg := callFails(t, s, "list_santa_file_access_events", map[string]any{"environment": "dev", "page_size": 500}); !strings.Contains(msg, "page_size") {
+		t.Fatalf("page_size 500: %s", msg)
+	}
+
+	var bin santa.Binary
+	call(t, s, "get_santa_binary", map[string]any{"environment": "dev", "sha256": strings.ToUpper(santaSHA)}, &bin)
+	if bin.SHA256 != santaSHA || bin.Risk == nil || bin.Risk.Verdict != "flagged" {
+		t.Fatalf("binary = %+v", bin)
+	}
+	if msg := callFails(t, s, "get_santa_binary", map[string]any{"environment": "dev"}); !strings.Contains(msg, "sha256") {
+		t.Fatalf("no sha256: %s", msg)
+	}
+	if msg := callFails(t, s, "get_santa_config", map[string]any{}); !strings.Contains(msg, "environment") {
+		t.Fatalf("no environment: %s", msg)
+	}
+}
+
+func TestSantaModeWriteTools(t *testing.T) {
+	santaLast = &santaCalls{}
+	s := connectWithWrites(t, newFake(), &fakeWrites{})
+
+	var out setSantaModeOut
+	call(t, s, "set_santa_mode_override", map[string]any{
+		"environment": "dev", "scope": "Node", "scope_value": " M-1 ", "client_mode": "monitor", "hours": 2,
+	}, &out)
+	want := apiclient.SantaModeInput{Scope: "node", ScopeValue: "M-1", ClientMode: "MONITOR", Hours: 2}
+	if santaLast.mode == nil || *santaLast.mode != want {
+		t.Fatalf("sent %+v, want %+v", santaLast.mode, want)
+	}
+	if out.Override == nil || out.Override.ID != 8 || !strings.Contains(out.Guidance, "Override 8 set") {
+		t.Fatalf("out = %+v", out)
+	}
+
+	// Held for a second admin: nothing applied, and the model is told so.
+	santaLast.modeHeld = true
+	out = setSantaModeOut{}
+	call(t, s, "set_santa_mode_override", map[string]any{"environment": "dev", "scope": "tag", "scope_value": "pilot", "client_mode": "MONITOR"}, &out)
+	if out.Override != nil || !strings.Contains(out.Guidance, "Not applied yet") {
+		t.Fatalf("held out = %+v", out)
+	}
+
+	var del deleteSantaRuleOut
+	call(t, s, "delete_santa_mode_override", map[string]any{"environment": "dev", "id": 4}, &del)
+	if santaLast.modeDeleted != 4 {
+		t.Fatalf("deleted %d", santaLast.modeDeleted)
+	}
+	if msg := callFails(t, s, "delete_santa_mode_override", map[string]any{"environment": "dev", "id": 0}); !strings.Contains(msg, "id is required") {
+		t.Fatalf("no id: %s", msg)
 	}
 }

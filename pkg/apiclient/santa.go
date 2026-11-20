@@ -22,6 +22,13 @@ import (
 //   GET    /api/v1/santa/{env}/machines
 //   GET    /api/v1/santa/{env}/machines/{machineid}/rules
 //   GET    /api/v1/santa/{env}/events
+//   GET    /api/v1/santa/{env}/config
+//   GET    /api/v1/santa/{env}/modes
+//   PUT    /api/v1/santa/{env}/modes
+//   DELETE /api/v1/santa/{env}/modes/{id}
+//   GET    /api/v1/santa/{env}/reports[?days=]
+//   GET    /api/v1/santa/{env}/file-access-events
+//   GET    /api/v1/santa/{env}/binaries/{sha256}
 
 func (api *OsctrlAPI) santaRulesURL(env string, elem ...string) string {
 	return api.Configuration.URL + path.Join(append([]string{APIPath, "/santa", url.PathEscape(env), "rules"}, elem...)...)
@@ -141,4 +148,102 @@ func (api *OsctrlAPI) ImportSantaRules(env string, specs []santa.RuleSpec, dryRu
 		return res, fmt.Errorf("can not parse body - %w", err)
 	}
 	return res, nil
+}
+
+// SantaConfig is the Santa sync configuration of an environment. The sync
+// token is never returned, only whether one is set.
+type SantaConfig struct {
+	santa.EnvConfig
+	TokenSet bool `json:"token_set"`
+}
+
+// GetSantaConfig returns the Santa sync configuration of an environment.
+func (api *OsctrlAPI) GetSantaConfig(env string) (SantaConfig, error) {
+	var res SantaConfig
+	return res, api.santaGet(api.santaURL(env, "config"), &res)
+}
+
+// GetSantaModeOverrides lists the client mode overrides of an environment.
+func (api *OsctrlAPI) GetSantaModeOverrides(env string) ([]santa.ModeOverride, error) {
+	var res []santa.ModeOverride
+	return res, api.santaGet(api.santaURL(env, "modes"), &res)
+}
+
+// GetSantaReport returns the Santa report over the last days days; 0 is the API default.
+func (api *OsctrlAPI) GetSantaReport(env string, days int) (santa.Report, error) {
+	var res santa.Report
+	reqURL := api.santaURL(env, "reports")
+	if days > 0 {
+		reqURL += "?days=" + strconv.Itoa(days)
+	}
+	return res, api.santaGet(reqURL, &res)
+}
+
+// SantaFileAccessEvents is one page of Santa file access events.
+type SantaFileAccessEvents struct {
+	Events []santa.FileAccessEvent `json:"events"`
+	Total  int64                   `json:"total"`
+	Page   int                     `json:"page"`
+}
+
+// GetSantaFileAccessEvents returns a newest-first page (1-based) of file
+// access events, of one machine when machineID is set.
+func (api *OsctrlAPI) GetSantaFileAccessEvents(env, machineID string, page, pageSize int) (SantaFileAccessEvents, error) {
+	q := url.Values{}
+	q.Set("page", strconv.Itoa(page))
+	q.Set("page_size", strconv.Itoa(pageSize))
+	if machineID != "" {
+		q.Set("machine_id", machineID)
+	}
+	var res SantaFileAccessEvents
+	return res, api.santaGet(api.santaURL(env, "file-access-events")+"?"+q.Encode(), &res)
+}
+
+// GetSantaBinary returns what the stored events say about one file, with its
+// cached risk verdict. It never runs the risk checks.
+func (api *OsctrlAPI) GetSantaBinary(env, sha256 string) (santa.Binary, error) {
+	var res santa.Binary
+	return res, api.santaGet(api.santaURL(env, "binaries", url.PathEscape(sha256)), &res)
+}
+
+// SantaModeInput sets the client mode of a tag or a node.
+type SantaModeInput struct {
+	Scope      string `json:"scope"`
+	ScopeValue string `json:"scope_value"`
+	ClientMode string `json:"client_mode"`
+	// Temporary MONITOR mode for a node, in hours; 0 is permanent
+	Hours uint `json:"hours,omitempty"`
+}
+
+// SantaModeResult is the stored override, or, when the environment requires
+// a second admin, the message saying the change is held (ID is then 0).
+type SantaModeResult struct {
+	santa.ModeOverride
+	Message string `json:"message,omitempty"`
+}
+
+// SetSantaModeOverride creates or replaces a client mode override.
+func (api *OsctrlAPI) SetSantaModeOverride(env string, in SantaModeInput) (SantaModeResult, error) {
+	var res SantaModeResult
+	body, err := json.Marshal(in)
+	if err != nil {
+		return res, fmt.Errorf("error marshaling data - %w", err)
+	}
+	raw, err := api.ReqGeneric(http.MethodPut, api.santaURL(env, "modes"), bytes.NewReader(body))
+	if err != nil {
+		return res, fmt.Errorf("error api request - %w - %s", err, string(raw))
+	}
+	if err := json.Unmarshal(raw, &res); err != nil {
+		return res, fmt.Errorf("can not parse body - %w", err)
+	}
+	return res, nil
+}
+
+// DeleteSantaModeOverride deletes an override; a temporary MONITOR one ends now.
+func (api *OsctrlAPI) DeleteSantaModeOverride(env string, id uint) error {
+	raw, err := api.ReqGeneric(http.MethodDelete, api.santaURL(env, "modes", strconv.FormatUint(uint64(id), 10)), nil)
+	if err != nil {
+		return fmt.Errorf("error api request - %w - %s", err, string(raw))
+	}
+	return nil
 }

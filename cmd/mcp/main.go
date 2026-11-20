@@ -148,6 +148,13 @@ func run(ctx context.Context, _ *cli.Command) error {
 	if allowWrites {
 		opts = append(opts, osctrlmcp.WithWrites(client))
 	}
+	// Santa tools only when osctrl-api runs Santa. If the switches cannot be
+	// read, keep them: each call then gets the API's own answer.
+	if f, err := client.GetFeatures(); err != nil {
+		log.Warn().Err(err).Msg("cannot read osctrl-api features; registering the Santa tools")
+	} else if !f.Santa {
+		opts = append(opts, osctrlmcp.WithoutSanta())
+	}
 	srv := osctrlmcp.NewServer(client, buildVersion, opts...)
 	if err := srv.Run(ctx, &sdk.StdioTransport{}); err != nil {
 		return fmt.Errorf("mcp server - %w", err)
