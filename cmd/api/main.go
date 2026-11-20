@@ -1876,7 +1876,7 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 	// SDK's 405.
 	if flagParams.MCP != nil && flagParams.MCP.Enabled {
 		log.Info().Bool("writes", flagParams.MCP.AllowWrites).Msgf("MCP enabled — serving %s", _apiPath(apiMCPPath))
-		mcp := handlerAuthCheck(mcpHandler(muxAPI, buildVersion, flagParams.MCP.AllowWrites, auditLog), flagParams.Service.Auth, flagParams.JWT.JWTSecret)
+		mcp := handlerAuthCheck(mcpHandler(muxAPI, buildVersion, flagParams.MCP.AllowWrites, flagParams.Service.SantaEnabled, auditLog), flagParams.Service.Auth, flagParams.JWT.JWTSecret)
 		for _, method := range []string{http.MethodPost, http.MethodGet, http.MethodDelete} {
 			muxAPI.Handle(method+" "+_apiPath(apiMCPPath), mcp)
 		}

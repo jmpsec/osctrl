@@ -70,7 +70,7 @@ func (a *fakeAuditLog) MCPToolCall(username, tool, args, ip string, envID uint, 
 // creds are applied to the inbound HTTP request the way a real client would.
 func newMCPClient(t *testing.T, api http.Handler, apply func(*http.Request)) *sdk.ClientSession {
 	t.Helper()
-	srv := httptest.NewServer(mcpHandler(api, "test", false, &fakeAuditLog{}))
+	srv := httptest.NewServer(mcpHandler(api, "test", false, true, &fakeAuditLog{}))
 	t.Cleanup(srv.Close)
 
 	client := sdk.NewClient(&sdk.Implementation{Name: "test", Version: "test"}, nil)
@@ -282,13 +282,15 @@ func TestHostedWriteToolsGated(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		allowWrites bool
+		santa       bool
 		want        bool
 	}{
-		{"writes off", false, false},
-		{"writes on", true, true},
+		{"writes off", false, true, false},
+		{"writes on", true, true, true},
+		{"santa off", true, false, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			srv := httptest.NewServer(mcpHandler(api, "test", tc.allowWrites, &fakeAuditLog{}))
+			srv := httptest.NewServer(mcpHandler(api, "test", tc.allowWrites, tc.santa, &fakeAuditLog{}))
 			defer srv.Close()
 
 			client := sdk.NewClient(&sdk.Implementation{Name: "test", Version: "test"}, nil)
@@ -311,13 +313,16 @@ func TestHostedWriteToolsGated(t *testing.T) {
 			for _, tool := range tools.Tools {
 				found[tool.Name] = true
 			}
-			for _, name := range []string{"run_query", "create_santa_rule", "delete_santa_rule"} {
-				if found[name] != tc.want {
-					t.Errorf("%s present = %v, want %v", name, found[name], tc.want)
+			if found["run_query"] != tc.want {
+				t.Errorf("run_query present = %v, want %v", found["run_query"], tc.want)
+			}
+			for _, name := range []string{"create_santa_rule", "delete_santa_rule", "set_santa_mode_override", "delete_santa_mode_override"} {
+				if found[name] != (tc.want && tc.santa) {
+					t.Errorf("%s present = %v, want %v", name, found[name], tc.want && tc.santa)
 				}
 			}
-			if !found["list_santa_events"] {
-				t.Error("read tool list_santa_events missing")
+			if found["list_santa_events"] != tc.santa {
+				t.Errorf("read tool list_santa_events present = %v, want %v", found["list_santa_events"], tc.santa)
 			}
 		})
 	}

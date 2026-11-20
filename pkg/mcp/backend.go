@@ -60,12 +60,17 @@ type Backend interface {
 	GetQueryResults(env, name string, page, pageSize int) (types.QueryResultsResponse, error)
 	GetSavedQueries(env string) ([]types.SavedQueryView, error)
 
-	// Santa (macOS binary authorization). All four need AdminLevel on the
+	// Santa (macOS binary authorization). All need AdminLevel on the
 	// environment, and answer 503 when Santa is not enabled.
 	GetSantaRules(env string) ([]santa.Rule, error)
 	GetSantaMachines(env string) ([]santa.Machine, error)
 	GetSantaEvents(env string, f santa.EventFilter, page, pageSize int) (apiclient.SantaEvents, error)
 	GetSantaEffectiveRules(env, machineID string) (apiclient.SantaEffectiveRules, error)
+	GetSantaConfig(env string) (apiclient.SantaConfig, error)
+	GetSantaModeOverrides(env string) ([]santa.ModeOverride, error)
+	GetSantaReport(env string, days int) (santa.Report, error)
+	GetSantaFileAccessEvents(env, machineID string, page, pageSize int) (apiclient.SantaFileAccessEvents, error)
+	GetSantaBinary(env, sha256 string) (santa.Binary, error)
 }
 
 // Compile-time proof that the HTTP client is a valid Backend. If a method
@@ -86,9 +91,11 @@ type WriteBackend interface {
 	CompleteQuery(env, name string) (types.ApiGenericResponse, error)
 	TagNode(env, identifier, tag string, tagType uint, custom string) error
 
-	// Santa rule changes need AdminLevel on the environment.
+	// Santa rule and mode override changes need AdminLevel on the environment.
 	CreateSantaRule(env string, spec santa.RuleSpec) (santa.Rule, error)
 	DeleteSantaRule(env string, id uint) error
+	SetSantaModeOverride(env string, in apiclient.SantaModeInput) (apiclient.SantaModeResult, error)
+	DeleteSantaModeOverride(env string, id uint) error
 }
 
 var _ WriteBackend = (*apiclient.OsctrlAPI)(nil)

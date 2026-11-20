@@ -4,7 +4,7 @@ osctrl exposes its read surface over the [Model Context
 Protocol](https://modelcontextprotocol.io), so an MCP client — Claude Code,
 Claude Desktop, or any other — can inspect a fleet: environments, enrolled
 nodes, the osquery schema, distributed query results, and Santa rules,
-machines and events.
+machines, events, configuration, mode overrides and reports.
 
 There are two ways to run it, serving the same tools:
 
@@ -161,10 +161,17 @@ Always available. Nothing here mutates anything.
 | `list_santa_machines` | Macs that sync Santa with osctrl: version, client mode, last sync, and whether their rules are up to date. Same cap. |
 | `list_santa_events` | Santa execution events, newest first, filtered by machine, decision (name or prefix, such as `BLOCK`), or file hash. Paged (default 50, maximum 200 per page). |
 | `get_santa_node_rules` | The rules and client mode that apply to one Mac after scope resolution (node over tag over environment). |
+| `get_santa_config` | The Santa sync configuration of an environment. The sync token is never returned, only `token_set`. |
+| `list_santa_mode_overrides` | Tag and node client mode overrides, with `expires_at` for temporary MONITOR mode. |
+| `get_santa_report` | Ready for lockdown, top blocked binaries and team IDs, and coverage gaps over the last `days` (1 to 30, default 14). |
+| `list_santa_file_access_events` | Violations of MDM-deployed file access rules, newest first, optionally for one machine. Paged like `list_santa_events`. |
+| `get_santa_binary` | What osctrl knows about one file by SHA-256: identity, counts, rules naming it, and its cached risk verdict. It never runs a risk check, so no hash is sent to VirusTotal or a webhook. |
 
-The four Santa tools need admin permission on the environment, like the Santa
-page. They are always listed; where Santa is not enabled (`--santa-enabled`)
-they return the API's "santa not enabled" error.
+The Santa tools need admin permission on the environment, like the Santa
+page. They are listed only where Santa is enabled (`--santa-enabled`): the
+hosted endpoint follows the flag, and the binary reads `GET /api/v1/features`
+at startup. If the binary cannot read it, it keeps the tools, and each call
+returns the API's own answer.
 
 ### Write tools
 
@@ -181,6 +188,8 @@ agent the fleet.
 | `tag_node` | Apply an existing tag to a node. Requires admin permission. |
 | `create_santa_rule` | Create one Santa allow or block rule. Requires admin permission. |
 | `delete_santa_rule` | Delete one Santa rule by id. Requires admin permission. |
+| `set_santa_mode_override` | Set MONITOR or LOCKDOWN for a tag or a node, optionally as temporary MONITOR with `hours`. Requires admin permission. |
+| `delete_santa_mode_override` | Delete one override by id; a temporary MONITOR override ends now. Requires admin permission. |
 
 Four constraints `run_query` applies on top of osctrl's own permission checks:
 
@@ -210,6 +219,11 @@ narrower than the REST endpoint:
   user's Mac. Create those from the Santa page.
 - **There is no update or bulk import.** An agent changes one rule at a time,
   and each change is one audit line.
+
+`set_santa_mode_override` goes through the same handler as the Santa page:
+with **Require a second admin** on, a MONITOR override is held for approval,
+and the tool tells the model it was not applied. Extending a temporary
+override is not offered.
 
 Santa events are written by the Macs themselves. With writes on, the server
 instructions tell the model that a blocked binary's path, name or signer is
