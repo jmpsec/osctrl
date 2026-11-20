@@ -64,7 +64,7 @@ func (m *Manager) SaveConfig(cfg EnvConfig) error {
 		Columns: []clause.Column{{Name: "environment_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "batch_size", "full_sync_interval_seconds", "enable_transitive_rules", "block_usb_mount",
 			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels", "requester_channel",
-			"vote_local_threshold", "vote_global_threshold", "override_file_access_action",
+			"vote_local_threshold", "vote_global_threshold", "vote_expiry_days", "override_file_access_action",
 			"enable_bundles", "enable_all_event_upload", "disable_unknown_event_upload", "allowed_path_regex", "blocked_path_regex",
 			"event_detail_url", "event_detail_text", "group_tags", "group_match", "require_second_admin", "approver_users", "approver_groups", "updated_at"}),
 	}).Create(&cfg).Error
@@ -171,15 +171,31 @@ func (m *Manager) Rule(envID, id uint) (Rule, error) {
 }
 
 // DeleteRule removes a rule, returning gorm.ErrRecordNotFound if it is not in envID.
-func (m *Manager) DeleteRule(envID, id uint) error {
-	res := m.DB.Where("environment_id = ? AND id = ?", envID, id).Delete(&Rule{})
-	if res.Error != nil {
+//
+// Deleting a rule votes created also deletes the file's votes, so the next
+// vote starts the count again instead of recreating the rule; votesCleared is
+// how many went.
+func (m *Manager) DeleteRule(envID, id uint) (votesCleared int64, err error) {
+	err = m.DB.Transaction(func(tx *gorm.DB) error {
+		var rule Rule
+		if err := tx.Where("environment_id = ? AND id = ?", envID, id).First(&rule).Error; err != nil {
+			return err
+		}
+		res := tx.Where("environment_id = ? AND id = ?", envID, id).Delete(&Rule{})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		if rule.CreatedBy != VoteRuleCreator || rule.RuleType != "BINARY" {
+			return nil
+		}
+		res = tx.Where("environment_id = ? AND file_sha256 = ?", envID, rule.Identifier).Delete(&Vote{})
+		votesCleared = res.RowsAffected
 		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	})
+	return votesCleared, err
 }
 
 // ModeOverrides lists the environment's client mode overrides ordered by ID,

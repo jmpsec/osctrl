@@ -979,6 +979,7 @@ export const ca: Messages = {
     },
     voteLocal: 'Vots per permetre als equips dels votants',
     voteGlobal: "Vots per permetre a l'entorn",
+    voteExpiry: 'Dies fins que caduquen els vots (0 els conserva)',
     voteHint: "Els usuaris poden votar per un fitxer que Santa ha blocat al seu equip, un vot per usuari i fitxer. 0 desactiva un llindar. No es pot votar per fitxers blocats per una regla. Requereix l'URL d'aprovació.",
     vote: {
       title: 'Vota per aquest programari',
@@ -989,6 +990,7 @@ export const ca: Messages = {
       voted: 'Ja has votat',
       allowedNode: 'Vots suficients: es permetrà al teu equip després de la propera sincronització de Santa.',
       allowedEnv: 'Vots suficients: es permetrà per a tothom després de la propera sincronització de Santa.',
+      withdraw: 'Retira el vot',
     },
     monitor: {
       title: 'Mode MONITOR temporal',
@@ -1013,6 +1015,10 @@ export const ca: Messages = {
       unsigned: "No s'ha informat cap cadena de signatura.",
       rules: 'Regles coincidents',
       noRules: 'Cap regla anomena aquest binari, el seu signant ni el seu certificat.',
+      votes: 'Vots ({n})',
+      voter: 'Votant',
+      votedAt: 'Votat',
+      votesHint: 'Suprimir una regla creada pels vots també suprimeix aquests vots.',
     },
     tabReports: 'Informes',
     reports: {

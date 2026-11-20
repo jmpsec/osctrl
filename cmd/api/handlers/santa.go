@@ -58,6 +58,8 @@ type SantaConfigRequest struct {
 	VoteLocalThreshold uint32 `json:"vote_local_threshold"`
 	// Votes that allow the file in the whole environment; 0 is off, and it cannot be below the local threshold. Needs approval_url
 	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
+	// Votes older than this many days are deleted, at most 3650; 0 keeps them
+	VoteExpiryDays uint32 `json:"vote_expiry_days"`
 	// Overrides the action of MDM-deployed file access rules: NONE | AUDIT_ONLY | DISABLE; empty leaves the clients unchanged
 	OverrideFileAccessAction string `json:"override_file_access_action"`
 	// Clients hash the bundle of a blocked binary and upload its other binaries when osctrl asks
@@ -363,7 +365,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		RemovableMedia:        media, RemovableMediaFlags: req.RemovableMediaFlags,
 		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,
 		ApprovalURL: req.ApprovalURL, NotifyChannels: req.NotifyChannels, RequesterChannel: req.RequesterChannel,
-		VoteLocalThreshold: req.VoteLocalThreshold, VoteGlobalThreshold: req.VoteGlobalThreshold,
+		VoteLocalThreshold: req.VoteLocalThreshold, VoteGlobalThreshold: req.VoteGlobalThreshold, VoteExpiryDays: req.VoteExpiryDays,
 		OverrideFileAccessAction: req.OverrideFileAccessAction,
 		EnableBundles:            req.EnableBundles, EnableAllEventUpload: req.EnableAllEventUpload,
 		DisableUnknownEventUpload: req.DisableUnknownEventUpload,
@@ -671,6 +673,7 @@ func (h *HandlersApi) SantaRuleUpdateHandler(w http.ResponseWriter, r *http.Requ
 
 // SantaRuleDeleteHandler — DELETE /api/v1/santa/{env}/rules/{id}
 // @Summary Delete a Santa rule
+// @Description Deleting a rule created by votes also deletes the file's votes, so the count starts again.
 // @Tags santa
 // @Param env path string true "Environment name or UUID"
 // @Param id path int true "Rule id"
@@ -692,8 +695,9 @@ func (h *HandlersApi) SantaRuleDeleteHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	rule, err := h.Santa.Rule(env.ID, uint(id))
+	var cleared int64
 	if err == nil {
-		err = h.Santa.DeleteRule(env.ID, uint(id))
+		cleared, err = h.Santa.DeleteRule(env.ID, uint(id))
 	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		apiErrorResponse(w, "rule not found", http.StatusNotFound, err)
@@ -703,7 +707,11 @@ func (h *HandlersApi) SantaRuleDeleteHandler(w http.ResponseWriter, r *http.Requ
 		apiErrorResponse(w, "error deleting rule", http.StatusInternalServerError, err)
 		return
 	}
-	h.santaAudit(user, fmt.Sprintf("delete rule %d %s", id, ruleAuditString(rule)), r, env)
+	action := fmt.Sprintf("delete rule %d %s", id, ruleAuditString(rule))
+	if cleared > 0 {
+		action += fmt.Sprintf(" votes_cleared=%d", cleared)
+	}
+	h.santaAudit(user, action, r, env)
 	w.WriteHeader(http.StatusNoContent)
 }
 

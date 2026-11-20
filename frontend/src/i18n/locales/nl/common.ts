@@ -979,6 +979,7 @@ export const nl: Messages = {
     },
     voteLocal: 'Stemmen om toe te staan op de machines van stemmers',
     voteGlobal: 'Stemmen om toe te staan in de omgeving',
+    voteExpiry: 'Dagen tot stemmen verlopen (0 bewaart ze)',
     voteHint: 'Gebruikers kunnen stemmen op een bestand dat Santa op hun machine heeft geblokkeerd, één stem per gebruiker en bestand. 0 schakelt een drempel uit. Op bestanden die door een regel zijn geblokkeerd kan niet worden gestemd. Vereist de goedkeurings-URL.',
     vote: {
       title: 'Stem op deze software',
@@ -989,6 +990,7 @@ export const nl: Messages = {
       voted: 'Je hebt gestemd',
       allowedNode: 'Genoeg stemmen: na de volgende Santa-synchronisatie is het toegestaan op je machine.',
       allowedEnv: 'Genoeg stemmen: na de volgende Santa-synchronisatie is het toegestaan voor iedereen.',
+      withdraw: 'Stem intrekken',
     },
     monitor: {
       title: 'Tijdelijke MONITOR-modus',
@@ -1013,6 +1015,10 @@ export const nl: Messages = {
       unsigned: 'Geen ondertekeningsketen gemeld.',
       rules: 'Overeenkomende regels',
       noRules: 'Geen regel noemt dit bestand, de ondertekenaar of het certificaat.',
+      votes: 'Stemmen ({n})',
+      voter: 'Stemmer',
+      votedAt: 'Gestemd',
+      votesHint: 'Een regel verwijderen die de stemmen maakten, verwijdert ook deze stemmen.',
     },
     tabReports: 'Rapporten',
     reports: {

@@ -21,7 +21,7 @@ type SantaVoteCreate struct {
 
 // SantaVoteHandler — POST /api/v1/santa/{env}/votes
 // @Summary Vote to allow a binary Santa blocked
-// @Description Any signed-in account may call this; no environment permission is needed. The block must have been reported by the machine. One vote per account and file: voting again changes nothing. At the local threshold each voter's machine gets a BINARY allow rule; at the global threshold the environment gets one. A file blocked by a rule cannot be voted for (409), and neither can any file while both thresholds are 0 (409).
+// @Description Any signed-in account may call this; no environment permission is needed. The block must have been reported by the machine. One vote per account and file: voting again changes nothing. At the local threshold each voter's machine gets a BINARY allow rule; at the global threshold the environment gets one. A file blocked by a rule or with a denied request cannot be voted for (409), and neither can any file while both thresholds are 0 (409).
 // @Tags santa
 // @Accept json
 // @Produce json
@@ -63,6 +63,9 @@ func (h *HandlersApi) SantaVoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	case errors.Is(err, santa.ErrKnownBad), errors.Is(err, santa.ErrRuleConflict):
 		apiErrorResponse(w, "this file is blocked by a rule and cannot be voted for", http.StatusConflict, err)
+		return
+	case errors.Is(err, santa.ErrVoteDenied):
+		apiErrorResponse(w, "a request for this file was denied, so it cannot be voted for", http.StatusConflict, err)
 		return
 	case err != nil:
 		apiErrorResponse(w, "error voting", http.StatusInternalServerError, err)
@@ -108,4 +111,76 @@ func (h *HandlersApi) SantaVoteStatusHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, st)
+}
+
+// SantaVoteWithdrawHandler — DELETE /api/v1/santa/{env}/votes
+// @Summary Withdraw the caller's vote for a binary
+// @Description Any signed-in account may call this, for their own vote only. Rules the votes already created stay. Answers 404 when the caller has no vote for the file.
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param sha256 query string true "SHA-256 of the file"
+// @Success 200 {object} santa.VoteStatus
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/votes [delete]
+func (h *HandlersApi) SantaVoteWithdrawHandler(w http.ResponseWriter, r *http.Request) {
+	env, user, ok := h.santaRequester(w, r)
+	if !ok {
+		return
+	}
+	sha := r.URL.Query().Get("sha256")
+	gone, err := h.Santa.WithdrawVote(env.ID, sha, user)
+	switch {
+	case errors.Is(err, santa.ErrInvalidRequest):
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
+		return
+	case err != nil:
+		apiErrorResponse(w, "error withdrawing vote", http.StatusInternalServerError, err)
+		return
+	case !gone:
+		apiErrorResponse(w, "no vote to withdraw", http.StatusNotFound, nil)
+		return
+	}
+	// Validated by WithdrawVote, give or take surrounding space and case.
+	h.santaAudit(user, "withdraw vote sha256="+strings.ToLower(strings.TrimSpace(sha)), r, env)
+	st, err := h.Santa.VoteStatus(env.ID, sha, user)
+	if err != nil {
+		apiErrorResponse(w, "error getting votes", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, st)
+}
+
+// SantaVotesListHandler — GET /api/v1/santa/{env}/votes/{sha256}
+// @Summary List who voted for a binary
+// @Description Requires environment admin. Each vote's voter, machine and time, oldest first.
+// @Tags santa
+// @Produce json
+// @Param env path string true "Environment name or UUID"
+// @Param sha256 path string true "SHA-256 of the file"
+// @Success 200 {array} santa.Vote
+// @Failure 400 {object} types.ApiErrorResponse
+// @Failure 403 {object} types.ApiErrorResponse
+// @Failure 404 {object} types.ApiErrorResponse
+// @Failure 503 {object} types.ApiErrorResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/santa/{env}/votes/{sha256} [get]
+func (h *HandlersApi) SantaVotesListHandler(w http.ResponseWriter, r *http.Request) {
+	env, _, ok := h.santaEnvironment(w, r)
+	if !ok {
+		return
+	}
+	votes, err := h.Santa.Votes(env.ID, r.PathValue("sha256"))
+	switch {
+	case errors.Is(err, santa.ErrInvalidRequest):
+		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
+		return
+	case err != nil:
+		apiErrorResponse(w, "error listing votes", http.StatusInternalServerError, err)
+		return
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, votes)
 }

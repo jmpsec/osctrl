@@ -990,6 +990,7 @@ export const en = {
     },
     voteLocal: 'Votes to allow on voters’ machines',
     voteGlobal: 'Votes to allow for the environment',
+    voteExpiry: 'Days until votes expire (0 keeps them)',
     voteHint: 'Users can vote for a file Santa blocked on their machine, one vote per user and file. 0 turns a threshold off. Files blocked by a rule cannot be voted for. Needs the approval URL.',
     vote: {
       title: 'Vote for this software',
@@ -1000,6 +1001,7 @@ export const en = {
       voted: 'You voted',
       allowedNode: 'Enough votes: it is allowed on your machine after the next Santa sync.',
       allowedEnv: 'Enough votes: it is allowed for everyone after the next Santa sync.',
+      withdraw: 'Withdraw vote',
     },
     monitor: {
       title: 'Temporary MONITOR mode',
@@ -1024,6 +1026,10 @@ export const en = {
       unsigned: 'No signing chain reported.',
       rules: 'Matching rules',
       noRules: 'No rule names this binary, its signer or its certificate.',
+      votes: 'Votes ({n})',
+      voter: 'Voter',
+      votedAt: 'Voted',
+      votesHint: 'Deleting a rule the votes created also deletes these votes.',
     },
     tabReports: 'Reports',
     reports: {

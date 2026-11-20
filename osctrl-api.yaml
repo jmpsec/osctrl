@@ -9861,6 +9861,8 @@ paths:
         - santa
   "/api/v1/santa/{env}/rules/{id}":
     delete:
+      description: Deleting a rule created by votes also deletes the file's votes, so
+        the count starts again.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -10089,6 +10091,53 @@ paths:
       tags:
         - santa
   "/api/v1/santa/{env}/votes":
+    delete:
+      description: Any signed-in account may call this, for their own vote only. Rules
+        the votes already created stay. Answers 404 when the caller has no vote
+        for the file.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: SHA-256 of the file
+          in: query
+          name: sha256
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.VoteStatus"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Withdraw the caller's vote for a binary
+      tags:
+        - santa
     get:
       description: Any signed-in account may call this. Returns the vote count, both
         thresholds (0 is off) and whether the caller voted; never who voted.
@@ -10140,8 +10189,9 @@ paths:
         needed. The block must have been reported by the machine. One vote per
         account and file: voting again changes nothing. At the local threshold
         each voter's machine gets a BINARY allow rule; at the global threshold
-        the environment gets one. A file blocked by a rule cannot be voted for
-        (409), and neither can any file while both thresholds are 0 (409)."
+        the environment gets one. A file blocked by a rule or with a denied
+        request cannot be voted for (409), and neither can any file while both
+        thresholds are 0 (409)."
       parameters:
         - description: Environment name or UUID
           in: path
@@ -10190,6 +10240,61 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Vote to allow a binary Santa blocked
+      tags:
+        - santa
+  "/api/v1/santa/{env}/votes/{sha256}":
+    get:
+      description: Requires environment admin. Each vote's voter, machine and time,
+        oldest first.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: SHA-256 of the file
+          in: path
+          name: sha256
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/santa.Vote"
+                type: array
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List who voted for a binary
       tags:
         - santa
   "/api/v1/saved-queries/{env}":
@@ -14894,6 +14999,10 @@ components:
             admin approves them (see /api/v1/changes). Turning it off is one of
             them
           type: boolean
+        vote_expiry_days:
+          description: Votes older than this many days are deleted, at most 3650; 0 keeps
+            them
+          type: integer
         vote_global_threshold:
           description: Votes that allow the file in the whole environment; 0 is off, and
             it cannot be below the local threshold. Needs approval_url
@@ -15029,6 +15138,9 @@ components:
           type: boolean
         updated_at:
           type: string
+        vote_expiry_days:
+          description: Votes older than this many days are deleted; 0 keeps them
+          type: integer
         vote_global_threshold:
           description: Votes that allow the file in the whole environment; 0 is off.
           type: integer
@@ -16257,6 +16369,21 @@ components:
         expires_at:
           type: string
         verdict:
+          type: string
+      type: object
+    santa.Vote:
+      properties:
+        created_at:
+          type: string
+        environment_id:
+          type: integer
+        file_sha256:
+          type: string
+        id:
+          type: integer
+        machine_id:
+          type: string
+        voter:
           type: string
       type: object
     santa.VoteStatus:

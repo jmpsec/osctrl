@@ -979,6 +979,7 @@ export const ko: Messages = {
     },
     voteLocal: '투표자 기기에서 허용하는 데 필요한 표',
     voteGlobal: '환경 전체에서 허용하는 데 필요한 표',
+    voteExpiry: '투표 만료까지의 일수 (0은 유지)',
     voteHint: '사용자는 Santa가 자신의 기기에서 차단한 파일에 투표할 수 있으며, 사용자와 파일당 한 표입니다. 0은 임계값을 끕니다. 규칙으로 차단된 파일에는 투표할 수 없습니다. 승인 URL이 필요합니다.',
     vote: {
       title: '이 소프트웨어에 투표',
@@ -989,6 +990,7 @@ export const ko: Messages = {
       voted: '투표함',
       allowedNode: '표가 충분합니다. 다음 Santa 동기화 후 내 기기에서 허용됩니다.',
       allowedEnv: '표가 충분합니다. 다음 Santa 동기화 후 모두에게 허용됩니다.',
+      withdraw: '투표 철회',
     },
     monitor: {
       title: '임시 MONITOR 모드',
@@ -1013,6 +1015,10 @@ export const ko: Messages = {
       unsigned: '보고된 서명 체인이 없습니다.',
       rules: '일치하는 규칙',
       noRules: '이 바이너리, 서명자 또는 인증서를 지정한 규칙이 없습니다.',
+      votes: '투표 ({n})',
+      voter: '투표자',
+      votedAt: '투표 시각',
+      votesHint: '투표로 생성된 규칙을 삭제하면 이 투표도 삭제됩니다.',
     },
     tabReports: '보고서',
     reports: {

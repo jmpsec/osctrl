@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -18,6 +19,8 @@ var (
 	ErrVotingOff = errors.New("santa: voting is off")
 	// ErrKnownBad is returned for a file a rule blocks: votes cannot allow it.
 	ErrKnownBad = errors.New("santa: the file is blocked by a rule")
+	// ErrVoteDenied is returned for a file an approver denied a request for.
+	ErrVoteDenied = errors.New("santa: a request for this file was denied")
 )
 
 // VoteStatus is where a file stands in the environment's vote.
@@ -133,8 +136,8 @@ func (m *Manager) Vote(envID uint, machineID, sha256, voter string) (VoteResult,
 			return res, ErrRiskUnavailable
 		}
 	}
-	// ponytail: votes are never pruned and a lowered threshold only takes effect
-	// on the next vote; add expiry or a recount if either matters.
+	// ponytail: a lowered threshold only takes effect on the next vote; add a
+	// recount if that matters.
 	err = m.DB.Transaction(func(tx *gorm.DB) error {
 		bad, err := knownBad(tx, evs[0])
 		if err != nil {
@@ -142,6 +145,15 @@ func (m *Manager) Vote(envID uint, machineID, sha256, voter string) (VoteResult,
 		}
 		if bad {
 			return ErrKnownBad
+		}
+		// An approver said no to this file; votes do not overrule them.
+		var denied int64
+		if err := tx.Model(&Request{}).Where("environment_id = ? AND file_sha256 = ? AND status = ?", envID, sha256, RequestDenied).
+			Count(&denied).Error; err != nil {
+			return err
+		}
+		if denied > 0 {
+			return ErrVoteDenied
 		}
 		// The unique key makes a repeated or simultaneous vote a no-op.
 		ins := tx.Clauses(clause.OnConflict{DoNothing: true}).
@@ -191,4 +203,45 @@ func (m *Manager) Vote(envID uint, machineID, sha256, voter string) (VoteResult,
 		return VoteResult{}, err
 	}
 	return res, nil
+}
+
+// Votes lists the votes for a file, oldest first: who voted, from which
+// machine and when. It is for environment admins; voters only see counts.
+func (m *Manager) Votes(envID uint, sha256 string) ([]Vote, error) {
+	sha256 = strings.ToLower(strings.TrimSpace(sha256))
+	if !hex64.MatchString(sha256) {
+		return nil, fmt.Errorf("%w: sha256 must be 64 hex characters", ErrInvalidRequest)
+	}
+	var votes []Vote
+	err := m.DB.Where("environment_id = ? AND file_sha256 = ?", envID, sha256).Order("id").Find(&votes).Error
+	return votes, err
+}
+
+// WithdrawVote deletes voter's vote for a file and reports whether there was
+// one. Rules the votes already created stay; an admin deletes them.
+func (m *Manager) WithdrawVote(envID uint, sha256, voter string) (bool, error) {
+	sha256 = strings.ToLower(strings.TrimSpace(sha256))
+	if !hex64.MatchString(sha256) {
+		return false, fmt.Errorf("%w: sha256 must be 64 hex characters", ErrInvalidRequest)
+	}
+	res := m.DB.Where("environment_id = ? AND file_sha256 = ? AND voter = ?", envID, sha256, voter).Delete(&Vote{})
+	return res.RowsAffected > 0, res.Error
+}
+
+// PruneVotes deletes the votes older than the vote expiry of their
+// environment, where one is set, and returns how many went.
+func (m *Manager) PruneVotes(now time.Time) (int64, error) {
+	var cfgs []EnvConfig
+	if err := m.DB.Select("environment_id", "vote_expiry_days").Where("vote_expiry_days > 0").Find(&cfgs).Error; err != nil {
+		return 0, err
+	}
+	var n int64
+	for _, c := range cfgs {
+		res := m.DB.Where("environment_id = ? AND created_at < ?", c.EnvironmentID, now.AddDate(0, 0, -int(c.VoteExpiryDays))).Delete(&Vote{})
+		if res.Error != nil {
+			return n, res.Error
+		}
+		n += res.RowsAffected
+	}
+	return n, nil
 }

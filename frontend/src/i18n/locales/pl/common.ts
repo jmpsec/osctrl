@@ -979,6 +979,7 @@ export const pl: Messages = {
     },
     voteLocal: 'Głosy, aby zezwolić na komputerach głosujących',
     voteGlobal: 'Głosy, aby zezwolić w środowisku',
+    voteExpiry: 'Dni do wygaśnięcia głosów (0 je zachowuje)',
     voteHint: 'Użytkownicy mogą głosować na plik zablokowany przez Santa na ich komputerze, jeden głos na użytkownika i plik. 0 wyłącza próg. Nie można głosować na pliki zablokowane regułą. Wymaga adresu URL zatwierdzania.',
     vote: {
       title: 'Zagłosuj na to oprogramowanie',
@@ -989,6 +990,7 @@ export const pl: Messages = {
       voted: 'Głos oddany',
       allowedNode: 'Wystarczająco głosów: będzie dozwolone na Twoim komputerze po następnej synchronizacji Santa.',
       allowedEnv: 'Wystarczająco głosów: będzie dozwolone dla wszystkich po następnej synchronizacji Santa.',
+      withdraw: 'Wycofaj głos',
     },
     monitor: {
       title: 'Tymczasowy tryb MONITOR',
@@ -1013,6 +1015,10 @@ export const pl: Messages = {
       unsigned: 'Nie zgłoszono łańcucha podpisu.',
       rules: 'Pasujące reguły',
       noRules: 'Żadna reguła nie wskazuje tego pliku, jego podpisującego ani certyfikatu.',
+      votes: 'Głosy ({n})',
+      voter: 'Głosujący',
+      votedAt: 'Zagłosowano',
+      votesHint: 'Usunięcie reguły utworzonej przez głosy usuwa też te głosy.',
     },
     tabReports: 'Raporty',
     reports: {

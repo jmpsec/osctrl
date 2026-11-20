@@ -42,6 +42,8 @@ type EnvConfig struct {
 	VoteLocalThreshold uint32 `json:"vote_local_threshold"`
 	// Votes that allow the file in the whole environment; 0 is off.
 	VoteGlobalThreshold uint32 `json:"vote_global_threshold"`
+	// Votes older than this many days are deleted; 0 keeps them
+	VoteExpiryDays uint32 `json:"vote_expiry_days"`
 	// Overrides the action of MDM-deployed file access rules: NONE | AUDIT_ONLY | DISABLE;
 	// empty sends nothing, leaving each client's setting unchanged
 	OverrideFileAccessAction string `gorm:"type:varchar(16)" json:"override_file_access_action"`

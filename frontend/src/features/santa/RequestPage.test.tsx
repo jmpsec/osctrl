@@ -10,6 +10,7 @@ const mockCreate = vi.fn<(env: string, body: unknown) => Promise<SantaOwnRequest
 const mockMine = vi.fn<() => Promise<SantaOwnRequest[]>>();
 const mockVotes = vi.fn<(env: string, sha256: string) => Promise<SantaVoteStatus>>();
 const mockVote = vi.fn<(env: string, body: unknown) => Promise<SantaVoteStatus>>();
+const mockWithdraw = vi.fn<(env: string, sha256: string) => Promise<SantaVoteStatus>>();
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -19,6 +20,7 @@ vi.mock('$/api/santa', async () => {
     listMySantaRequests: () => mockMine(),
     getSantaVotes: (env: string, sha256: string) => mockVotes(env, sha256),
     voteSantaFile: (env: string, body: unknown) => mockVote(env, body),
+    withdrawSantaVote: (env: string, sha256: string) => mockWithdraw(env, sha256),
   };
 });
 
@@ -77,7 +79,18 @@ describe('RequestPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Vote to allow' }));
     await waitFor(() => expect(mockVote).toHaveBeenCalledWith('ENV-UUID', { sha256: SHA, machine_id: MACHINE }));
     expect(await screen.findByRole('status')).toHaveTextContent('allowed on your machine');
-    expect(screen.getByRole('button', { name: 'You voted' })).toBeDisabled();
+    expect(screen.getByText('You voted')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Vote to allow' })).not.toBeInTheDocument();
+  });
+
+  it("withdraws the caller's vote", async () => {
+    mockVotes.mockResolvedValue({ ...OFF, votes: 1, global_threshold: 5, voted: true });
+    mockWithdraw.mockResolvedValue({ ...OFF, votes: 0, global_threshold: 5 });
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Withdraw vote' }));
+    await waitFor(() => expect(mockWithdraw).toHaveBeenCalledWith('ENV-UUID', SHA));
+    expect(await screen.findByRole('button', { name: 'Vote to allow' })).toBeInTheDocument();
+    expect(screen.getByText(/Votes so far: 0\./)).toBeInTheDocument();
   });
 
   it('shows why a vote was refused', async () => {

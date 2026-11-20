@@ -979,6 +979,7 @@ export const zh: Messages = {
     },
     voteLocal: '在投票者机器上允许所需的票数',
     voteGlobal: '在整个环境中允许所需的票数',
+    voteExpiry: '投票过期天数（0 表示保留）',
     voteHint: '用户可以为 Santa 在其机器上阻止的文件投票，每个用户对每个文件一票。0 表示关闭该阈值。被规则阻止的文件不能投票。需要设置审批 URL。',
     vote: {
       title: '为此软件投票',
@@ -989,6 +990,7 @@ export const zh: Messages = {
       voted: '已投票',
       allowedNode: '票数已足够：下次 Santa 同步后将在你的机器上允许。',
       allowedEnv: '票数已足够：下次 Santa 同步后将对所有人允许。',
+      withdraw: '撤回投票',
     },
     monitor: {
       title: '临时 MONITOR 模式',
@@ -1013,6 +1015,10 @@ export const zh: Messages = {
       unsigned: '未上报签名链。',
       rules: '匹配的规则',
       noRules: '没有规则指定此文件、其签名者或证书。',
+      votes: '投票（{n}）',
+      voter: '投票人',
+      votedAt: '投票时间',
+      votesHint: '删除由投票创建的规则时，这些投票也会被删除。',
     },
     tabReports: '报告',
     reports: {

@@ -69,11 +69,13 @@ func TestDeleteRuleWrongEnv(t *testing.T) {
 	m := newTestManager(t)
 	r := testRule(1)
 	require.NoError(t, m.CreateRule(r))
-	require.ErrorIs(t, m.DeleteRule(2, r.ID), gorm.ErrRecordNotFound)
+	_, err := m.DeleteRule(2, r.ID)
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
 	rs, err := m.Rules(1)
 	require.NoError(t, err)
 	require.Len(t, rs, 1)
-	require.NoError(t, m.DeleteRule(1, r.ID))
+	_, err = m.DeleteRule(1, r.ID)
+	require.NoError(t, err)
 }
 
 func TestCreateRuleDuplicate(t *testing.T) {

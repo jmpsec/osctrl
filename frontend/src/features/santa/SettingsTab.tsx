@@ -169,6 +169,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         requester_channel: form.requester_channel ?? 0,
         vote_local_threshold: form.vote_local_threshold ?? 0,
         vote_global_threshold: form.vote_global_threshold ?? 0,
+        vote_expiry_days: form.vote_expiry_days ?? 0,
         override_file_access_action: form.override_file_access_action ?? '',
         enable_bundles: !!form.enable_bundles,
         enable_all_event_upload: !!form.enable_all_event_upload,
@@ -365,10 +366,10 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         onRequester={(id) => setForm({ ...form, requester_channel: id })}
       />
       <div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(['vote_local_threshold', 'vote_global_threshold'] as const).map((field) => (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(['vote_local_threshold', 'vote_global_threshold', 'vote_expiry_days'] as const).map((field) => (
             <div key={field}>
-              <Label htmlFor={`santa-${field}`}>{t(field === 'vote_local_threshold' ? 'santa.voteLocal' : 'santa.voteGlobal')}</Label>
+              <Label htmlFor={`santa-${field}`}>{t({ vote_local_threshold: 'santa.voteLocal', vote_global_threshold: 'santa.voteGlobal', vote_expiry_days: 'santa.voteExpiry' }[field])}</Label>
               <Input
                 id={`santa-${field}`}
                 type="number"

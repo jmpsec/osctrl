@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { checkSantaRisk, getSantaBinary, santaQueryKey, type SantaBinary } from '$/api/santa';
+import { checkSantaRisk, getSantaBinary, listSantaVoters, santaQueryKey, type SantaBinary } from '$/api/santa';
 import { Button } from '$/components/atoms/Button';
 import { Skeleton } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
@@ -38,6 +38,8 @@ export function BinaryModal({ env, sha256, onClose }: {
   const qc = useQueryClient();
   const key = santaQueryKey(env, 'binaries', sha256);
   const binary = useQuery({ queryKey: key, queryFn: () => getSantaBinary(env, sha256), retry: false });
+  const voters = useQuery({ queryKey: santaQueryKey(env, 'voters', sha256), queryFn: () => listSantaVoters(env, sha256), retry: false });
+  const votes = voters.data ?? [];
   const check = useMutation({
     mutationFn: () => checkSantaRisk(env, sha256),
     onSuccess: (risk) => {
@@ -149,6 +151,33 @@ export function BinaryModal({ env, sha256, onClose }: {
               </div>
             )}
           </section>
+
+          {votes.length > 0 && (
+            <section className="space-y-1">
+              <h3 className={HEADING}>{t('santa.binary.votes', { n: votes.length })}</h3>
+              <div className="overflow-x-auto">
+                <table className={TABLE}>
+                  <thead>
+                    <tr className="border-b border-[color:var(--border)]">
+                      <th scope="col" className={TH}>{t('santa.binary.voter')}</th>
+                      <th scope="col" className={TH}>{t('santa.request.machine')}</th>
+                      <th scope="col" className={TH}>{t('santa.binary.votedAt')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {votes.map((v) => (
+                      <tr key={v.id} className={ROW}>
+                        <td className={TD}>{v.voter}</td>
+                        <td className={`${TD} ${MONO}`}>{v.machine_id}</td>
+                        <td className={TD}>{when(v.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className={SUB}>{t('santa.binary.votesHint')}</p>
+            </section>
+          )}
         </div>
       )}
     </ModalShell>

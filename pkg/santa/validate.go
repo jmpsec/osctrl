@@ -116,6 +116,8 @@ func ValidateConfig(c *EnvConfig) error {
 		return errors.New("the global vote threshold cannot be below the local one")
 	case (local > 0 || global > 0) && c.ApprovalURL == "":
 		return errors.New("voting needs the approval URL")
+	case c.VoteExpiryDays > MaxVoteExpiryDays:
+		return fmt.Errorf("votes expire after at most %d days", MaxVoteExpiryDays)
 	}
 	if s := c.FullSyncIntervalSeconds; s != 0 && (s < MinSyncInterval || s > MaxSyncInterval) {
 		return fmt.Errorf("sync interval is 0 (Santa default) or %d to %d seconds", MinSyncInterval, MaxSyncInterval)
@@ -201,6 +203,9 @@ func cleanNames(names []string) ([]string, error) {
 
 // MaxVoteThreshold caps both vote thresholds.
 const MaxVoteThreshold = 10000
+
+// MaxVoteExpiryDays caps the vote expiry.
+const MaxVoteExpiryDays = 3650
 
 // MaxNotifyChannels caps the alert channels notified of a new request.
 const MaxNotifyChannels = 10

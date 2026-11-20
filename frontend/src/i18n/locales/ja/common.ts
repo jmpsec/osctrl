@@ -979,6 +979,7 @@ export const ja: Messages = {
     },
     voteLocal: '投票者のマシンで許可するための票数',
     voteGlobal: '環境全体で許可するための票数',
+    voteExpiry: '投票の有効期限 (日数、0 で無期限)',
     voteHint: 'ユーザーは、自分のマシンで Santa がブロックしたファイルに投票できます（ユーザーとファイルごとに 1 票）。0 でしきい値を無効にします。ルールでブロックされたファイルには投票できません。承認 URL が必要です。',
     vote: {
       title: 'このソフトウェアに投票',
@@ -989,6 +990,7 @@ export const ja: Messages = {
       voted: '投票済み',
       allowedNode: '票数に達しました。次回の Santa 同期後にあなたのマシンで許可されます。',
       allowedEnv: '票数に達しました。次回の Santa 同期後に全員に許可されます。',
+      withdraw: '投票を取り消す',
     },
     monitor: {
       title: '一時的な MONITOR モード',
@@ -1013,6 +1015,10 @@ export const ja: Messages = {
       unsigned: '署名チェーンは報告されていません。',
       rules: '一致するルール',
       noRules: 'このバイナリ、署名者、証明書を指定するルールはありません。',
+      votes: '投票 ({n})',
+      voter: '投票者',
+      votedAt: '投票日時',
+      votesHint: '投票で作成されたルールを削除すると、これらの投票も削除されます。',
     },
     tabReports: 'レポート',
     reports: {
