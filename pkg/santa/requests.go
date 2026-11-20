@@ -3,6 +3,7 @@ package santa
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -93,7 +94,67 @@ func (m *Manager) Requests(envID uint, status, requester string) ([]Request, err
 	if err := q.Order("id DESC").Limit(maxPageSize).Find(&reqs).Error; err != nil {
 		return nil, err
 	}
-	return reqs, m.attachRisk(reqs)
+	return reqs, m.attach(reqs)
+}
+
+// attach fills the fields of reqs that are not stored.
+func (m *Manager) attach(reqs []Request) error {
+	if err := m.attachRisk(reqs); err != nil {
+		return err
+	}
+	return m.attachEvents(reqs)
+}
+
+// attachEvents fills the leaf certificate and the bundle binary count of file
+// requests from their blocked events, for the rule types an approval can use.
+func (m *Manager) attachEvents(reqs []Request) error {
+	var ids []uint
+	for _, r := range reqs {
+		if r.Kind != RequestKindMonitor && r.EventID != 0 {
+			ids = append(ids, r.EventID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	var evs []Event
+	if err := m.DB.Select("id", "bundle_hash", "signing_chain").Where("id IN ?", ids).Find(&evs).Error; err != nil {
+		return err
+	}
+	byID := map[uint]Event{}
+	var hashes []string
+	for _, e := range evs {
+		byID[e.ID] = e
+		if e.BundleHash != "" {
+			hashes = append(hashes, e.BundleHash)
+		}
+	}
+	counts := map[string]int{}
+	if len(hashes) > 0 {
+		var rows []struct {
+			BundleHash string
+			N          int
+		}
+		if err := m.DB.Model(&Event{}).Select("bundle_hash, COUNT(DISTINCT file_sha256) AS n").
+			Where("environment_id = ? AND decision = ? AND bundle_hash IN ?", reqs[0].EnvironmentID, DecisionBundleBinary, hashes).
+			Group("bundle_hash").Scan(&rows).Error; err != nil {
+			return err
+		}
+		for _, r := range rows {
+			counts[r.BundleHash] = r.N
+		}
+	}
+	for i := range reqs {
+		e, ok := byID[reqs[i].EventID]
+		if !ok || reqs[i].Kind == RequestKindMonitor {
+			continue
+		}
+		if len(e.SigningChain) > 0 {
+			reqs[i].CertSHA256 = e.SigningChain[0].SHA256
+		}
+		reqs[i].BundleBinaries = counts[e.BundleHash]
+	}
+	return nil
 }
 
 var (
@@ -126,6 +187,12 @@ type Decision struct {
 	Override bool
 	// By is an approver, not an environment admin: never their own request.
 	NotOwn bool
+	// Type of the allow rule on approval, with the identifier from the request
+	// and its blocked event: "" or BINARY (the file), SIGNINGID, TEAMID or
+	// CERTIFICATE (the leaf certificate). Ignored for MONITOR requests.
+	RuleType string
+	// With BINARY, also allow every binary the client uploaded for the file's bundle.
+	Bundle bool
 	// Aggregated risk verdict, set by riskForDecision before the transaction.
 	risk string
 }
@@ -196,30 +263,40 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 				}
 				req.RiskOverride = true
 			}
-			rule := Rule{
-				EnvironmentID: envID, Identifier: req.FileSHA256, RuleType: "BINARY", Policy: "ALLOWLIST",
-				Scope: d.Scope, ScopeValue: d.ScopeValue, CreatedBy: d.By,
-			}
-			switch d.Scope {
-			case "node":
-				rule.ScopeValue = req.MachineID
-			case "env":
-				rule.ScopeValue = ""
-			}
-			if err := ValidateRule(&rule); err != nil {
-				return err
-			}
-			rule, _, err := allowRule(tx, rule)
+			ruleType, ids, err := approvalIdentifiers(tx, req, d)
 			if err != nil {
 				return err
 			}
-			req.Status, req.RuleID = RequestApproved, rule.ID
+			for i, id := range ids {
+				rule := Rule{
+					EnvironmentID: envID, Identifier: id, RuleType: ruleType, Policy: "ALLOWLIST",
+					Scope: d.Scope, ScopeValue: d.ScopeValue, CreatedBy: d.By,
+				}
+				switch d.Scope {
+				case "node":
+					rule.ScopeValue = req.MachineID
+				case "env":
+					rule.ScopeValue = ""
+				}
+				if err := ValidateRule(&rule); err != nil {
+					return err
+				}
+				rule, _, err := allowRule(tx, rule)
+				if err != nil {
+					return err
+				}
+				// The rule of the file itself is the request's rule.
+				if i == 0 {
+					req.RuleID = rule.ID
+				}
+			}
+			req.Status, req.RuleType = RequestApproved, ruleType
 		}
 		// The status condition makes a second decision a no-op, so one request
 		// never produces two rules.
 		res := tx.Model(&Request{}).Where("id = ? AND status = ?", req.ID, RequestPending).Updates(map[string]any{
 			"status": req.Status, "decided_by": req.DecidedBy, "decided_at": req.DecidedAt,
-			"reason": req.Reason, "rule_id": req.RuleID, "risk_override": req.RiskOverride, "updated_at": now,
+			"reason": req.Reason, "rule_id": req.RuleID, "rule_type": req.RuleType, "risk_override": req.RiskOverride, "updated_at": now,
 		})
 		if res.Error != nil {
 			return res.Error
@@ -231,6 +308,79 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 		return nil
 	})
 	return req, err
+}
+
+// MaxBundleRules caps the rules one bundle approval creates.
+const MaxBundleRules = 500
+
+// approvalIdentifiers returns the rule type and identifiers an approval of req
+// allows, the file's first. They come from the request and its blocked event,
+// never from the approver.
+func approvalIdentifiers(tx *gorm.DB, req Request, d Decision) (string, []string, error) {
+	ruleType := d.RuleType
+	if ruleType == "" {
+		ruleType = "BINARY"
+	}
+	if d.Bundle && ruleType != "BINARY" {
+		return "", nil, fmt.Errorf("%w: a bundle approval creates BINARY rules", ErrInvalidRequest)
+	}
+	var ev Event
+	if ruleType == "CERTIFICATE" || d.Bundle {
+		if err := tx.Where("environment_id = ? AND id = ?", req.EnvironmentID, req.EventID).First(&ev).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "", nil, fmt.Errorf("%w: the blocked event of the request is gone", ErrInvalidRequest)
+			}
+			return "", nil, err
+		}
+	}
+	switch ruleType {
+	case "BINARY":
+		ids := []string{strings.ToLower(req.FileSHA256)}
+		if !d.Bundle {
+			return ruleType, ids, nil
+		}
+		if ev.BundleHash == "" {
+			return "", nil, fmt.Errorf("%w: the file is not in a bundle the client hashed", ErrInvalidRequest)
+		}
+		var shas []string
+		if err := tx.Model(&Event{}).Where("environment_id = ? AND decision = ? AND bundle_hash = ?", req.EnvironmentID, DecisionBundleBinary, ev.BundleHash).
+			Distinct().Order("file_sha256").Limit(MaxBundleRules+1).Pluck("file_sha256", &shas).Error; err != nil {
+			return "", nil, err
+		}
+		for _, s := range shas {
+			// Clients report these; one that is not a hash is skipped, not trusted.
+			if s = strings.ToLower(s); hex64.MatchString(s) && !slices.Contains(ids, s) {
+				ids = append(ids, s)
+			}
+		}
+		switch {
+		case len(ids) == 1:
+			return "", nil, fmt.Errorf("%w: no other binaries of the bundle were uploaded", ErrInvalidRequest)
+		case len(ids) > MaxBundleRules:
+			return "", nil, fmt.Errorf("%w: the bundle has more than %d binaries", ErrInvalidRequest, MaxBundleRules)
+		}
+		return ruleType, ids, nil
+	case "TEAMID":
+		if req.TeamID == "" {
+			return "", nil, fmt.Errorf("%w: the file has no team ID", ErrInvalidRequest)
+		}
+		return ruleType, []string{req.TeamID}, nil
+	case "SIGNINGID":
+		sid := req.SigningID
+		if sid != "" && !strings.Contains(sid, ":") && req.TeamID != "" {
+			sid = req.TeamID + ":" + sid
+		}
+		if sid == "" {
+			return "", nil, fmt.Errorf("%w: the file has no signing ID", ErrInvalidRequest)
+		}
+		return ruleType, []string{sid}, nil
+	case "CERTIFICATE":
+		if len(ev.SigningChain) == 0 {
+			return "", nil, fmt.Errorf("%w: the client reported no signing certificate", ErrInvalidRequest)
+		}
+		return ruleType, []string{ev.SigningChain[0].SHA256}, nil
+	}
+	return "", nil, fmt.Errorf("%w: unknown rule type %q", ErrInvalidRequest, ruleType)
 }
 
 // allowRule stores a validated allow rule in tx, or returns the allow rule that

@@ -273,6 +273,13 @@ type Request struct {
 	MonitorHours uint `json:"monitor_hours"`
 	// The approver allowed the file although a risk check flagged it
 	RiskOverride bool `json:"risk_override"`
+	// Type of the allow rule an approval created: BINARY, SIGNINGID, TEAMID or
+	// CERTIFICATE; empty for MONITOR and before the type could be chosen
+	RuleType string `gorm:"type:varchar(16)" json:"rule_type"`
+	// Leaf certificate of the blocked file, from its event; not stored
+	CertSHA256 string `gorm:"-" json:"cert_sha256,omitempty"`
+	// Binaries the client uploaded for the file's bundle; not stored
+	BundleBinaries int `gorm:"-" json:"bundle_binaries,omitempty"`
 	// Cached risk verdict of the file, when risk checks are on; not stored
 	Risk *Risk `gorm:"-" json:"risk,omitempty"`
 }

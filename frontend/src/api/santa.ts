@@ -380,6 +380,12 @@ export interface SantaRequest extends SantaOwnRequest {
   rule_id: number;
   /** The approver allowed the file although a risk check flagged it. */
   risk_override: boolean;
+  /** Type of the allow rule an approval created; empty for MONITOR and older approvals. */
+  rule_type?: SantaRuleType | '';
+  /** Leaf certificate of the blocked file, from its event. */
+  cert_sha256?: string;
+  /** Binaries the client uploaded for the file's bundle. */
+  bundle_binaries?: number;
   /** Cached verdict; absent when no risk check is configured. */
   risk?: SantaRisk;
 }
@@ -403,6 +409,10 @@ export interface SantaDecision {
   scope?: SantaScope;
   /** Tag name, with scope tag. */
   scope_value?: string;
+  /** Environment admins: the allow rule's type, with the identifier from the request; BINARY by default. */
+  rule_type?: SantaRuleType;
+  /** Environment admins: also allow every uploaded binary of the file's bundle. */
+  bundle?: boolean;
   /** Required to deny; the requester sees it. */
   reason: string;
   /** Approve although a risk check flagged the file; needs a reason. */

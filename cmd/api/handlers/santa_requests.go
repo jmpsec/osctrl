@@ -61,6 +61,10 @@ type SantaRequestDecision struct {
 	Reason string `json:"reason"`
 	// Approve although a risk check flagged the file; needs a reason and is audited
 	Override bool `json:"override"`
+	// On approve, environment admins only: BINARY (the default), SIGNINGID, TEAMID or CERTIFICATE (the leaf certificate), with the identifier taken from the request's blocked event
+	RuleType string `json:"rule_type"`
+	// On approve, environment admins only: also allow, with BINARY rules, every binary the client uploaded for the file's bundle (at most 500)
+	Bundle bool `json:"bundle"`
 }
 
 func ownRequest(r santa.Request, user string) SantaOwnRequest {
@@ -279,9 +283,14 @@ func santaDecision(w http.ResponseWriter, body SantaRequestDecision, user string
 		apiErrorResponse(w, "only environment admins can override a risk check", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
 		return santa.Decision{}, false
 	}
+	// A signing, team or certificate rule allows more than the file asked for.
+	if (body.RuleType != "" && body.RuleType != "BINARY" || body.Bundle) && !admin {
+		apiErrorResponse(w, "only environment admins can approve with a rule other than the file's hash", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
+		return santa.Decision{}, false
+	}
 	return santa.Decision{
 		Approve: body.Decision == "approve", Scope: body.Scope, ScopeValue: body.ScopeValue, Reason: body.Reason, By: user,
-		Override: body.Override, NotOwn: !admin,
+		Override: body.Override, NotOwn: !admin, RuleType: body.RuleType, Bundle: body.Bundle,
 	}, true
 }
 
@@ -329,7 +338,10 @@ func (h *HandlersApi) santaDecisionDone(r *http.Request, env environments.TLSEnv
 	case req.Status == santa.RequestApproved && req.Kind == santa.RequestKindMonitor:
 		action = fmt.Sprintf("approve request %d temporary MONITOR hours=%d", req.ID, req.MonitorHours)
 	case req.Status == santa.RequestApproved:
-		action = fmt.Sprintf("approve request %d rule=%d scope=%s", req.ID, req.RuleID, d.Scope)
+		action = fmt.Sprintf("approve request %d rule=%d rule_type=%s scope=%s", req.ID, req.RuleID, req.RuleType, d.Scope)
+		if d.Bundle {
+			action += " bundle=true"
+		}
 		if req.RiskOverride {
 			action += " override_risk=flagged"
 		}

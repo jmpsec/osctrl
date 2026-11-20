@@ -24,7 +24,7 @@ func (m *Manager) Request(envID, id uint) (Request, error) {
 		return req, err
 	}
 	reqs := []Request{req}
-	err := m.attachRisk(reqs)
+	err := m.attach(reqs)
 	return reqs[0], err
 }
 
