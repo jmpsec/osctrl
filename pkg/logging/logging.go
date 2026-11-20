@@ -28,6 +28,8 @@ type AlertMatcher interface {
 	// MatchSantaEvents is called by the Santa sync endpoint with the stored
 	// events of one upload, each as lowercase field name to value.
 	MatchSantaEvents(envID uint, environment, nodeUUID string, events []map[string]string)
+	// MatchSantaFileAccess is the file access event counterpart.
+	MatchSantaFileAccess(envID uint, environment, nodeUUID string, events []map[string]string)
 }
 
 // LoggerTLS will be used to handle logging for the TLS endpoint.

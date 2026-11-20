@@ -179,7 +179,7 @@ func TestSantaFileAccessJSON(t *testing.T) {
 		`"decision":"FILE_ACCESS_DECISION_DENIED","access_time":1700000000,"process_chain":[{"pid":42,"file_path":"/tmp/evil"}]}]}`
 	w = f.post(santaEnvUUID, "eventupload", santaMachineID, f.token, []byte(body))
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	evs, total, err := f.h.Santa.FileAccessEvents(f.env.ID, 1, 10, "")
+	evs, total, err := f.h.Santa.FileAccessEvents(f.env.ID, 1, 10, santa.FileAccessFilter{})
 	require.NoError(t, err)
 	require.EqualValues(t, 1, total)
 	require.Equal(t, strings.ToUpper(santaMachineID), evs[0].MachineID)

@@ -916,6 +916,7 @@ export const fa: Messages = {
     file: 'فایل',
     user: 'کاربر',
     decision: 'تصمیم',
+    filters: { machine: 'UUID دستگاه', sha256: 'SHA-256', path: 'مسیر شامل', process: 'فرایند شامل', anyDecision: 'هر تصمیمی', blocks: 'مسدودها', allows: 'مجازها' },
     allow: 'اجازه',
     block: 'مسدود کردن',
     noMachines: 'هنوز هیچ ماشینی همگام‌سازی نکرده است',

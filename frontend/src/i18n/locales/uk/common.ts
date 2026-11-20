@@ -916,6 +916,7 @@ export const uk: Messages = {
     file: 'Файл',
     user: 'Користувач',
     decision: 'Рішення',
+    filters: { machine: 'UUID машини', sha256: 'SHA-256', path: 'Шлях містить', process: 'Процес містить', anyDecision: 'Будь-яке рішення', blocks: 'Блокування', allows: 'Дозволи' },
     allow: 'Дозволити',
     block: 'Заблокувати',
     noMachines: 'Жодна машина ще не синхронізувалася',

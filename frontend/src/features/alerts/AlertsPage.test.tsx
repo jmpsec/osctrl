@@ -208,6 +208,36 @@ describe('AlertsPage', () => {
     });
   });
 
+  it('creates a Santa file access rule on the accessed path', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({
+      posture: false, service_config: true, log_sinks: true, alerts: true,
+      accelerated: false, file_explorer: false, vulnerabilities: false, santa: true,
+    });
+    mockCreateRule.mockResolvedValue(makeRule({ source: 'santa_file_access' }));
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New rule' }));
+    await user.type(screen.getByLabelText('Name'), 'ssh-keys');
+    await user.selectOptions(screen.getByLabelText('Source'), 'santa_file_access');
+    await user.type(screen.getByLabelText(/^Field/), 'target');
+    await user.type(screen.getByLabelText(/^Pattern/), '/.ssh/');
+    await user.click(screen.getByRole('button', { name: 'Create rule' }));
+    await waitFor(() => {
+      expect(mockCreateRule).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'santa_file_access', match_field: 'target', match_value: '/.ssh/' }),
+      );
+    });
+  });
+
+  it('offers no Santa source when Santa is off', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New rule' }));
+    const sources = Array.from((screen.getByLabelText('Source') as HTMLSelectElement).options).map((o) => o.value);
+    expect(sources).not.toContain('santa_event');
+    expect(sources).not.toContain('santa_file_access');
+  });
+
   it('creates a vulnerability rule without a pattern', async () => {
     const user = userEvent.setup();
     mockGetFeatures.mockResolvedValue({

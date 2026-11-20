@@ -88,3 +88,20 @@ func TestSantaRuleLoadsAndDispatches(t *testing.T) {
 	var nilMatcher *IngestMatcher
 	nilMatcher.MatchSantaEvents(1, "dev", testNode, nil)
 }
+
+func TestMatchSantaFileAccess(t *testing.T) {
+	rs := compileForTest(t,
+		AlertRule{Model: ruleWithID(1), Name: "ssh", Source: SourceSantaFileAccess, MatchType: MatchTypeSubstring, MatchField: "target", MatchValue: "/.ssh/", ChannelIDs: "[2]"},
+		AlertRule{Model: ruleWithID(2), Name: "exec", Source: SourceSantaEvent, MatchType: MatchTypeSubstring, MatchValue: ""},
+	)
+	ev := map[string]string{"decision": "DENIED", "target": "/Users/u/.ssh/id_ed25519\r\nforged", "rule_name": "keys", "process_path": "/tmp/evil"}
+	hits := rs.MatchSantaFileAccess(1, "dev", testNode, []map[string]string{ev})
+	require.Len(t, hits, 1, "only the file access rule; execution rules never see file access events")
+	require.Equal(t, uint(1), hits[0].RuleID)
+	require.Equal(t, "DENIED /Users/u/.ssh/id_ed25519  forged rule=keys process=/tmp/evil", hits[0].Detail)
+	require.Equal(t, testNode+":/Users/u/.ssh/id_ed25519  forged", hits[0].Entity)
+	require.Equal(t, []uint{2}, hits[0].Channels)
+	require.Empty(t, rs.MatchSantaFileAccess(1, "dev", testNode, []map[string]string{{"target": "/etc/hosts"}}))
+	require.Len(t, rs.MatchSantaEvents(1, "dev", testNode, []map[string]string{ev}), 1, "and the execution rule only sees execution events")
+	require.NoError(t, ValidateRule(AlertRule{Name: "x", Source: SourceSantaFileAccess, MatchType: MatchTypeSubstring}))
+}

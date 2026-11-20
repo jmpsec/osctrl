@@ -916,6 +916,7 @@ export const ru: Messages = {
     file: 'Файл',
     user: 'Пользователь',
     decision: 'Решение',
+    filters: { machine: 'UUID машины', sha256: 'SHA-256', path: 'Путь содержит', process: 'Процесс содержит', anyDecision: 'Любое решение', blocks: 'Блокировки', allows: 'Разрешения' },
     allow: 'Разрешить',
     block: 'Заблокировать',
     noMachines: 'Ни одна машина ещё не синхронизировалась',

@@ -94,11 +94,11 @@ func (h *HandlersTLS) SantaHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	case "eventupload":
 		err = santaStage(w, r, &syncv1.EventUploadRequest{}, func(q *syncv1.EventUploadRequest) (proto.Message, error) {
-			evs, err := h.Santa.StoreEvents(sn, q)
+			evs, fa, err := h.Santa.StoreEvents(sn, q)
 			if err != nil {
 				return nil, err
 			}
-			h.santaForward(env, node.UUID, evs)
+			h.santaForward(env, node.UUID, evs, fa)
 			bundles, err := h.Santa.BundlesWanted(sn.EnvID, evs)
 			if err != nil {
 				return nil, err
@@ -158,28 +158,46 @@ func (h *HandlersTLS) santaGroupTags(node nodes.OsqueryNode, primaryUser string,
 	return nil
 }
 
-// santaForward hands stored events to the alert rules and the log sinks. The
-// events are already stored, so a sink failure is logged and the upload still
-// succeeds: failing it would make Santa send the batch again and store it twice.
-func (h *HandlersTLS) santaForward(env environments.TLSEnvironment, uuid string, evs []santa.Event) {
-	if h.Logs == nil || len(evs) == 0 {
+// santaForward hands stored execution and file access events to the alert
+// rules and the log sinks. The events are already stored, so a sink failure
+// is logged and the upload still succeeds: failing it would make Santa send
+// the batch again and store it twice.
+func (h *HandlersTLS) santaForward(env environments.TLSEnvironment, uuid string, evs []santa.Event, fa []santa.FileAccessEvent) {
+	if h.Logs == nil {
 		return
 	}
-	if h.Logs.Alerts != nil {
-		fields := make([]map[string]string, len(evs))
-		for i := range evs {
-			fields[i] = evs[i].AlertFields()
+	if len(evs) > 0 {
+		if h.Logs.Alerts != nil {
+			h.Logs.Alerts.MatchSantaEvents(env.ID, env.Name, uuid, alertFields(evs))
 		}
-		h.Logs.Alerts.MatchSantaEvents(env.ID, env.Name, uuid, fields)
+		h.santaLog(types.SantaLog, evs, env, uuid)
 	}
-	// A JSON array, like osquery log batches: several sinks require one.
+	if len(fa) > 0 {
+		if h.Logs.Alerts != nil {
+			h.Logs.Alerts.MatchSantaFileAccess(env.ID, env.Name, uuid, alertFields(fa))
+		}
+		h.santaLog(types.SantaFileAccessLog, fa, env, uuid)
+	}
+}
+
+func alertFields[E interface{ AlertFields() map[string]string }](evs []E) []map[string]string {
+	fields := make([]map[string]string, len(evs))
+	for i := range evs {
+		fields[i] = evs[i].AlertFields()
+	}
+	return fields
+}
+
+// santaLog sends events to the log sinks as a JSON array, like osquery log
+// batches: several sinks require one.
+func (h *HandlersTLS) santaLog(logType string, evs any, env environments.TLSEnvironment, uuid string) {
 	data, err := json.Marshal(evs)
 	if err != nil {
-		log.Err(err).Msg("santa: error encoding events for log sinks")
+		log.Err(err).Str("type", logType).Msg("santa: error encoding events for log sinks")
 		return
 	}
-	if err := h.Logs.LogWithEnv(types.SantaLog, data, env.ID, env.Name, uuid, false); err != nil {
-		log.Err(err).Msg("santa: error sending events to log sinks")
+	if err := h.Logs.LogWithEnv(logType, data, env.ID, env.Name, uuid, false); err != nil {
+		log.Err(err).Str("type", logType).Msg("santa: error sending events to log sinks")
 	}
 }
 

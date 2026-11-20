@@ -32,6 +32,8 @@ func compileForTest(t *testing.T, rules ...AlertRule) *RuleSet {
 			rs.query = append(rs.query, cr)
 		case SourceSantaEvent:
 			rs.santa = append(rs.santa, cr)
+		case SourceSantaFileAccess:
+			rs.santaFileAccess = append(rs.santaFileAccess, cr)
 		}
 	}
 	return rs

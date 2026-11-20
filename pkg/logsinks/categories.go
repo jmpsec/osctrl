@@ -26,6 +26,9 @@ const (
 	// CatSanta is Santa execution events, emitted by the Santa sync
 	// endpoint as a JSON array per upload (types.SantaLog).
 	CatSanta = "santa"
+	// CatSantaFileAccess is Santa file access events, emitted like CatSanta
+	// (types.SantaFileAccessLog).
+	CatSantaFileAccess = "santa.file_access"
 )
 
 // AllCategories is the complete set of valid category strings, used for
@@ -37,6 +40,7 @@ var AllCategories = []string{
 	CatCarveMeta,
 	CatCarveData,
 	CatSanta,
+	CatSantaFileAccess,
 }
 
 // allCategoriesSet is a set for O(1) validation lookups.

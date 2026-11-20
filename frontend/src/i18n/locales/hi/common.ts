@@ -916,6 +916,7 @@ export const hi: Messages = {
     file: 'फ़ाइल',
     user: 'उपयोगकर्ता',
     decision: 'निर्णय',
+    filters: { machine: 'मशीन UUID', sha256: 'SHA-256', path: 'पथ में शामिल', process: 'प्रक्रिया में शामिल', anyDecision: 'कोई भी निर्णय', blocks: 'ब्लॉक', allows: 'अनुमतियाँ' },
     allow: 'अनुमति दें',
     block: 'ब्लॉक करें',
     noMachines: 'अभी तक किसी मशीन ने सिंक नहीं किया',

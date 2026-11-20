@@ -221,7 +221,7 @@ func toProtoRule(r Rule) (*syncv1.Rule, error) {
 // EventUpload stores execution and file access events and asks for the
 // binaries of new bundles; audit events are ignored.
 func (m *Manager) EventUpload(n SyncNode, req *syncv1.EventUploadRequest) (*syncv1.EventUploadResponse, error) {
-	evs, err := m.StoreEvents(n, req)
+	evs, _, err := m.StoreEvents(n, req)
 	if err != nil {
 		return nil, err
 	}
@@ -261,10 +261,10 @@ func (m *Manager) BundlesWanted(envID uint, evs []Event) ([]string, error) {
 }
 
 // StoreEvents stores the execution and file access events of an upload and
-// returns the execution events as stored, for forwarding to log sinks and alert rules.
-func (m *Manager) StoreEvents(n SyncNode, req *syncv1.EventUploadRequest) ([]Event, error) {
+// returns them as stored, for forwarding to log sinks and alert rules.
+func (m *Manager) StoreEvents(n SyncNode, req *syncv1.EventUploadRequest) ([]Event, []FileAccessEvent, error) {
 	if _, err := m.loadMachine(n); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	evs := make([]Event, 0, len(req.GetEvents()))
 	for _, e := range req.GetEvents() {
@@ -293,18 +293,19 @@ func (m *Manager) StoreEvents(n SyncNode, req *syncv1.EventUploadRequest) ([]Eve
 		})
 	}
 	if err := m.AddEvents(evs); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if err := m.addFileAccessEvents(n, req.GetFileAccessEvents()); err != nil {
-		return nil, err
+	fa, err := m.addFileAccessEvents(n, req.GetFileAccessEvents())
+	if err != nil {
+		return nil, nil, err
 	}
-	return evs, nil
+	return evs, fa, nil
 }
 
 // maxChainProcs caps the processes kept per file access event.
 const maxChainProcs = 8
 
-func (m *Manager) addFileAccessEvents(n SyncNode, in []*syncv1.FileAccessEvent) error {
+func (m *Manager) addFileAccessEvents(n SyncNode, in []*syncv1.FileAccessEvent) ([]FileAccessEvent, error) {
 	now := m.now()
 	evs := make([]FileAccessEvent, 0, len(in))
 	for _, e := range in {
@@ -333,21 +334,57 @@ func (m *Manager) addFileAccessEvents(n SyncNode, in []*syncv1.FileAccessEvent) 
 		})
 	}
 	if len(evs) == 0 {
-		return nil
+		return nil, nil
 	}
-	return m.DB.CreateInBatches(&evs, 200).Error
+	return evs, m.DB.CreateInBatches(&evs, 200).Error
 }
 
-// FileAccessEvents lists an environment's file access events, newest first,
-// optionally for one machine.
-func (m *Manager) FileAccessEvents(envID uint, page, pageSize int, machineID string) ([]FileAccessEvent, int64, error) {
+// FileAccessFilter narrows FileAccessEvents. Empty fields match everything.
+type FileAccessFilter struct {
+	// MachineID is the machine (node) UUID, matched without case.
+	MachineID string
+	// Target is a substring of the accessed path, matched without case.
+	Target string
+	// Process is a substring of the path of any process in the chain, matched without case.
+	Process string
+	// Decision is the exact decision: DENIED, DENIED_INVALID_SIGNATURE or AUDIT_ONLY.
+	Decision string
+}
+
+// likeContains is a lowercase LIKE pattern for a substring; the query must
+// use ESCAPE '!', which every supported database parses the same way.
+func likeContains(s string) string {
+	s = strings.NewReplacer(`!`, `!!`, `%`, `!%`, `_`, `!_`).Replace(strings.ToLower(s))
+	return "%" + s + "%"
+}
+
+// FileAccessEvents lists an environment's file access events, newest first.
+// It returns ErrInvalidEventFilter for a decision that is not a name, or a
+// path filter longer than a stored path.
+func (m *Manager) FileAccessEvents(envID uint, page, pageSize int, f FileAccessFilter) ([]FileAccessEvent, int64, error) {
 	page = max(page, 1)
 	if pageSize < 1 || pageSize > maxPageSize {
 		pageSize = maxPageSize
 	}
+	d := strings.ToUpper(f.Decision)
+	if len(d) > 32 || strings.Trim(d, "ABCDEFGHIJKLMNOPQRSTUVWXYZ_") != "" || len(f.Target) > 1024 || len(f.Process) > 1024 {
+		return nil, 0, ErrInvalidEventFilter
+	}
 	q := m.DB.Model(&FileAccessEvent{}).Where("environment_id = ?", envID)
-	if machineID != "" {
-		q = q.Where("machine_id = ?", strings.ToUpper(machineID))
+	if f.MachineID != "" {
+		q = q.Where("machine_id = ?", strings.ToUpper(f.MachineID))
+	}
+	if d != "" {
+		q = q.Where("decision = ?", d)
+	}
+	if f.Target != "" {
+		q = q.Where(`LOWER(target) LIKE ? ESCAPE '!'`, likeContains(f.Target))
+	}
+	if f.Process != "" {
+		// ponytail: LIKE on the chain's JSON text, so it also matches other process
+		// fields, and a path with characters JSON escapes (", \, <, >, &) only
+		// matches in escaped form. A process table if exact matching matters.
+		q = q.Where(`LOWER(process_chain) LIKE ? ESCAPE '!'`, likeContains(f.Process))
 	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
@@ -359,8 +396,13 @@ func (m *Manager) FileAccessEvents(envID uint, page, pageSize int, machineID str
 }
 
 // AlertFields returns the fields alert rules can match, keyed by their JSON
-// names. Every value is written by the Santa client.
+// names; cert_* are the leaf certificate of the signing chain. Every value is
+// written by the Santa client.
 func (e Event) AlertFields() map[string]string {
+	var leaf Cert
+	if len(e.SigningChain) > 0 {
+		leaf = e.SigningChain[0]
+	}
 	return map[string]string{
 		"decision":       e.Decision,
 		"file_sha256":    e.FileSHA256,
@@ -371,6 +413,35 @@ func (e Event) AlertFields() map[string]string {
 		"signing_id":     e.SigningID,
 		"cd_hash":        e.CDHash,
 		"bundle_id":      e.BundleID,
+		"bundle_name":    e.BundleName,
+		"bundle_version": e.BundleVersion,
+		"bundle_path":    e.BundlePath,
+		"bundle_hash":    e.BundleHash,
+		"cert_sha256":    leaf.SHA256,
+		"cert_cn":        leaf.CN,
+		"cert_org":       leaf.Org,
+		"cert_ou":        leaf.OU,
+	}
+}
+
+// AlertFields returns the fields alert rules can match, keyed by their JSON
+// names; process_* are the process that made the access. Every value is
+// written by the Santa client.
+func (e FileAccessEvent) AlertFields() map[string]string {
+	var p Process
+	if len(e.ProcessChain) > 0 {
+		p = e.ProcessChain[0]
+	}
+	return map[string]string{
+		"decision":           e.Decision,
+		"target":             e.Target,
+		"rule_name":          e.RuleName,
+		"rule_version":       e.RuleVersion,
+		"process_path":       p.FilePath,
+		"process_sha256":     p.FileSHA256,
+		"process_signing_id": p.SigningID,
+		"process_team_id":    p.TeamID,
+		"process_cd_hash":    p.CDHash,
 	}
 }
 

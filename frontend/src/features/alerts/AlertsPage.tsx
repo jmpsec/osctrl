@@ -54,7 +54,8 @@ const RULE_SOURCES = [
   { value: 'node_inactive', label: 'Node inactive', help: 'Node last_seen crosses the inactive threshold. No pattern needed.' },
   { value: 'node_recovered', label: 'Node recovered', help: 'A previously inactive node is seen again. No pattern needed.' },
   { value: 'vuln_finding', label: 'New vulnerability findings', help: 'A node gains a confirmed vulnerability finding at or above the threshold. Findings are grouped per advisory. No pattern needed.' },
-  { value: 'santa_event', label: 'Santa events', help: 'Execution events uploaded by Santa. Fields: decision (BLOCK_BINARY, ALLOW_TEAMID, ...), file_sha256, file_path, file_name, executing_user, team_id, signing_id, cd_hash, bundle_id.' },
+  { value: 'santa_event', label: 'Santa events', help: 'Execution events uploaded by Santa. Fields: decision (BLOCK_BINARY, ALLOW_TEAMID, ...), file_sha256, file_path, file_name, executing_user, team_id, signing_id, cd_hash, bundle_id, bundle_name, bundle_version, bundle_path, bundle_hash, and the leaf certificate: cert_sha256, cert_cn, cert_org, cert_ou.' },
+  { value: 'santa_file_access', label: 'Santa file access', help: 'Violations of file access rules deployed through MDM, uploaded by Santa. Fields: decision (DENIED, DENIED_INVALID_SIGNATURE, AUDIT_ONLY), target (the accessed path), rule_name, rule_version, and the accessing process: process_path, process_sha256, process_signing_id, process_team_id, process_cd_hash.' },
 ] as const;
 
 /**
@@ -78,7 +79,7 @@ const RULE_PRESETS = [
 ] as const;
 
 /** Sources that match patterns (vs. node-state sources). */
-const PATTERN_SOURCES = new Set(['result_log', 'status_log', 'query_log', 'santa_event']);
+const PATTERN_SOURCES = new Set(['result_log', 'status_log', 'query_log', 'santa_event', 'santa_file_access']);
 
 /** Thresholds of vulnerability rules. Unknown severity only matches "any";
  * known-exploited findings match every threshold. */
@@ -862,7 +863,7 @@ function RuleEditorModal({
   const sourceOptions = RULE_SOURCES.filter(
     (s) =>
       (s.value !== 'vuln_finding' || vulnsEnabled || existing?.source === 'vuln_finding') &&
-      (s.value !== 'santa_event' || santaEnabled || existing?.source === 'santa_event') &&
+      (!s.value.startsWith('santa_') || santaEnabled || existing?.source === s.value) &&
       // Log-content sources need superuser or full query tier in the rule's environment.
       (!PATTERN_SOURCES.has(s.value) || canLogContent(envID)),
   );

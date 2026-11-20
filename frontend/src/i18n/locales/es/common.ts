@@ -916,6 +916,7 @@ export const es: Messages = {
     file: 'Archivo',
     user: 'Usuario',
     decision: 'Decisión',
+    filters: { machine: 'UUID de la máquina', sha256: 'SHA-256', path: 'La ruta contiene', process: 'El proceso contiene', anyDecision: 'Cualquier decisión', blocks: 'Bloqueos', allows: 'Permitidos' },
     allow: 'Permitir',
     block: 'Bloquear',
     noMachines: 'Ningún equipo se ha sincronizado todavía',

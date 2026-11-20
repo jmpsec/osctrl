@@ -6,7 +6,7 @@ vi.mock('./client', () => ({
 }));
 
 import {
-  createSantaRule, decideSantaRequest, decideSantaRequestByLink, deleteSantaRule, getSantaConfig, getSantaRequest, listSantaEvents, listSantaMachines, listSantaRequests, listSantaRules,
+  createSantaRule, decideSantaRequest, decideSantaRequestByLink, deleteSantaRule, getSantaConfig, getSantaRequest, listSantaEvents, listSantaFileAccessEvents, listSantaMachines, listSantaRequests, listSantaRules,
   getSantaVotes, putSantaConfig, rotateSantaToken, santaQueryKey, voteSantaFile,
 } from './santa';
 
@@ -20,7 +20,9 @@ describe('santa API client', () => {
     await getSantaConfig('a/b');
     await listSantaRules('dev');
     await listSantaMachines('dev');
-    await listSantaEvents('dev', 2, 10);
+    await listSantaEvents('dev', 2, {}, 10);
+    await listSantaEvents('dev', 1, { decision: 'BLOCK', machine_id: '', sha256: 'ab' });
+    await listSantaFileAccessEvents('dev', 1, { target: '/Users/a b', process: '', decision: 'DENIED' });
     await listSantaRequests('dev');
     await listSantaRequests('dev', 'pending');
     expect(mockFetch.mock.calls.map((c) => c[0])).toEqual([
@@ -28,6 +30,8 @@ describe('santa API client', () => {
       '/api/v1/santa/dev/rules',
       '/api/v1/santa/dev/machines',
       '/api/v1/santa/dev/events?page=2&page_size=10',
+      '/api/v1/santa/dev/events?page=1&page_size=50&decision=BLOCK&sha256=ab',
+      '/api/v1/santa/dev/file-access-events?page=1&page_size=50&target=%2FUsers%2Fa+b&decision=DENIED',
       '/api/v1/santa/dev/requests',
       '/api/v1/santa/dev/requests?status=pending',
     ]);

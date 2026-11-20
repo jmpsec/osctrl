@@ -916,6 +916,7 @@ export const ko: Messages = {
     file: '파일',
     user: '사용자',
     decision: '결정',
+    filters: { machine: '머신 UUID', sha256: 'SHA-256', path: '경로 포함', process: '프로세스 포함', anyDecision: '모든 결정', blocks: '차단', allows: '허용' },
     allow: '허용',
     block: '차단',
     noMachines: '아직 동기화한 머신이 없습니다',

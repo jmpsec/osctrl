@@ -916,6 +916,7 @@ export const ca: Messages = {
     file: 'Fitxer',
     user: 'Usuari',
     decision: 'Decisió',
+    filters: { machine: 'UUID de la màquina', sha256: 'SHA-256', path: 'El camí conté', process: 'El procés conté', anyDecision: 'Qualsevol decisió', blocks: 'Bloquejos', allows: 'Permisos' },
     allow: 'Permet',
     block: 'Bloqueja',
     noMachines: 'Cap equip s\'ha sincronitzat encara',

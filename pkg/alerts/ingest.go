@@ -52,6 +52,14 @@ func (m *IngestMatcher) MatchSantaEvents(envID uint, environment, nodeUUID strin
 	m.worker.Enqueue(m.store.Snapshot().MatchSantaEvents(envID, environment, nodeUUID, events))
 }
 
+// MatchSantaFileAccess implements logging.AlertMatcher.
+func (m *IngestMatcher) MatchSantaFileAccess(envID uint, environment, nodeUUID string, events []map[string]string) {
+	if m == nil {
+		return
+	}
+	m.worker.Enqueue(m.store.Snapshot().MatchSantaFileAccess(envID, environment, nodeUUID, events))
+}
+
 // MatchQueryResult implements logging.AlertMatcher.
 func (m *IngestMatcher) MatchQueryResult(envID uint, environment, queryName string, result json.RawMessage, status int, message string) {
 	if m == nil {

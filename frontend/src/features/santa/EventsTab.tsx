@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
-import { listSantaEvents, santaQueryKey, SANTA_EVENTS_PAGE_SIZE, type SantaEvent, type SantaRuleInput } from '$/api/santa';
+import { listSantaEvents, santaQueryKey, SANTA_EVENTS_PAGE_SIZE, type SantaEvent, type SantaEventFilter, type SantaRuleInput } from '$/api/santa';
 import { Button } from '$/components/atoms/Button';
 import { EmptyState } from '$/components/data/EmptyState';
 import { Pagination } from '$/components/data/Pagination';
@@ -10,6 +10,7 @@ import { SkeletonRow } from '$/components/data/Skeleton';
 import { useLocale } from '$/i18n/useLocale';
 import { BinaryModal } from './BinaryModal';
 import { CarveRetrieve } from './CarveRetrieve';
+import { FilterBar } from './FilterBar';
 import { EMPTY_RULE } from './RulesTab';
 import { BINARY_LINK, MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
@@ -22,11 +23,12 @@ export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRu
   const { t } = useTranslation();
   const { formatDateTime } = useLocale();
   const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<SantaEventFilter>({});
   const [binary, setBinary] = useState<string | null>(null);
   const closeBinary = useCallback(() => setBinary(null), []);
   const events = useQuery({
-    queryKey: santaQueryKey(env, 'events', page),
-    queryFn: () => listSantaEvents(env, page),
+    queryKey: santaQueryKey(env, 'events', page, filter),
+    queryFn: () => listSantaEvents(env, page, filter),
     placeholderData: (previous) => previous,
   });
   const rows = events.data?.events ?? [];
@@ -34,6 +36,26 @@ export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRu
 
   return (
     <section className="overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)]">
+      <FilterBar
+        id="santa-events-filter"
+        fields={[
+          { key: 'machine_id', label: t('santa.filters.machine') },
+          {
+            key: 'decision',
+            label: t('santa.decision'),
+            options: [
+              { value: '', label: t('santa.filters.anyDecision') },
+              { value: 'BLOCK', label: t('santa.filters.blocks') },
+              { value: 'ALLOW', label: t('santa.filters.allows') },
+            ],
+          },
+          { key: 'sha256', label: t('santa.filters.sha256') },
+        ]}
+        onApply={(f) => {
+          setFilter(f);
+          setPage(1);
+        }}
+      />
       {events.isLoading ? (
         <table className={TABLE}><tbody>{Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cells={5} />)}</tbody></table>
       ) : events.isError ? (

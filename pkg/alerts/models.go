@@ -53,6 +53,9 @@ const (
 	// SourceSantaEvent watches Santa execution events uploaded to the Santa
 	// sync endpoint. Matched like log text, on the event's fields.
 	SourceSantaEvent = "santa_event"
+	// SourceSantaFileAccess watches Santa file access events (violations of
+	// MDM-deployed file access rules), matched on their fields.
+	SourceSantaFileAccess = "santa_file_access"
 )
 
 // Match types. Substring is the operator default — regex is opt-in

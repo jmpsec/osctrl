@@ -42,13 +42,18 @@ func (s *santaSink) Export(logType string, data []byte, p logging.ExportParams) 
 // santaMatcher records the events handed to the alert rules.
 type santaMatcher struct {
 	logging.AlertMatcher
-	envID  uint
-	node   string
-	events []map[string]string
+	envID      uint
+	node       string
+	events     []map[string]string
+	fileAccess []map[string]string
 }
 
 func (m *santaMatcher) MatchSantaEvents(envID uint, _ string, nodeUUID string, events []map[string]string) {
 	m.envID, m.node, m.events = envID, nodeUUID, events
+}
+
+func (m *santaMatcher) MatchSantaFileAccess(_ uint, _ string, _ string, events []map[string]string) {
+	m.fileAccess = events
 }
 
 func santaUpload(t *testing.T) []byte {
@@ -104,6 +109,21 @@ func TestSantaEventUploadForwardsToSinksAndAlerts(t *testing.T) {
 	sink.fail, sink.types = false, nil
 	require.Equal(t, http.StatusOK, f.post(santaEnvUUID, "eventupload", santaMachineID, f.token, []byte(`{}`)).Code)
 	require.Empty(t, sink.types)
+
+	// File access events go to their own log type and alert source.
+	sink.data, sink.uuids = nil, nil
+	body := `{"file_access_events":[{"rule_name":"keys","target":"/Users/u/.ssh/id_ed25519",` +
+		`"decision":"FILE_ACCESS_DECISION_DENIED","process_chain":[{"pid":42,"file_path":"/tmp/evil"}]}]}`
+	w = f.post(santaEnvUUID, "eventupload", santaMachineID, f.token, []byte(body))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	require.Equal(t, []string{types.SantaFileAccessLog}, sink.types)
+	var fa []santa.FileAccessEvent
+	require.NoError(t, json.Unmarshal(sink.data[0], &fa))
+	require.Len(t, fa, 1)
+	require.Equal(t, "/Users/u/.ssh/id_ed25519", fa[0].Target)
+	require.Len(t, matcher.fileAccess, 1)
+	require.Equal(t, "/tmp/evil", matcher.fileAccess[0]["process_path"])
+	require.Equal(t, "DENIED", matcher.fileAccess[0]["decision"])
 }
 
 // Without a logger (as in older fixtures) the upload still works.
@@ -128,7 +148,7 @@ func TestLogHandlerRejectsForgedLogTypes(t *testing.T) {
 		f.h.LogHandler(w, r)
 		return w.Code
 	}
-	for _, lt := range []string{types.SantaLog, logsinks.CatCarveMeta, logsinks.CatCarveData, logsinks.CatQuery, "", "Result"} {
+	for _, lt := range []string{types.SantaLog, types.SantaFileAccessLog, logsinks.CatCarveMeta, logsinks.CatCarveData, logsinks.CatQuery, "", "Result"} {
 		require.Equal(t, http.StatusBadRequest, post(lt), lt)
 	}
 	require.Empty(t, sink.types)

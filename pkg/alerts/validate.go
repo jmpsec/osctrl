@@ -35,13 +35,14 @@ const MaxNodeUUIDLen = 64
 
 // validSources is the closed set of Source values a rule may use.
 var validSources = map[string]bool{
-	SourceResultLog:     true,
-	SourceStatusLog:     true,
-	SourceQueryLog:      true,
-	SourceNodeInactive:  true,
-	SourceNodeRecovered: true,
-	SourceVulnFinding:   true,
-	SourceSantaEvent:    true,
+	SourceResultLog:       true,
+	SourceStatusLog:       true,
+	SourceQueryLog:        true,
+	SourceNodeInactive:    true,
+	SourceNodeRecovered:   true,
+	SourceVulnFinding:     true,
+	SourceSantaEvent:      true,
+	SourceSantaFileAccess: true,
 }
 
 // ValidateRule checks the operator-facing fields of a rule before it is
