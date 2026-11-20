@@ -78,6 +78,11 @@ func (m *Manager) groupUsers(match, primaryUser string) ([]string, error) {
 	return []string{p}, nil
 }
 
+// UsersByEmail returns the osctrl usernames whose account email is email, in any case.
+func (m *Manager) UsersByEmail(email string) ([]string, error) {
+	return m.groupUsers(MatchEmail, email)
+}
+
 // GroupTags returns the tags the environment maps to the groups of the osctrl
 // user that primaryUser matches under the environment's GroupMatch. An unknown
 // user has no groups, so no tags; neither does a primary user matching more

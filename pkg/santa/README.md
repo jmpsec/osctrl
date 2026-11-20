@@ -251,7 +251,7 @@ Such an account is still an osctrl account. It can open the rest of the UI, wher
 - Group membership is checked on every call, so removing someone from the group in the IdP takes effect at their next SCIM update or SSO login.
 - Adding approvers widens who can allow files, so with **Require a second admin** it is held like the other weakening changes. Removing approvers is not.
 
-**Notifying approvers.** Approvers do not have to watch the queue: each new request can be sent to alert channels (email or webhook). It needs alerts enabled in `osctrl-api` (`--alerts-enabled`) and the approval URL set.
+**Notifying approvers.** Approvers do not have to watch the queue: each new request can be sent to alert channels (email, webhook or Slack). It needs alerts enabled in `osctrl-api` (`--alerts-enabled`) and the approval URL set.
 
 - In **Settings**, tick the channels under **Notify about new requests** (`notify_channels` in the config API, at most 10). A channel must be global or belong to the environment.
 - Changing the channels requires a superuser, like alert rules on log content: the notification carries text written by the requester and by the Santa client. An environment admin can still save the rest of the config; the channels are kept.
@@ -266,6 +266,16 @@ https://osctrl.example.com/santa/decide/ENVIRONMENT-UUID?request=12&action=appro
 - A link is not a credential. `POST /api/v1/santa/{env}/requests/link` requires an environment admin or approver session like every other decision, and the token only proves the link came from the notification. Anyone else who gets the link can do nothing with it.
 - A link works once, for the action it was made for, for 72 hours. A used, expired, unknown or other-environment link, or an approve link used to deny, answers `410`. Once the request is decided the other link answers `409`. A decision that fails (for example a block rule in the way) leaves the link usable.
 - Only the SHA-256 of each token is stored. The token is the URL fragment, so the browser does not send it with the page request; it is posted in the request body. The alert history keeps the message without the links.
+
+**Deciding in Slack.** A Slack alert channel posts each new request with **Approve (this machine)** and **Deny** buttons, so an approver can decide without leaving Slack.
+
+- Create a Slack app with a bot token (`chat:write`, and `users:read.email` to identify who clicks), invite the bot to the channel, and add a **Slack** alert channel with the token, the channel ID and the app's signing secret. Without the signing secret the messages have no buttons.
+- In the app's **Interactivity** settings, set the request URL to `https://<osctrl-api>/api/v1/slack/interact/<alert channel ID>`. Slack must be able to reach `osctrl-api`.
+- Tick the channel under **Notify about new requests** like any other channel. A button only works for an environment that notifies that channel.
+- Every callback must carry a valid signature from the signing secret and a timestamp at most 5 minutes old, or it is refused with `401`. Each button carries the token of the matching link, so it works once: a replayed callback finds the link used.
+- The Slack user is identified by the email Slack has confirmed for their account (`users.info`), which must match the email of exactly one osctrl account (any case), not a service account. That user must be an environment admin or approver. Anyone else, or an unmatched Slack user, gets a note only they can see, and nothing is decided.
+- **Approve** allows the file on the requester's machine (scope `node`), or grants the MONITOR request. **Deny** uses the reason "Denied in Slack". For another scope, a risk override (a flagged file cannot be approved from Slack) or a written reason, use the links in the message.
+- The decision is audited like any other, with ` via Slack`, and the message is replaced with the outcome, without buttons. Slack sessions are not osctrl sessions: osctrl MFA does not apply, so use Slack's own sign-in policies.
 
 **Notifying requesters.** Requesters can be emailed when their request is decided. It is off until an environment admin picks an email channel under **Email requesters** in **Settings** (`requester_channel` in the config API; 0 turns it off). The channel must be an email channel that is global or belongs to the environment.
 

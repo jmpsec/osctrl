@@ -393,10 +393,13 @@ func TestAlertChannelTypesHandler(t *testing.T) {
 		SecretFields []string `json:"secret_fields"`
 	}
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &specs))
-	require.Len(t, specs, 2)
+	require.Len(t, specs, 3)
 	for _, sp := range specs {
-		if sp.Type == "webhook" {
+		switch sp.Type {
+		case "webhook":
 			require.Equal(t, []string{"url", "secret"}, sp.SecretFields)
+		case "slack":
+			require.Equal(t, []string{"token", "signingSecret"}, sp.SecretFields)
 		}
 	}
 }

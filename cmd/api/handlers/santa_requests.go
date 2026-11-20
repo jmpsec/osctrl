@@ -288,38 +288,41 @@ func santaDecision(w http.ResponseWriter, body SantaRequestDecision, user string
 // santaDecided answers a decision: the error, or the audit line and the
 // request. via is appended to the audit line (" via link").
 func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env environments.TLSEnvironment, d santa.Decision, via string, req santa.Request, err error) {
-	switch {
-	case errors.Is(err, santa.ErrLinkInvalid):
-		apiErrorResponse(w, "this link was already used or has expired", http.StatusGone, err)
-		return
-	case errors.Is(err, santa.ErrInvalidRequest), errors.Is(err, santa.ErrInvalidRule):
-		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
-		return
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		apiErrorResponse(w, "request not found", http.StatusNotFound, err)
-		return
-	case errors.Is(err, santa.ErrRequestNotPending):
-		apiErrorResponse(w, "the request was already decided or has expired", http.StatusConflict, err)
-		return
-	case errors.Is(err, santa.ErrRuleConflict):
-		apiErrorResponse(w, "a rule that does not allow this file already exists for this scope; change or delete it first", http.StatusConflict, err)
-		return
-	case errors.Is(err, santa.ErrPermanentOverride), errors.Is(err, santa.ErrUnknownMachine):
-		apiErrorResponse(w, err.Error(), http.StatusConflict, err)
-		return
-	case errors.Is(err, santa.ErrRiskFlagged):
-		apiErrorResponse(w, "a risk check flagged this file; approve with override and a reason to allow it anyway", http.StatusConflict, err)
-		return
-	case errors.Is(err, santa.ErrSelfApproval), errors.Is(err, santa.ErrOwnRequest):
-		apiErrorResponse(w, err.Error(), http.StatusForbidden, nil)
-		return
-	case errors.Is(err, santa.ErrOverrideReason):
-		apiErrorResponse(w, err.Error(), http.StatusBadRequest, nil)
-		return
-	case err != nil:
-		apiErrorResponse(w, "error deciding request", http.StatusInternalServerError, err)
+	if code, msg := santaDecisionError(err); code != 0 {
+		apiErrorResponse(w, msg, code, err)
 		return
 	}
+	h.santaDecisionDone(r, env, d, via, req)
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, req)
+}
+
+// santaDecisionError is the status and message for a failed decision; 0 for nil.
+func santaDecisionError(err error) (int, string) {
+	switch {
+	case err == nil:
+		return 0, ""
+	case errors.Is(err, santa.ErrLinkInvalid):
+		return http.StatusGone, "this link was already used or has expired"
+	case errors.Is(err, santa.ErrInvalidRequest), errors.Is(err, santa.ErrInvalidRule), errors.Is(err, santa.ErrOverrideReason):
+		return http.StatusBadRequest, err.Error()
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return http.StatusNotFound, "request not found"
+	case errors.Is(err, santa.ErrRequestNotPending):
+		return http.StatusConflict, "the request was already decided or has expired"
+	case errors.Is(err, santa.ErrRuleConflict):
+		return http.StatusConflict, "a rule that does not allow this file already exists for this scope; change or delete it first"
+	case errors.Is(err, santa.ErrPermanentOverride), errors.Is(err, santa.ErrUnknownMachine):
+		return http.StatusConflict, err.Error()
+	case errors.Is(err, santa.ErrRiskFlagged):
+		return http.StatusConflict, "a risk check flagged this file; approve with override and a reason to allow it anyway"
+	case errors.Is(err, santa.ErrSelfApproval), errors.Is(err, santa.ErrOwnRequest):
+		return http.StatusForbidden, err.Error()
+	}
+	return http.StatusInternalServerError, "error deciding request"
+}
+
+// santaDecisionDone writes the audit line of a decision and tells the requester.
+func (h *HandlersApi) santaDecisionDone(r *http.Request, env environments.TLSEnvironment, d santa.Decision, via string, req santa.Request) {
 	// The free-text reason stays on the request, out of the audit line.
 	action := fmt.Sprintf("deny request %d", req.ID)
 	switch {
@@ -340,7 +343,6 @@ func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env e
 	h.santaTellRequester(env.ID, req.Requester, alerts.Hit{
 		RuleName: title, EnvironmentID: env.ID, Environment: env.Name, NodeUUID: req.MachineID, Entity: entity, Detail: text,
 	})
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, req)
 }
 
 // SantaLinkDecision is a decision made through an approve or deny link.
@@ -488,6 +490,11 @@ func (h *HandlersApi) santaNotify(env environments.TLSEnvironment, req santa.Req
 			"\nEach link works once, expires in 72 hours and needs an environment admin or approver signed in to osctrl.",
 		// The links stay out of the alert history.
 		HistoryDetail: notice,
+		// Buttons for Slack channels; each carries the token of its link.
+		Actions: []alerts.HitAction{
+			{ID: slackApproveAction, Label: "Approve (this machine)", Value: env.UUID + ":" + approve, Style: "primary"},
+			{ID: slackDenyAction, Label: "Deny", Value: env.UUID + ":" + deny, Style: "danger"},
+		},
 	}
 	// ponytail: one goroutine per new request, bounded only by the per-requester
 	// pending cap; hand it to a queue if request volume ever makes that matter.

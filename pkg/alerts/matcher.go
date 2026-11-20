@@ -34,6 +34,8 @@ type Hit struct {
 	HistoryDetail   string
 	CooldownMinutes int
 	Channels        []uint
+	// Actions are buttons, for channels that have them (Slack)
+	Actions []HitAction
 }
 
 // detailMax bounds the context stored per hit so a pathological match
