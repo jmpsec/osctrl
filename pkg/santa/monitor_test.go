@@ -25,9 +25,10 @@ func TestGrantMonitor(t *testing.T) {
 	require.ErrorIs(t, err, ErrUnknownMachine)
 
 	require.NoError(t, m.SaveMachine(&Machine{EnvironmentID: 1, MachineID: machine}))
-	o, err := m.GrantMonitor(1, strings.ToLower(machine), 2, "alice")
+	o, err := m.grantMonitorIn(m.DB, 1, strings.ToLower(machine), 2, "alice", "dave")
 	require.NoError(t, err)
 	require.Equal(t, now.Add(2*time.Hour).Unix(), o.ExpiresAt.Unix())
+	require.Equal(t, "dave", o.Requester)
 	mode, source, err := m.EffectiveMode(1, machine, nil)
 	require.NoError(t, err)
 	require.Equal(t, []string{"MONITOR", "node"}, []string{mode, source})
@@ -36,6 +37,7 @@ func TestGrantMonitor(t *testing.T) {
 	o, err = m.GrantMonitor(1, machine, 1, "bob")
 	require.NoError(t, err)
 	require.Equal(t, "bob", o.CreatedBy)
+	require.Empty(t, o.Requester, "a direct grant has no requester")
 	require.Equal(t, now.Add(time.Hour).Unix(), o.ExpiresAt.Unix())
 
 	// At expiry it stops applying, whether or not the sweep has run.

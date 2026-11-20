@@ -364,3 +364,56 @@ func TestDispatcherCacheRebuild(t *testing.T) {
 		t.Fatal("rebuilt sender against the dead URL must fail")
 	}
 }
+
+func TestDispatcherEmail(t *testing.T) {
+	m := newTestManager(t)
+	mailCh, err := m.CreateChannel(AlertChannel{
+		Name: "mail", Type: ChannelEmail, Enabled: true,
+		Config: `{"host":"smtp.example.com","from":"osctrl@example.com","to":"soc@example.com"}`,
+	})
+	if err != nil {
+		t.Fatalf("create email channel: %v", err)
+	}
+	hook, err := m.CreateChannel(AlertChannel{
+		Name: "hook", Type: ChannelWebhook, Enabled: true,
+		Config: `{"url":"https://x.example.com/hook"}`,
+	})
+	if err != nil {
+		t.Fatalf("create webhook channel: %v", err)
+	}
+	d := NewDispatcher(m)
+	sender, _, err := d.senderFor(mailCh.ID)
+	if err != nil {
+		t.Fatalf("sender: %v", err)
+	}
+	var got []string
+	sender.(*emailSender).send = func(_ string, _ smtp.Auth, _ string, to []string, msg []byte) error {
+		got = to
+		if !strings.Contains(string(msg), "To: dave@example.com\r\n") {
+			t.Fatalf("to header: %s", msg)
+		}
+		return nil
+	}
+	if err := d.Email(mailCh.ID, "Dave <dave@example.com>", Hit{RuleName: "r"}); err != nil {
+		t.Fatalf("email: %v", err)
+	}
+	if len(got) != 1 || got[0] != "dave@example.com" {
+		t.Fatalf("recipients: %v", got)
+	}
+	for _, tt := range []struct {
+		name string
+		id   uint
+		to   string
+	}{
+		{"webhook channel", hook.ID, "dave@example.com"},
+		{"header injection", mailCh.ID, "dave@example.com\r\nBcc: eve@example.com"},
+		{"no address", mailCh.ID, ""},
+	} {
+		if err := d.Email(tt.id, tt.to, Hit{RuleName: "r"}); err == nil {
+			t.Fatalf("%s: want an error", tt.name)
+		}
+	}
+	if rows, _ := m.RecentHistory(10); len(rows) != 0 {
+		t.Fatalf("no history for a personal email: %+v", rows)
+	}
+}

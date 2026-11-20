@@ -1051,6 +1051,9 @@ export const tr: Messages = {
     fileAccess: { override: 'Dosya erişim kurallarını geçersiz kılma', overrideHint: 'FileAccessPolicy profiliyle dağıtılan dosya erişim kurallarının eylemini değiştirir. İstemciler bir sonraki eşitlemede uygular.', none: 'Dosya erişim olayı yok', noneHint: 'Dosya erişim kuralları MDM ile FileAccessPolicy profiliyle dağıtılır. İhlalleri burada görünür.', rule: 'Kural', target: 'Yol', process: 'İşlem', actions: { unset: 'Ayarlanmadı (istemciler değişmez)', NONE: 'Yok (kurallar yazıldığı gibi)', AUDIT_ONLY: 'Yalnızca denetim (kaydet ve izin ver)', DISABLE: 'Kuralları devre dışı bırak' } },
     notifyChannels: 'Yeni istekleri bildir',
     notifyChannelsHint: 'Her yeni istek, bir onay ve bir ret bağlantısıyla bu uyarı kanallarına gönderilir. Bağlantı bir kez çalışır, 72 saat sonra sona erer ve oturum açmış bir ortam yöneticisi veya onaylayan gerektirir. Kanalları değiştirmek için süper kullanıcı gerekir.',
+    requesterChannel: 'Talep edenlere e-posta gönder',
+    requesterChannelOff: 'Kapalı',
+    requesterChannelHint: 'Talep edenler, talepleri onaylandığında veya reddedildiğinde (gerekçesiyle) ve onaylanan bir MONITOR süresi sona erdiğinde osctrl hesaplarının adresine e-posta alır. Bu e-posta kanalının yalnızca SMTP aktarıcısı kullanılır, alıcıları kullanılmaz.',
     link: {
       approveTitle: 'İsteği onayla',
       denyTitle: 'İsteği reddet',

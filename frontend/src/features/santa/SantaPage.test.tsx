@@ -68,7 +68,7 @@ const rule: SantaRule = {
 
 const config: SantaConfig = {
   client_mode: 'MONITOR', batch_size: 0, enable_transitive_rules: false, removable_media: 'ALLOW',
-  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', notify_channels: null,
+  removable_media_flags: null, encrypted_removable_media: '', encrypted_removable_media_flags: null, approval_url: '', notify_channels: null, requester_channel: 0,
   vote_local_threshold: 0, vote_global_threshold: 0, override_file_access_action: '', enable_bundles: false,
   enable_all_event_upload: false, disable_unknown_event_upload: false, allowed_path_regex: '', blocked_path_regex: '',
   event_detail_url: '', event_detail_text: '', token_set: true,
@@ -339,8 +339,13 @@ describe('SantaPage', () => {
     expect(await screen.findByRole('checkbox', { name: /soc-mail/ })).toBeChecked();
     expect(screen.queryByRole('checkbox', { name: /elsewhere/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: /env-hook/ }));
+    // Only email channels can email requesters.
+    const requester = screen.getByLabelText('Email requesters');
+    expect(requester).toHaveValue('0');
+    expect(screen.queryByRole('option', { name: 'env-hook' })).not.toBeInTheDocument();
+    await user.selectOptions(requester, 'soc-mail');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ notify_channels: [3, 4] })));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ notify_channels: [3, 4], requester_channel: 3 })));
   });
 
   it('keeps the saved channels when the channel list is not available', async () => {

@@ -1051,6 +1051,9 @@ export const pt: Messages = {
     fileAccess: { override: 'Substituição das regras de acesso a arquivos', overrideHint: 'Altera a ação das regras de acesso a arquivos implantadas com o perfil FileAccessPolicy. Os clientes a aplicam na próxima sincronização.', none: 'Nenhum evento de acesso a arquivos', noneHint: 'As regras de acesso a arquivos são implantadas via MDM com o perfil FileAccessPolicy. As violações aparecem aqui.', rule: 'Regra', target: 'Caminho', process: 'Processo', actions: { unset: 'Não definido (clientes inalterados)', NONE: 'Nenhuma (regras como escritas)', AUDIT_ONLY: 'Somente auditoria (registrar e permitir)', DISABLE: 'Desativar regras' } },
     notifyChannels: 'Notificar novos pedidos',
     notifyChannelsHint: 'Cada novo pedido é enviado a estes canais de alerta com um link para aprovar e outro para negar. Um link funciona uma vez, expira após 72 horas e exige um administrador do ambiente ou um aprovador com sessão iniciada. Alterar os canais exige um superusuário.',
+    requesterChannel: 'Enviar email aos requerentes',
+    requesterChannelOff: 'Desativado',
+    requesterChannelHint: 'Os requerentes recebem um email no endereço da sua conta osctrl quando o pedido é aprovado ou recusado (com o motivo) e quando termina um período MONITOR aprovado. Só é usado o relay SMTP deste canal de email, não os seus destinatários.',
     link: {
       approveTitle: 'Aprovar pedido',
       denyTitle: 'Negar pedido',

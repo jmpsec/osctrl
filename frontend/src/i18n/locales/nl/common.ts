@@ -1051,6 +1051,9 @@ export const nl: Messages = {
     fileAccess: { override: 'Overschrijving van bestandstoegangsregels', overrideHint: 'Wijzigt de actie van de bestandstoegangsregels die met het profiel FileAccessPolicy zijn uitgerold. Clients passen dit toe bij de volgende synchronisatie.', none: 'Geen bestandstoegangsgebeurtenissen', noneHint: 'Bestandstoegangsregels worden via MDM uitgerold met het profiel FileAccessPolicy. Overtredingen verschijnen hier.', rule: 'Regel', target: 'Pad', process: 'Proces', actions: { unset: 'Niet ingesteld (clients ongewijzigd)', NONE: 'Geen (regels zoals geschreven)', AUDIT_ONLY: 'Alleen audit (loggen en toestaan)', DISABLE: 'Regels uitschakelen' } },
     notifyChannels: 'Melden bij nieuwe verzoeken',
     notifyChannelsHint: 'Elk nieuw verzoek wordt naar deze waarschuwingskanalen gestuurd met een link om goed te keuren en een om te weigeren. Een link werkt één keer, verloopt na 72 uur en vereist een aangemelde omgevingsbeheerder of goedkeurder. Het wijzigen van de kanalen vereist een superuser.',
+    requesterChannel: 'Aanvragers e-mailen',
+    requesterChannelOff: 'Uit',
+    requesterChannelHint: 'Aanvragers krijgen een e-mail op het adres van hun osctrl-account wanneer hun aanvraag wordt goedgekeurd of afgewezen (met de reden) en wanneer een goedgekeurde MONITOR-periode afloopt. Alleen de SMTP-relay van dit e-mailkanaal wordt gebruikt, niet de ontvangers ervan.',
     link: {
       approveTitle: 'Verzoek goedkeuren',
       denyTitle: 'Verzoek weigeren',

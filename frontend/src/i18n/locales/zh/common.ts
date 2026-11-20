@@ -1051,6 +1051,9 @@ export const zh: Messages = {
     fileAccess: { override: '文件访问规则覆盖', overrideHint: '更改通过 FileAccessPolicy 配置描述文件部署的文件访问规则的操作。客户端在下次同步时应用。', none: '没有文件访问事件', noneHint: '文件访问规则通过 MDM 以 FileAccessPolicy 配置描述文件部署。违规会显示在这里。', rule: '规则', target: '路径', process: '进程', actions: { unset: '未设置（客户端不变）', NONE: '无（按规则执行）', AUDIT_ONLY: '仅审计（记录并允许）', DISABLE: '禁用规则' } },
     notifyChannels: '通知新请求',
     notifyChannelsHint: '每个新请求都会连同批准链接和拒绝链接发送到这些告警渠道。链接只能使用一次，72 小时后过期，并且需要环境管理员或审批人登录。更改渠道需要超级用户。',
+    requesterChannel: '通过邮件通知申请人',
+    requesterChannelOff: '关闭',
+    requesterChannelHint: '当申请被批准或拒绝（附原因）以及已批准的 MONITOR 时段结束时，申请人会在其 osctrl 账户邮箱收到邮件。仅使用此邮件渠道的 SMTP 中继，不使用其收件人。',
     link: {
       approveTitle: '批准请求',
       denyTitle: '拒绝请求',

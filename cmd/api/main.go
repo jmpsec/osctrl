@@ -678,26 +678,6 @@ func osctrlAPIService() {
 		go vulnWorker.Run(vulnCtx)
 	}
 	if santaMgr != nil {
-		// Temporary MONITOR overrides stop applying at expiry on their own; this
-		// removes them and writes the expiry to the audit log within a minute.
-		go func() {
-			t := time.NewTicker(time.Minute)
-			defer t.Stop()
-			for {
-				gone, err := santaMgr.ExpireModeOverrides(time.Now())
-				if err != nil {
-					log.Err(err).Msg("error expiring santa mode overrides")
-				}
-				for _, o := range gone {
-					auditLog.EnvAction(o.CreatedBy, "santa: temporary MONITOR expired machine="+o.ScopeValue, "", o.EnvironmentID)
-				}
-				select {
-				case <-vulnCtx.Done():
-					return
-				case <-t.C:
-				}
-			}
-		}()
 		go func() {
 			t := time.NewTicker(24 * time.Hour)
 			defer t.Stop()
@@ -860,6 +840,30 @@ func osctrlAPIService() {
 	}
 	handlersApi.EventsAuthenticate = func(r *http.Request) bool {
 		return eventSessionValid(r, flagParams.Service.Auth, flagParams.JWT.JWTSecret)
+	}
+	if santaMgr != nil {
+		// Temporary MONITOR overrides stop applying at expiry on their own; this
+		// removes them, writes the expiry to the audit log and tells the requester
+		// within a minute.
+		go func() {
+			t := time.NewTicker(time.Minute)
+			defer t.Stop()
+			for {
+				gone, err := santaMgr.ExpireModeOverrides(time.Now())
+				if err != nil {
+					log.Err(err).Msg("error expiring santa mode overrides")
+				}
+				for _, o := range gone {
+					auditLog.EnvAction(o.CreatedBy, "santa: temporary MONITOR expired machine="+o.ScopeValue, "", o.EnvironmentID)
+					handlersApi.SantaMonitorEnded(o)
+				}
+				select {
+				case <-vulnCtx.Done():
+					return
+				case <-t.C:
+				}
+			}
+		}()
 	}
 
 	// ///////////////////////// API

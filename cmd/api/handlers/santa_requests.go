@@ -332,6 +332,14 @@ func (h *HandlersApi) santaDecided(w http.ResponseWriter, r *http.Request, env e
 		}
 	}
 	h.santaAudit(d.By, fmt.Sprintf("%s%s sha256=%s machine=%s requester=%s", action, via, req.FileSHA256, req.MachineID, req.Requester), r, env)
+	title, text := santa.DecisionNotice(req)
+	entity := req.FileSHA256
+	if entity == "" {
+		entity = req.MachineID
+	}
+	h.santaTellRequester(env.ID, req.Requester, alerts.Hit{
+		RuleName: title, EnvironmentID: env.ID, Environment: env.Name, NodeUUID: req.MachineID, Entity: entity, Detail: text,
+	})
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, req)
 }
 
@@ -409,9 +417,49 @@ func (h *HandlersApi) SantaRequestGetHandler(w http.ResponseWriter, r *http.Requ
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, req)
 }
 
-// santaNotifier delivers a notification to alert channels; *alerts.Dispatcher.
+// santaNotifier delivers a notification to alert channels, or to one address
+// through an email channel; *alerts.Dispatcher.
 type santaNotifier interface {
 	Dispatch(ctx context.Context, h alerts.Hit) error
+	Email(channelID uint, to string, h alerts.Hit) error
+}
+
+// santaTellRequester emails username through the requester channel of the
+// environment, when it has one and the account has an email address. Like
+// santaNotify it never fails the caller.
+func (h *HandlersApi) santaTellRequester(envID uint, username string, hit alerts.Hit) {
+	if h.SantaNotify == nil || username == "" {
+		return
+	}
+	cfg, err := h.Santa.Config(envID)
+	if err != nil || cfg.RequesterChannel == 0 {
+		return
+	}
+	u, err := h.Users.Get(username)
+	if err != nil || u.Email == "" {
+		return
+	}
+	go func() {
+		if err := h.SantaNotify.Email(cfg.RequesterChannel, u.Email, hit); err != nil {
+			log.Err(err).Str("requester", username).Msg("santa: requester notification failed")
+		}
+	}()
+}
+
+// SantaMonitorEnded tells the requester of an expired temporary MONITOR
+// override that it ended. Overrides granted without a request have no requester.
+func (h *HandlersApi) SantaMonitorEnded(o santa.ModeOverride) {
+	if o.Requester == "" || h.Santa == nil {
+		return
+	}
+	env, err := h.Envs.GetByID(o.EnvironmentID)
+	if err != nil {
+		return
+	}
+	title, text := santa.MonitorEndNotice(o)
+	h.santaTellRequester(env.ID, o.Requester, alerts.Hit{
+		RuleName: title, EnvironmentID: env.ID, Environment: env.Name, NodeUUID: o.ScopeValue, Entity: o.ScopeValue, Detail: text,
+	})
 }
 
 // santaNotify tells the environment's notification channels about a new

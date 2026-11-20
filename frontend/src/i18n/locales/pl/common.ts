@@ -1051,6 +1051,9 @@ export const pl: Messages = {
     fileAccess: { override: 'Nadpisanie reguł dostępu do plików', overrideHint: 'Zmienia działanie reguł dostępu do plików wdrożonych profilem FileAccessPolicy. Klienci stosują je przy następnej synchronizacji.', none: 'Brak zdarzeń dostępu do plików', noneHint: 'Reguły dostępu do plików są wdrażane przez MDM profilem FileAccessPolicy. Ich naruszenia pojawiają się tutaj.', rule: 'Reguła', target: 'Ścieżka', process: 'Proces', actions: { unset: 'Nieustawione (klienci bez zmian)', NONE: 'Brak (reguły bez zmian)', AUDIT_ONLY: 'Tylko audyt (rejestruj i zezwól)', DISABLE: 'Wyłącz reguły' } },
     notifyChannels: 'Powiadamiaj o nowych prośbach',
     notifyChannelsHint: 'Każda nowa prośba jest wysyłana do tych kanałów alertów z linkiem do zatwierdzenia i linkiem do odrzucenia. Link działa raz, wygasa po 72 godzinach i wymaga zalogowanego administratora środowiska lub zatwierdzającego. Zmiana kanałów wymaga superużytkownika.',
+    requesterChannel: 'Wysyłaj e-mail do wnioskujących',
+    requesterChannelOff: 'Wyłączone',
+    requesterChannelHint: 'Wnioskujący otrzymują e-mail na adres swojego konta osctrl, gdy ich wniosek zostanie zatwierdzony lub odrzucony (z uzasadnieniem) oraz gdy zakończy się zatwierdzony okres MONITOR. Używany jest tylko przekaźnik SMTP tego kanału e-mail, nie jego odbiorcy.',
     link: {
       approveTitle: 'Zatwierdź prośbę',
       denyTitle: 'Odrzuć prośbę',

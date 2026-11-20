@@ -145,3 +145,36 @@ func RequestNotice(req Request) string {
 	return fmt.Sprintf("%s asks to allow %s (sha256 %s) on machine %s. Justification: %s",
 		oneLine(req.Requester), name, req.FileSHA256, req.MachineID, oneLine(req.Justification))
 }
+
+// DecisionNotice is the title and text of the email that tells the requester
+// how their request was decided, with the reason given.
+func DecisionNotice(req Request) (title, text string) {
+	what := "MONITOR mode on machine " + req.MachineID
+	if req.Kind != RequestKindMonitor {
+		name := oneLine(req.FileName)
+		if name == "" {
+			name = req.FileSHA256
+		}
+		what = fmt.Sprintf("allowing %s (sha256 %s) on machine %s", name, req.FileSHA256, req.MachineID)
+	}
+	verdict := "denied"
+	if req.Status == RequestApproved {
+		verdict = "approved"
+	}
+	text = fmt.Sprintf("Your request %d for %s was %s by %s.", req.ID, what, verdict, oneLine(req.DecidedBy))
+	if req.Status == RequestApproved && req.Kind == RequestKindMonitor && req.DecidedAt != nil {
+		until := req.DecidedAt.Add(time.Duration(req.MonitorHours) * time.Hour)
+		text += " MONITOR mode starts at the machine's next sync and lasts until " + until.UTC().Format(time.RFC1123) + "."
+	}
+	if r := oneLine(req.Reason); r != "" {
+		text += " Reason: " + r
+	}
+	return "Santa request " + verdict, text
+}
+
+// MonitorEndNotice is the title and text of the email that tells the requester
+// their temporary MONITOR mode ended.
+func MonitorEndNotice(o ModeOverride) (title, text string) {
+	return "Santa MONITOR mode ended",
+		"The temporary MONITOR mode on machine " + o.ScopeValue + " has ended; the machine goes back to its usual mode at its next sync."
+}

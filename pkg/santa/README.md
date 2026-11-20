@@ -267,6 +267,12 @@ https://osctrl.example.com/santa/decide/ENVIRONMENT-UUID?request=12&action=appro
 - A link works once, for the action it was made for, for 72 hours. A used, expired, unknown or other-environment link, or an approve link used to deny, answers `410`. Once the request is decided the other link answers `409`. A decision that fails (for example a block rule in the way) leaves the link usable.
 - Only the SHA-256 of each token is stored. The token is the URL fragment, so the browser does not send it with the page request; it is posted in the request body. The alert history keeps the message without the links.
 
+**Notifying requesters.** Requesters can be emailed when their request is decided. It is off until an environment admin picks an email channel under **Email requesters** in **Settings** (`requester_channel` in the config API; 0 turns it off). The channel must be an email channel that is global or belongs to the environment.
+
+- Only the channel's SMTP relay and sender are used. The email goes to the requester's osctrl account address, never to the channel's recipients. A requester without an email address gets nothing.
+- The requester is told when the request is approved or denied, by whom and with the reason given. An approved MONITOR request says when the window ends, and a second email is sent when it ends (within a minute of the expiry). A MONITOR override an admin grants directly has no requester and sends nothing.
+- Like approver notifications, a failed email is logged and not retried, and it never fails the decision. These emails are not written to the alert history; the decision is in the audit log.
+
 **Voting.** For software many people use, votes can allow a file without an approver. It is off until an environment admin sets a threshold in **Settings** (`vote_local_threshold` and `vote_global_threshold` in the config API; 0 turns one off, the global one cannot be below the local one, both need the approval URL).
 
 - The request page shows the vote count and a **Vote to allow** button next to the request form. Any signed-in account can vote (`POST /api/v1/santa/{env}/votes`), under the same condition as a request: the machine must have reported the block. One vote per account and file; voting again changes nothing. The page shows counts, never who voted.

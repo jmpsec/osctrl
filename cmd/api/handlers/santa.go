@@ -52,6 +52,8 @@ type SantaConfigRequest struct {
 	ApprovalURL string `json:"approval_url"`
 	// Alert channel IDs told about each new approval request, at most 10. Needs approval_url. Changing it requires superuser
 	NotifyChannels []uint `json:"notify_channels"`
+	// Email alert channel whose relay emails each requester at their osctrl account address when their request is decided and when an approved MONITOR window ends; 0 is off
+	RequesterChannel uint `json:"requester_channel"`
 	// Votes that allow a blocked file on each voter's machine; 0 is off. Needs approval_url
 	VoteLocalThreshold uint32 `json:"vote_local_threshold"`
 	// Votes that allow the file in the whole environment; 0 is off, and it cannot be below the local threshold. Needs approval_url
@@ -360,7 +362,7 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		EnableTransitiveRules: req.EnableTransitiveRules,
 		RemovableMedia:        media, RemovableMediaFlags: req.RemovableMediaFlags,
 		EncryptedRemovableMedia: req.EncryptedRemovableMedia, EncryptedRemovableMediaFlags: req.EncryptedRemovableMediaFlags,
-		ApprovalURL: req.ApprovalURL, NotifyChannels: req.NotifyChannels,
+		ApprovalURL: req.ApprovalURL, NotifyChannels: req.NotifyChannels, RequesterChannel: req.RequesterChannel,
 		VoteLocalThreshold: req.VoteLocalThreshold, VoteGlobalThreshold: req.VoteGlobalThreshold,
 		OverrideFileAccessAction: req.OverrideFileAccessAction,
 		EnableBundles:            req.EnableBundles, EnableAllEventUpload: req.EnableAllEventUpload,
@@ -394,6 +396,12 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		apiErrorResponse(w, "error getting config", http.StatusInternalServerError, err)
 		return
+	}
+	if cfg.RequesterChannel != 0 && cfg.RequesterChannel != prev.RequesterChannel {
+		if err := h.santaCheckRequesterChannel(env, cfg.RequesterChannel); err != nil {
+			apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
+			return
+		}
 	}
 	if risky := santaConfigRisks(prev, cfg); risky != "" && h.santaHeld(w, r, env, user, "update config"+risky, body) {
 		return
@@ -452,6 +460,22 @@ func (h *HandlersApi) santaCheckNotifyChannels(r *http.Request, env environments
 		}
 	}
 	return 0, nil
+}
+
+// santaCheckRequesterChannel checks that id is an email channel the environment
+// can use. Only its relay is used: the message goes to the requester alone.
+func (h *HandlersApi) santaCheckRequesterChannel(env environments.TLSEnvironment, id uint) error {
+	if h.Alerts == nil {
+		return errors.New("alerts are not enabled")
+	}
+	ch, err := h.Alerts.GetChannel(id)
+	if err != nil || (ch.EnvironmentID != alerts.NoEnvironmentID && ch.EnvironmentID != env.ID) {
+		return fmt.Errorf("alert channel %d is not available to this environment", id)
+	}
+	if ch.Type != alerts.ChannelEmail {
+		return fmt.Errorf("alert channel %d is not an email channel", id)
+	}
+	return nil
 }
 
 // SantaTokenHandler — POST /api/v1/santa/{env}/token
