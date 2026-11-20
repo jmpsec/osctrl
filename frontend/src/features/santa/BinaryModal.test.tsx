@@ -3,11 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
-import type { SantaBinary, SantaRisk } from '$/api/santa';
+import type { SantaBinary, SantaRisk, SantaVote } from '$/api/santa';
 import { BinaryModal } from './BinaryModal';
 
 const mockBinary = vi.fn<(env: string, sha256: string) => Promise<SantaBinary>>();
 const mockCheck = vi.fn<(env: string, sha256: string) => Promise<SantaRisk>>();
+const mockVoters = vi.fn<(env: string, sha256: string) => Promise<SantaVote[]>>(() => Promise.resolve([]));
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -15,6 +16,7 @@ vi.mock('$/api/santa', async () => {
     ...actual,
     getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256),
     checkSantaRisk: (env: string, sha256: string) => mockCheck(env, sha256),
+    listSantaVoters: (env: string, sha256: string) => mockVoters(env, sha256),
     carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
   };
 });
@@ -54,6 +56,17 @@ describe('BinaryModal', () => {
   // Braces matter: a function returned from beforeEach runs as a teardown.
   beforeEach(() => {
     mockBinary.mockReset();
+  });
+
+  it('lists who voted for the file', async () => {
+    mockBinary.mockResolvedValue(binary);
+    mockVoters.mockResolvedValueOnce([{ id: 1, created_at: '2026-11-14T10:00:00Z', voter: 'dave', machine_id: 'M-1' }]);
+    renderModal();
+    const votes = await screen.findByRole('heading', { name: 'Votes (1)' });
+    expect(mockVoters).toHaveBeenCalledWith('dev', SHA);
+    const table = votes.parentElement!.querySelector('table')!;
+    expect(within(table).getByText('dave')).toBeInTheDocument();
+    expect(within(table).getByText('M-1')).toBeInTheDocument();
   });
 
   it('shows the identity, prevalence, signing chain and matching rules', async () => {

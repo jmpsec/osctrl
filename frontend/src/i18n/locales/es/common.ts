@@ -979,6 +979,7 @@ export const es: Messages = {
     },
     voteLocal: 'Votos para permitir en los equipos de los votantes',
     voteGlobal: 'Votos para permitir en el entorno',
+    voteExpiry: 'Días hasta que caducan los votos (0 los conserva)',
     voteHint: 'Los usuarios pueden votar por un archivo que Santa bloqueó en su equipo, un voto por usuario y archivo. 0 desactiva un umbral. No se puede votar por archivos bloqueados por una regla. Requiere la URL de aprobación.',
     vote: {
       title: 'Vota por este software',
@@ -989,6 +990,7 @@ export const es: Messages = {
       voted: 'Ya votaste',
       allowedNode: 'Votos suficientes: se permitirá en tu equipo tras la próxima sincronización de Santa.',
       allowedEnv: 'Votos suficientes: se permitirá para todos tras la próxima sincronización de Santa.',
+      withdraw: 'Retirar voto',
     },
     monitor: {
       title: 'Modo MONITOR temporal',
@@ -1013,6 +1015,10 @@ export const es: Messages = {
       unsigned: 'No se informó ninguna cadena de firma.',
       rules: 'Reglas coincidentes',
       noRules: 'Ninguna regla nombra este binario, su firmante ni su certificado.',
+      votes: 'Votos ({n})',
+      voter: 'Votante',
+      votedAt: 'Votado',
+      votesHint: 'Eliminar una regla creada por los votos también elimina estos votos.',
     },
     tabReports: 'Informes',
     reports: {

@@ -979,6 +979,7 @@ export const tr: Messages = {
     },
     voteLocal: 'Oy verenlerin makinelerinde izin için gereken oy',
     voteGlobal: 'Ortamda izin için gereken oy',
+    voteExpiry: 'Oyların sona ermesine kadar gün (0 saklar)',
     voteHint: 'Kullanıcılar Santa’nın makinelerinde engellediği bir dosya için oy verebilir; kullanıcı ve dosya başına bir oy. 0 eşiği kapatır. Bir kuralın engellediği dosyalar için oy verilemez. Onay URL’si gerekir.',
     vote: {
       title: 'Bu yazılım için oy verin',
@@ -989,6 +990,7 @@ export const tr: Messages = {
       voted: 'Oy verdiniz',
       allowedNode: 'Yeterli oy: bir sonraki Santa eşitlemesinden sonra makinenizde izin verilecek.',
       allowedEnv: 'Yeterli oy: bir sonraki Santa eşitlemesinden sonra herkes için izin verilecek.',
+      withdraw: 'Oyu geri çek',
     },
     monitor: {
       title: 'Geçici MONITOR modu',
@@ -1013,6 +1015,10 @@ export const tr: Messages = {
       unsigned: 'İmza zinciri bildirilmedi.',
       rules: 'Eşleşen kurallar',
       noRules: 'Hiçbir kural bu dosyayı, imzalayanını veya sertifikasını belirtmiyor.',
+      votes: 'Oylar ({n})',
+      voter: 'Oy veren',
+      votedAt: 'Oy zamanı',
+      votesHint: 'Oyların oluşturduğu bir kuralı silmek bu oyları da siler.',
     },
     tabReports: 'Raporlar',
     reports: {

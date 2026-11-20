@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createSantaRequest, getSantaVotes, listMySantaRequests, SANTA_MONITOR_HOURS, voteSantaFile } from '$/api/santa';
+import { createSantaRequest, getSantaVotes, listMySantaRequests, SANTA_MONITOR_HOURS, voteSantaFile, withdrawSantaVote } from '$/api/santa';
 import { Button } from '$/components/atoms/Button';
 import { Label } from '$/components/atoms/Label';
 import { MONO, ROW, TABLE, TD, TH, errorText } from './table';
@@ -21,7 +21,12 @@ function VoteCard({ env, sha256, machineId }: { env: string; sha256: string; mac
     mutationFn: () => voteSantaFile(env, { sha256, machine_id: machineId }),
     onSuccess: (st) => qc.setQueryData(key, st),
   });
+  const withdraw = useMutation({
+    mutationFn: () => withdrawSantaVote(env, sha256),
+    onSuccess: (st) => qc.setQueryData(key, st),
+  });
   const st = votes.data;
+  const error = cast.error ?? withdraw.error;
   if (!st || (st.local_threshold === 0 && st.global_threshold === 0)) return null;
   return (
     <section className="space-y-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4">
@@ -36,11 +41,20 @@ function VoteCard({ env, sha256, machineId }: { env: string; sha256: string; mac
           {t(st.allowed === 'env' ? 'santa.vote.allowedEnv' : 'santa.vote.allowedNode')}
         </p>
       )}
-      {cast.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(cast.error)}</p>}
-      <div className="flex justify-end">
-        <Button type="button" disabled={st.voted || cast.isPending} onClick={() => cast.mutate()}>
-          {t(st.voted ? 'santa.vote.voted' : 'santa.vote.button')}
-        </Button>
+      {error && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(error)}</p>}
+      <div className="flex items-center justify-end gap-2">
+        {st.voted ? (
+          <>
+            <span className="text-sm text-[color:var(--text-2)]">{t('santa.vote.voted')}</span>
+            <Button type="button" variant="ghost" disabled={withdraw.isPending} onClick={() => withdraw.mutate()}>
+              {t('santa.vote.withdraw')}
+            </Button>
+          </>
+        ) : (
+          <Button type="button" disabled={cast.isPending} onClick={() => cast.mutate()}>
+            {t('santa.vote.button')}
+          </Button>
+        )}
       </div>
     </section>
   );

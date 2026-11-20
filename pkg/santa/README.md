@@ -288,12 +288,14 @@ https://osctrl.example.com/santa/decide/ENVIRONMENT-UUID?request=12&action=appro
 
 **Voting.** For software many people use, votes can allow a file without an approver. It is off until an environment admin sets a threshold in **Settings** (`vote_local_threshold` and `vote_global_threshold` in the config API; 0 turns one off, the global one cannot be below the local one, both need the approval URL).
 
-- The request page shows the vote count and a **Vote to allow** button next to the request form. Any signed-in account can vote (`POST /api/v1/santa/{env}/votes`), under the same condition as a request: the machine must have reported the block. One vote per account and file; voting again changes nothing. The page shows counts, never who voted.
+- The request page shows the vote count and a **Vote to allow** button next to the request form. Any signed-in account can vote (`POST /api/v1/santa/{env}/votes`), under the same condition as a request: the machine must have reported the block. One vote per account and file; voting again changes nothing. The page shows counts, never who voted, and lets a voter withdraw their vote (`DELETE /api/v1/santa/{env}/votes?sha256=...`). Rules the votes already created stay.
 - At the **local threshold** every machine that voted gets a node-scoped `BINARY` allow rule, and each later voter's machine gets one as they vote. At the **global threshold** the file gets one environment-scoped allow rule. Rules made by votes have `votes` as their creator, and each one is written to the audit log with the vote that caused it.
-- Known-bad files cannot be voted for (`409`): Santa must have blocked the file as unknown (`BLOCK_UNKNOWN`), and no rule other than an allow rule may name the file, its team ID, signing ID or CDHash in any scope of the environment. To stop a vote, add a block rule. osctrl has no risk scoring yet, so rules are the only signal.
+- Known-bad files cannot be voted for (`409`): Santa must have blocked the file as unknown (`BLOCK_UNKNOWN`), and no rule other than an allow rule may name the file, its team ID, signing ID or CDHash in any scope of the environment. To stop a vote, add a block rule. A file with a denied request cannot be voted for either (`409`): votes do not overrule an approver.
 - A threshold of 1 lets every user allow what they run; choose thresholds with the number of accounts in mind. Accounts are the unit: someone with several accounts has several votes.
-- Votes are kept. Lowering a threshold takes effect at the next vote for a file, and deleting a rule made by votes does not remove the votes: the next vote creates it again unless a block rule is in the way.
-- A webhook channel receives the usual alert JSON with the message in `detail`. Slack and similar tools need a relay that maps it to their format; there are no interactive buttons.
+- Environment admins see who voted, from which machine and when, in the binary details of the Requests tab (`GET /api/v1/santa/{env}/votes/{sha256}`).
+- Votes are kept until **Days until votes expire** (`vote_expiry_days`, at most 3650; 0 keeps them): `osctrl-api` deletes older votes once a day. Rules the votes created stay.
+- Deleting a rule made by votes also deletes the file's votes, so the count starts again and one new vote does not bring the rule back. The audit line says how many went (`votes_cleared`).
+- Lowering a threshold takes effect at the next vote for a file.
 
 ## Authentication model
 

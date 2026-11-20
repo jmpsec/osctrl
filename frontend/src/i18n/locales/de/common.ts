@@ -979,6 +979,7 @@ export const de: Messages = {
     },
     voteLocal: 'Stimmen für Freigabe auf den Rechnern der Abstimmenden',
     voteGlobal: 'Stimmen für Freigabe in der Umgebung',
+    voteExpiry: 'Tage bis Stimmen verfallen (0 behält sie)',
     voteHint: 'Benutzer können für eine Datei stimmen, die Santa auf ihrem Rechner blockiert hat, eine Stimme pro Benutzer und Datei. 0 schaltet eine Schwelle aus. Für Dateien, die eine Regel blockiert, kann nicht gestimmt werden. Erfordert die Genehmigungs-URL.',
     vote: {
       title: 'Für diese Software stimmen',
@@ -989,6 +990,7 @@ export const de: Messages = {
       voted: 'Sie haben abgestimmt',
       allowedNode: 'Genug Stimmen: Nach der nächsten Santa-Synchronisierung ist sie auf Ihrem Rechner erlaubt.',
       allowedEnv: 'Genug Stimmen: Nach der nächsten Santa-Synchronisierung ist sie für alle erlaubt.',
+      withdraw: 'Stimme zurückziehen',
     },
     monitor: {
       title: 'Temporärer MONITOR-Modus',
@@ -1013,6 +1015,10 @@ export const de: Messages = {
       unsigned: 'Keine Signaturkette gemeldet.',
       rules: 'Passende Regeln',
       noRules: 'Keine Regel nennt diese Binärdatei, ihren Signierer oder ihr Zertifikat.',
+      votes: 'Stimmen ({n})',
+      voter: 'Abstimmender',
+      votedAt: 'Abgestimmt',
+      votesHint: 'Wird eine durch Stimmen erstellte Regel gelöscht, werden auch diese Stimmen gelöscht.',
     },
     tabReports: 'Berichte',
     reports: {

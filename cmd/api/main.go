@@ -694,6 +694,9 @@ func osctrlAPIService() {
 				if _, err := changesMgr.Prune(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
 					log.Err(err).Msg("error pruning held changes")
 				}
+				if _, err := santaMgr.PruneVotes(time.Now()); err != nil {
+					log.Err(err).Msg("error expiring santa votes")
+				}
 				if _, err := santaMgr.PruneLinks(time.Now()); err != nil {
 					log.Err(err).Msg("error pruning santa approval links")
 				}
@@ -1268,6 +1271,12 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/votes",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVoteStatusHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath(apiSantaPath)+"/{env}/votes",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVoteWithdrawHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"GET "+_apiPath(apiSantaPath)+"/{env}/votes/{sha256}",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaVotesListHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		// Slack button callbacks: authenticated by the Slack signing secret, not a session.
 		muxAPI.Handle("POST "+_apiPath("/slack/interact/{channel}"), preAuthRateLimit(http.HandlerFunc(handlersApi.SlackInteractHandler)))
 	}

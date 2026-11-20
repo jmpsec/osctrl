@@ -368,8 +368,11 @@ describe('SantaPage', () => {
     const global = screen.getByLabelText('Votes to allow for the environment');
     await user.clear(global);
     await user.type(global, '5');
+    const expiry = screen.getByLabelText('Days until votes expire (0 keeps them)');
+    await user.clear(expiry);
+    await user.type(expiry, '90');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ vote_local_threshold: 2, vote_global_threshold: 5 })));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ vote_local_threshold: 2, vote_global_threshold: 5, vote_expiry_days: 90 })));
   });
 
   it('saves the file access override', async () => {

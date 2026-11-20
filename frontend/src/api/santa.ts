@@ -51,6 +51,8 @@ export interface SantaConfig {
   vote_local_threshold: number;
   /** Votes that allow the file in the whole environment; 0 is off. */
   vote_global_threshold: number;
+  /** Votes older than this many days are deleted; 0 keeps them. */
+  vote_expiry_days?: number;
   /** Overrides the action of MDM-deployed file access rules; empty leaves clients unchanged. */
   override_file_access_action: SantaFileAccessAction;
   /** Clients hash the bundle of a blocked binary and upload its other binaries. */
@@ -262,7 +264,7 @@ export interface SantaEventsPage {
   page: number;
 }
 
-export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries' | 'reports' | 'file-access' | 'access', ...rest: unknown[]) =>
+export const santaQueryKey = (env: string, part: 'config' | 'rules' | 'modes' | 'machines' | 'events' | 'requests' | 'binaries' | 'reports' | 'file-access' | 'access' | 'voters', ...rest: unknown[]) =>
   ['santa', env, part, ...rest] as const;
 
 function envPath(env: string): string {
@@ -454,6 +456,23 @@ export function getSantaVotes(env: string, sha256: string): Promise<SantaVoteSta
 /** POST /api/v1/santa/{env}/votes — one vote per account and file. 409 when a rule blocks the file. */
 export function voteSantaFile(env: string, body: { sha256: string; machine_id: string }): Promise<SantaVoteStatus> {
   return apiFetch<SantaVoteStatus>(`${envPath(env)}/votes`, jsonInit('POST', body));
+}
+
+/** DELETE /api/v1/santa/{env}/votes — withdraws the caller's own vote; rules already made stay. */
+export function withdrawSantaVote(env: string, sha256: string): Promise<SantaVoteStatus> {
+  return apiFetch<SantaVoteStatus>(`${envPath(env)}/votes?sha256=${encodeURIComponent(sha256)}`, { method: 'DELETE' });
+}
+
+export interface SantaVote {
+  id: number;
+  created_at: string;
+  voter: string;
+  machine_id: string;
+}
+
+/** GET /api/v1/santa/{env}/votes/{sha256} — environment admins: who voted, oldest first. */
+export function listSantaVoters(env: string, sha256: string): Promise<SantaVote[]> {
+  return apiFetch<SantaVote[]>(`${envPath(env)}/votes/${encodeURIComponent(sha256)}`);
 }
 
 /** GET /api/v1/santa/{env}/requests — newest first, at most 500; an empty status lists every status. */

@@ -979,6 +979,7 @@ export const it: Messages = {
     },
     voteLocal: 'Voti per consentire sulle macchine dei votanti',
     voteGlobal: "Voti per consentire nell'ambiente",
+    voteExpiry: 'Giorni prima che i voti scadano (0 li conserva)',
     voteHint: "Gli utenti possono votare per un file che Santa ha bloccato sulla loro macchina, un voto per utente e file. 0 disattiva una soglia. Non si può votare per i file bloccati da una regola. Richiede l'URL di approvazione.",
     vote: {
       title: 'Vota per questo software',
@@ -989,6 +990,7 @@ export const it: Messages = {
       voted: 'Hai votato',
       allowedNode: 'Voti sufficienti: sarà consentito sulla tua macchina dopo la prossima sincronizzazione di Santa.',
       allowedEnv: 'Voti sufficienti: sarà consentito per tutti dopo la prossima sincronizzazione di Santa.',
+      withdraw: 'Ritira il voto',
     },
     monitor: {
       title: 'Modalità MONITOR temporanea',
@@ -1013,6 +1015,10 @@ export const it: Messages = {
       unsigned: 'Nessuna catena di firma segnalata.',
       rules: 'Regole corrispondenti',
       noRules: 'Nessuna regola nomina questo binario, il suo firmatario o il suo certificato.',
+      votes: 'Voti ({n})',
+      voter: 'Votante',
+      votedAt: 'Votato',
+      votesHint: 'Eliminare una regola creata dai voti elimina anche questi voti.',
     },
     tabReports: 'Report',
     reports: {

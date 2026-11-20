@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -84,4 +85,41 @@ func TestSantaVotes(t *testing.T) {
 	require.NoError(t, h.Santa.CreateRule(&santa.Rule{EnvironmentID: 1, Identifier: blockedSHA, RuleType: "BINARY", Policy: "BLOCKLIST", Scope: "tag", ScopeValue: "dev"}))
 	require.Equal(t, http.StatusConflict, vote("dave", blockedSHA).Code)
 	require.Zero(t, status(get("dave", blockedSHA)).Votes)
+
+	// Admins see who voted; nobody else does.
+	one := map[string]string{"env": p["env"], "sha256": sha}
+	require.Equal(t, http.StatusForbidden, santaDo(h.SantaVotesListHandler, "GET", "dave", "", one).Code)
+	rr = santaDo(h.SantaVotesListHandler, "GET", "alice", "", one)
+	require.Equal(t, http.StatusOK, rr.Code)
+	var votes []santa.Vote
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &votes))
+	require.Equal(t, []string{"dave", "erin"}, []string{votes[0].Voter, votes[1].Voter})
+
+	// A voter withdraws their own vote; the rule stays.
+	withdraw := func(user string) *httptest.ResponseRecorder {
+		return santaDoURL(h.SantaVoteWithdrawHandler, "DELETE", "/x?sha256="+sha, user, "", p)
+	}
+	require.Equal(t, santa.VoteStatus{Votes: 1, GlobalThreshold: 2}, status(withdraw("dave")))
+	require.Equal(t, http.StatusNotFound, withdraw("dave").Code)
+	rules, err = h.Santa.Rules(1)
+	require.NoError(t, err)
+	require.Len(t, rules, 2, "the vote rule and the block rule")
+	require.Equal(t, santa.VoteRuleCreator, rules[0].CreatedBy)
+
+	// Deleting the rule clears the votes, so one vote does not bring it back.
+	require.Equal(t, http.StatusNoContent, santaDo(h.SantaRuleDeleteHandler, "DELETE", "alice", "",
+		map[string]string{"env": p["env"], "id": strconv.FormatUint(uint64(rules[0].ID), 10)}).Code)
+	require.Equal(t, santa.VoteStatus{Votes: 1, GlobalThreshold: 2, Voted: true}, status(vote("dave", sha)))
+	rules, err = h.Santa.Rules(1)
+	require.NoError(t, err)
+	require.Len(t, rules, 1, "only the block rule")
+
+	// A denied request stops the vote.
+	rr = santaDo(h.SantaRequestCreateHandler, "POST", "erin", reqBody(sha, "please"), p)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	var own SantaOwnRequest
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &own))
+	require.Equal(t, http.StatusOK, santaDo(h.SantaRequestDecideHandler, "POST", "alice", `{"decision":"deny","reason":"no"}`,
+		map[string]string{"env": p["env"], "id": strconv.FormatUint(uint64(own.ID), 10)}).Code)
+	require.Equal(t, http.StatusConflict, vote("erin", sha).Code)
 }
