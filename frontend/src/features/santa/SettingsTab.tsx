@@ -67,11 +67,14 @@ export function SettingsTab({ env }: { env: string }) {
 }
 
 /**
- * Alert channels told about new approval requests. The list needs an alerts
- * role, so it is simply absent for users without one (or with alerts off);
- * the saved selection is then sent back unchanged.
+ * Alert channels told about new approval requests, and the email channel that
+ * tells requesters about decisions. The list needs an alerts role, so it is
+ * simply absent for users without one (or with alerts off); the saved
+ * selection is then sent back unchanged.
  */
-function NotifyChannels({ envId, selected, onChange }: { envId?: number; selected: number[]; onChange: (ids: number[]) => void }) {
+function NotifyChannels({ envId, selected, onChange, requester, onRequester }: {
+  envId?: number; selected: number[]; onChange: (ids: number[]) => void; requester: number; onRequester: (id: number) => void;
+}) {
   const { t } = useTranslation();
   const channels = useQuery({ queryKey: ['alerts', 'channels'], queryFn: () => listAlertChannels(), retry: false, staleTime: 60_000 });
   const usable = (channels.data ?? []).filter((c) => c.environment_id === 0 || c.environment_id === envId);
@@ -92,6 +95,17 @@ function NotifyChannels({ envId, selected, onChange }: { envId?: number; selecte
         ))}
       </div>
       <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.notifyChannelsHint')}</p>
+      <Label htmlFor="santa-requester-channel" className="mt-3 block">{t('santa.requesterChannel')}</Label>
+      <select
+        id="santa-requester-channel"
+        value={requester}
+        onChange={(e) => onRequester(Number(e.target.value))}
+        className="h-8 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]"
+      >
+        <option value={0}>{t('santa.requesterChannelOff')}</option>
+        {usable.filter((c) => c.type === 'email').map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+      <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.requesterChannelHint')}</p>
     </fieldset>
   );
 }
@@ -152,6 +166,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         encrypted_removable_media_flags: form.encrypted_removable_media === 'REMOUNT' ? form.encrypted_removable_media_flags : [],
         approval_url: form.approval_url,
         notify_channels: form.notify_channels ?? [],
+        requester_channel: form.requester_channel ?? 0,
         vote_local_threshold: form.vote_local_threshold ?? 0,
         vote_global_threshold: form.vote_global_threshold ?? 0,
         override_file_access_action: form.override_file_access_action ?? '',
@@ -342,7 +357,13 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         </div>
         <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.approvers.hint')}</p>
       </div>
-      <NotifyChannels envId={envId} selected={form.notify_channels ?? []} onChange={(ids) => setForm({ ...form, notify_channels: ids })} />
+      <NotifyChannels
+        envId={envId}
+        selected={form.notify_channels ?? []}
+        onChange={(ids) => setForm({ ...form, notify_channels: ids })}
+        requester={form.requester_channel ?? 0}
+        onRequester={(id) => setForm({ ...form, requester_channel: id })}
+      />
       <div>
         <div className="grid gap-3 sm:grid-cols-2">
           {(['vote_local_threshold', 'vote_global_threshold'] as const).map((field) => (

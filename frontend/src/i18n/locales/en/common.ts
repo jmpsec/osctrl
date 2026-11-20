@@ -1062,6 +1062,9 @@ export const en = {
     fileAccess: { override: 'File access rules override', overrideHint: 'Changes the action of the file access rules deployed with the FileAccessPolicy profile. Clients apply it at their next sync.', none: 'No file access events', noneHint: 'File access rules are deployed through MDM with the FileAccessPolicy profile. Their violations show up here.', rule: 'Rule', target: 'Path', process: 'Process', actions: { unset: 'Not set (clients unchanged)', NONE: 'None (rules apply as written)', AUDIT_ONLY: 'Audit only (log and allow)', DISABLE: 'Disable rules' } },
     notifyChannels: 'Notify about new requests',
     notifyChannelsHint: 'Each new request is sent to these alert channels with an approve and a deny link. A link works once, expires after 72 hours and needs an environment admin or approver signed in. Changing the channels requires a superuser.',
+    requesterChannel: 'Email requesters',
+    requesterChannelOff: 'Off',
+    requesterChannelHint: 'Requesters get an email at their osctrl account address when their request is approved or denied (with the reason) and when an approved MONITOR window ends. Only the SMTP relay of this email channel is used, not its recipients.',
     link: {
       approveTitle: 'Approve request',
       denyTitle: 'Deny request',

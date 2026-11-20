@@ -63,7 +63,7 @@ func (m *Manager) SaveConfig(cfg EnvConfig) error {
 	return m.DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "environment_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "batch_size", "full_sync_interval_seconds", "enable_transitive_rules", "block_usb_mount",
-			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels",
+			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels", "requester_channel",
 			"vote_local_threshold", "vote_global_threshold", "override_file_access_action",
 			"enable_bundles", "enable_all_event_upload", "disable_unknown_event_upload", "allowed_path_regex", "blocked_path_regex",
 			"event_detail_url", "event_detail_text", "group_tags", "group_match", "require_second_admin", "approver_users", "approver_groups", "updated_at"}),
@@ -205,7 +205,7 @@ func upsertModeOverride(db *gorm.DB, o *ModeOverride) error {
 	o.ID = 0
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "environment_id"}, {Name: "scope"}, {Name: "scope_value"}},
-		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "created_by", "expires_at", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"client_mode", "created_by", "requester", "expires_at", "updated_at"}),
 	}).Create(o).Error; err != nil {
 		return err
 	}

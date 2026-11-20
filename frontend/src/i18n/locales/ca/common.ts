@@ -1051,6 +1051,9 @@ export const ca: Messages = {
     fileAccess: { override: "Anul·lació de les regles d'accés a fitxers", overrideHint: "Canvia l'acció de les regles d'accés a fitxers desplegades amb el perfil FileAccessPolicy. Els clients l'apliquen a la sincronització següent.", none: "No hi ha esdeveniments d'accés a fitxers", noneHint: "Les regles d'accés a fitxers es despleguen mitjançant MDM amb el perfil FileAccessPolicy. Les seves infraccions apareixen aquí.", rule: 'Regla', target: 'Camí', process: 'Procés', actions: { unset: 'Sense definir (clients sense canvis)', NONE: 'Cap (regles tal com són)', AUDIT_ONLY: 'Només auditoria (registra i permet)', DISABLE: 'Desactiva les regles' } },
     notifyChannels: 'Avisa de sol·licituds noves',
     notifyChannelsHint: "Cada sol·licitud nova s'envia a aquests canals d'alertes amb un enllaç per aprovar i un altre per denegar. Un enllaç funciona una vegada, caduca al cap de 72 hores i requereix un administrador de l'entorn o un aprovador amb la sessió iniciada. Canviar els canals requereix un superusuari.",
+    requesterChannel: 'Enviar correu als sol·licitants',
+    requesterChannelOff: 'Desactivat',
+    requesterChannelHint: "Els sol·licitants reben un correu a l'adreça del seu compte d'osctrl quan la seva sol·licitud s'aprova o es denega (amb el motiu) i quan acaba un període MONITOR aprovat. Només s'utilitza el servidor SMTP d'aquest canal de correu, no els seus destinataris.",
     link: {
       approveTitle: 'Aprova la sol·licitud',
       denyTitle: 'Denega la sol·licitud',

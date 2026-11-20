@@ -1051,6 +1051,9 @@ export const de: Messages = {
     fileAccess: { override: 'Übersteuerung der Dateizugriffsregeln', overrideHint: 'Ändert die Aktion der Dateizugriffsregeln, die mit dem Profil FileAccessPolicy verteilt werden. Clients übernehmen sie bei der nächsten Synchronisierung.', none: 'Keine Dateizugriffsereignisse', noneHint: 'Dateizugriffsregeln werden per MDM mit dem Profil FileAccessPolicy verteilt. Verstöße dagegen erscheinen hier.', rule: 'Regel', target: 'Pfad', process: 'Prozess', actions: { unset: 'Nicht gesetzt (Clients unverändert)', NONE: 'Keine (Regeln wie definiert)', AUDIT_ONLY: 'Nur Audit (protokollieren und erlauben)', DISABLE: 'Regeln deaktivieren' } },
     notifyChannels: 'Über neue Anfragen benachrichtigen',
     notifyChannelsHint: 'Jede neue Anfrage wird mit einem Genehmigen- und einem Ablehnen-Link an diese Alarmkanäle gesendet. Ein Link funktioniert einmal, läuft nach 72 Stunden ab und erfordert einen angemeldeten Umgebungsadministrator oder Genehmiger. Das Ändern der Kanäle erfordert einen Superuser.',
+    requesterChannel: 'Antragsteller per E-Mail benachrichtigen',
+    requesterChannelOff: 'Aus',
+    requesterChannelHint: 'Antragsteller erhalten eine E-Mail an die Adresse ihres osctrl-Kontos, wenn ihre Anfrage genehmigt oder abgelehnt wird (mit Begründung) und wenn ein genehmigtes MONITOR-Zeitfenster endet. Nur das SMTP-Relay dieses E-Mail-Kanals wird verwendet, nicht seine Empfänger.',
     link: {
       approveTitle: 'Anfrage genehmigen',
       denyTitle: 'Anfrage ablehnen',

@@ -1051,6 +1051,9 @@ export const fr: Messages = {
     fileAccess: { override: "Forçage des règles d'accès aux fichiers", overrideHint: "Modifie l'action des règles d'accès aux fichiers déployées avec le profil FileAccessPolicy. Les clients l'appliquent à la synchronisation suivante.", none: "Aucun événement d'accès aux fichiers", noneHint: "Les règles d'accès aux fichiers sont déployées par MDM avec le profil FileAccessPolicy. Leurs violations apparaissent ici.", rule: 'Règle', target: 'Chemin', process: 'Processus', actions: { unset: 'Non défini (clients inchangés)', NONE: 'Aucun (règles appliquées telles quelles)', AUDIT_ONLY: 'Audit seul (journaliser et autoriser)', DISABLE: 'Désactiver les règles' } },
     notifyChannels: 'Notifier les nouvelles demandes',
     notifyChannelsHint: "Chaque nouvelle demande est envoyée à ces canaux d'alerte avec un lien pour approuver et un lien pour refuser. Un lien fonctionne une fois, expire après 72 heures et nécessite un administrateur de l'environnement ou un approbateur connecté. Modifier les canaux nécessite un superutilisateur.",
+    requesterChannel: 'Envoyer un e-mail aux demandeurs',
+    requesterChannelOff: 'Désactivé',
+    requesterChannelHint: "Les demandeurs reçoivent un e-mail à l'adresse de leur compte osctrl lorsque leur demande est approuvée ou refusée (avec le motif) et lorsqu'une période MONITOR approuvée se termine. Seul le relais SMTP de ce canal e-mail est utilisé, pas ses destinataires.",
     link: {
       approveTitle: 'Approuver la demande',
       denyTitle: 'Refuser la demande',

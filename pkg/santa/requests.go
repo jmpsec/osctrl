@@ -180,7 +180,7 @@ func (m *Manager) decideIn(db *gorm.DB, envID, id uint, d Decision) (Request, er
 		switch {
 		case d.Approve && req.Kind == RequestKindMonitor:
 			// The hours run from the approval, not from the request.
-			if _, err := m.grantMonitorIn(tx, envID, req.MachineID, req.MonitorHours, d.By); err != nil {
+			if _, err := m.grantMonitorIn(tx, envID, req.MachineID, req.MonitorHours, d.By, req.Requester); err != nil {
 				return err
 			}
 			req.Status = RequestApproved

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/mail"
 	"sync"
 	"time"
 
@@ -172,4 +173,28 @@ func (d *Dispatcher) Dispatch(ctx context.Context, h Hit) error {
 		return fmt.Errorf("alert %q: all %d channel delivery attempt(s) failed", h.RuleName, attempts)
 	}
 	return nil
+}
+
+// ErrNotEmailChannel marks a channel that cannot send to one address.
+var ErrNotEmailChannel = errors.New("alert channel is not an email channel")
+
+// Email sends the hit to the single address to, through the SMTP relay of the
+// email channel id instead of the channel's own recipients. It writes no
+// history row: the message is for one person, not the channel.
+func (d *Dispatcher) Email(id uint, to string, h Hit) error {
+	addr, err := mail.ParseAddress(to)
+	if err != nil {
+		return fmt.Errorf("recipient: %w", err)
+	}
+	sender, _, err := d.senderFor(id)
+	if err != nil {
+		return err
+	}
+	s, ok := sender.(*emailSender)
+	if !ok {
+		return ErrNotEmailChannel
+	}
+	one := *s
+	one.cfg.To = addr.Address
+	return one.Send(h)
 }

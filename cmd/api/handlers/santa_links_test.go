@@ -23,6 +23,13 @@ func (f fakeNotifier) Dispatch(_ context.Context, h alerts.Hit) error {
 	return nil
 }
 
+// Email sends the hit with the channel and, in HistoryDetail, the address.
+func (f fakeNotifier) Email(id uint, to string, h alerts.Hit) error {
+	h.Channels, h.HistoryDetail = []uint{id}, "to:"+to
+	f <- h
+	return nil
+}
+
 func (f fakeNotifier) next(t *testing.T) alerts.Hit {
 	t.Helper()
 	select {

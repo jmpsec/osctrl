@@ -14839,6 +14839,11 @@ components:
           items:
             type: string
           type: array
+        requester_channel:
+          description: Email alert channel whose relay emails each requester at their
+            osctrl account address when their request is decided and when an
+            approved MONITOR window ends; 0 is off
+          type: integer
         require_second_admin:
           description: Hold changes that weaken enforcement until another environment
             admin approves them (see /api/v1/changes). Turning it off is one of
@@ -14963,6 +14968,15 @@ components:
           items:
             type: string
           type: array
+        requester_channel:
+          description: >-
+            Email alert channel whose relay emails each requester, at their
+            osctrl
+
+            account address, when their request is decided and when an approved
+
+            MONITOR window ends; 0 is off.
+          type: integer
         require_second_admin:
           description: Changes that weaken enforcement wait for a second environment admin
           type: boolean
@@ -15950,6 +15964,10 @@ components:
           type: string
         id:
           type: integer
+        requester:
+          description: Who asked for a temporary override through an approval request;
+            empty otherwise.
+          type: string
         scope:
           description: tag|node
           type: string

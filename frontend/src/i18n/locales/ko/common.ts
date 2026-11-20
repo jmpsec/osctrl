@@ -1051,6 +1051,9 @@ export const ko: Messages = {
     fileAccess: { override: '파일 접근 규칙 재정의', overrideHint: 'FileAccessPolicy 프로필로 배포된 파일 접근 규칙의 동작을 변경합니다. 클라이언트는 다음 동기화 때 적용합니다.', none: '파일 접근 이벤트가 없습니다', noneHint: '파일 접근 규칙은 MDM을 통해 FileAccessPolicy 프로필로 배포됩니다. 위반 사항이 여기에 표시됩니다.', rule: '규칙', target: '경로', process: '프로세스', actions: { unset: '설정 안 함(클라이언트 변경 없음)', NONE: '없음(규칙대로 적용)', AUDIT_ONLY: '감사만(기록 후 허용)', DISABLE: '규칙 비활성화' } },
     notifyChannels: '새 요청 알림',
     notifyChannelsHint: '새 요청은 승인 링크와 거부 링크와 함께 이 알림 채널로 전송됩니다. 링크는 한 번만 사용할 수 있고 72시간 후 만료되며 환경 관리자 또는 승인자의 로그인이 필요합니다. 채널을 변경하려면 슈퍼유저 권한이 필요합니다.',
+    requesterChannel: '요청자에게 이메일 보내기',
+    requesterChannelOff: '끔',
+    requesterChannelHint: '요청이 승인되거나 거부될 때(사유 포함)와 승인된 MONITOR 기간이 끝날 때 요청자의 osctrl 계정 주소로 이메일이 발송됩니다. 이 이메일 채널의 SMTP 릴레이만 사용하며 수신자는 사용하지 않습니다.',
     link: {
       approveTitle: '요청 승인',
       denyTitle: '요청 거부',

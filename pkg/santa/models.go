@@ -34,6 +34,10 @@ type EnvConfig struct {
 	// Alert channel IDs told about each new approval request, with single-use
 	// approve and deny links. Needs ApprovalURL.
 	NotifyChannels []uint `gorm:"serializer:json;type:varchar(255)" json:"notify_channels"`
+	// Email alert channel whose relay emails each requester, at their osctrl
+	// account address, when their request is decided and when an approved
+	// MONITOR window ends; 0 is off.
+	RequesterChannel uint `json:"requester_channel"`
 	// Votes for a blocked file that allow it on each voter's machine; 0 is off.
 	VoteLocalThreshold uint32 `json:"vote_local_threshold"`
 	// Votes that allow the file in the whole environment; 0 is off.
@@ -142,6 +146,8 @@ type ModeOverride struct {
 	ScopeValue    string    `gorm:"type:varchar(255);uniqueIndex:idx_santa_mode_unique" json:"scope_value"` // tag name | node UUID (uppercase)
 	ClientMode    string    `gorm:"type:varchar(16)" json:"client_mode"`                                    // MONITOR | LOCKDOWN
 	CreatedBy     string    `gorm:"type:varchar(255)" json:"created_by"`
+	// Who asked for a temporary override through an approval request; empty otherwise.
+	Requester string `gorm:"type:varchar(255)" json:"requester,omitempty"`
 	// Set for a temporary override; it stops applying at this time. Nil is permanent.
 	ExpiresAt *time.Time `gorm:"index" json:"expires_at"`
 }

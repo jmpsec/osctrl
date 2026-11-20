@@ -1051,6 +1051,9 @@ export const es: Messages = {
     fileAccess: { override: 'Anulación de las reglas de acceso a archivos', overrideHint: 'Cambia la acción de las reglas de acceso a archivos desplegadas con el perfil FileAccessPolicy. Los clientes la aplican en la siguiente sincronización.', none: 'No hay eventos de acceso a archivos', noneHint: 'Las reglas de acceso a archivos se despliegan mediante MDM con el perfil FileAccessPolicy. Sus infracciones aparecen aquí.', rule: 'Regla', target: 'Ruta', process: 'Proceso', actions: { unset: 'Sin definir (clientes sin cambios)', NONE: 'Ninguna (reglas tal como están)', AUDIT_ONLY: 'Solo auditoría (registrar y permitir)', DISABLE: 'Desactivar reglas' } },
     notifyChannels: 'Avisar de nuevas solicitudes',
     notifyChannelsHint: 'Cada solicitud nueva se envía a estos canales de alertas con un enlace para aprobar y otro para denegar. Un enlace funciona una vez, caduca a las 72 horas y requiere un administrador del entorno o un aprobador con sesión iniciada. Cambiar los canales requiere un superusuario.',
+    requesterChannel: 'Enviar correo a los solicitantes',
+    requesterChannelOff: 'Desactivado',
+    requesterChannelHint: 'Los solicitantes reciben un correo en la dirección de su cuenta de osctrl cuando su solicitud se aprueba o se deniega (con el motivo) y cuando termina un periodo MONITOR aprobado. Solo se usa el servidor SMTP de este canal de correo, no sus destinatarios.',
     link: {
       approveTitle: 'Aprobar solicitud',
       denyTitle: 'Denegar solicitud',

@@ -26,10 +26,11 @@ var (
 // override of the machine, never a permanent one. Clients pick it up at their
 // next preflight and go back at the first preflight after it expires.
 func (m *Manager) GrantMonitor(envID uint, machineID string, hours uint, by string) (ModeOverride, error) {
-	return m.grantMonitorIn(m.DB, envID, machineID, hours, by)
+	return m.grantMonitorIn(m.DB, envID, machineID, hours, by, "")
 }
 
-func (m *Manager) grantMonitorIn(db *gorm.DB, envID uint, machineID string, hours uint, by string) (ModeOverride, error) {
+// grantMonitorIn is GrantMonitor on db for the request of requester, if any.
+func (m *Manager) grantMonitorIn(db *gorm.DB, envID uint, machineID string, hours uint, by, requester string) (ModeOverride, error) {
 	machineID = strings.ToUpper(strings.TrimSpace(machineID))
 	switch {
 	case !uuidRe.MatchString(machineID):
@@ -57,7 +58,7 @@ func (m *Manager) grantMonitorIn(db *gorm.DB, envID uint, machineID string, hour
 			return ErrPermanentOverride
 		}
 		expires := m.now().Add(time.Duration(hours) * time.Hour)
-		o = ModeOverride{EnvironmentID: envID, Scope: "node", ScopeValue: machineID, ClientMode: "MONITOR", CreatedBy: by, ExpiresAt: &expires}
+		o = ModeOverride{EnvironmentID: envID, Scope: "node", ScopeValue: machineID, ClientMode: "MONITOR", CreatedBy: by, Requester: requester, ExpiresAt: &expires}
 		return upsertModeOverride(tx, &o)
 	})
 	return o, err

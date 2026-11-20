@@ -45,6 +45,8 @@ export interface SantaConfig {
   approval_url: string;
   /** Alert channel IDs told about each new request; changing it requires superuser. */
   notify_channels: number[] | null;
+  /** Email alert channel that tells requesters about decisions and MONITOR ends; 0 is off. */
+  requester_channel?: number;
   /** Votes that allow a blocked file on each voter's machine; 0 is off. */
   vote_local_threshold: number;
   /** Votes that allow the file in the whole environment; 0 is off. */
