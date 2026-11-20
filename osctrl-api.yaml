@@ -15072,6 +15072,11 @@ components:
       type: object
     handlers.SantaLinkDecision:
       properties:
+        bundle:
+          description: "On approve, environment admins only: also allow, with BINARY
+            rules, every binary the client uploaded for the file's bundle (at
+            most 500)"
+          type: boolean
         decision:
           description: approve | deny
           type: string
@@ -15082,6 +15087,11 @@ components:
         reason:
           description: Required to deny, optional to approve; at most 1000 characters. The
             requester sees it
+          type: string
+        rule_type:
+          description: "On approve, environment admins only: BINARY (the default),
+            SIGNINGID, TEAMID or CERTIFICATE (the leaf certificate), with the
+            identifier taken from the request's blocked event"
           type: string
         scope:
           description: "On approve, where the allow rule applies: node (the requesting
@@ -15157,6 +15167,11 @@ components:
       type: object
     handlers.SantaRequestDecision:
       properties:
+        bundle:
+          description: "On approve, environment admins only: also allow, with BINARY
+            rules, every binary the client uploaded for the file's bundle (at
+            most 500)"
+          type: boolean
         decision:
           description: approve | deny
           type: string
@@ -15167,6 +15182,11 @@ components:
         reason:
           description: Required to deny, optional to approve; at most 1000 characters. The
             requester sees it
+          type: string
+        rule_type:
+          description: "On approve, environment admins only: BINARY (the default),
+            SIGNINGID, TEAMID or CERTIFICATE (the leaf certificate), with the
+            identifier taken from the request's blocked event"
           type: string
         scope:
           description: "On approve, where the allow rule applies: node (the requesting
@@ -16090,6 +16110,12 @@ components:
       type: object
     santa.Request:
       properties:
+        bundle_binaries:
+          description: Binaries the client uploaded for the file's bundle; not stored
+          type: integer
+        cert_sha256:
+          description: Leaf certificate of the blocked file, from its event; not stored
+          type: string
         created_at:
           type: string
         decided_at:
@@ -16137,6 +16163,13 @@ components:
         rule_id:
           description: The allow rule an approval created or reused; 0 otherwise.
           type: integer
+        rule_type:
+          description: >-
+            Type of the allow rule an approval created: BINARY, SIGNINGID,
+            TEAMID or
+
+            CERTIFICATE; empty for MONITOR and before the type could be chosen
+          type: string
         signing_id:
           type: string
         status:

@@ -235,12 +235,15 @@ Such an account is still an osctrl account. It can open the rest of the UI, wher
 ```
 
 - `approve` creates one `BINARY` `ALLOWLIST` rule for the file hash, in the scope the approver picks: `node` (the machine that asked), `tag` (`scope_value` is the tag name) or `env`. The rule and the status change are stored together, and machines in that scope get the rule on their next sync.
-- If an allow rule for the same hash and scope already exists, the request is approved and points at that rule; no second rule is created.
+- An environment admin can pick a broader rule with `rule_type`, so later versions or other files run without new requests. The identifier always comes from the request and its blocked event, never from the body: `SIGNINGID` (the file's signing ID, as `TEAMID:signing.id` or `platform:signing.id`), `TEAMID` (everything the developer signs) or `CERTIFICATE` (the leaf certificate the client reported). A file without that identifier answers `400`. The request records the type (`rule_type`).
+- An environment admin can also set `bundle` (with `BINARY`) to allow, in the same scope and transaction, every binary the client uploaded for the file's bundle (needs **Enable bundles**, at most 500). Uploaded hashes that are not SHA-256 are skipped. Only the blocked file runs through the risk checks.
+- Approvers get `403` for either; they approve the file's hash only. In the queue the choices appear when an admin decides one request. Notification links and Slack buttons always create a hash rule.
+- If an allow rule for the same identifier and scope already exists, the request is approved and points at that rule; no second rule is created.
 - If the existing rule for the same hash and scope blocks the file, the answer is `409` and the request stays pending. Change or delete that rule first.
 - `deny` needs a `reason` (at most 1000 characters). A reason is optional on approval.
 - A request that was already decided or has expired answers `409`.
-- The requester sees the new status, and the reason, in their list on the request page. osctrl does not send an email.
-- Every decision writes an audit line with the request, hash, machine, requester and, for approvals, the rule ID and scope. The reason text is kept on the request, not in the audit line.
+- The requester sees the new status, and the reason, in their list on the request page.
+- Every decision writes an audit line with the request, hash, machine, requester and, for approvals, the rule ID, rule type, scope and `bundle=true` when the bundle was allowed. The reason text is kept on the request, not in the audit line.
 - Deleting the rule later does not change the request; it stays `approved` with the old rule ID.
 - Bulk decisions in the UI are one API call per request, so a failure on one does not undo the others.
 

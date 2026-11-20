@@ -73,6 +73,38 @@ describe('RequestsTab', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
+  it('lets an admin approve with the team ID of a signed file', async () => {
+    mockList.mockResolvedValue([request(1, { team_id: 'EQHXZ8M8AV', signing_id: 'EQHXZ8M8AV:com.example.tool', cert_sha256: 'c'.repeat(64) })]);
+    renderTab();
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve tool-1' }));
+    const dialog = screen.getByRole('dialog');
+    const allow = within(dialog).getByRole('combobox', { name: 'Allow' });
+    expect(within(allow).getAllByRole('option').map((o) => o.getAttribute('value'))).toEqual(['BINARY', 'SIGNINGID', 'TEAMID', 'CERTIFICATE']);
+    await userEvent.selectOptions(allow, 'TEAMID');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(mockDecide).toHaveBeenCalledWith('dev', 1, expect.objectContaining({ decision: 'approve', rule_type: 'TEAMID' })));
+  });
+
+  it('lets an admin allow the whole bundle, and approvers only the file', async () => {
+    mockList.mockResolvedValue([request(1, { bundle_binaries: 3 })]);
+    const { unmount } = renderTab();
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve tool-1' }));
+    let dialog = screen.getByRole('dialog');
+    expect(within(dialog).queryByRole('combobox', { name: 'Allow' })).not.toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Also allow the other 3 binaries of its bundle' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(mockDecide).toHaveBeenCalledWith('dev', 1, expect.objectContaining({ bundle: true })));
+    unmount();
+
+    mockList.mockResolvedValue([request(1, { bundle_binaries: 3, team_id: 'EQHXZ8M8AV' })]);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><RequestsTab env="dev" admin={false} /></QueryClientProvider>);
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve tool-1' }));
+    dialog = screen.getByRole('dialog');
+    expect(within(dialog).queryByRole('combobox', { name: 'Allow' })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
   it('opens the binary details from the file name', async () => {
     renderTab();
     await userEvent.click(await screen.findByRole('button', { name: 'Binary details: tool-1' }));

@@ -81,6 +81,19 @@ func TestSantaApprovers(t *testing.T) {
 	// Only admins override a risk check.
 	require.Equal(t, http.StatusForbidden,
 		santaDo(h.SantaRequestDecideHandler, "POST", "frank", `{"decision":"approve","scope":"node","override":true,"reason":"x"}`, one).Code)
+	// Only admins allow more than the file's hash.
+	for _, body := range []string{
+		`{"decision":"approve","scope":"node","rule_type":"TEAMID"}`,
+		`{"decision":"approve","scope":"node","bundle":true}`,
+	} {
+		require.Equal(t, http.StatusForbidden, santaDo(h.SantaRequestDecideHandler, "POST", "frank", body, one).Code, body)
+	}
+	require.Equal(t, http.StatusOK,
+		santaDo(h.SantaRequestDecideHandler, "POST", "frank", `{"decision":"approve","scope":"node","rule_type":"BINARY","reason":"x"}`, one).Code)
+	rr = santaDo(h.SantaRequestCreateHandler, "POST", "dave", reqBody(sha, "again"), p)
+	require.Equal(t, http.StatusCreated, rr.Code, rr.Body.String())
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &own))
+	one = map[string]string{"env": p["env"], "id": strconv.FormatUint(uint64(own.ID), 10)}
 
 	rr = santaDo(h.SantaRequestDecideHandler, "POST", "frank", `{"decision":"approve","scope":"node"}`, one)
 	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())

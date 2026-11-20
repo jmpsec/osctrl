@@ -10,6 +10,7 @@ import {
   type SantaDecision,
   type SantaRequest,
   type SantaRequestStatus,
+  type SantaRuleType,
   type SantaScope,
 } from '$/api/santa';
 import { Button } from '$/components/atoms/Button';
@@ -35,6 +36,8 @@ interface Pending {
   monitor: boolean;
   /** A risk check flagged at least one of the files. */
   flagged: boolean;
+  /** The one request decided, when it is one: an admin can then pick the rule type. */
+  request?: SantaRequest;
 }
 
 /** What a request asks for, as one line: the file, or MONITOR mode. */
@@ -153,7 +156,7 @@ export function RequestsTab({ env, admin = true }: { env: string; admin?: boolea
                     selected={selected.has(r.id)}
                     onToggle={() => toggle(r.id)}
                     onBinary={admin ? () => setBinary(r.file_sha256) : undefined}
-                    onDecide={(approve) => setDialog({ approve, ids: [r.id], monitor: r.kind === 'monitor', flagged: r.risk?.verdict === 'flagged' })}
+                    onDecide={(approve) => setDialog({ approve, ids: [r.id], monitor: r.kind === 'monitor', flagged: r.risk?.verdict === 'flagged', request: admin ? r : undefined })}
                   />
                 ))}
               </tbody>
@@ -249,7 +252,7 @@ function DecisionModal({
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const { approve, ids, monitor, flagged } = pending;
+  const { approve, ids, monitor, flagged, request } = pending;
   const decide = useMutation({
     // One call per request, so one failure does not undo the others.
     mutationFn: async (body: SantaDecision) => {
@@ -277,7 +280,7 @@ function DecisionModal({
       titleId="santa-decision-title"
       onClose={onClose}
     >
-      <DecisionForm approve={approve} monitor={monitor} flagged={flagged} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} onCancel={onClose} />
+      <DecisionForm approve={approve} monitor={monitor} flagged={flagged} request={request} pending={decide.isPending} error={errorText(decide.error)} onSubmit={decide.mutate} onCancel={onClose} />
     </ModalShell>
   );
 }
@@ -287,6 +290,7 @@ export function DecisionForm({
   approve,
   monitor = false,
   flagged = false,
+  request,
   pending,
   error,
   onSubmit,
@@ -297,6 +301,8 @@ export function DecisionForm({
   monitor?: boolean;
   /** A risk check flagged the file: approving needs an explicit, reasoned override. */
   flagged?: boolean;
+  /** Set for an environment admin deciding one file request: the rule types its event backs. */
+  request?: SantaRequest;
   pending: boolean;
   error?: string;
   onSubmit: (body: SantaDecision) => void;
@@ -307,6 +313,14 @@ export function DecisionForm({
   const [tag, setTag] = useState('');
   const [reason, setReason] = useState('');
   const [override, setOverride] = useState(false);
+  const [ruleType, setRuleType] = useState<SantaRuleType>('BINARY');
+  const [bundle, setBundle] = useState(false);
+  const ruleTypes: SantaRuleType[] = request
+    ? (['BINARY', 'SIGNINGID', 'TEAMID', 'CERTIFICATE'] as const).filter(
+        (rt) => rt === 'BINARY' || (rt === 'SIGNINGID' && !!request.signing_id) || (rt === 'TEAMID' && !!request.team_id) || (rt === 'CERTIFICATE' && !!request.cert_sha256),
+      )
+    : [];
+  const bundleBinaries = request?.bundle_binaries ?? 0;
   const needsOverride = approve && flagged;
   const reasonRequired = !approve || (needsOverride && override);
 
@@ -314,7 +328,12 @@ export function DecisionForm({
     e.preventDefault();
     onSubmit(
       approve
-        ? { decision: 'approve', scope, scope_value: scope === 'tag' ? tag : '', reason, ...(needsOverride && override ? { override: true } : {}) }
+        ? {
+            decision: 'approve', scope, scope_value: scope === 'tag' ? tag : '', reason,
+            ...(needsOverride && override ? { override: true } : {}),
+            ...(ruleType !== 'BINARY' ? { rule_type: ruleType } : {}),
+            ...(ruleType === 'BINARY' && bundle ? { bundle: true } : {}),
+          }
         : { decision: 'deny', reason },
     );
   }
@@ -341,6 +360,21 @@ export function DecisionForm({
               </div>
             )}
           </div>
+          {ruleTypes.length > 1 && (
+            <div>
+              <Label htmlFor="santa-decision-rule-type">{t('santa.requests.ruleType')}</Label>
+              <select id="santa-decision-rule-type" className={`${SELECT} w-full`} value={ruleType} onChange={(e) => setRuleType(e.target.value as SantaRuleType)}>
+                {ruleTypes.map((rt) => <option key={rt} value={rt}>{t(`santa.requests.ruleTypes.${rt}`)}</option>)}
+              </select>
+              {ruleType !== 'BINARY' && <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.requests.ruleTypeHint')}</p>}
+            </div>
+          )}
+          {ruleType === 'BINARY' && bundleBinaries > 0 && (
+            <label className="flex items-center gap-2 text-sm text-[color:var(--text-1)]">
+              <input type="checkbox" checked={bundle} onChange={(e) => setBundle(e.target.checked)} />
+              {t('santa.requests.bundle', { n: bundleBinaries })}
+            </label>
+          )}
         </>
       )}
       {needsOverride && (
