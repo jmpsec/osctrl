@@ -114,11 +114,12 @@ At preflight the node gets the most specific mode: a node override wins over a t
 
 Each machine records the mode osctrl sent at its last preflight (`assigned_mode`) and where it came from (`mode_source`: `env`, `tag` or `node`). The Machines tab shows both. Settings tab: **Mode overrides**.
 
-**Temporary MONITOR mode.** A machine can leave LOCKDOWN for 1 to 24 hours and go back on its own. It is a node override with an expiry (`expires_at`), sent as the v1 `client_mode` at preflight; Santa's own temporary monitor mode is v2-only and not used.
+**Temporary MONITOR mode.** A machine can leave LOCKDOWN for 1 to 24 hours and go back on its own. **Longest temporary MONITOR** (`max_monitor_hours`, 0 is 24) lowers the maximum for the environment; grants, requests and extensions above it are refused (`400`). It is a node override with an expiry (`expires_at`), sent as the v1 `client_mode` at preflight; Santa's own temporary monitor mode is v2-only and not used.
 
 - An environment admin grants it with `PUT /api/v1/santa/{env}/modes` and `hours` (scope `node`, `MONITOR` only), or with a duration in **Settings > Mode overrides**. A user asks for it from the request page (`POST /api/v1/santa/{env}/requests` with `kind: "monitor"` and `hours`); it goes through the approval queue and notifications like a file request, and the hours count from the approval.
 - The machine must have synced with the environment. A grant replaces a temporary override of the machine, never a permanent one (`409`): change or delete that instead. Setting a permanent override replaces a temporary one.
 - Expiry is server-side and needs nobody: from `expires_at` the override no longer applies or appears in the list. `osctrl-api` removes expired overrides every minute and writes each expiry to the audit log; the grant, the request and the approval are audited too.
+- **End now** (`DELETE /api/v1/santa/{env}/modes/{id}`) removes the override; the audit line is `end temporary MONITOR`, and the requester, if any, is told it ended. **Extend** (`POST /api/v1/santa/{env}/modes/{id}/extend` with `hours`) adds hours to the expiry, which can then be at most the maximum from now. Both are in **Settings > Mode overrides**, and extending is audited (`extend temporary MONITOR`).
 - The machine switches at its next preflight and goes back at its first preflight after the expiry, so both changes wait for the client's sync interval (see [Sync interval](#sync-interval)). A machine that does not sync stays in MONITOR until it does.
 
 ### Sync interval
@@ -151,7 +152,7 @@ With **Settings → Require a second admin** (`require_second_admin`), one compr
 
 - switching the environment to MONITOR, or a new `allowed_path_regex` (config PUT);
 - turning `require_second_admin` off (turning it on is immediate);
-- any MONITOR mode override, permanent or temporary, for a tag or a machine;
+- any MONITOR mode override, permanent or temporary, for a tag or a machine, and extending a temporary one;
 - creating an environment-wide rule that can allow (`ALLOWLIST`, `ALLOWLIST_COMPILER`, `CEL`), changing a rule into one or changing what it allows, and a rules import that contains one (not a dry run);
 - rotating the sync token.
 

@@ -991,6 +991,7 @@ export const en = {
     voteLocal: 'Votes to allow on voters’ machines',
     voteGlobal: 'Votes to allow for the environment',
     voteExpiry: 'Days until votes expire (0 keeps them)',
+    maxMonitorHours: 'Longest temporary MONITOR, hours (0 is 24)',
     voteHint: 'Users can vote for a file Santa blocked on their machine, one vote per user and file. 0 turns a threshold off. Files blocked by a rule cannot be voted for. Needs the approval URL.',
     vote: {
       title: 'Vote for this software',
@@ -1013,6 +1014,10 @@ export const en = {
       approveHint: 'Approving switches the machine to MONITOR for the hours asked, starting now. It goes back on its first Santa sync after that.',
       permanent: 'Permanent',
       until: 'until {time}',
+      extend: 'Extend',
+      extendBy: 'Extend by',
+      end: 'End now',
+      confirmEnd: 'End MONITOR mode on {value} now? It switches back at its next sync.',
     },
     binary: {
       title: 'Binary details',

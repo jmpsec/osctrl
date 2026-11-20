@@ -980,6 +980,7 @@ export const ja: Messages = {
     voteLocal: '投票者のマシンで許可するための票数',
     voteGlobal: '環境全体で許可するための票数',
     voteExpiry: '投票の有効期限 (日数、0 で無期限)',
+    maxMonitorHours: '一時的な MONITOR の最長時間 (時間、0 は 24)',
     voteHint: 'ユーザーは、自分のマシンで Santa がブロックしたファイルに投票できます（ユーザーとファイルごとに 1 票）。0 でしきい値を無効にします。ルールでブロックされたファイルには投票できません。承認 URL が必要です。',
     vote: {
       title: 'このソフトウェアに投票',
@@ -1002,6 +1003,10 @@ export const ja: Messages = {
       approveHint: '承認すると、今から依頼された時間だけマシンが MONITOR になります。その後の最初の Santa 同期で元に戻ります。',
       permanent: '無期限',
       until: '{time} まで',
+      extend: '延長',
+      extendBy: '延長時間',
+      end: '今すぐ終了',
+      confirmEnd: '{value} の MONITOR モードを今すぐ終了しますか？次回の同期で元に戻ります。',
     },
     binary: {
       title: 'バイナリの詳細',

@@ -95,3 +95,30 @@ func TestSantaMonitorRequest(t *testing.T) {
 	require.NoError(t, h.Santa.SetModeOverride(&santa.ModeOverride{EnvironmentID: 1, Scope: "node", ScopeValue: machine, ClientMode: "LOCKDOWN", CreatedBy: "alice"}))
 	require.Equal(t, http.StatusConflict, decide("alice", `{"decision":"approve"}`))
 }
+
+func TestSantaMonitorEndAndExtend(t *testing.T) {
+	h, p, _ := setupSantaRequests(t)
+	machine := strings.ToUpper(reqMachine)
+	require.NoError(t, h.Santa.SaveMachine(&santa.Machine{EnvironmentID: 1, MachineID: machine}))
+	o, err := h.Santa.GrantMonitor(1, machine, 1, "alice")
+	require.NoError(t, err)
+	ip := map[string]string{"env": p["env"], "id": strconv.FormatUint(uint64(o.ID), 10)}
+	extend := func(user string, hours int) int {
+		return santaDo(h.SantaMonitorExtendHandler, "POST", user, fmt.Sprintf(`{"hours":%d}`, hours), ip).Code
+	}
+
+	require.Equal(t, http.StatusForbidden, extend("dave", 1))
+	require.Equal(t, http.StatusBadRequest, extend("alice", 24), "past the maximum")
+	require.Equal(t, http.StatusOK, extend("alice", 2))
+	overrides, err := h.Santa.ModeOverrides(1)
+	require.NoError(t, err)
+	require.Len(t, overrides, 1)
+	require.Greater(t, overrides[0].ExpiresAt.Unix(), o.ExpiresAt.Unix())
+
+	// End now: the machine is back to the environment mode at its next sync.
+	require.Equal(t, http.StatusNoContent, santaDo(h.SantaModeOverrideDeleteHandler, "DELETE", "alice", "", ip).Code)
+	_, source, err := h.Santa.EffectiveMode(1, machine, nil)
+	require.NoError(t, err)
+	require.Equal(t, "env", source)
+	require.Equal(t, http.StatusNotFound, extend("alice", 1))
+}

@@ -9251,11 +9251,11 @@ paths:
         - santa
     put:
       description: "Creates the override, or replaces the mode of the existing one for
-        the same tag or node; the result is permanent. With hours (1 to 24),
-        scope node and MONITOR, it is temporary instead: the machine must have
-        synced, it cannot replace a permanent node override (409), and it stops
-        applying when it expires, reverting at the machine's first sync after
-        that."
+        the same tag or node; the result is permanent. With hours (1 to the
+        environment's max_monitor_hours, 24 by default), scope node and MONITOR,
+        it is temporary instead: the machine must have synced, it cannot replace
+        a permanent node override (409), and it stops applying when it expires,
+        reverting at the machine's first sync after that."
       parameters:
         - description: Environment name or UUID
           in: path
@@ -9320,6 +9320,8 @@ paths:
         - santa
   "/api/v1/santa/{env}/modes/{id}":
     delete:
+      description: "Deleting a temporary MONITOR override ends it now: the machine
+        switches back at its next sync, and the requester, if any, is told."
       parameters:
         - description: Environment name or UUID
           in: path
@@ -9363,6 +9365,73 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Delete a Santa client mode override
+      tags:
+        - santa
+  "/api/v1/santa/{env}/modes/{id}/extend":
+    post:
+      description: Adds hours to the expiry of an unexpired temporary MONITOR
+        override. The new expiry can be at most the environment's
+        max_monitor_hours from now.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Override id
+          in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaMonitorExtendRequest"
+        description: Hours to add
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.ModeOverride"
+        "202":
+          description: Held for a second admin (require_second_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.PendingChangeResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Extend a temporary Santa MONITOR override
       tags:
         - santa
   "/api/v1/santa/{env}/reports":
@@ -14970,6 +15039,9 @@ components:
           items:
             $ref: "#/components/schemas/santa.GroupTag"
           type: array
+        max_monitor_hours:
+          description: Longest temporary MONITOR mode in hours, at most 24; 0 is 24
+          type: integer
         notify_channels:
           description: Alert channel IDs told about each new approval request, at most 10.
             Needs approval_url. Changing it requires superuser
@@ -15098,6 +15170,10 @@ components:
           type: array
         id:
           type: integer
+        max_monitor_hours:
+          description: Longest temporary MONITOR mode in hours, at most MaxMonitorHours; 0
+            is MaxMonitorHours
+          type: integer
         notify_channels:
           description: >-
             Alert channel IDs told about each new approval request, with
@@ -15222,8 +15298,8 @@ components:
           description: MONITOR | LOCKDOWN
           type: string
         hours:
-          description: Temporary MONITOR mode for 1 to 24 hours, with scope node and
-            MONITOR only; 0 is permanent
+          description: Temporary MONITOR mode for 1 to max_monitor_hours (24 by default),
+            with scope node and MONITOR only; 0 is permanent
           type: integer
         scope:
           description: tag | node
@@ -15231,6 +15307,13 @@ components:
         scope_value:
           description: Tag name or node UUID
           type: string
+      type: object
+    handlers.SantaMonitorExtendRequest:
+      properties:
+        hours:
+          description: Hours added to the current expiry; it can end at most
+            max_monitor_hours from now
+          type: integer
       type: object
     handlers.SantaOwnRequest:
       properties:

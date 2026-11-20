@@ -24,6 +24,7 @@ const mockImport = vi.fn<(env: string, rules: unknown[], dryRun: boolean) => Pro
 const mockModes = vi.fn<() => Promise<SantaModeOverride[]>>();
 const mockSetMode = vi.fn<(env: string, body: unknown) => Promise<unknown>>();
 const mockDeleteMode = vi.fn<(env: string, id: number) => Promise<unknown>>();
+const mockExtend = vi.fn<(env: string, id: number, hours: number) => Promise<unknown>>();
 const mockFileAccess = vi.fn<() => Promise<unknown>>();
 const mockAccess = vi.fn<() => Promise<{ admin: boolean; approver: boolean }>>();
 const mockRequests = vi.fn<() => Promise<unknown[]>>();
@@ -45,6 +46,7 @@ vi.mock('$/api/santa', async () => {
     listSantaModeOverrides: () => mockModes(),
     setSantaModeOverride: (env: string, body: unknown) => mockSetMode(env, body),
     deleteSantaModeOverride: (env: string, id: number) => mockDeleteMode(env, id),
+    extendSantaMonitor: (env: string, id: number, hours: number) => mockExtend(env, id, hours),
     carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
     listSantaFileAccessEvents: () => mockFileAccess(),
     getSantaAccess: () => mockAccess(),
@@ -478,6 +480,35 @@ describe('SantaPage', () => {
     renderPage();
     await user.click(await screen.findByRole('tab', { name: 'Settings' }));
     expect(await screen.findByText(/^until /)).toBeInTheDocument();
+  });
+
+  it('extends and ends a temporary override', async () => {
+    mockModes.mockResolvedValue([{
+      id: 5, scope: 'node', scope_value: 'M1', client_mode: 'MONITOR', created_by: 'admin', expires_at: '2026-11-15T20:00:00Z',
+    }]);
+    mockExtend.mockResolvedValue({});
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    await user.selectOptions(await screen.findByLabelText('Extend by M1'), '4');
+    await user.click(screen.getByRole('button', { name: 'Extend M1' }));
+    await waitFor(() => expect(mockExtend).toHaveBeenCalledWith('dev', 5, 4));
+    expect(screen.queryByRole('button', { name: 'Delete M1' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'End now M1' }));
+    await waitFor(() => expect(mockDeleteMode).toHaveBeenCalledWith('dev', 5));
+    confirmSpy.mockRestore();
+  });
+
+  it('saves the longest temporary MONITOR', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    const hours = await screen.findByLabelText('Longest temporary MONITOR, hours (0 is 24)');
+    await user.clear(hours);
+    await user.type(hours, '8');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ max_monitor_hours: 8 })));
   });
 
   it('shows the assigned mode and where it comes from', async () => {

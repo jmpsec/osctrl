@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestGrantMonitor(t *testing.T) {
@@ -130,4 +131,57 @@ func TestMonitorRequest(t *testing.T) {
 	got, err = m.DecideRequest(1, req.ID, Decision{By: "alice", Reason: "use the permanent override"})
 	require.NoError(t, err)
 	require.Equal(t, RequestDenied, got.Status)
+}
+
+func TestExtendMonitor(t *testing.T) {
+	m := newTestManager(t)
+	now := time.Now()
+	m.now = func() time.Time { return now }
+	machine := strings.ToUpper(testUUID)
+	require.NoError(t, m.SaveConfig(EnvConfig{EnvironmentID: 1, ClientMode: "LOCKDOWN", MaxMonitorHours: 4}))
+	require.NoError(t, m.SaveMachine(&Machine{EnvironmentID: 1, MachineID: machine}))
+	limit, err := monitorLimit(m.DB, 1)
+	require.NoError(t, err)
+	require.EqualValues(t, 4, limit)
+	limit, err = monitorLimit(m.DB, 2)
+	require.NoError(t, err)
+	require.EqualValues(t, MaxMonitorHours, limit, "no config is the constant")
+
+	// The environment maximum caps grants and requests.
+	_, err = m.GrantMonitor(1, machine, 5, "alice")
+	require.ErrorIs(t, err, ErrInvalidOverride)
+	_, _, err = m.CreateMonitorRequest(1, machine, "dave", "debugging", 5)
+	require.ErrorIs(t, err, ErrInvalidRequest)
+	o, err := m.GrantMonitor(1, machine, 1, "alice")
+	require.NoError(t, err)
+
+	// Extending adds to the expiry, up to the maximum from now.
+	o, err = m.ExtendMonitor(1, o.ID, 2)
+	require.NoError(t, err)
+	require.Equal(t, now.Add(3*time.Hour).Unix(), o.ExpiresAt.Unix())
+	_, err = m.ExtendMonitor(1, o.ID, 2)
+	require.ErrorIs(t, err, ErrInvalidOverride, "past the maximum")
+	_, err = m.ExtendMonitor(1, o.ID, 0)
+	require.ErrorIs(t, err, ErrInvalidOverride)
+	_, err = m.ExtendMonitor(2, o.ID, 1)
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound, "other environment")
+	now = now.Add(2 * time.Hour)
+	o, err = m.ExtendMonitor(1, o.ID, 3)
+	require.NoError(t, err)
+	require.Equal(t, now.Add(4*time.Hour).Unix(), o.ExpiresAt.Unix())
+	overrides, err := m.ModeOverrides(1)
+	require.NoError(t, err)
+	require.Equal(t, o.ExpiresAt.Unix(), overrides[0].ExpiresAt.Unix())
+
+	// Expired and permanent overrides cannot be extended.
+	now = now.Add(4 * time.Hour)
+	_, err = m.ExtendMonitor(1, o.ID, 1)
+	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
+	perm := ModeOverride{EnvironmentID: 1, Scope: "tag", ScopeValue: "dev", ClientMode: "MONITOR", CreatedBy: "alice"}
+	require.NoError(t, m.SetModeOverride(&perm))
+	_, err = m.ExtendMonitor(1, perm.ID, 1)
+	require.ErrorIs(t, err, ErrInvalidOverride)
+
+	c := EnvConfig{ClientMode: "LOCKDOWN", MaxMonitorHours: MaxMonitorHours + 1}
+	require.Error(t, ValidateConfig(&c))
 }

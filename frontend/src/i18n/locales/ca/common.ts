@@ -980,6 +980,7 @@ export const ca: Messages = {
     voteLocal: 'Vots per permetre als equips dels votants',
     voteGlobal: "Vots per permetre a l'entorn",
     voteExpiry: 'Dies fins que caduquen els vots (0 els conserva)',
+    maxMonitorHours: 'Durada màxima del MONITOR temporal, hores (0 és 24)',
     voteHint: "Els usuaris poden votar per un fitxer que Santa ha blocat al seu equip, un vot per usuari i fitxer. 0 desactiva un llindar. No es pot votar per fitxers blocats per una regla. Requereix l'URL d'aprovació.",
     vote: {
       title: 'Vota per aquest programari',
@@ -1002,6 +1003,10 @@ export const ca: Messages = {
       approveHint: "Aprovar passa l'equip a MONITOR durant les hores demanades, des d'ara. Torna enrere a la primera sincronització de Santa després.",
       permanent: 'Permanent',
       until: 'fins a {time}',
+      extend: 'Allarga',
+      extendBy: 'Allarga',
+      end: 'Finalitza ara',
+      confirmEnd: 'Finalitzar el mode MONITOR a {value} ara? Torna enrere a la propera sincronització.',
     },
     binary: {
       title: 'Detalls del binari',

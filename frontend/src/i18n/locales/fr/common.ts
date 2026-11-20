@@ -980,6 +980,7 @@ export const fr: Messages = {
     voteLocal: 'Votes pour autoriser sur les machines des votants',
     voteGlobal: "Votes pour autoriser dans l'environnement",
     voteExpiry: "Jours avant l'expiration des votes (0 les conserve)",
+    maxMonitorHours: 'Durée maximale du MONITOR temporaire, heures (0 = 24)',
     voteHint: "Les utilisateurs peuvent voter pour un fichier que Santa a bloqué sur leur machine, un vote par utilisateur et par fichier. 0 désactive un seuil. Les fichiers bloqués par une règle ne peuvent pas recevoir de votes. Nécessite l'URL d'approbation.",
     vote: {
       title: 'Voter pour ce logiciel',
@@ -1002,6 +1003,10 @@ export const fr: Messages = {
       approveHint: 'Approuver passe la machine en MONITOR pour les heures demandées, dès maintenant. Elle revient en arrière à sa première synchronisation Santa ensuite.',
       permanent: 'Permanent',
       until: "jusqu'à {time}",
+      extend: 'Prolonger',
+      extendBy: 'Prolonger de',
+      end: 'Terminer maintenant',
+      confirmEnd: 'Terminer le mode MONITOR sur {value} maintenant ? Il revient à sa prochaine synchronisation.',
     },
     binary: {
       title: 'Détails du binaire',

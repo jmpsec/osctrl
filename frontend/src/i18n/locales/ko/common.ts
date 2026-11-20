@@ -980,6 +980,7 @@ export const ko: Messages = {
     voteLocal: '투표자 기기에서 허용하는 데 필요한 표',
     voteGlobal: '환경 전체에서 허용하는 데 필요한 표',
     voteExpiry: '투표 만료까지의 일수 (0은 유지)',
+    maxMonitorHours: '임시 MONITOR 최대 시간 (0은 24)',
     voteHint: '사용자는 Santa가 자신의 기기에서 차단한 파일에 투표할 수 있으며, 사용자와 파일당 한 표입니다. 0은 임계값을 끕니다. 규칙으로 차단된 파일에는 투표할 수 없습니다. 승인 URL이 필요합니다.',
     vote: {
       title: '이 소프트웨어에 투표',
@@ -1002,6 +1003,10 @@ export const ko: Messages = {
       approveHint: '승인하면 지금부터 요청한 시간 동안 기기가 MONITOR로 전환됩니다. 그 뒤 첫 Santa 동기화에서 원래대로 돌아갑니다.',
       permanent: '영구',
       until: '{time}까지',
+      extend: '연장',
+      extendBy: '연장 시간',
+      end: '지금 종료',
+      confirmEnd: '{value}의 MONITOR 모드를 지금 종료할까요? 다음 동기화 때 돌아갑니다.',
     },
     binary: {
       title: '바이너리 세부 정보',
