@@ -36,6 +36,7 @@ const binary: SantaBinary = {
     { sha256: 'd4'.repeat(32), cn: 'Developer ID Certification Authority', org: 'Apple Inc.', ou: '', valid_from: '2012-01-01T00:00:00Z', valid_until: '2027-01-01T00:00:00Z' },
   ],
   first_seen: '2026-11-01T10:00:00Z', last_seen: '2026-11-14T10:00:00Z', events: 12, blocked: 3, machines: 5,
+  machine_list: null,
   rules: [{
     id: 9, identifier: 'ABCDE12345', rule_type: 'TEAMID', policy: 'BLOCKLIST', cel_expr: '', custom_msg: '', custom_url: '',
     scope: 'tag', scope_value: 'dev', created_at: '2026-11-01T10:00:00Z', created_by: 'alice',
@@ -56,6 +57,24 @@ describe('BinaryModal', () => {
   // Braces matter: a function returned from beforeEach runs as a teardown.
   beforeEach(() => {
     mockBinary.mockReset();
+  });
+
+  it('lists the machines that ran the file', async () => {
+    mockBinary.mockResolvedValue({
+      ...binary,
+      machine_list: [
+        { machine_id: 'M-1', hostname: 'mac-01', file_name: 'tool', first_seen: '2026-01-01T00:00:00Z', last_seen: '2026-11-14T10:00:00Z', events: 9 },
+        { machine_id: 'M-2', hostname: '', file_name: 'tool', first_seen: '2026-02-01T00:00:00Z', last_seen: '2026-03-01T00:00:00Z', events: 1 },
+      ],
+    });
+    renderModal();
+    const heading = await screen.findByRole('heading', { name: 'Machines that ran it (5)' });
+    const table = heading.parentElement!.querySelector('table')!;
+    const first = within(table).getByText('mac-01').closest('tr')!;
+    expect(within(first).getByText('M-1')).toBeInTheDocument();
+    expect(within(first).getByText('9')).toBeInTheDocument();
+    expect(within(table).getByText('M-2')).toBeInTheDocument();
+    expect(screen.getByText('Showing the 2 most recent.')).toBeInTheDocument();
   });
 
   it('lists who voted for the file', async () => {

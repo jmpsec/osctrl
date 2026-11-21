@@ -203,6 +203,8 @@ export interface SantaBinary {
   events: number;
   blocked: number;
   machines: number;
+  /** The machines that reported it most recently, at most 100; kept after events are pruned. */
+  machine_list: SantaBinaryMachine[] | null;
   rules: SantaRule[] | null;
   /** Cached verdict; absent when no risk check is configured. */
   risk?: SantaRisk;
@@ -212,7 +214,17 @@ export interface SantaBinary {
   latest_carve: string;
 }
 
-/** GET /api/v1/santa/{env}/binaries/{sha256} — 404 when no event has the hash. */
+export interface SantaBinaryMachine {
+  machine_id: string;
+  /** Empty for a machine no longer known. */
+  hostname: string;
+  file_name: string;
+  first_seen: string;
+  last_seen: string;
+  events: number;
+}
+
+/** GET /api/v1/santa/{env}/binaries/{sha256} — 404 when osctrl never received an event of the hash. */
 export function getSantaBinary(env: string, sha256: string): Promise<SantaBinary> {
   return apiFetch<SantaBinary>(`${envPath(env)}/binaries/${encodeURIComponent(sha256)}`);
 }

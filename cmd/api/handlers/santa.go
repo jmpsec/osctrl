@@ -1068,7 +1068,7 @@ func (h *HandlersApi) SantaFileAccessEventsHandler(w http.ResponseWriter, r *htt
 
 // SantaBinaryHandler — GET /api/v1/santa/{env}/binaries/{sha256}
 // @Summary Get what the stored events say about one binary
-// @Description Requires environment admin. Identity fields (names, signing chain, bundle) come from the file's newest event and are written by Santa clients. First and last seen, the event counts and the machine count only cover the events osctrl still keeps (30 days). Rules lists every rule of the environment naming the file, its team ID, signing ID, CDHash or leaf certificate. 404 when the environment has no event for the hash.
+// @Description Requires environment admin. Identity fields (names, signing chain, bundle) come from the file's newest kept event and are written by Santa clients; they are empty once its events are pruned. First and last seen (when osctrl received its events), the machine count and machine_list (the 100 machines that reported it most recently) come from the binary history and outlive event retention. The event counts only cover the events osctrl still keeps (30 days). Rules lists every rule of the environment naming the file, its team ID, signing ID, CDHash or leaf certificate. 404 when osctrl never received an event of the hash in the environment.
 // @Tags santa
 // @Produce json
 // @Param env path string true "Environment name or UUID"

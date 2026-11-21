@@ -297,7 +297,12 @@ func (m *Manager) AddEvents(evs []Event) error {
 			evs[i].CreatedAt = now
 		}
 	}
-	return m.DB.CreateInBatches(&evs, 200).Error
+	return m.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.CreateInBatches(&evs, 200).Error; err != nil {
+			return err
+		}
+		return recordBinaryMachines(tx, evs, now)
+	})
 }
 
 // EventFilter narrows an event listing; empty fields do not filter.
