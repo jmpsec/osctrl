@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { usePageTitle } from '$/lib/usePageTitle';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -46,17 +47,29 @@ const GLOBAL_ENV_ID = 0;
 // node's environment and was invisible under it.
 const ALL_ENVS = -1;
 
-/** Rule sources the form offers, with human descriptions. */
+/**
+ * Rule sources the form offers. Labels and descriptions are in the
+ * alertsPage.sources and alertsPage.sourcesHelp locale keys; fields are the
+ * names a pattern can match, shown untranslated.
+ */
 const RULE_SOURCES = [
-  { value: 'result_log', label: 'Result logs', help: 'Scheduled-query result rows (columns and snapshot rows).' },
-  { value: 'status_log', label: 'Status logs', help: 'osquery daemon status messages, filtered by severity.' },
-  { value: 'query_log', label: 'Distributed query results', help: 'On-demand query answers submitted by nodes.' },
-  { value: 'node_inactive', label: 'Node inactive', help: 'Node last_seen crosses the inactive threshold. No pattern needed.' },
-  { value: 'node_recovered', label: 'Node recovered', help: 'A previously inactive node is seen again. No pattern needed.' },
-  { value: 'vuln_finding', label: 'New vulnerability findings', help: 'A node gains a confirmed vulnerability finding at or above the threshold. Findings are grouped per advisory. No pattern needed.' },
-  { value: 'santa_event', label: 'Santa events', help: 'Execution events uploaded by Santa. Fields: decision (BLOCK_BINARY, ALLOW_TEAMID, ...), file_sha256, file_path, file_name, executing_user, team_id, signing_id, cd_hash, bundle_id, bundle_name, bundle_version, bundle_path, bundle_hash, and the leaf certificate: cert_sha256, cert_cn, cert_org, cert_ou.' },
-  { value: 'santa_file_access', label: 'Santa file access', help: 'Violations of file access rules deployed through MDM, uploaded by Santa. Fields: decision (DENIED, DENIED_INVALID_SIGNATURE, AUDIT_ONLY), target (the accessed path), rule_name, rule_version, and the accessing process: process_path, process_sha256, process_signing_id, process_team_id, process_cd_hash.' },
+  { value: 'result_log' },
+  { value: 'status_log' },
+  { value: 'query_log' },
+  { value: 'node_inactive' },
+  { value: 'node_recovered' },
+  { value: 'vuln_finding' },
+  {
+    value: 'santa_event',
+    fields: 'decision (BLOCK_BINARY, ALLOW_TEAMID, …), file_sha256, file_path, file_name, executing_user, team_id, signing_id, cd_hash, bundle_id, bundle_name, bundle_version, bundle_path, bundle_hash, cert_sha256, cert_cn, cert_org, cert_ou',
+  },
+  {
+    value: 'santa_file_access',
+    fields: 'decision (DENIED, DENIED_INVALID_SIGNATURE, AUDIT_ONLY), target, rule_name, rule_version, process_path, process_sha256, process_signing_id, process_team_id, process_cd_hash',
+  },
 ] as const;
+
+type RuleSource = (typeof RULE_SOURCES)[number]['value'];
 
 /**
  * One-click starting points for the rule form. Same premade rules the node
@@ -108,8 +121,8 @@ type ChannelModalMode =
   | { kind: 'create' }
   | { kind: 'edit'; channel: AlertChannel };
 
-function sourceLabel(source: string): string {
-  return RULE_SOURCES.find((s) => s.value === source)?.label ?? source;
+function sourceLabel(t: TFunction, source: string): string {
+  return RULE_SOURCES.some((s) => s.value === source) ? t(`alertsPage.sources.${source as RuleSource}`) : source;
 }
 
 /**
@@ -625,7 +638,7 @@ function RulesTable({
             </div>
           </div>
           <div className="text-xs text-[color:var(--text-2)] truncate">
-            {sourceLabel(rule.source)}
+            {sourceLabel(t, rule.source)}
             {rule.node_uuid && (
               <span
                 title={`Scoped to node ${rule.node_uuid}`}
@@ -895,7 +908,7 @@ function RuleEditorModal({
   // "every error line" is the whole rule. Result/query rules still need
   // one — an empty pattern there matches every row that lands.
   const patternOptional = source === 'status_log' && statusSeverity !== 'any';
-  const sourceHelp = RULE_SOURCES.find((s) => s.value === source)?.help;
+  const sourceDef = RULE_SOURCES.find((s) => s.value === source);
 
   const applyPreset = (preset: (typeof RULE_PRESETS)[number]) => {
     setErr(null);
@@ -1003,7 +1016,7 @@ function RuleEditorModal({
           </div>
           <div>
             <label htmlFor="rule-source" className="block text-xs font-semibold text-[color:var(--text-2)] mb-1">
-              Source
+              {t('alertsPage.colSource')}
             </label>
             <select
               id="rule-source"
@@ -1013,12 +1026,19 @@ function RuleEditorModal({
             >
               {sourceOptions.map((s) => (
                 <option key={s.value} value={s.value}>
-                  {s.label}
+                  {t(`alertsPage.sources.${s.value}`)}
                 </option>
               ))}
             </select>
-            {sourceHelp && (
-              <p className="mt-1 text-xs text-[color:var(--text-3)]">{sourceHelp}</p>
+            {sourceDef && (
+              <p className="mt-1 text-xs text-[color:var(--text-3)]">
+                {t(`alertsPage.sourcesHelp.${sourceDef.value}`)}
+                {'fields' in sourceDef && (
+                  <>
+                    {' '}{t('alertsPage.sourceFields')}: <span className="font-mono">{sourceDef.fields}</span>
+                  </>
+                )}
+              </p>
             )}
           </div>
         </div>
