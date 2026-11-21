@@ -916,6 +916,7 @@ export const ar: Messages = {
     file: 'الملف',
     user: 'المستخدم',
     decision: 'القرار',
+    filters: { machine: 'UUID الجهاز', sha256: 'SHA-256', path: 'المسار يحتوي على', process: 'العملية تحتوي على', anyDecision: 'أي قرار', blocks: 'الحظر', allows: 'السماح' },
     allow: 'سماح',
     block: 'حظر',
     noMachines: 'لم يزامن أي جهاز بعد',

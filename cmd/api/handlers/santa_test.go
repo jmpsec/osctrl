@@ -127,8 +127,9 @@ func TestSantaEventsFilters(t *testing.T) {
 func TestSantaFileAccessEvents(t *testing.T) {
 	h, db, envA, envB := setupSantaHandlers(t)
 	require.NoError(t, db.Create(&[]santa.FileAccessEvent{
-		{EnvironmentID: envA.ID, MachineID: "M-1", RuleName: "Cookies", Decision: "DENIED"},
-		{EnvironmentID: envA.ID, MachineID: "M-2", RuleName: "Keychain", Decision: "AUDIT_ONLY"},
+		{EnvironmentID: envA.ID, MachineID: "M-1", RuleName: "Cookies", Decision: "DENIED", Target: "/Users/u/Cookies",
+			ProcessChain: []santa.Process{{Pid: 1, FilePath: "/tmp/evil"}}},
+		{EnvironmentID: envA.ID, MachineID: "M-2", RuleName: "Keychain", Decision: "AUDIT_ONLY", Target: "/Users/u/Keychains"},
 		{EnvironmentID: envB.ID, MachineID: "M-1", RuleName: "Cookies", Decision: "DENIED"},
 	}).Error)
 	for _, tt := range []struct {
@@ -138,6 +139,10 @@ func TestSantaFileAccessEvents(t *testing.T) {
 		{"", 2},
 		{"machine_id=m-1", 1},
 		{"machine_id=M-3", 0},
+		{"target=keychains", 1},
+		{"process=%2Ftmp%2Fevil", 1},
+		{"decision=AUDIT_ONLY", 1},
+		{"decision=denied&target=cookies", 1},
 	} {
 		rr := santaDoURL(h.SantaFileAccessEventsHandler, "GET", "/x?"+tt.query, "alice", "", map[string]string{"env": envA.Name})
 		require.Equal(t, http.StatusOK, rr.Code, tt.query)
@@ -148,6 +153,8 @@ func TestSantaFileAccessEvents(t *testing.T) {
 			require.Equal(t, envA.ID, e.EnvironmentID)
 		}
 	}
+	rr := santaDoURL(h.SantaFileAccessEventsHandler, "GET", "/x?decision=DENIED%25", "alice", "", map[string]string{"env": envA.Name})
+	require.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
 func TestSantaConfigFileAccessOverride(t *testing.T) {

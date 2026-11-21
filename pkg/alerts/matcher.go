@@ -179,9 +179,8 @@ func (rs *RuleSet) MatchQueryResult(envID uint, environment, queryName string, r
 }
 
 // MatchSantaEvents evaluates Santa execution events against rules scoped to
-// envID. Each event is a map of lowercase field name to value (decision,
-// file_sha256, file_path, file_name, executing_user, team_id, signing_id,
-// cd_hash, bundle_id). nodeUUID is the node the sync was authenticated as.
+// envID. Each event is a map of lowercase field name to value (see
+// santa.Event.AlertFields). nodeUUID is the node the sync was authenticated as.
 //
 // Every value is written by the Santa client. The detail is therefore a
 // one-line summary with control characters removed, not the raw match: a file
@@ -189,27 +188,45 @@ func (rs *RuleSet) MatchQueryResult(envID uint, environment, queryName string, r
 // entity carries the file hash, so one rule alerts once per node and binary
 // within its cooldown.
 func (rs *RuleSet) MatchSantaEvents(envID uint, environment, nodeUUID string, events []map[string]string) []Hit {
-	if len(rs.santa) == 0 || len(events) == 0 {
+	return matchSanta(rs.santa, envID, environment, nodeUUID, events, func(f map[string]string) (string, string) {
+		return santaEntity(f["file_sha256"]), santaDetail(f)
+	})
+}
+
+// MatchSantaFileAccess evaluates Santa file access events (see
+// santa.FileAccessEvent.AlertFields) like MatchSantaEvents. The entity is the
+// accessed path, so one rule alerts once per node and path within its cooldown.
+func (rs *RuleSet) MatchSantaFileAccess(envID uint, environment, nodeUUID string, events []map[string]string) []Hit {
+	return matchSanta(rs.santaFileAccess, envID, environment, nodeUUID, events, func(f map[string]string) (string, string) {
+		return santaEntity(f["target"]), oneLine(f["decision"] + " " + f["target"] + " rule=" + f["rule_name"] + " process=" + f["process_path"])
+	})
+}
+
+// matchSanta evaluates Santa events against rules; describe gives a hit's
+// entity (bounded) and detail.
+func matchSanta(rules []compiledRule, envID uint, environment, nodeUUID string, events []map[string]string, describe func(map[string]string) (string, string)) []Hit {
+	if len(rules) == 0 || len(events) == 0 {
 		return nil
 	}
 	var hits []Hit
 	for _, fields := range events {
 		keys := sortedKeys(fields)
 		lowered := make(map[string]string, len(fields))
-		for j := range rs.santa {
-			r := &rs.santa[j]
+		for j := range rules {
+			r := &rules[j]
 			if !r.ruleApplies(envID) || (r.nodeScope != "" && r.nodeScope != nodeUUID) {
 				continue
 			}
 			if matched, _ := matchFields(r, fields, keys, lowered); matched {
+				entity, detail := describe(fields)
 				hits = append(hits, Hit{
 					RuleID:          r.id,
 					RuleName:        r.name,
 					EnvironmentID:   envID,
 					Environment:     environment,
 					NodeUUID:        nodeUUID,
-					Entity:          entityOf(nodeUUID, santaEntity(fields["file_sha256"])),
-					Detail:          truncateDetail(santaDetail(fields)),
+					Entity:          entityOf(nodeUUID, entity),
+					Detail:          truncateDetail(detail),
 					CooldownMinutes: r.cooldownMinutes,
 					Channels:        r.channels,
 				})
@@ -224,12 +241,12 @@ func santaDetail(f map[string]string) string {
 	return oneLine(f["decision"] + " " + f["file_path"] + " sha256=" + f["file_sha256"] + " user=" + f["executing_user"])
 }
 
-// santaEntity bounds the client-supplied hash so the entity fits its column.
-func santaEntity(sha string) string {
-	if len(sha) > 64 {
-		sha = strings.ToValidUTF8(sha[:64], "")
+// santaEntity bounds a client-supplied hash or path so the entity fits its column.
+func santaEntity(s string) string {
+	if len(s) > 64 {
+		s = strings.ToValidUTF8(s[:64], "")
 	}
-	return oneLine(sha)
+	return oneLine(s)
 }
 
 // oneLine replaces control characters with spaces.

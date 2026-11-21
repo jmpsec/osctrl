@@ -916,6 +916,7 @@ export const el: Messages = {
     file: 'Αρχείο',
     user: 'Χρήστης',
     decision: 'Απόφαση',
+    filters: { machine: 'UUID μηχανήματος', sha256: 'SHA-256', path: 'Η διαδρομή περιέχει', process: 'Η διεργασία περιέχει', anyDecision: 'Οποιαδήποτε απόφαση', blocks: 'Αποκλεισμοί', allows: 'Επιτρεπόμενα' },
     allow: 'Αποδοχή',
     block: 'Αποκλεισμός',
     noMachines: 'Κανένα μηχάνημα δεν έχει συγχρονιστεί ακόμη',

@@ -48,7 +48,7 @@ func TestEventUploadStoresFileAccessEvents(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	evs, total, err := m.FileAccessEvents(1, 1, 10, strings.ToLower(testUUID))
+	evs, total, err := m.FileAccessEvents(1, 1, 10, FileAccessFilter{MachineID: strings.ToLower(testUUID)})
 	require.NoError(t, err)
 	require.EqualValues(t, 1, total)
 	e := evs[0]
@@ -66,11 +66,68 @@ func TestEventUploadStoresFileAccessEvents(t *testing.T) {
 	_, total, err = m.Events(1, 1, 10, EventFilter{})
 	require.NoError(t, err)
 	require.EqualValues(t, 1, total)
-	_, total, err = m.FileAccessEvents(2, 1, 10, "")
+	_, total, err = m.FileAccessEvents(2, 1, 10, FileAccessFilter{})
 	require.NoError(t, err)
 	require.Zero(t, total)
 
 	gone, err := m.PruneEvents(time.Now().Add(time.Hour))
 	require.NoError(t, err)
 	require.EqualValues(t, 2, gone)
+}
+
+func TestFileAccessFilter(t *testing.T) {
+	m := newTestManager(t)
+	n := testNode()
+	mustPreflight(t, m, n, false)
+	ev := func(target, proc string, d syncv1.FileAccessDecision) *syncv1.FileAccessEvent {
+		return &syncv1.FileAccessEvent{RuleName: "r", Target: target, Decision: d,
+			ProcessChain: []*syncv1.Process{{Pid: 1, FilePath: proc, TeamId: "T"}, {Pid: 2, FilePath: "/sbin/launchd"}}}
+	}
+	_, fa, err := m.StoreEvents(n, &syncv1.EventUploadRequest{FileAccessEvents: []*syncv1.FileAccessEvent{
+		ev("/Users/u/.ssh/id_ed25519", "/tmp/Evil", syncv1.FileAccessDecision_FILE_ACCESS_DECISION_DENIED),
+		ev("/Users/u/Library/Cookies/c", "/Applications/Chrome", syncv1.FileAccessDecision_FILE_ACCESS_DECISION_AUDIT_ONLY),
+		ev("/Users/u/100%_done", "/usr/bin/cp", syncv1.FileAccessDecision_FILE_ACCESS_DECISION_DENIED),
+	}})
+	require.NoError(t, err)
+	require.Len(t, fa, 3, "stored events are returned for forwarding")
+	require.NotZero(t, fa[0].ID)
+	require.Equal(t, "/tmp/Evil", fa[0].AlertFields()["process_path"])
+	require.Equal(t, "T", fa[0].AlertFields()["process_team_id"])
+
+	for _, tt := range []struct {
+		name string
+		f    FileAccessFilter
+		want int64
+	}{
+		{"all", FileAccessFilter{}, 3},
+		{"target without case", FileAccessFilter{Target: "/.SSH/"}, 1},
+		{"process of the chain", FileAccessFilter{Process: "launchd"}, 3},
+		{"process without case", FileAccessFilter{Process: "/tmp/evil"}, 1},
+		{"decision", FileAccessFilter{Decision: "denied"}, 2},
+		{"LIKE characters are literal", FileAccessFilter{Target: "%_"}, 1},
+		{"underscore is literal", FileAccessFilter{Target: "u_"}, 0},
+		{"combined", FileAccessFilter{Target: "cookies", Decision: "AUDIT_ONLY"}, 1},
+	} {
+		_, total, err := m.FileAccessEvents(1, 1, 10, tt.f)
+		require.NoError(t, err, tt.name)
+		require.Equal(t, tt.want, total, tt.name)
+	}
+	for _, bad := range []FileAccessFilter{{Decision: "DENIED%"}, {Target: strings.Repeat("a", 1025)}, {Process: strings.Repeat("a", 1025)}} {
+		_, _, err := m.FileAccessEvents(1, 1, 10, bad)
+		require.ErrorIs(t, err, ErrInvalidEventFilter)
+	}
+}
+
+func TestEventAlertFieldsSigningAndBundle(t *testing.T) {
+	e := Event{Decision: "BLOCK_BINARY", BundleName: "Evil", BundleVersion: "1.0", BundlePath: "/Applications/Evil.app", BundleHash: "bh",
+		SigningChain: []Cert{{SHA256: "leaf", CN: "Developer ID Application: Evil", Org: "Evil Inc", OU: "EVIL123"}, {SHA256: "root", CN: "Apple Root CA"}}}
+	f := e.AlertFields()
+	require.Equal(t, "leaf", f["cert_sha256"])
+	require.Equal(t, "Developer ID Application: Evil", f["cert_cn"])
+	require.Equal(t, "Evil Inc", f["cert_org"])
+	require.Equal(t, "EVIL123", f["cert_ou"])
+	require.Equal(t, "Evil", f["bundle_name"])
+	require.Equal(t, "/Applications/Evil.app", f["bundle_path"])
+	require.Empty(t, Event{}.AlertFields()["cert_sha256"], "unsigned")
+	require.Empty(t, FileAccessEvent{}.AlertFields()["process_path"], "no chain")
 }

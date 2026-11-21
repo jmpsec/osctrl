@@ -826,7 +826,7 @@ function SinkEditor({
 
   // Categories: null/empty means "all". When editing, pre-fill from the
   // existing sink. When creating, default to all (null).
-  const allCats = types[0]?.categories ?? ['status', 'result', 'query', 'carve.meta', 'carve.data', 'santa'];
+  const allCats = types[0]?.categories ?? ['status', 'result', 'query', 'carve.meta', 'carve.data', 'santa', 'santa.file_access'];
   const [categories, setCategories] = useState<string[] | null>(existing?.categories ?? null);
 
   const spec = useMemo(
@@ -1068,7 +1068,7 @@ function SinkEditor({
           </div>
           <p className="mt-1 text-xs text-[color:var(--text-3)]">
             {categories === null || categories.length === allCats.length
-              ? 'This sink receives all data categories (status, result, query, carve metadata, carve data).'
+              ? 'This sink receives all data categories (status, result, query, carve metadata, carve data, Santa events, Santa file access).'
               : 'This sink receives only the selected categories. Uncheck "All" to customize.'}
           </p>
         </fieldset>

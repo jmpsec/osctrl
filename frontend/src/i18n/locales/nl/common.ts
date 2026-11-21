@@ -916,6 +916,7 @@ export const nl: Messages = {
     file: 'Bestand',
     user: 'Gebruiker',
     decision: 'Beslissing',
+    filters: { machine: 'Machine-UUID', sha256: 'SHA-256', path: 'Pad bevat', process: 'Proces bevat', anyDecision: 'Elke beslissing', blocks: 'Blokkeringen', allows: 'Toestemmingen' },
     allow: 'Toestaan',
     block: 'Blokkeren',
     noMachines: 'Nog geen machines hebben gesynchroniseerd',

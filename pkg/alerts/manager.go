@@ -375,6 +375,8 @@ func (m *Manager) LoadSnapshot(store *Store) error {
 			rs.vulnFinding = append(rs.vulnFinding, cr)
 		case SourceSantaEvent:
 			rs.santa = append(rs.santa, cr)
+		case SourceSantaFileAccess:
+			rs.santaFileAccess = append(rs.santaFileAccess, cr)
 		}
 	}
 	store.Publish(rs)

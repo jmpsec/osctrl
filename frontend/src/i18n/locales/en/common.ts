@@ -927,6 +927,7 @@ export const en = {
     file: 'File',
     user: 'User',
     decision: 'Decision',
+    filters: { machine: 'Machine UUID', sha256: 'SHA-256', path: 'Path contains', process: 'Process contains', anyDecision: 'Any decision', blocks: 'Blocks', allows: 'Allows' },
     allow: 'Allow',
     block: 'Block',
     noMachines: 'No machines have synced yet',

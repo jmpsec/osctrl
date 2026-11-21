@@ -916,6 +916,7 @@ export const he: Messages = {
     file: 'קובץ',
     user: 'משתמש',
     decision: 'החלטה',
+    filters: { machine: 'UUID של המכונה', sha256: 'SHA-256', path: 'הנתיב מכיל', process: 'התהליך מכיל', anyDecision: 'כל החלטה', blocks: 'חסימות', allows: 'אישורים' },
     allow: 'התרה',
     block: 'חסימה',
     noMachines: 'אף מכונה עדיין לא סונכרנה',

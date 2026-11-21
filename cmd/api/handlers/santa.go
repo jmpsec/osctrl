@@ -1033,7 +1033,11 @@ type SantaFileAccessEventsResponse struct {
 // @Param page query int false "Page (1-based)"
 // @Param page_size query int false "Page size"
 // @Param machine_id query string false "Only events of this machine (node UUID)"
+// @Param target query string false "Substring of the accessed path, without case"
+// @Param process query string false "Substring of the path of a process in the chain, without case"
+// @Param decision query string false "DENIED, DENIED_INVALID_SIGNATURE or AUDIT_ONLY"
 // @Success 200 {object} SantaFileAccessEventsResponse
+// @Failure 400 {object} types.ApiErrorResponse
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
@@ -1048,7 +1052,13 @@ func (h *HandlersApi) SantaFileAccessEventsHandler(w http.ResponseWriter, r *htt
 	q := r.URL.Query()
 	page, _ := strconv.Atoi(q.Get("page"))
 	size, _ := strconv.Atoi(q.Get("page_size"))
-	evs, total, err := h.Santa.FileAccessEvents(env.ID, page, size, q.Get("machine_id"))
+	evs, total, err := h.Santa.FileAccessEvents(env.ID, page, size, santa.FileAccessFilter{
+		MachineID: q.Get("machine_id"), Target: q.Get("target"), Process: q.Get("process"), Decision: q.Get("decision"),
+	})
+	if errors.Is(err, santa.ErrInvalidEventFilter) {
+		apiErrorResponse(w, "invalid file access filter", http.StatusBadRequest, err)
+		return
+	}
 	if err != nil {
 		apiErrorResponse(w, "error listing file access events", http.StatusInternalServerError, err)
 		return

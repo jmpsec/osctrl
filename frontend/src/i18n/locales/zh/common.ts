@@ -916,6 +916,7 @@ export const zh: Messages = {
     file: '文件',
     user: '用户',
     decision: '决定',
+    filters: { machine: '机器 UUID', sha256: 'SHA-256', path: '路径包含', process: '进程包含', anyDecision: '任意决定', blocks: '阻止', allows: '允许' },
     allow: '允许',
     block: '阻止',
     noMachines: '尚无机器完成同步',

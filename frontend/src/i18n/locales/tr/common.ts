@@ -916,6 +916,7 @@ export const tr: Messages = {
     file: 'Dosya',
     user: 'Kullanıcı',
     decision: 'Karar',
+    filters: { machine: 'Makine UUID', sha256: 'SHA-256', path: 'Yol içerir', process: 'İşlem içerir', anyDecision: 'Herhangi bir karar', blocks: 'Engellemeler', allows: 'İzinler' },
     allow: 'İzin ver',
     block: 'Engelle',
     noMachines: 'Henüz hiçbir makine eşitlenmedi',

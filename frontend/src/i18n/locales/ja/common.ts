@@ -916,6 +916,7 @@ export const ja: Messages = {
     file: 'ファイル',
     user: 'ユーザー',
     decision: '判定',
+    filters: { machine: 'マシン UUID', sha256: 'SHA-256', path: 'パスに含む', process: 'プロセスに含む', anyDecision: 'すべての判定', blocks: 'ブロック', allows: '許可' },
     allow: '許可',
     block: 'ブロック',
     noMachines: '同期済みのマシンはまだありません',

@@ -15,7 +15,7 @@ const mockRules = vi.fn<() => Promise<SantaRule[]>>();
 const mockDelete = vi.fn<(env: string, id: number) => Promise<unknown>>();
 const mockCreate = vi.fn<(env: string, body: SantaRuleInput) => Promise<unknown>>();
 const mockUpdate = vi.fn<(env: string, id: number, body: SantaRuleInput) => Promise<unknown>>();
-const mockEvents = vi.fn<() => Promise<SantaEventsPage>>();
+const mockEvents = vi.fn<(...args: unknown[]) => Promise<SantaEventsPage>>();
 const mockMachines = vi.fn<() => Promise<SantaMachine[]>>();
 const mockConfig = vi.fn<() => Promise<SantaConfig>>();
 const mockRotate = vi.fn<() => Promise<{ token: string }>>();
@@ -25,7 +25,7 @@ const mockModes = vi.fn<() => Promise<SantaModeOverride[]>>();
 const mockSetMode = vi.fn<(env: string, body: unknown) => Promise<unknown>>();
 const mockDeleteMode = vi.fn<(env: string, id: number) => Promise<unknown>>();
 const mockExtend = vi.fn<(env: string, id: number, hours: number) => Promise<unknown>>();
-const mockFileAccess = vi.fn<() => Promise<unknown>>();
+const mockFileAccess = vi.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockAccess = vi.fn<() => Promise<{ admin: boolean; approver: boolean }>>();
 const mockRequests = vi.fn<() => Promise<unknown[]>>();
 
@@ -38,7 +38,7 @@ vi.mock('$/api/santa', async () => {
     createSantaRule: (env: string, body: SantaRuleInput) => mockCreate(env, body),
     updateSantaRule: (env: string, id: number, body: SantaRuleInput) => mockUpdate(env, id, body),
     importSantaRules: (env: string, rules: unknown[], dryRun: boolean) => mockImport(env, rules, dryRun),
-    listSantaEvents: () => mockEvents(),
+    listSantaEvents: (...args: unknown[]) => mockEvents(...args),
     listSantaMachines: () => mockMachines(),
     getSantaConfig: () => mockConfig(),
     rotateSantaToken: () => mockRotate(),
@@ -48,7 +48,7 @@ vi.mock('$/api/santa', async () => {
     deleteSantaModeOverride: (env: string, id: number) => mockDeleteMode(env, id),
     extendSantaMonitor: (env: string, id: number, hours: number) => mockExtend(env, id, hours),
     carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
-    listSantaFileAccessEvents: () => mockFileAccess(),
+    listSantaFileAccessEvents: (...args: unknown[]) => mockFileAccess(...args),
     getSantaAccess: () => mockAccess(),
     listSantaRequests: () => mockRequests(),
   };
@@ -438,7 +438,32 @@ describe('SantaPage', () => {
     expect(await screen.findByText('ChromeCookies')).toBeInTheDocument();
     expect(screen.getByText('/Users/bob/Cookies')).toBeInTheDocument();
     expect(screen.getByText('/sbin/launchd')).toBeInTheDocument();
-    expect(screen.getByText('DENIED')).toBeInTheDocument();
+    expect(within(screen.getByText('ChromeCookies').closest('tr')!).getByText('DENIED')).toBeInTheDocument();
+  });
+
+  it('filters file access events by path, process and decision', async () => {
+    mockFileAccess.mockResolvedValue({ events: [], total: 0, page: 1 });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'File access' }));
+    await user.type(await screen.findByLabelText('Path contains'), ' .ssh ');
+    await user.type(screen.getByLabelText('Process contains'), '/tmp');
+    await user.selectOptions(screen.getByLabelText('Decision'), 'DENIED');
+    await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => expect(mockFileAccess).toHaveBeenLastCalledWith('dev', 1, { target: '.ssh', process: '/tmp', decision: 'DENIED' }));
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+    await waitFor(() => expect(mockFileAccess).toHaveBeenLastCalledWith('dev', 1, {}));
+    expect(screen.getByLabelText('Path contains')).toHaveValue('');
+  });
+
+  it('filters execution events by machine, decision and hash', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Events' }));
+    await user.type(await screen.findByLabelText('Machine UUID'), 'M1');
+    await user.selectOptions(screen.getByLabelText('Decision'), 'BLOCK');
+    await user.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => expect(mockEvents).toHaveBeenLastCalledWith('dev', 1, { machine_id: 'M1', decision: 'BLOCK' }));
   });
 
   it('explains where file access events come from when there are none', async () => {

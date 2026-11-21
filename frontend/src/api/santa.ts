@@ -525,12 +525,34 @@ export interface SantaFileAccessEvent {
 export function listSantaFileAccessEvents(
   env: string,
   page = 1,
+  filter: SantaFileAccessFilter = {},
   pageSize = SANTA_EVENTS_PAGE_SIZE,
 ): Promise<{ events: SantaFileAccessEvent[]; total: number; page: number }> {
-  return apiFetch(`${envPath(env)}/file-access-events?page=${page}&page_size=${pageSize}`);
+  return apiFetch(`${envPath(env)}/file-access-events?${pageQuery(page, pageSize, filter)}`);
+}
+
+/** Execution event filters; decision is a name or prefix such as BLOCK. */
+export interface SantaEventFilter {
+  machine_id?: string;
+  decision?: string;
+  sha256?: string;
+}
+
+/** File access event filters; target and process are substrings, without case. */
+export interface SantaFileAccessFilter {
+  machine_id?: string;
+  target?: string;
+  process?: string;
+  decision?: string;
+}
+
+function pageQuery(page: number, pageSize: number, filter: object): string {
+  const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  for (const [k, v] of Object.entries(filter)) if (v) q.set(k, String(v));
+  return q.toString();
 }
 
 /** GET /api/v1/santa/{env}/events */
-export function listSantaEvents(env: string, page = 1, pageSize = SANTA_EVENTS_PAGE_SIZE): Promise<SantaEventsPage> {
-  return apiFetch<SantaEventsPage>(`${envPath(env)}/events?page=${page}&page_size=${pageSize}`);
+export function listSantaEvents(env: string, page = 1, filter: SantaEventFilter = {}, pageSize = SANTA_EVENTS_PAGE_SIZE): Promise<SantaEventsPage> {
+  return apiFetch<SantaEventsPage>(`${envPath(env)}/events?${pageQuery(page, pageSize, filter)}`);
 }

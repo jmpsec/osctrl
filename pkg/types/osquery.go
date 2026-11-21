@@ -13,6 +13,9 @@ const (
 	// SantaLog is a batch of Santa execution events. It is produced by the
 	// Santa sync endpoint, never by osquery.
 	SantaLog string = "santa"
+	// SantaFileAccessLog is a batch of Santa file access events, produced
+	// like SantaLog.
+	SantaFileAccessLog string = "santa.file_access"
 )
 
 // OSVersionTable provided on enrollment, table os_version

@@ -9083,6 +9083,21 @@ paths:
           name: machine_id
           schema:
             type: string
+        - description: Substring of the accessed path, without case
+          in: query
+          name: target
+          schema:
+            type: string
+        - description: Substring of the path of a process in the chain, without case
+          in: query
+          name: process
+          schema:
+            type: string
+        - description: DENIED, DENIED_INVALID_SIGNATURE or AUDIT_ONLY
+          in: query
+          name: decision
+          schema:
+            type: string
       responses:
         "200":
           description: OK
