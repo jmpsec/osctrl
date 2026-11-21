@@ -27,7 +27,7 @@ const (
 	// switches to fast polling before the operator expands the first
 	// directory — and it also surfaces live osquery runtime metadata into
 	// the session.
-	PrimingMetadataSQL = "select version, build_platform, build_distro, start_time, config_valid, optimizations from osquery_info"
+	PrimingMetadataSQL = "select version, build_platform, build_distro, start_time, config_valid from osquery_info"
 )
 
 type Manager struct {
