@@ -15,11 +15,13 @@ import (
 const (
 	// DBString to format connection string to database for postgres
 	PostgresDBString = "host=%s port=%d dbname=%s user=%s password=%s sslmode=%s"
-	// MySQLDBString to format connection string for MySQL. sql_mode is the
-	// MySQL 8 default minus NO_ZERO_DATE and NO_ZERO_IN_DATE: the driver writes
-	// an unset time.Time as '0000-00-00', which those modes reject.
+	// MySQLSQLMode is the MySQL 8 default sql_mode minus NO_ZERO_DATE and
+	// NO_ZERO_IN_DATE: the driver writes an unset time.Time as '0000-00-00',
+	// which those modes reject.
+	MySQLSQLMode = "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+	// MySQLDBString to format connection string for MySQL, with MySQLSQLMode.
 	MySQLDBString = "%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local" +
-		"&sql_mode=%%27ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION%%27"
+		"&sql_mode=%%27" + MySQLSQLMode + "%%27"
 	// DBKey to identify the configuration JSON key
 	DBKey = "db"
 	// Database types

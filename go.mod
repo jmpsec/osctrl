@@ -16,6 +16,7 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.7
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/go-sql-driver/mysql v1.10.2
 	github.com/go-webauthn/webauthn v0.18.2
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/osv-scalibr v0.5.3
@@ -80,7 +81,6 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.9 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-sql-driver/mysql v1.10.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/go-webauthn/x v0.4.1 // indirect
 	github.com/goccy/go-json v0.12.0 // indirect

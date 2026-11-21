@@ -14,7 +14,7 @@ import (
 
 func TestReport(t *testing.T) {
 	m := newTestManager(t)
-	now := time.Now().UTC()
+	now := testNow().UTC()
 	m.now = func() time.Time { return now }
 	require.NoError(t, dbutil.EnsureIndexes(m.DB, Indexes()...))
 	require.True(t, m.DB.Migrator().HasIndex(&Event{}, "idx_santa_events_env_created"))

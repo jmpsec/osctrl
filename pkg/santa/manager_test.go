@@ -6,15 +6,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func newTestManager(t *testing.T) *Manager {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	m, err := NewManager(db)
+	m, err := NewManager(testDB(t, "file::memory:"))
 	require.NoError(t, err)
 	return m
 }

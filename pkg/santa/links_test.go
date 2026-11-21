@@ -36,7 +36,7 @@ func TestValidateConfigNotifyChannels(t *testing.T) {
 
 func TestDecideByLink(t *testing.T) {
 	m := newTestManager(t)
-	now := time.Now()
+	now := testNow()
 	m.now = func() time.Time { return now }
 	machine := strings.ToUpper(testUUID)
 	shas := []string{strings.Repeat("a1", 32), strings.Repeat("b2", 32), strings.Repeat("c3", 32)}

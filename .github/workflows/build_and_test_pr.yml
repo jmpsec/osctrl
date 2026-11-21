@@ -69,3 +69,52 @@ jobs:
           distribution: goreleaser
           version: latest
           args: build --snapshot --clean --single-target
+
+  # pkg/santa on the engines osctrl supports besides SQLite: every test runs on
+  # its own schema (PostgreSQL) or database (MySQL). The DSNs also turn on the
+  # optional real-engine tests elsewhere, such as pkg/dbutil.
+  databases:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: osctrl_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: osctrl_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -ptest" --health-interval 5s --health-timeout 5s --health-retries 30
+    env:
+      OSCTRL_TEST_POSTGRES_DSN: host=127.0.0.1 port=5432 user=postgres password=test dbname=osctrl_test sslmode=disable
+      OSCTRL_TEST_MYSQL_DSN: root:test@tcp(127.0.0.1:3306)/osctrl_test?charset=utf8mb4&parseTime=True&loc=Local
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+          cache: true
+
+      - name: Santa on PostgreSQL
+        run: go test -count=1 ./pkg/santa
+        env:
+          OSCTRL_TEST_SANTA_ENGINE: POSTGRES
+
+      - name: Santa on MySQL
+        run: go test -count=1 ./pkg/santa
+        env:
+          OSCTRL_TEST_SANTA_ENGINE: MYSQL
+
+      - name: Index builds on both engines
+        run: go test -count=1 ./pkg/dbutil
