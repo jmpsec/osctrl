@@ -18,7 +18,7 @@ import (
 //   GET    /api/v1/santa/{env}/rules
 //   POST   /api/v1/santa/{env}/rules
 //   DELETE /api/v1/santa/{env}/rules/{id}
-//   POST   /api/v1/santa/{env}/rules/import[?dry_run=true]
+//   POST   /api/v1/santa/{env}/rules/import[?dry_run=true&skip_conflicts=true]
 //   GET    /api/v1/santa/{env}/machines
 //   GET    /api/v1/santa/{env}/machines/{machineid}/rules
 //   GET    /api/v1/santa/{env}/events
@@ -129,16 +129,24 @@ func (api *OsctrlAPI) DeleteSantaRule(env string, id uint) error {
 	return nil
 }
 
-// ImportSantaRules imports rules into an environment; with dryRun nothing is stored.
-func (api *OsctrlAPI) ImportSantaRules(env string, specs []santa.RuleSpec, dryRun bool) (santa.ImportResult, error) {
+// ImportSantaRules imports rules into an environment; with dryRun nothing is
+// stored, and with skipConflicts the conflicts are left out instead of blocking.
+func (api *OsctrlAPI) ImportSantaRules(env string, specs []santa.RuleSpec, dryRun, skipConflicts bool) (santa.ImportResult, error) {
 	var res santa.ImportResult
 	body, err := json.Marshal(specs)
 	if err != nil {
 		return res, fmt.Errorf("error marshaling data - %w", err)
 	}
-	reqURL := api.santaRulesURL(env, "import")
+	q := url.Values{}
 	if dryRun {
-		reqURL += "?dry_run=true"
+		q.Set("dry_run", "true")
+	}
+	if skipConflicts {
+		q.Set("skip_conflicts", "true")
+	}
+	reqURL := api.santaRulesURL(env, "import")
+	if len(q) > 0 {
+		reqURL += "?" + q.Encode()
 	}
 	raw, err := api.PostGeneric(reqURL, bytes.NewReader(body))
 	if err != nil {

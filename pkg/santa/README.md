@@ -101,15 +101,16 @@ Each ranked list has at most 20 entries. The window is on the time osctrl receiv
 
 Rule sets can be moved between environments or kept in git.
 
-- **Export:** the rule list as JSON, holding only the portable fields (`identifier`, `rule_type`, `policy`, `cel_expr`, `custom_msg`, `custom_url`, `scope`, `scope_value`), sorted by type, identifier and scope so the file diffs cleanly. The Rules tab has an **Export** button; `GET /api/v1/santa/{env}/rules` returns the same rules with their server fields, which the import ignores.
-- **Import:** `POST /api/v1/santa/{env}/rules/import` with a JSON list of rules (at most 4 MiB). Each rule is classified after normalization:
+- **Export:** the rule list as JSON or CSV, holding only the portable fields (`identifier`, `rule_type`, `policy`, `cel_expr`, `custom_msg`, `custom_url`, `scope`, `scope_value`), sorted by type, identifier and scope so the file diffs cleanly. The Rules tab has **Export JSON** and **Export CSV**. `GET /api/v1/santa/{env}/rules` returns the rules with their server fields, which the import ignores; with `?format=csv` it returns the CSV export, one row per rule under a header row naming those fields. CSV cells that start like a spreadsheet formula (`=`, `+`, `-`, `@`) are prefixed with a quote, which the import removes.
+- **Import:** `POST /api/v1/santa/{env}/rules/import` with a JSON list of rules, or CSV with `Content-Type: text/csv` (at most 4 MiB). CSV columns are matched by header name in any order; `identifier`, `rule_type` and `policy` are required, missing optional columns are empty and unknown ones are ignored. Each rule is classified after normalization:
   - **new**: no rule with the same type, identifier and scope exists;
   - **duplicate**: an identical rule exists, or appears earlier in the file; skipped;
   - **conflict**: a rule with the same type, identifier and scope exists with a different policy, message, URL or CEL expression;
   - **invalid**: the rule fails the same validation as a single create.
 - With `?dry_run=true` the report is returned and nothing is stored. Without it the new rules are stored in one transaction, but only when no rule is conflicting or invalid: one bad rule blocks the whole import (`applied: false`), and existing rules are never changed. Resolve a conflict by editing the file or the existing rule.
-- Re-importing an export is a no-op. An applied import writes one audit line with the counts.
-- The Rules tab **Import** button runs the dry run first and shows the report before anything is stored.
+- With `?skip_conflicts=true` conflicts no longer block: the clean rules are stored, the conflicts are listed and left out (`conflicts_skipped: true`). Invalid rules still block the whole import.
+- Re-importing an export is a no-op. An applied import writes one audit line with the counts, and `conflicts_skipped=N` when conflicts were left out.
+- The Rules tab **Import** button takes a JSON or CSV file, runs the dry run first and shows the report before anything is stored. When the only issues are conflicts, it offers to skip them.
 
 From the CLI, in API or DB mode:
 
@@ -117,9 +118,10 @@ From the CLI, in API or DB mode:
 osctrl-cli santa rules-export -e ENV -f rules.json
 osctrl-cli santa rules-import -e ENV -f rules.json --dry-run
 osctrl-cli santa rules-import -e ENV -f rules.json
+osctrl-cli santa rules-import -e ENV -f rules.csv --skip-conflicts
 ```
 
-`rules-import` exits non-zero when a rule is conflicting or invalid, dry run included, so the dry run can gate a review pipeline. In DB mode the first `santa` command creates the Santa tables if they do not exist yet.
+A file ending in `.csv` is read and written as CSV. `rules-import` exits non-zero when a rule is invalid, or conflicting without `--skip-conflicts`, dry run included, so the dry run can gate a review pipeline. In DB mode the first `santa` command creates the Santa tables if they do not exist yet.
 
 ### Client mode overrides
 

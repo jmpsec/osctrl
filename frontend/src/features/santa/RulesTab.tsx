@@ -5,6 +5,7 @@ import { ShieldCheck } from 'lucide-react';
 import {
   createSantaRule,
   deleteSantaRule,
+  getSantaRulesCSVUrl,
   importSantaRules,
   listSantaRules,
   santaQueryKey,
@@ -67,7 +68,8 @@ function exportRules(env: string, rules: SantaRule[]) {
 }
 
 interface ImportPreview {
-  rules: unknown[];
+  /** A JSON list of rules, or CSV text. */
+  rules: unknown[] | string;
   result: SantaImportResult;
 }
 
@@ -86,6 +88,10 @@ export function RulesTab({ env, onAdd, onEdit }: { env: string; onAdd: () => voi
   // The file is only checked here; nothing is stored until the preview is confirmed.
   const check = useMutation({
     mutationFn: async (file: File) => {
+      if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+        const text = await file.text();
+        return { rules: text, result: await importSantaRules(env, text, true) };
+      }
       let parsed: unknown;
       try {
         parsed = JSON.parse(await file.text());
@@ -107,9 +113,18 @@ export function RulesTab({ env, onAdd, onEdit }: { env: string; onAdd: () => voi
   return (
     <div className="space-y-3">
       <div className="flex justify-end gap-2">
-        <input ref={fileInput} type="file" accept="application/json,.json" className="hidden" aria-label={t('santa.importTitle')} onChange={pickFile} />
+        <input ref={fileInput} type="file" accept="application/json,.json,text/csv,.csv" className="hidden" aria-label={t('santa.importTitle')} onChange={pickFile} />
         <Button size="sm" variant="ghost" disabled={check.isPending} onClick={() => fileInput.current?.click()}>{t('santa.import')}</Button>
-        <Button size="sm" variant="ghost" disabled={rows.length === 0} onClick={() => exportRules(env, rows)}>{t('santa.export')}</Button>
+        {rows.length > 0 && (
+          <a
+            href={getSantaRulesCSVUrl(env)}
+            download
+            className="inline-flex h-8 items-center rounded-md px-3 text-sm text-[color:var(--text-2)] hover:bg-[color:var(--bg-3)]"
+          >
+            {t('santa.reports.exportCsv')}
+          </a>
+        )}
+        <Button size="sm" variant="ghost" disabled={rows.length === 0} onClick={() => exportRules(env, rows)}>{t('santa.reports.exportJson')}</Button>
         <Button size="sm" onClick={onAdd}>{t('santa.addRule')}</Button>
       </div>
       {check.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(check.error)}</p>}
@@ -183,9 +198,12 @@ function ImportModal({ env, preview, onClose }: { env: string; preview: ImportPr
   const qc = useQueryClient();
   const { result } = preview;
   const issues = [...result.conflicts, ...result.invalid];
+  // Conflicts can be left out; invalid rules always block.
+  const [skip, setSkip] = useState(false);
+  const blocked = result.invalid.length > 0 || (result.conflicts.length > 0 && !skip);
   const apply = useMutation({
     mutationFn: async () => {
-      const res = await importSantaRules(env, preview.rules, false);
+      const res = await importSantaRules(env, preview.rules, false, skip);
       // The rules changed between the preview and now.
       if (!res.applied) throw new Error(t('santa.importBlocked'));
     },
@@ -214,7 +232,13 @@ function ImportModal({ env, preview, onClose }: { env: string; preview: ImportPr
         </dl>
         {issues.length > 0 && (
           <>
-            <p role="alert" className="text-sm text-[color:var(--danger)]">{t('santa.importBlocked')}</p>
+            {blocked && <p role="alert" className="text-sm text-[color:var(--danger)]">{t('santa.importBlocked')}</p>}
+            {result.conflicts.length > 0 && result.invalid.length === 0 && (
+              <label className="flex items-center gap-2 text-sm text-[color:var(--text-1)]">
+                <input type="checkbox" checked={skip} onChange={(e) => setSkip(e.target.checked)} />
+                {t('santa.importSkipConflicts', { n: result.conflicts.length })}
+              </label>
+            )}
             <ul className="space-y-2 text-sm">
               {issues.map((i) => (
                 <li key={i.index}>
@@ -231,7 +255,7 @@ function ImportModal({ env, preview, onClose }: { env: string; preview: ImportPr
         {apply.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(apply.error)}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button type="button" disabled={issues.length > 0 || result.new === 0 || apply.isPending} onClick={() => apply.mutate()}>
+          <Button type="button" disabled={blocked || result.new === 0 || apply.isPending} onClick={() => apply.mutate()}>
             {t('santa.importApply', { n: result.new })}
           </Button>
         </div>

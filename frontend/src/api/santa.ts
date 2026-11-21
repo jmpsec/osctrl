@@ -130,6 +130,8 @@ export interface SantaImportResult {
   conflicts: SantaImportIssue[];
   invalid: SantaImportIssue[];
   applied: boolean;
+  /** Conflicts are left out instead of blocking the import. */
+  conflicts_skipped: boolean;
 }
 
 export interface SantaMachine {
@@ -370,12 +372,24 @@ export function updateSantaRule(env: string, id: number, body: SantaRuleInput): 
   return apiFetch<SantaRule>(`${envPath(env)}/rules/${id}`, jsonInit('PUT', body));
 }
 
+/** The rules as CSV, for an <a href download>: the browser sends the session cookie. */
+export function getSantaRulesCSVUrl(env: string): string {
+  return `${envPath(env)}/rules?format=csv`;
+}
+
 /**
- * POST /api/v1/santa/{env}/rules/import — nothing is stored on a dry run, or when
- * any rule is conflicting or invalid (applied is false). Existing rules are never changed.
+ * POST /api/v1/santa/{env}/rules/import — a JSON list of rules, or CSV text with a
+ * header row. Nothing is stored on a dry run, when any rule is invalid, or when any
+ * is conflicting and skipConflicts is off (applied is false). Existing rules are never changed.
  */
-export function importSantaRules(env: string, rules: unknown[], dryRun: boolean): Promise<SantaImportResult> {
-  return apiFetch<SantaImportResult>(`${envPath(env)}/rules/import${dryRun ? '?dry_run=true' : ''}`, jsonInit('POST', rules));
+export function importSantaRules(env: string, rules: unknown[] | string, dryRun: boolean, skipConflicts = false): Promise<SantaImportResult> {
+  const q = new URLSearchParams();
+  if (dryRun) q.set('dry_run', 'true');
+  if (skipConflicts) q.set('skip_conflicts', 'true');
+  const init = typeof rules === 'string'
+    ? { method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: rules }
+    : jsonInit('POST', rules);
+  return apiFetch<SantaImportResult>(`${envPath(env)}/rules/import${q.size ? `?${q}` : ''}`, init);
 }
 
 /** DELETE /api/v1/santa/{env}/rules/{id} */

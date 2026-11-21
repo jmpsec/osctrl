@@ -9985,11 +9985,19 @@ paths:
         - santa
   "/api/v1/santa/{env}/rules":
     get:
+      description: "With format=csv the rules are an export: only the portable fields,
+        sorted, one CSV row per rule, which the import reads back. CSV cells
+        that start like a formula are prefixed with a quote."
       parameters:
         - description: Environment name or UUID
           in: path
           name: env
           required: true
+          schema:
+            type: string
+        - description: json (default) or csv
+          in: query
+          name: format
           schema:
             type: string
       responses:
@@ -10001,10 +10009,18 @@ paths:
                 items:
                   $ref: "#/components/schemas/santa.Rule"
                 type: array
+            text/csv:
+              schema:
+                items:
+                  $ref: "#/components/schemas/santa.Rule"
+                type: array
         "403":
           description: Forbidden
           content:
             application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+            text/csv:
               schema:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
         "404":
@@ -10013,10 +10029,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
+            text/csv:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
         "503":
           description: Service Unavailable
           content:
             application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+            text/csv:
               schema:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
       security:
@@ -10198,11 +10220,13 @@ paths:
   "/api/v1/santa/{env}/rules/import":
     post:
       description: Classifies each rule as new, duplicate, conflicting or invalid. New
-        rules are stored in one transaction, and only when no rule is
-        conflicting or invalid; existing rules are never changed. With
-        dry_run=true nothing is stored. The body is limited to 4 MiB. The export
-        format is the list of rules from GET rules; extra fields such as id are
-        ignored.
+        rules are stored in one transaction, and only when no rule is invalid
+        and, unless skip_conflicts=true, none is conflicting; with
+        skip_conflicts the conflicts are listed and left out. Existing rules are
+        never changed. With dry_run=true nothing is stored. The body is a JSON
+        list of rules, or CSV with a header row (Content-Type text/csv, the
+        format of GET rules?format=csv), limited to 4 MiB. Extra JSON fields and
+        CSV columns such as id are ignored.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -10215,9 +10239,19 @@ paths:
           name: dry_run
           schema:
             type: boolean
+        - description: Store the clean rules and list the conflicts instead of blocking
+          in: query
+          name: skip_conflicts
+          schema:
+            type: boolean
       requestBody:
         content:
           application/json:
+            schema:
+              items:
+                $ref: "#/components/schemas/santa.RuleSpec"
+              type: array
+          text/csv:
             schema:
               items:
                 $ref: "#/components/schemas/santa.RuleSpec"
@@ -16362,6 +16396,13 @@ components:
           items:
             $ref: "#/components/schemas/santa.ImportIssue"
           type: array
+        conflicts_skipped:
+          description: >-
+            True when conflicts are skipped instead of blocking: the clean rules
+            are
+
+            stored and the conflicts are listed, not imported
+          type: boolean
         duplicate:
           description: Rules identical to an existing rule or to an earlier rule in the
             import; skipped

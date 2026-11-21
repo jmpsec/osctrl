@@ -356,11 +356,12 @@ func init() {
 				},
 				{
 					Name:  "rules-import",
-					Usage: "Import Santa rules from a JSON export; nothing is imported if a rule is conflicting or invalid",
+					Usage: "Import Santa rules from a JSON or CSV export; nothing is imported if a rule is invalid, or conflicting without --skip-conflicts",
 					Flags: []cli.Flag{
 						&cli.StringFlag{Name: "environment", Aliases: []string{"e"}, Usage: "Environment name or UUID"},
-						&cli.StringFlag{Name: "file", Aliases: []string{"f"}, Usage: "JSON file with the rules"},
+						&cli.StringFlag{Name: "file", Aliases: []string{"f"}, Usage: "JSON file with the rules, or CSV when it ends in .csv"},
 						&cli.BoolFlag{Name: "dry-run", Usage: "Report new, duplicate, conflicting and invalid rules without importing"},
+						&cli.BoolFlag{Name: "skip-conflicts", Usage: "Import the clean rules and list the conflicts instead of importing nothing"},
 					},
 					Action: cliWrapper(santaRulesImport),
 				},
