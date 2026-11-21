@@ -11,7 +11,7 @@ import (
 
 func TestVoteManagement(t *testing.T) {
 	m := newTestManager(t)
-	now := time.Now()
+	now := testNow()
 	m.now = func() time.Time { return now }
 	sha := strings.Repeat("b2", 32)
 	machine := func(i int) string { return fmt.Sprintf("00000000-0000-0000-0000-%012d", i) }

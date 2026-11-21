@@ -81,3 +81,8 @@ func closeDB(db *gorm.DB) {
 		_ = sqlDB.Close()
 	}
 }
+
+// testNow is the time to freeze a test clock at: whole seconds, because MySQL
+// rounds stored fractions of a second, up or down, which makes checks at an
+// exact expiry depend on the fraction.
+func testNow() time.Time { return time.Now().Truncate(time.Second) }

@@ -34,7 +34,7 @@ func (f *fakeCheck) Check(_ context.Context, _ string) (string, string, error) {
 func riskManager(t *testing.T, checks ...RiskCheck) (*Manager, *time.Time) {
 	t.Helper()
 	m := newTestManager(t)
-	now := time.Now()
+	now := testNow()
 	m.now = func() time.Time { return now }
 	m.Risk = &RiskEngine{Checks: checks, TTL: time.Hour, Timeout: time.Second}
 	return m, &now
