@@ -26,6 +26,12 @@ vi.mock("$/api/file-explorer", () => ({
   getFileExplorerRequestResults: api.getFileExplorerRequestResults,
 }));
 
+// Like the real hook, live turns true once a session exists, when enabled.
+const live = vi.hoisted(() => ({ enabled: false }));
+vi.mock("$/lib/live-updates", () => ({
+  useSessionResourceUpdates: (_env: string, _topic: string, sessionId: number | undefined) => live.enabled && sessionId !== undefined,
+}));
+
 vi.mock("$/api/carves", () => ({
   runCarve: api.runCarve,
 }));
@@ -41,6 +47,7 @@ vi.mock("@tanstack/react-router", () => ({
 describe("NodeFileExplorerTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    live.enabled = false;
     api.closeFileExplorerSession.mockResolvedValue({ message: "closed" });
     api.getFileExplorerSession.mockResolvedValue(makeSessionResponse().session);
     api.getFileExplorerRequest.mockResolvedValue(makeRequest({ id: 10, path: "/", status: "completed" }));
@@ -59,6 +66,16 @@ describe("NodeFileExplorerTab", () => {
     expect(api.listFileExplorerDirectory).toHaveBeenCalledWith("env", 1, "/");
     expect(await screen.findByRole("treeitem", { name: /etc directory/i })).toBeInTheDocument();
     expect(screen.getByRole("treeitem", { name: /README file/i })).toBeInTheDocument();
+  });
+
+  it("keeps one session when live updates connect", async () => {
+    live.enabled = true;
+    renderExplorer();
+
+    expect(await screen.findByRole("treeitem", { name: /etc directory/i })).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(api.createFileExplorerSession).toHaveBeenCalledTimes(1);
+    expect(api.closeFileExplorerSession).not.toHaveBeenCalled();
   });
 
   it("loads a child directory when expanded", async () => {
