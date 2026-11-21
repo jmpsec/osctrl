@@ -9,9 +9,12 @@ import (
 )
 
 func TestSantaRiskEngine(t *testing.T) {
-	require.Nil(t, santaRiskEngine(&config.YAMLConfigurationService{}), "off without a check")
+	e := santaRiskEngine(&config.YAMLConfigurationService{})
+	require.Empty(t, e.Checks, "no service-wide check; environments can still run their own")
+	require.NotNil(t, e.Client)
+	require.NotNil(t, e.PublicClient)
 
-	e := santaRiskEngine(&config.YAMLConfigurationService{SantaVirusTotalKey: "k", SantaVirusTotalThreshold: 2})
+	e = santaRiskEngine(&config.YAMLConfigurationService{SantaVirusTotalKey: "k", SantaVirusTotalThreshold: 2})
 	require.Len(t, e.Checks, 1)
 	require.Equal(t, "virustotal", e.Checks[0].Name())
 	require.Equal(t, 24*time.Hour, e.TTL)

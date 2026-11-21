@@ -66,7 +66,8 @@ func (m *Manager) SaveConfig(cfg EnvConfig) error {
 			"removable_media", "removable_media_flags", "encrypted_removable_media", "encrypted_removable_media_flags", "approval_url", "notify_channels", "requester_channel",
 			"vote_local_threshold", "vote_global_threshold", "vote_expiry_days", "max_monitor_hours", "override_file_access_action",
 			"enable_bundles", "enable_all_event_upload", "disable_unknown_event_upload", "allowed_path_regex", "blocked_path_regex",
-			"event_detail_url", "event_detail_text", "group_tags", "group_match", "require_second_admin", "approver_users", "approver_groups", "updated_at"}),
+			"event_detail_url", "event_detail_text", "group_tags", "group_match", "require_second_admin", "approver_users", "approver_groups",
+			"risk_checks", "risk_virustotal_key", "risk_virustotal_threshold", "risk_webhook_url", "risk_webhook_secret", "updated_at"}),
 	}).Create(&cfg).Error
 }
 

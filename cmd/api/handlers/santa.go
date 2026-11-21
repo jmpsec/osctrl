@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,9 +27,15 @@ const (
 )
 
 // SantaConfigResponse is the environment config plus whether a token exists.
+// Risk check secrets are never returned, only whether they are set.
 type SantaConfigResponse struct {
 	santa.EnvConfig
-	TokenSet bool `json:"token_set"`
+	TokenSet             bool `json:"token_set"`
+	RiskVirusTotalKeySet bool `json:"risk_virustotal_key_set"`
+	RiskWebhookURLSet    bool `json:"risk_webhook_url_set"`
+	RiskWebhookSecretSet bool `json:"risk_webhook_secret_set"`
+	// Names of the service-wide risk checks (risk_checks "")
+	RiskServiceChecks []string `json:"risk_service_checks"`
 }
 
 // SantaConfigRequest is the settable part of the config.
@@ -88,6 +95,20 @@ type SantaConfigRequest struct {
 	ApproverUsers []string `json:"approver_users"`
 	// IdP groups whose members (by the groups last stored from SSO or SCIM) decide approval requests, at most 100. Adding one counts as weakening enforcement
 	ApproverGroups []string `json:"approver_groups"`
+	// "" runs the service-wide risk checks, "none" none, "env" the environment's own. Changing any risk field requires superuser
+	RiskChecks string `json:"risk_checks"`
+	// The environment's VirusTotal API key; empty keeps the stored one. Never returned
+	RiskVirusTotalKey string `json:"risk_virustotal_key"`
+	// Engines that must flag a file for the environment's VirusTotal check, at most 100; 0 is 1
+	RiskVirusTotalThreshold uint32 `json:"risk_virustotal_threshold"`
+	// The environment's risk webhook, an https URL to a public address; empty keeps the stored one. Never returned
+	RiskWebhookURL string `json:"risk_webhook_url"`
+	// HMAC secret of the environment's risk webhook; empty keeps the stored one. Never returned
+	RiskWebhookSecret string `json:"risk_webhook_secret"`
+	// Remove the stored VirusTotal key
+	RiskClearVirusTotalKey bool `json:"risk_clear_virustotal_key"`
+	// Remove the stored webhook URL and secret
+	RiskClearWebhook bool `json:"risk_clear_webhook"`
 }
 
 // SantaTokenResponse carries the plaintext token, shown only once.
@@ -333,8 +354,36 @@ func (h *HandlersApi) writeSantaConfig(w http.ResponseWriter, env environments.T
 		apiErrorResponse(w, "error getting config", http.StatusInternalServerError, err)
 		return
 	}
-	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK,
-		SantaConfigResponse{EnvConfig: cfg, TokenSet: cfg.TokenHash != ""})
+	res := SantaConfigResponse{EnvConfig: cfg, TokenSet: cfg.TokenHash != "", RiskVirusTotalKeySet: cfg.RiskVirusTotalKey != "",
+		RiskWebhookURLSet: cfg.RiskWebhookURL != "", RiskWebhookSecretSet: cfg.RiskWebhookSecret != "", RiskServiceChecks: []string{}}
+	if h.Santa.Risk != nil {
+		for _, c := range h.Santa.Risk.Checks {
+			res.RiskServiceChecks = append(res.RiskServiceChecks, c.Name())
+		}
+	}
+	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, res)
+}
+
+// santaMergeRisk fills the risk check fields of cfg from the request, keeping
+// the stored secrets that the request leaves empty.
+func santaMergeRisk(cfg *santa.EnvConfig, prev santa.EnvConfig, req SantaConfigRequest) {
+	cfg.RiskChecks, cfg.RiskVirusTotalThreshold = req.RiskChecks, req.RiskVirusTotalThreshold
+	cfg.RiskVirusTotalKey = cmp.Or(req.RiskVirusTotalKey, prev.RiskVirusTotalKey)
+	cfg.RiskWebhookURL = cmp.Or(req.RiskWebhookURL, prev.RiskWebhookURL)
+	cfg.RiskWebhookSecret = cmp.Or(req.RiskWebhookSecret, prev.RiskWebhookSecret)
+	if req.RiskClearVirusTotalKey {
+		cfg.RiskVirusTotalKey = ""
+	}
+	if req.RiskClearWebhook {
+		cfg.RiskWebhookURL, cfg.RiskWebhookSecret = "", ""
+	}
+}
+
+// santaRiskChanged reports whether the risk check settings differ.
+func santaRiskChanged(prev, next santa.EnvConfig) bool {
+	return prev.RiskChecks != next.RiskChecks || prev.RiskVirusTotalKey != next.RiskVirusTotalKey ||
+		prev.RiskVirusTotalThreshold != next.RiskVirusTotalThreshold || prev.RiskWebhookURL != next.RiskWebhookURL ||
+		prev.RiskWebhookSecret != next.RiskWebhookSecret
 }
 
 // SantaConfigPutHandler — PUT /api/v1/santa/{env}/config
@@ -382,8 +431,21 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		GroupTags: req.GroupTags, GroupMatch: req.GroupMatch, RequireSecondAdmin: req.RequireSecondAdmin,
 		ApproverUsers: req.ApproverUsers, ApproverGroups: req.ApproverGroups,
 	}
+	prev, err := h.Santa.Config(env.ID)
+	if err != nil {
+		apiErrorResponse(w, "error getting config", http.StatusInternalServerError, err)
+		return
+	}
+	santaMergeRisk(&cfg, prev, req)
 	if err := santa.ValidateConfig(&cfg); err != nil {
 		apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
+		return
+	}
+	riskChanged := santaRiskChanged(prev, cfg)
+	// Risk settings hold credentials and decide what votes may allow, and the
+	// webhook makes osctrl-api call a URL: superusers only.
+	if riskChanged && !h.Users.HasRoleContext(r.Context(), user, users.RoleSuperuser) {
+		apiErrorResponse(w, "changing the risk checks requires superuser", http.StatusForbidden, fmt.Errorf("attempt by %s", user))
 		return
 	}
 	for _, gt := range cfg.GroupTags {
@@ -402,25 +464,33 @@ func (h *HandlersApi) SantaConfigPutHandler(w http.ResponseWriter, r *http.Reque
 		apiErrorResponse(w, err.Error(), code, fmt.Errorf("attempt by %s", user))
 		return
 	}
-	prev, err := h.Santa.Config(env.ID)
-	if err != nil {
-		apiErrorResponse(w, "error getting config", http.StatusInternalServerError, err)
-		return
-	}
 	if cfg.RequesterChannel != 0 && cfg.RequesterChannel != prev.RequesterChannel {
 		if err := h.santaCheckRequesterChannel(env, cfg.RequesterChannel); err != nil {
 			apiErrorResponse(w, "invalid config: "+err.Error(), http.StatusBadRequest, nil)
 			return
 		}
 	}
-	if risky := santaConfigRisks(prev, cfg); risky != "" && h.santaHeld(w, r, env, user, "update config"+risky, body) {
+	risky := santaConfigRisks(prev, cfg)
+	// A held change stores its body for the second admin to see, so it must not carry secrets.
+	if risky != "" && prev.RequireSecondAdmin && (req.RiskVirusTotalKey != "" || req.RiskWebhookURL != "" || req.RiskWebhookSecret != "") {
+		apiErrorResponse(w, "save the risk check secrets on their own, apart from changes that need a second admin", http.StatusBadRequest, nil)
+		return
+	}
+	if risky != "" && h.santaHeld(w, r, env, user, "update config"+risky, body) {
 		return
 	}
 	if err := h.Santa.SaveConfig(cfg); err != nil {
 		apiErrorResponse(w, "error saving config", http.StatusInternalServerError, err)
 		return
 	}
-	h.santaAudit(user, "update config", r, env)
+	action := "update config"
+	if riskChanged {
+		if err := h.Santa.ClearEnvRiskCache(env.ID); err != nil {
+			log.Err(err).Msg("santa: error clearing the environment's risk verdicts")
+		}
+		action += " risk_checks=" + cmp.Or(cfg.RiskChecks, "service")
+	}
+	h.santaAudit(user, action, r, env)
 	h.writeSantaConfig(w, env)
 }
 

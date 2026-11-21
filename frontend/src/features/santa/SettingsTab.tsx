@@ -150,10 +150,110 @@ function GroupTags({ env, value, onChange, match, onMatch }: {
   );
 }
 
+interface RiskSecrets {
+  vtKey: string;
+  webhookUrl: string;
+  webhookSecret: string;
+  clearVtKey: boolean;
+  clearWebhook: boolean;
+}
+
+const NO_SECRETS: RiskSecrets = { vtKey: '', webhookUrl: '', webhookSecret: '', clearVtKey: false, clearWebhook: false };
+
+/** Risk check settings. Secrets are write-only: the inputs start empty, and empty keeps what is stored. */
+function RiskChecks({ form, setForm, secrets, setSecrets }: {
+  form: SantaConfig; setForm: (f: SantaConfig) => void; secrets: RiskSecrets; setSecrets: (s: RiskSecrets) => void;
+}) {
+  const { t } = useTranslation();
+  const service = form.risk_service_checks ?? [];
+  const select = 'h-8 w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]';
+  const stored = t('santa.risk.stored');
+  return (
+    <fieldset>
+      <legend className="text-sm font-medium text-[color:var(--text-2)]">{t('santa.risk.settingsTitle')}</legend>
+      <p className="text-xs text-[color:var(--text-3)]">{t('santa.risk.settingsHint')}</p>
+      <div className="mt-2 sm:w-1/2">
+        <Label htmlFor="santa-risk-checks">{t('santa.risk.mode')}</Label>
+        <select
+          id="santa-risk-checks"
+          className={select}
+          value={form.risk_checks ?? ''}
+          onChange={(e) => setForm({ ...form, risk_checks: e.target.value as SantaConfig['risk_checks'] })}
+        >
+          <option value="">{service.length > 0 ? t('santa.risk.modeService', { names: service.join(', ') }) : t('santa.risk.modeServiceNone')}</option>
+          <option value="none">{t('santa.risk.modeNone')}</option>
+          <option value="env">{t('santa.risk.modeEnv')}</option>
+        </select>
+      </div>
+      {form.risk_checks === 'env' && (
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="santa-risk-vt-key">{t('santa.risk.vtKey')}</Label>
+            <Input
+              id="santa-risk-vt-key"
+              type="password"
+              autoComplete="off"
+              placeholder={form.risk_virustotal_key_set ? stored : undefined}
+              value={secrets.vtKey}
+              onChange={(e) => setSecrets({ ...secrets, vtKey: e.target.value.trim() })}
+            />
+            {form.risk_virustotal_key_set && (
+              <label className="mt-1 flex items-center gap-1.5 text-xs text-[color:var(--text-3)]">
+                <input type="checkbox" checked={secrets.clearVtKey} onChange={(e) => setSecrets({ ...secrets, clearVtKey: e.target.checked })} />
+                {t('santa.risk.clearKey')}
+              </label>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="santa-risk-vt-threshold">{t('santa.risk.vtThreshold')}</Label>
+            <Input
+              id="santa-risk-vt-threshold"
+              type="number"
+              min={0}
+              max={100}
+              value={form.risk_virustotal_threshold ?? 0}
+              onChange={(e) => setForm({ ...form, risk_virustotal_threshold: Math.max(0, Math.floor(Number(e.target.value)) || 0) })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="santa-risk-webhook-url">{t('santa.risk.webhookUrl')}</Label>
+            <Input
+              id="santa-risk-webhook-url"
+              type="password"
+              autoComplete="off"
+              placeholder={form.risk_webhook_url_set ? stored : 'https://'}
+              value={secrets.webhookUrl}
+              onChange={(e) => setSecrets({ ...secrets, webhookUrl: e.target.value.trim() })}
+            />
+            {form.risk_webhook_url_set && (
+              <label className="mt-1 flex items-center gap-1.5 text-xs text-[color:var(--text-3)]">
+                <input type="checkbox" checked={secrets.clearWebhook} onChange={(e) => setSecrets({ ...secrets, clearWebhook: e.target.checked })} />
+                {t('santa.risk.clearWebhook')}
+              </label>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="santa-risk-webhook-secret">{t('santa.risk.webhookSecret')}</Label>
+            <Input
+              id="santa-risk-webhook-secret"
+              type="password"
+              autoComplete="off"
+              placeholder={form.risk_webhook_secret_set ? stored : undefined}
+              value={secrets.webhookSecret}
+              onChange={(e) => setSecrets({ ...secrets, webhookSecret: e.target.value })}
+            />
+          </div>
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 function ConfigForm({ env, envId, config }: { env: string; envId?: number; config: SantaConfig }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [form, setForm] = useState(config);
+  const [secrets, setSecrets] = useState(NO_SECRETS);
   const save = useMutation({
     mutationFn: () =>
       putSantaConfig(env, {
@@ -185,8 +285,19 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         require_second_admin: !!form.require_second_admin,
         approver_users: names(form.approver_users),
         approver_groups: names(form.approver_groups),
+        risk_checks: form.risk_checks ?? '',
+        risk_virustotal_threshold: form.risk_virustotal_threshold ?? 0,
+        ...(secrets.vtKey && { risk_virustotal_key: secrets.vtKey }),
+        ...(secrets.webhookUrl && { risk_webhook_url: secrets.webhookUrl }),
+        ...(secrets.webhookSecret && { risk_webhook_secret: secrets.webhookSecret }),
+        risk_clear_virustotal_key: secrets.clearVtKey,
+        risk_clear_webhook: secrets.clearWebhook,
       }),
-    onSuccess: (saved) => qc.setQueryData(santaQueryKey(env, 'config'), saved),
+    onSuccess: (saved) => {
+      setSecrets(NO_SECRETS);
+      setForm(saved);
+      qc.setQueryData(santaQueryKey(env, 'config'), saved);
+    },
   });
 
   function submit(e: FormEvent) {
@@ -384,6 +495,7 @@ function ConfigForm({ env, envId, config }: { env: string; envId?: number; confi
         </div>
         <p className="mt-1 text-xs text-[color:var(--text-3)]">{t('santa.voteHint')}</p>
       </div>
+      <RiskChecks form={form} setForm={setForm} secrets={secrets} setSecrets={setSecrets} />
       <div className="sm:w-1/3">
         <Label htmlFor="santa-max-monitor-hours">{t('santa.maxMonitorHours')}</Label>
         <Input

@@ -9,6 +9,8 @@ import { BinaryModal } from './BinaryModal';
 const mockBinary = vi.fn<(env: string, sha256: string) => Promise<SantaBinary>>();
 const mockCheck = vi.fn<(env: string, sha256: string) => Promise<SantaRisk>>();
 const mockVoters = vi.fn<(env: string, sha256: string) => Promise<SantaVote[]>>(() => Promise.resolve([]));
+const mockSetOverride = vi.fn<(env: string, sha256: string, reason: string) => Promise<unknown>>(() => Promise.resolve({}));
+const mockDeleteOverride = vi.fn<(env: string, sha256: string) => Promise<unknown>>(() => Promise.resolve({}));
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -17,6 +19,8 @@ vi.mock('$/api/santa', async () => {
     getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256),
     checkSantaRisk: (env: string, sha256: string) => mockCheck(env, sha256),
     listSantaVoters: (env: string, sha256: string) => mockVoters(env, sha256),
+    setSantaRiskOverride: (env: string, sha256: string, reason: string) => mockSetOverride(env, sha256, reason),
+    deleteSantaRiskOverride: (env: string, sha256: string) => mockDeleteOverride(env, sha256),
     carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
   };
 });
@@ -111,6 +115,21 @@ describe('BinaryModal', () => {
     renderModal();
     expect(await screen.findByText('No signing chain reported.')).toBeInTheDocument();
     expect(screen.getByText(/No rule names this binary/)).toBeInTheDocument();
+  });
+
+  it('lets an admin allow votes despite a flagged verdict, and remove that', async () => {
+    const flagged = { verdict: 'flagged' as const, checks: [{ check: 'virustotal', verdict: 'flagged' as const, detail: '12 of 70', checked_at: '', expires_at: '' }] };
+    mockBinary
+      .mockResolvedValueOnce({ ...binary, risk: flagged })
+      .mockResolvedValue({ ...binary, risk: flagged, risk_override: { created_at: '', created_by: 'alice', reason: 'in-house tool' } });
+    const user = userEvent.setup();
+    renderModal();
+    await user.type(await screen.findByLabelText('Reason to allow votes anyway'), 'in-house tool');
+    await user.click(screen.getByRole('button', { name: 'Allow votes anyway' }));
+    expect(mockSetOverride).toHaveBeenCalledWith('dev', SHA, 'in-house tool');
+    expect(await screen.findByText('Votes allowed by alice: in-house tool')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(mockDeleteOverride).toHaveBeenCalledWith('dev', SHA);
   });
 
   it('hides risk checks when none is configured', async () => {

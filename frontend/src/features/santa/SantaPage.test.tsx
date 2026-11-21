@@ -377,6 +377,23 @@ describe('SantaPage', () => {
     await waitFor(() => expect(mockPutConfig).toHaveBeenCalledWith('dev', expect.objectContaining({ vote_local_threshold: 2, vote_global_threshold: 5, vote_expiry_days: 90 })));
   });
 
+  it('sets the environment\'s own risk checks without showing stored secrets', async () => {
+    mockConfig.mockResolvedValue({ ...config, risk_checks: 'env', risk_virustotal_key_set: true, risk_service_checks: ['virustotal'] });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('tab', { name: 'Settings' }));
+    const key = await screen.findByLabelText('VirusTotal API key');
+    expect(key).toHaveValue('');
+    expect(key).toHaveAttribute('placeholder', 'Stored; leave empty to keep');
+    expect(screen.getByRole('option', { name: 'Service-wide (virustotal)' })).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Webhook URL (https, public address)'), 'https://risk.example.com/check');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockPutConfig).toHaveBeenCalled());
+    const body = mockPutConfig.mock.calls.at(-1)![1] as Record<string, unknown>;
+    expect(body).toMatchObject({ risk_checks: 'env', risk_webhook_url: 'https://risk.example.com/check', risk_clear_virustotal_key: false });
+    expect(body).not.toHaveProperty('risk_virustotal_key');
+  });
+
   it('saves the file access override', async () => {
     const user = userEvent.setup();
     renderPage();
