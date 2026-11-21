@@ -7,6 +7,7 @@ import { ReportsTab } from './ReportsTab';
 
 const mockReport = vi.fn<(env: string, days: number) => Promise<SantaReport>>();
 const mockBinary = vi.fn<(env: string, sha256: string) => Promise<never>>();
+const mockSetMode = vi.fn<(env: string, body: { scope_value: string }) => Promise<unknown>>();
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -14,6 +15,7 @@ vi.mock('$/api/santa', async () => {
     ...actual,
     getSantaReport: (env: string, days: number) => mockReport(env, days),
     getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256),
+    setSantaModeOverride: (env: string, body: { scope_value: string }) => mockSetMode(env, body),
   };
 });
 
@@ -29,6 +31,10 @@ const report: SantaReport = {
   top_blocked: [{ sha256: SHA, file_name: 'tool', team_id: 'ABCDE12345', events: 9, machines: 4 }],
   top_blocked_teams: [{ team_id: 'ABCDE12345', events: 9, machines: 4, binaries: 2 }],
   coverage_gaps: null,
+  trend: [
+    { day: '2026-11-13T00:00:00Z', blocked: 0, would_block: 0, would_block_machines: 0 },
+    { day: '2026-11-14T00:00:00Z', blocked: 5, would_block: 3, would_block_machines: 2 },
+  ],
 };
 
 function renderTab() {
@@ -55,6 +61,41 @@ describe('ReportsTab', () => {
     const noisy = screen.getByText('noisy').closest('tr')!;
     expect(within(noisy).getByText('7')).toBeInTheDocument();
     expect(within(noisy).getByText('Not ready')).toBeInTheDocument();
+  });
+
+  it('applies LOCKDOWN to the selected ready machines and reports failures', async () => {
+    mockSetMode.mockReset().mockImplementation((_env, body) =>
+      body.scope_value === 'M-4' ? Promise.reject(new Error('forbidden')) : Promise.resolve({}));
+    mockReport.mockResolvedValue({
+      ...report,
+      lockdown_ready: [...report.lockdown_ready!, { machine_id: 'M-4', hostname: 'also', mode_source: 'env', last_sync_at: '2026-11-15T10:00:00Z', would_block: 0, ready: true }],
+    });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderTab();
+    await screen.findByText('quiet');
+    expect(screen.queryByRole('checkbox', { name: 'Select noisy' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Apply LOCKDOWN (0)' })).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: 'Select quiet' }));
+    await user.click(screen.getByRole('button', { name: 'Apply LOCKDOWN (1)' }));
+    await waitFor(() => expect(mockSetMode).toHaveBeenCalledWith('dev', { scope: 'node', scope_value: 'M-1', client_mode: 'LOCKDOWN' }));
+    expect(await screen.findByText('1 machines switched to LOCKDOWN.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Select all ready' }));
+    await user.click(screen.getByRole('button', { name: 'Apply LOCKDOWN (2)' }));
+    expect(await screen.findByText(/1 failed: M-4: forbidden/)).toBeInTheDocument();
+    expect(mockSetMode).toHaveBeenCalledTimes(3);
+    confirmSpy.mockRestore();
+  });
+
+  it('shows the trend and links the CSV export', async () => {
+    renderTab();
+    expect(await screen.findByText('Over time')).toBeInTheDocument();
+    const row = screen.getByText('2026-11-14').closest('tr')!;
+    expect(within(row).getByText('5')).toBeInTheDocument();
+    expect(within(row).getByText('2')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Export CSV' })).toHaveAttribute('href', '/api/v1/santa/dev/reports?days=14&format=csv');
+    expect(screen.getByRole('button', { name: 'Export JSON' })).toBeEnabled();
   });
 
   it('ranks blocked binaries and team IDs, and says when a list is empty', async () => {

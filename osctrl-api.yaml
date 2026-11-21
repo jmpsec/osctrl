@@ -9461,8 +9461,13 @@ paths:
         (executions LOCKDOWN would have blocked); a machine is ready with none
         and a sync in the window. Top blocked ranks BLOCK_* events by binary and
         by team ID. Coverage gaps rank the binaries most executed with no rule
-        deciding them (ALLOW_UNKNOWN or BLOCK_UNKNOWN). Each ranked list has at
-        most 20 entries. Event fields are written by Santa clients.
+        deciding them (ALLOW_UNKNOWN or BLOCK_UNKNOWN), leaving out those an
+        environment-wide rule now names by hash, team ID, signing ID or CDHash.
+        Each ranked list has at most 20 entries. Trend counts blocks, would-be
+        blocks and the machines with would-be blocks per UTC day of the window.
+        With format=csv the report is one CSV table whose list column names the
+        section of each row. Event fields are written by Santa clients; CSV
+        cells that start like a formula are prefixed with a quote.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -9475,11 +9480,19 @@ paths:
           name: days
           schema:
             type: integer
+        - description: json (default) or csv
+          in: query
+          name: format
+          schema:
+            type: string
       responses:
         "200":
           description: OK
           content:
             application/json:
+              schema:
+                $ref: "#/components/schemas/santa.Report"
+            text/csv:
               schema:
                 $ref: "#/components/schemas/santa.Report"
         "400":
@@ -9488,10 +9501,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
+            text/csv:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
         "403":
           description: Forbidden
           content:
             application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+            text/csv:
               schema:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
         "404":
@@ -9500,10 +9519,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
+            text/csv:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
         "503":
           description: Service Unavailable
           content:
             application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+            text/csv:
               schema:
                 $ref: "#/components/schemas/types.ApiErrorResponse"
       security:
@@ -16298,6 +16323,8 @@ components:
       type: object
     santa.RankedBinary:
       properties:
+        cd_hash:
+          type: string
         events:
           type: integer
         file_name:
@@ -16305,6 +16332,8 @@ components:
         machines:
           type: integer
         sha256:
+          type: string
+        signing_id:
           type: string
         team_id:
           type: string
@@ -16323,8 +16352,11 @@ components:
     santa.Report:
       properties:
         coverage_gaps:
-          description: Most executed binaries that no rule decided (ALLOW_UNKNOWN or
-            BLOCK_UNKNOWN)
+          description: >-
+            Most executed binaries that no rule decided (ALLOW_UNKNOWN or
+            BLOCK_UNKNOWN),
+
+            leaving out those an environment-wide rule now names
           items:
             $ref: "#/components/schemas/santa.RankedBinary"
           type: array
@@ -16345,6 +16377,11 @@ components:
         top_blocked_teams:
           items:
             $ref: "#/components/schemas/santa.RankedTeam"
+          type: array
+        trend:
+          description: One entry per UTC day of the window, oldest first
+          items:
+            $ref: "#/components/schemas/santa.TrendDay"
           type: array
       type: object
     santa.Request:
@@ -16484,6 +16521,18 @@ components:
           type: string
         scope_value:
           type: string
+      type: object
+    santa.TrendDay:
+      properties:
+        blocked:
+          type: integer
+        day:
+          type: string
+        would_block:
+          description: ALLOW_UNKNOWN events, and the machines that had any
+          type: integer
+        would_block_machines:
+          type: integer
       type: object
     santa.Verdict:
       properties:

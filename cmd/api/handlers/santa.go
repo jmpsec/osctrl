@@ -1102,11 +1102,13 @@ func (h *HandlersApi) SantaBinaryHandler(w http.ResponseWriter, r *http.Request)
 
 // SantaReportHandler — GET /api/v1/santa/{env}/reports
 // @Summary Santa reports: ready for lockdown, top blocked, rule coverage gaps
-// @Description Requires environment admin. Computed from the events osctrl received in the last days days. Ready for lockdown lists the machines assigned MONITOR at their last preflight with their ALLOW_UNKNOWN count (executions LOCKDOWN would have blocked); a machine is ready with none and a sync in the window. Top blocked ranks BLOCK_* events by binary and by team ID. Coverage gaps rank the binaries most executed with no rule deciding them (ALLOW_UNKNOWN or BLOCK_UNKNOWN). Each ranked list has at most 20 entries. Event fields are written by Santa clients.
+// @Description Requires environment admin. Computed from the events osctrl received in the last days days. Ready for lockdown lists the machines assigned MONITOR at their last preflight with their ALLOW_UNKNOWN count (executions LOCKDOWN would have blocked); a machine is ready with none and a sync in the window. Top blocked ranks BLOCK_* events by binary and by team ID. Coverage gaps rank the binaries most executed with no rule deciding them (ALLOW_UNKNOWN or BLOCK_UNKNOWN), leaving out those an environment-wide rule now names by hash, team ID, signing ID or CDHash. Each ranked list has at most 20 entries. Trend counts blocks, would-be blocks and the machines with would-be blocks per UTC day of the window. With format=csv the report is one CSV table whose list column names the section of each row. Event fields are written by Santa clients; CSV cells that start like a formula are prefixed with a quote.
 // @Tags santa
 // @Produce json
+// @Produce text/csv
 // @Param env path string true "Environment name or UUID"
 // @Param days query int false "Window in days, 1 to 30 (default 14)"
+// @Param format query string false "json (default) or csv"
 // @Success 200 {object} santa.Report
 // @Failure 400 {object} types.ApiErrorResponse
 // @Failure 403 {object} types.ApiErrorResponse
@@ -1135,6 +1137,14 @@ func (h *HandlersApi) SantaReportHandler(w http.ResponseWriter, r *http.Request)
 		return
 	case err != nil:
 		apiErrorResponse(w, "error computing report", http.StatusInternalServerError, err)
+		return
+	}
+	if r.URL.Query().Get("format") == "csv" {
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fmt.Sprintf("santa-report-%s-%dd.csv", env.Name, days)))
+		if err := rep.WriteCSV(w); err != nil {
+			log.Err(err).Msg("santa: error writing report CSV")
+		}
 		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rep)
