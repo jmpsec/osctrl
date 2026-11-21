@@ -2,7 +2,12 @@ package santa
 
 import (
 	"cmp"
+	"encoding/csv"
+	"errors"
+	"fmt"
+	"io"
 	"slices"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -67,16 +72,22 @@ type ImportResult struct {
 	// True when the import was applied (also when there was nothing new to store);
 	// false on a dry run and when conflicts or invalid rules blocked it
 	Applied bool `json:"applied"`
+	// True when conflicts are skipped instead of blocking: the clean rules are
+	// stored and the conflicts are listed, not imported
+	ConflictsSkipped bool `json:"conflicts_skipped"`
 }
 
 // Blocked reports whether the import has rules that stop it from being applied.
-func (r ImportResult) Blocked() bool { return len(r.Conflicts) > 0 || len(r.Invalid) > 0 }
+func (r ImportResult) Blocked() bool {
+	return len(r.Invalid) > 0 || (len(r.Conflicts) > 0 && !r.ConflictsSkipped)
+}
 
 // ImportRules classifies specs against the environment's rules and, when apply
 // is set and nothing is invalid or conflicting, creates the new ones in one
-// transaction. Existing rules are never modified.
-func (m *Manager) ImportRules(envID uint, user string, specs []RuleSpec, apply bool) (ImportResult, error) {
-	res := ImportResult{Conflicts: []ImportIssue{}, Invalid: []ImportIssue{}}
+// transaction. With skipConflicts, conflicts are left out instead of blocking.
+// Existing rules are never modified.
+func (m *Manager) ImportRules(envID uint, user string, specs []RuleSpec, apply, skipConflicts bool) (ImportResult, error) {
+	res := ImportResult{Conflicts: []ImportIssue{}, Invalid: []ImportIssue{}, ConflictsSkipped: skipConflicts}
 	err := m.DB.Transaction(func(tx *gorm.DB) error {
 		var existing []Rule
 		if err := tx.Where("environment_id = ?", envID).Find(&existing).Error; err != nil {
@@ -122,4 +133,78 @@ func (m *Manager) ImportRules(envID uint, user string, specs []RuleSpec, apply b
 		return tx.CreateInBatches(&create, 200).Error
 	})
 	return res, err
+}
+
+// ruleCSVColumns are the CSV columns of a rule export, in RuleSpec order.
+var ruleCSVColumns = []string{"identifier", "rule_type", "policy", "cel_expr", "custom_msg", "custom_url", "scope", "scope_value"}
+
+func (s RuleSpec) csvRow() []string {
+	return []string{s.Identifier, s.RuleType, s.Policy, s.CELExpr, s.CustomMsg, s.CustomURL, s.Scope, s.ScopeValue}
+}
+
+// WriteRulesCSV writes specs as CSV with a header row. Cells that start like a
+// spreadsheet formula are prefixed with a quote, which ReadRulesCSV removes.
+func WriteRulesCSV(w io.Writer, specs []RuleSpec) error {
+	cw := csv.NewWriter(w)
+	_ = cw.Write(ruleCSVColumns)
+	for _, s := range specs {
+		row := s.csvRow()
+		for i := range row {
+			row[i] = csvCell(row[i])
+		}
+		_ = cw.Write(row)
+	}
+	cw.Flush()
+	return cw.Error()
+}
+
+// ReadRulesCSV reads rules from CSV with a header row naming the columns, in
+// any order; unknown columns are ignored and missing ones are empty.
+func ReadRulesCSV(r io.Reader) ([]RuleSpec, error) {
+	cr := csv.NewReader(r)
+	header, err := cr.Read()
+	if errors.Is(err, io.EOF) {
+		return nil, errors.New("empty CSV: expected a header row")
+	}
+	if err != nil {
+		return nil, err
+	}
+	col := map[string]int{}
+	for i, h := range header {
+		col[strings.ToLower(strings.TrimSpace(strings.TrimPrefix(h, "\ufeff")))] = i
+	}
+	for _, c := range []string{"identifier", "rule_type", "policy"} {
+		if _, ok := col[c]; !ok {
+			return nil, fmt.Errorf("CSV header is missing the %s column", c)
+		}
+	}
+	specs := []RuleSpec{}
+	for {
+		row, err := cr.Read()
+		if errors.Is(err, io.EOF) {
+			return specs, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		get := func(name string) string {
+			i, ok := col[name]
+			if !ok {
+				return ""
+			}
+			return uncsvCell(row[i])
+		}
+		specs = append(specs, RuleSpec{
+			Identifier: get("identifier"), RuleType: get("rule_type"), Policy: get("policy"), CELExpr: get("cel_expr"),
+			CustomMsg: get("custom_msg"), CustomURL: get("custom_url"), Scope: get("scope"), ScopeValue: get("scope_value"),
+		})
+	}
+}
+
+// uncsvCell undoes csvCell.
+func uncsvCell(s string) string {
+	if len(s) > 1 && s[0] == '\'' && strings.ContainsRune("=+-@\t\r", rune(s[1])) {
+		return s[1:]
+	}
+	return s
 }

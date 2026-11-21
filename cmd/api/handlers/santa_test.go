@@ -565,3 +565,56 @@ func TestFeaturesSanta(t *testing.T) {
 	h.Santa = nil
 	require.Equal(t, false, get()["santa"])
 }
+
+func TestSantaRulesImportCSVAndSkip(t *testing.T) {
+	h, db, envA, _ := setupSantaHandlers(t)
+	p := map[string]string{"env": envA.Name}
+	require.Equal(t, http.StatusCreated, santaDo(h.SantaRuleCreateHandler, "POST", "alice", validRule, p).Code)
+	csvImport := func(url, body string) (int, string, santa.ImportResult) {
+		req := httptest.NewRequest("POST", url, strings.NewReader(body))
+		req.Header.Set("Content-Type", "text/csv; charset=utf-8")
+		req.SetPathValue("env", envA.Name)
+		req = req.WithContext(context.WithValue(req.Context(), ContextKey(contextAPI), ContextValue{ctxUser: "alice"}))
+		rr := httptest.NewRecorder()
+		h.SantaRulesImportHandler(rr, req)
+		var res santa.ImportResult
+		if rr.Code == http.StatusOK {
+			require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &res))
+		}
+		return rr.Code, rr.Body.String(), res
+	}
+
+	code, body, _ := csvImport("/x", "identifier,rule_type\nX,TEAMID\n")
+	require.Equal(t, http.StatusBadRequest, code)
+	require.Contains(t, body, "missing the policy column")
+
+	// one clean rule and one conflicting with the existing ALLOWLIST rule
+	rows := "identifier,rule_type,policy,scope\nABCDE12345,TEAMID,ALLOWLIST,env\nEQHXZ8M8AV,TEAMID,BLOCKLIST,env\n"
+	code, _, res := csvImport("/x", rows)
+	require.Equal(t, http.StatusOK, code)
+	require.False(t, res.Applied, "conflicts block without skip_conflicts")
+
+	code, _, res = csvImport("/x?skip_conflicts=true", rows)
+	require.Equal(t, http.StatusOK, code)
+	require.True(t, res.Applied)
+	require.Equal(t, 1, res.New)
+	require.Len(t, res.Conflicts, 1)
+	var n int64
+	require.NoError(t, db.Model(&santa.Rule{}).Where("environment_id = ?", envA.ID).Count(&n).Error)
+	require.EqualValues(t, 2, n)
+	var lines []string
+	require.NoError(t, db.Model(&auditlog.AuditLog{}).Where("line LIKE ?", "%santa: import%").Pluck("line", &lines).Error)
+	require.Len(t, lines, 1)
+	require.Contains(t, lines[0], "santa: import rules new=1 duplicate=0 conflicts_skipped=1")
+
+	// the CSV export reads back as duplicates
+	rr := santaDoURL(h.SantaRulesHandler, "GET", "/x?format=csv", "alice", "", p)
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.Equal(t, "text/csv; charset=utf-8", rr.Header().Get("Content-Type"))
+	require.Contains(t, rr.Header().Get("Content-Disposition"), ".csv")
+	require.True(t, strings.HasPrefix(rr.Body.String(), "identifier,rule_type,policy,"))
+	code, _, res = csvImport("/x?dry_run=true", rr.Body.String())
+	require.Equal(t, http.StatusOK, code)
+	require.Equal(t, 2, res.Duplicate)
+	require.Zero(t, res.New)
+}

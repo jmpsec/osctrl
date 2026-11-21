@@ -20,7 +20,7 @@ const mockMachines = vi.fn<() => Promise<SantaMachine[]>>();
 const mockConfig = vi.fn<() => Promise<SantaConfig>>();
 const mockRotate = vi.fn<() => Promise<{ token: string }>>();
 const mockPutConfig = vi.fn<(env: string, body: unknown) => Promise<SantaConfig>>();
-const mockImport = vi.fn<(env: string, rules: unknown[], dryRun: boolean) => Promise<SantaImportResult>>();
+const mockImport = vi.fn<(env: string, rules: unknown[] | string, dryRun: boolean, skipConflicts?: boolean) => Promise<SantaImportResult>>();
 const mockModes = vi.fn<() => Promise<SantaModeOverride[]>>();
 const mockSetMode = vi.fn<(env: string, body: unknown) => Promise<unknown>>();
 const mockDeleteMode = vi.fn<(env: string, id: number) => Promise<unknown>>();
@@ -37,7 +37,7 @@ vi.mock('$/api/santa', async () => {
     deleteSantaRule: (env: string, id: number) => mockDelete(env, id),
     createSantaRule: (env: string, body: SantaRuleInput) => mockCreate(env, body),
     updateSantaRule: (env: string, id: number, body: SantaRuleInput) => mockUpdate(env, id, body),
-    importSantaRules: (env: string, rules: unknown[], dryRun: boolean) => mockImport(env, rules, dryRun),
+    importSantaRules: (env: string, rules: unknown[] | string, dryRun: boolean, skipConflicts?: boolean) => mockImport(env, rules, dryRun, skipConflicts),
     listSantaEvents: (...args: unknown[]) => mockEvents(...args),
     listSantaMachines: () => mockMachines(),
     getSantaConfig: () => mockConfig(),
@@ -169,23 +169,23 @@ describe('SantaPage', () => {
   it('previews an import and applies it only when confirmed', async () => {
     const spec = { identifier: 'EQHXZ8M8AV', rule_type: 'TEAMID', policy: 'ALLOWLIST', scope: 'env' };
     mockImport.mockImplementation((_env, _rules, dryRun) =>
-      Promise.resolve({ new: 1, duplicate: 2, conflicts: [], invalid: [], applied: !dryRun }));
+      Promise.resolve({ new: 1, duplicate: 2, conflicts: [], invalid: [], applied: !dryRun, conflicts_skipped: false }));
     const user = userEvent.setup();
     renderPage();
     await screen.findByText(rule.identifier);
     await user.upload(screen.getByLabelText('Import rules'), new File([JSON.stringify([spec])], 'rules.json', { type: 'application/json' }));
     const dialog = await screen.findByRole('dialog');
-    expect(mockImport).toHaveBeenCalledWith('dev', [spec], true);
+    expect(mockImport).toHaveBeenCalledWith('dev', [spec], true, undefined);
     expect(within(dialog).getByText('Already present (skipped)').nextSibling).toHaveTextContent('2');
     expect(mockImport).toHaveBeenCalledTimes(1);
     await user.click(within(dialog).getByRole('button', { name: 'Import 1 rules' }));
-    await waitFor(() => expect(mockImport).toHaveBeenCalledWith('dev', [spec], false));
+    await waitFor(() => expect(mockImport).toHaveBeenCalledWith('dev', [spec], false, false));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
   it('blocks an import with conflicting rules and rejects a file that is not a rule list', async () => {
     mockImport.mockResolvedValue({
-      new: 1, duplicate: 0, applied: false, invalid: [],
+      new: 1, duplicate: 0, applied: false, invalid: [], conflicts_skipped: false,
       conflicts: [{ index: 0, rule: { identifier: 'EQHXZ8M8AV', rule_type: 'TEAMID' }, reason: 'already has policy BLOCKLIST' }],
     });
     const user = userEvent.setup();
@@ -202,6 +202,28 @@ describe('SantaPage', () => {
     expect(within(dialog).getByRole('button', { name: 'Import 1 rules' })).toBeDisabled();
   });
 
+  it('imports a CSV file, skipping conflicts when asked', async () => {
+    const csv = 'identifier,rule_type,policy,scope\nABCDE12345,TEAMID,ALLOWLIST,env\nEQHXZ8M8AV,TEAMID,BLOCKLIST,env\n';
+    mockImport.mockImplementation((_env, _rules, dryRun, skip) => Promise.resolve({
+      new: 1, duplicate: 0, invalid: [], applied: !dryRun && !!skip, conflicts_skipped: !!skip,
+      conflicts: [{ index: 1, rule: { identifier: 'EQHXZ8M8AV', rule_type: 'TEAMID' }, reason: 'already has policy ALLOWLIST' }],
+    }));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText(rule.identifier);
+    await user.upload(screen.getByLabelText('Import rules'), new File([csv], 'rules.csv', { type: 'text/csv' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(mockImport).toHaveBeenCalledWith('dev', csv, true, undefined);
+    const apply = within(dialog).getByRole('button', { name: 'Import 1 rules' });
+    expect(apply).toBeDisabled();
+    await user.click(within(dialog).getByLabelText('Skip the 1 conflicting rules and import the rest'));
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
+    await user.click(apply);
+    await waitFor(() => expect(mockImport).toHaveBeenCalledWith('dev', csv, false, true));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByRole('link', { name: 'Export CSV' })).toHaveAttribute('href', expect.stringContaining('/rules?format=csv'));
+  });
+
   it('exports the rules as a JSON file without server fields', async () => {
     const blobs: Blob[] = [];
     const create = vi.fn((b: Blob) => { blobs.push(b); return 'blob:x'; });
@@ -210,7 +232,7 @@ describe('SantaPage', () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText(rule.identifier);
-    await user.click(screen.getByRole('button', { name: 'Export' }));
+    await user.click(screen.getByRole('button', { name: 'Export JSON' }));
     expect(click).toHaveBeenCalled();
     const { id: _id, created_at: _at, created_by: _by, ...spec } = rule;
     expect(JSON.parse(await blobs[0].text())).toEqual([spec]);

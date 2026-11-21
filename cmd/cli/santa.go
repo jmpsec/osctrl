@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/urfave/cli/v3"
@@ -64,12 +67,22 @@ func santaRulesExport(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 	}
-	raw, err := json.MarshalIndent(santa.ExportRules(rules), "", "  ")
-	if err != nil {
-		return fmt.Errorf("error marshaling - %w", err)
+	file := cmd.String("file")
+	var raw []byte
+	if strings.EqualFold(filepath.Ext(file), ".csv") {
+		var buf bytes.Buffer
+		if err := santa.WriteRulesCSV(&buf, santa.ExportRules(rules)); err != nil {
+			return fmt.Errorf("error writing CSV - %w", err)
+		}
+		raw = buf.Bytes()
+	} else {
+		var err error
+		if raw, err = json.MarshalIndent(santa.ExportRules(rules), "", "  "); err != nil {
+			return fmt.Errorf("error marshaling - %w", err)
+		}
+		raw = append(raw, '\n')
 	}
-	raw = append(raw, '\n')
-	if file := cmd.String("file"); file != "" {
+	if file != "" {
 		if err := os.WriteFile(file, raw, 0o644); err != nil { //nolint:gosec // rules are not secret
 			return fmt.Errorf("error writing file - %w", err)
 		}
@@ -83,7 +96,7 @@ func santaRulesExport(ctx context.Context, cmd *cli.Command) error {
 }
 
 func santaRulesImport(ctx context.Context, cmd *cli.Command) error {
-	env, file, dryRun := cmd.String("environment"), cmd.String("file"), cmd.Bool("dry-run")
+	env, file, dryRun, skip := cmd.String("environment"), cmd.String("file"), cmd.Bool("dry-run"), cmd.Bool("skip-conflicts")
 	if env == "" {
 		return errors.New("environment is required")
 	}
@@ -102,7 +115,11 @@ func santaRulesImport(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("error reading file - %w", err)
 	}
 	var specs []santa.RuleSpec
-	if err := json.Unmarshal(raw, &specs); err != nil {
+	if strings.EqualFold(filepath.Ext(file), ".csv") {
+		if specs, err = santa.ReadRulesCSV(bytes.NewReader(raw)); err != nil {
+			return fmt.Errorf("file must be CSV rules with a header row - %w", err)
+		}
+	} else if err := json.Unmarshal(raw, &specs); err != nil {
 		return fmt.Errorf("file must be a JSON list of rules - %w", err)
 	}
 	var res santa.ImportResult
@@ -115,14 +132,18 @@ func santaRulesImport(ctx context.Context, cmd *cli.Command) error {
 		if err != nil {
 			return fmt.Errorf("error getting environment - %w", err)
 		}
-		if res, err = mgr.ImportRules(e.ID, getShellUsername(), specs, !dryRun); err != nil {
+		if res, err = mgr.ImportRules(e.ID, getShellUsername(), specs, !dryRun, skip); err != nil {
 			return fmt.Errorf("error importing rules - %w", err)
 		}
 		if res.Applied {
-			auditlogsmgr.EnvAction(getShellUsername(), fmt.Sprintf("santa: import rules new=%d duplicate=%d", res.New, res.Duplicate), "CLI", e.ID)
+			line := fmt.Sprintf("santa: import rules new=%d duplicate=%d", res.New, res.Duplicate)
+			if len(res.Conflicts) > 0 {
+				line += fmt.Sprintf(" conflicts_skipped=%d", len(res.Conflicts))
+			}
+			auditlogsmgr.EnvAction(getShellUsername(), line, "CLI", e.ID)
 		}
 	} else if apiFlag {
-		if res, err = osctrlAPI.ImportSantaRules(env, specs, dryRun); err != nil {
+		if res, err = osctrlAPI.ImportSantaRules(env, specs, dryRun, skip); err != nil {
 			return err
 		}
 	}

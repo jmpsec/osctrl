@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"bytes"
 	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"slices"
 	"strconv"
@@ -591,9 +593,12 @@ func (h *HandlersApi) SantaTokenHandler(w http.ResponseWriter, r *http.Request) 
 
 // SantaRulesHandler — GET /api/v1/santa/{env}/rules
 // @Summary List Santa rules
+// @Description With format=csv the rules are an export: only the portable fields, sorted, one CSV row per rule, which the import reads back. CSV cells that start like a formula are prefixed with a quote.
 // @Tags santa
 // @Produce json
+// @Produce text/csv
 // @Param env path string true "Environment name or UUID"
+// @Param format query string false "json (default) or csv"
 // @Success 200 {array} santa.Rule
 // @Failure 403 {object} types.ApiErrorResponse
 // @Failure 404 {object} types.ApiErrorResponse
@@ -608,6 +613,14 @@ func (h *HandlersApi) SantaRulesHandler(w http.ResponseWriter, r *http.Request) 
 	rules, err := h.Santa.Rules(env.ID)
 	if err != nil {
 		apiErrorResponse(w, "error listing rules", http.StatusInternalServerError, err)
+		return
+	}
+	if r.URL.Query().Get("format") == "csv" {
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", "santa-rules-"+env.Name+".csv"))
+		if err := santa.WriteRulesCSV(w, santa.ExportRules(rules)); err != nil {
+			log.Err(err).Msg("santa: error writing rules CSV")
+		}
 		return
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, rules)
@@ -795,12 +808,14 @@ func (h *HandlersApi) SantaRuleDeleteHandler(w http.ResponseWriter, r *http.Requ
 
 // SantaRulesImportHandler — POST /api/v1/santa/{env}/rules/import
 // @Summary Import Santa rules in bulk
-// @Description Classifies each rule as new, duplicate, conflicting or invalid. New rules are stored in one transaction, and only when no rule is conflicting or invalid; existing rules are never changed. With dry_run=true nothing is stored. The body is limited to 4 MiB. The export format is the list of rules from GET rules; extra fields such as id are ignored.
+// @Description Classifies each rule as new, duplicate, conflicting or invalid. New rules are stored in one transaction, and only when no rule is invalid and, unless skip_conflicts=true, none is conflicting; with skip_conflicts the conflicts are listed and left out. Existing rules are never changed. With dry_run=true nothing is stored. The body is a JSON list of rules, or CSV with a header row (Content-Type text/csv, the format of GET rules?format=csv), limited to 4 MiB. Extra JSON fields and CSV columns such as id are ignored.
 // @Tags santa
 // @Accept json
+// @Accept text/csv
 // @Produce json
 // @Param env path string true "Environment name or UUID"
 // @Param dry_run query bool false "Report only, store nothing"
+// @Param skip_conflicts query bool false "Store the clean rules and list the conflicts instead of blocking"
 // @Param body body []santa.RuleSpec true "Rules"
 // @Success 200 {object} santa.ImportResult
 // @Success 202 {object} PendingChangeResponse "Held for a second admin (require_second_admin)"
@@ -816,12 +831,22 @@ func (h *HandlersApi) SantaRulesImportHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 	var specs []santa.RuleSpec
-	body, err := readJSONBody(w, r, santaImportMaxBody, &specs)
-	if err != nil {
+	var body []byte
+	var err error
+	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt == "text/csv" {
+		if body, err = io.ReadAll(http.MaxBytesReader(w, r.Body, santaImportMaxBody)); err == nil {
+			specs, err = santa.ReadRulesCSV(bytes.NewReader(body))
+		}
+		if err != nil {
+			apiErrorResponse(w, "invalid request: expected CSV rules with a header row, of at most 4 MiB: "+err.Error(), http.StatusBadRequest, nil)
+			return
+		}
+	} else if body, err = readJSONBody(w, r, santaImportMaxBody, &specs); err != nil {
 		apiErrorResponse(w, "invalid request: expected a JSON list of rules of at most 4 MiB", http.StatusBadRequest, err)
 		return
 	}
 	dryRun, _ := strconv.ParseBool(r.URL.Query().Get("dry_run"))
+	skip, _ := strconv.ParseBool(r.URL.Query().Get("skip_conflicts"))
 	if !dryRun {
 		allow := 0
 		for _, s := range specs {
@@ -829,17 +854,25 @@ func (h *HandlersApi) SantaRulesImportHandler(w http.ResponseWriter, r *http.Req
 				allow++
 			}
 		}
-		if allow > 0 && h.santaHeld(w, r, env, user, fmt.Sprintf("import rules count=%d env_allow=%d", len(specs), allow), body) {
+		action := fmt.Sprintf("import rules count=%d env_allow=%d", len(specs), allow)
+		if skip {
+			action += " skip_conflicts"
+		}
+		if allow > 0 && h.santaHeld(w, r, env, user, action, body) {
 			return
 		}
 	}
-	res, err := h.Santa.ImportRules(env.ID, user, specs, !dryRun)
+	res, err := h.Santa.ImportRules(env.ID, user, specs, !dryRun, skip)
 	if err != nil {
 		apiErrorResponse(w, "error importing rules", http.StatusInternalServerError, err)
 		return
 	}
 	if res.Applied {
-		h.santaAudit(user, fmt.Sprintf("import rules new=%d duplicate=%d", res.New, res.Duplicate), r, env)
+		line := fmt.Sprintf("import rules new=%d duplicate=%d", res.New, res.Duplicate)
+		if len(res.Conflicts) > 0 {
+			line += fmt.Sprintf(" conflicts_skipped=%d", len(res.Conflicts))
+		}
+		h.santaAudit(user, line, r, env)
 	}
 	utils.HTTPResponse(w, utils.JSONApplicationUTF8, http.StatusOK, res)
 }
