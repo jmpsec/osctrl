@@ -8777,10 +8777,10 @@ paths:
         - santa
   "/api/v1/santa/{env}/binaries/{sha256}/risk":
     post:
-      description: Requires environment admin. Runs every configured risk check whose
-        cached verdict is missing or expired (VirusTotal, custom webhook) and
-        returns the result. Only the hash is sent. 404 when no risk check is
-        configured.
+      description: Requires environment admin. Runs every risk check of the
+        environment whose cached verdict is missing or expired (VirusTotal,
+        custom webhook) and returns the result. Only the hash is sent. 404 when
+        the environment runs no risk check.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -8828,6 +8828,116 @@ paths:
       security:
         - ApiKeyAuth: []
       summary: Run the Santa risk checks for a binary
+      tags:
+        - santa
+  "/api/v1/santa/{env}/binaries/{sha256}/risk-override":
+    delete:
+      description: Requires environment admin. Votes for the file run the risk checks
+        again. Audited.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: SHA-256 of the file
+          in: path
+          name: sha256
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Remove the voting override of a file's risk verdict
+      tags:
+        - santa
+    put:
+      description: Requires environment admin. Votes for the file skip the risk checks
+        in this environment; the verdict itself is unchanged, and approvals keep
+        their own per-decision override. Audited, and held for a second admin
+        when the environment requires one. Replaces an existing override.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: SHA-256 of the file
+          in: path
+          name: sha256
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/handlers.SantaRiskOverrideRequest"
+        description: Reason
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/santa.RiskOverride"
+        "202":
+          description: Held for a second admin (require_second_admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.PendingChangeResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Let votes allow a file despite its risk verdict
       tags:
         - santa
   "/api/v1/santa/{env}/config":
@@ -15115,6 +15225,32 @@ components:
             admin approves them (see /api/v1/changes). Turning it off is one of
             them
           type: boolean
+        risk_checks:
+          description: "\"\" runs the service-wide risk checks, \"none\" none, \"env\" the
+            environment's own. Changing any risk field requires superuser"
+          type: string
+        risk_clear_virustotal_key:
+          description: Remove the stored VirusTotal key
+          type: boolean
+        risk_clear_webhook:
+          description: Remove the stored webhook URL and secret
+          type: boolean
+        risk_virustotal_key:
+          description: The environment's VirusTotal API key; empty keeps the stored one.
+            Never returned
+          type: string
+        risk_virustotal_threshold:
+          description: Engines that must flag a file for the environment's VirusTotal
+            check, at most 100; 0 is 1
+          type: integer
+        risk_webhook_secret:
+          description: HMAC secret of the environment's risk webhook; empty keeps the
+            stored one. Never returned
+          type: string
+        risk_webhook_url:
+          description: The environment's risk webhook, an https URL to a public address;
+            empty keeps the stored one. Never returned
+          type: string
         vote_expiry_days:
           description: Votes older than this many days are deleted, at most 3650; 0 keeps
             them
@@ -15253,6 +15389,26 @@ components:
           type: integer
         require_second_admin:
           description: Changes that weaken enforcement wait for a second environment admin
+          type: boolean
+        risk_checks:
+          description: >-
+            Risk checks of the environment: "" runs the service-wide checks,
+            "none"
+
+            runs none, "env" runs the environment's own checks below
+          type: string
+        risk_service_checks:
+          description: Names of the service-wide risk checks (risk_checks "")
+          items:
+            type: string
+          type: array
+        risk_virustotal_key_set:
+          type: boolean
+        risk_virustotal_threshold:
+          type: integer
+        risk_webhook_secret_set:
+          type: boolean
+        risk_webhook_url_set:
           type: boolean
         token_set:
           type: boolean
@@ -15433,6 +15589,12 @@ components:
           type: string
         scope_value:
           description: Tag name, with scope tag
+          type: string
+      type: object
+    handlers.SantaRiskOverrideRequest:
+      properties:
+        reason:
+          description: Why votes may allow this file, at most 1000 characters
           type: string
       type: object
     handlers.SantaRuleRequest:
@@ -16026,7 +16188,11 @@ components:
         risk:
           allOf:
             - $ref: "#/components/schemas/santa.Risk"
-          description: Cached risk verdict, when risk checks are on
+          description: Cached risk verdict, when risk checks are on in the environment
+        risk_override:
+          allOf:
+            - $ref: "#/components/schemas/santa.RiskOverride"
+          description: An admin let votes go ahead despite the verdict
         rules:
           description: Rules of any scope naming the file, its team ID, signing ID, CDHash
             or leaf certificate
@@ -16468,6 +16634,15 @@ components:
             found it
 
             clean, unknown when none knows it, unchecked when nothing is cached
+          type: string
+      type: object
+    santa.RiskOverride:
+      properties:
+        created_at:
+          type: string
+        created_by:
+          type: string
+        reason:
           type: string
       type: object
     santa.Rule:

@@ -171,7 +171,7 @@ func (h *HandlersApi) SantaRequestCreateHandler(w http.ResponseWriter, r *http.R
 			h.santaAudit(user, fmt.Sprintf("request temporary MONITOR machine=%s hours=%d", req.MachineID, req.MonitorHours), r, env)
 		} else {
 			h.santaAudit(user, "request approval sha256="+req.FileSHA256+" machine="+req.MachineID, r, env)
-			h.santaWarmRisk(req.FileSHA256)
+			h.santaWarmRisk(env.ID, req.FileSHA256)
 		}
 		h.santaNotify(env, req)
 	}

@@ -75,11 +75,30 @@ export interface SantaConfig {
   /** osctrl users and IdP groups who decide approval requests without being environment admins. */
   approver_users?: string[];
   approver_groups?: string[];
+  /** '' runs the service-wide risk checks, 'none' none, 'env' the environment's own; changing it requires superuser. */
+  risk_checks?: '' | 'none' | 'env';
+  /** Engines that must flag a file for the environment's VirusTotal check; 0 is 1. */
+  risk_virustotal_threshold?: number;
+  /** Risk check secrets are never returned, only whether they are set. */
+  risk_virustotal_key_set?: boolean;
+  risk_webhook_url_set?: boolean;
+  risk_webhook_secret_set?: boolean;
+  /** Names of the service-wide risk checks. */
+  risk_service_checks?: string[];
   /** The token itself is never returned, only whether one exists. */
   token_set: boolean;
 }
 
-export type SantaConfigUpdate = Omit<SantaConfig, 'token_set'>;
+export type SantaConfigUpdate = Omit<
+  SantaConfig, 'token_set' | 'risk_virustotal_key_set' | 'risk_webhook_url_set' | 'risk_webhook_secret_set' | 'risk_service_checks'
+> & {
+  /** Write-only; omitted or empty keeps the stored value. */
+  risk_virustotal_key?: string;
+  risk_webhook_url?: string;
+  risk_webhook_secret?: string;
+  risk_clear_virustotal_key?: boolean;
+  risk_clear_webhook?: boolean;
+};
 
 export interface SantaRuleInput {
   identifier: string;
@@ -208,6 +227,8 @@ export interface SantaBinary {
   rules: SantaRule[] | null;
   /** Cached verdict; absent when no risk check is configured. */
   risk?: SantaRisk;
+  /** An admin let votes go ahead despite the verdict. */
+  risk_override?: { created_at: string; created_by: string; reason: string };
   /** Newest event of the file, to retrieve it from the machine that last ran it. */
   latest_event_id: number;
   latest_machine_id: string;
@@ -440,6 +461,16 @@ export interface SantaRisk {
 /** POST /api/v1/santa/{env}/binaries/{sha256}/risk — runs the checks that have no fresh verdict. */
 export function checkSantaRisk(env: string, sha256: string): Promise<SantaRisk> {
   return apiFetch<SantaRisk>(`${envPath(env)}/binaries/${encodeURIComponent(sha256)}/risk`, { method: 'POST' });
+}
+
+/** PUT /api/v1/santa/{env}/binaries/{sha256}/risk-override — votes skip the risk checks; may be held for a second admin. */
+export function setSantaRiskOverride(env: string, sha256: string, reason: string): Promise<{ message?: string }> {
+  return apiFetch(`${envPath(env)}/binaries/${encodeURIComponent(sha256)}/risk-override`, jsonInit('PUT', { reason }));
+}
+
+/** DELETE /api/v1/santa/{env}/binaries/{sha256}/risk-override */
+export function deleteSantaRiskOverride(env: string, sha256: string): Promise<unknown> {
+  return apiFetch<unknown>(`${envPath(env)}/binaries/${encodeURIComponent(sha256)}/risk-override`, { method: 'DELETE' });
 }
 
 export interface SantaDecision {

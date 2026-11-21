@@ -46,11 +46,11 @@ func TestCheckRiskCachesAndAggregates(t *testing.T) {
 	hook := &fakeCheck{name: "webhook", verdict: RiskUnknown}
 	m, now := riskManager(t, vt, hook)
 
-	cached, err := m.cachedRisk([]string{sha})
+	cached, err := m.cachedRisk(1, []string{sha})
 	require.NoError(t, err)
 	require.Equal(t, RiskUnchecked, cached[sha].Verdict)
 
-	risk, err := m.CheckRisk(context.Background(), strings.ToUpper(sha))
+	risk, err := m.CheckRisk(context.Background(), 1, strings.ToUpper(sha))
 	require.NoError(t, err)
 	require.Equal(t, RiskClean, risk.Verdict)
 	require.Len(t, risk.Checks, 2)
@@ -58,16 +58,16 @@ func TestCheckRiskCachesAndAggregates(t *testing.T) {
 		require.NotContains(t, c.Detail, "\n")
 	}
 	// Cached: no second call until the TTL runs out.
-	_, err = m.CheckRisk(context.Background(), sha)
+	_, err = m.CheckRisk(context.Background(), 1, sha)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, vt.calls.Load())
-	cached, err = m.cachedRisk([]string{sha})
+	cached, err = m.cachedRisk(1, []string{sha})
 	require.NoError(t, err)
 	require.Equal(t, RiskClean, cached[sha].Verdict)
 
 	*now = now.Add(time.Hour)
 	vt.verdict = RiskFlagged
-	risk, err = m.CheckRisk(context.Background(), sha)
+	risk, err = m.CheckRisk(context.Background(), 1, sha)
 	require.NoError(t, err)
 	require.Equal(t, RiskFlagged, risk.Verdict)
 	require.EqualValues(t, 2, vt.calls.Load())
@@ -75,10 +75,10 @@ func TestCheckRiskCachesAndAggregates(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 2, n)
 
-	_, err = m.CheckRisk(context.Background(), "nope")
+	_, err = m.CheckRisk(context.Background(), 1, "nope")
 	require.ErrorIs(t, err, ErrInvalidRequest)
 	m.Risk = nil
-	risk, err = m.CheckRisk(context.Background(), sha)
+	risk, err = m.CheckRisk(context.Background(), 1, sha)
 	require.NoError(t, err)
 	require.Nil(t, risk)
 }
@@ -88,7 +88,7 @@ func TestCheckRiskErrorsAreShortLived(t *testing.T) {
 	down := &fakeCheck{name: "webhook", err: errors.New("dial tcp: connection refused")}
 	bogus := &fakeCheck{name: "virustotal", verdict: "maybe"}
 	m, now := riskManager(t, down, bogus)
-	risk, err := m.CheckRisk(context.Background(), sha)
+	risk, err := m.CheckRisk(context.Background(), 1, sha)
 	require.NoError(t, err)
 	require.Equal(t, RiskError, risk.Verdict)
 	for _, c := range risk.Checks {
@@ -97,7 +97,7 @@ func TestCheckRiskErrorsAreShortLived(t *testing.T) {
 	}
 	*now = now.Add(riskErrorTTL)
 	down.err, down.verdict, bogus.verdict = nil, RiskClean, RiskClean
-	risk, err = m.CheckRisk(context.Background(), sha)
+	risk, err = m.CheckRisk(context.Background(), 1, sha)
 	require.NoError(t, err)
 	require.Equal(t, RiskClean, risk.Verdict)
 }

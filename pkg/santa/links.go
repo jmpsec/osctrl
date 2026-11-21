@@ -31,19 +31,21 @@ func (m *Manager) Request(envID, id uint) (Request, error) {
 // attachRisk fills the cached risk verdict of file requests; it leaves Risk
 // nil when risk checks are off.
 func (m *Manager) attachRisk(reqs []Request) error {
-	var shas []string
+	byEnv := map[uint][]string{}
 	for _, r := range reqs {
 		if r.Kind != RequestKindMonitor && r.FileSHA256 != "" {
-			shas = append(shas, r.FileSHA256)
+			byEnv[r.EnvironmentID] = append(byEnv[r.EnvironmentID], r.FileSHA256)
 		}
 	}
-	risk, err := m.cachedRisk(shas)
-	if err != nil || risk == nil {
-		return err
-	}
-	for i := range reqs {
-		if reqs[i].Kind != RequestKindMonitor {
-			reqs[i].Risk = risk[strings.ToLower(reqs[i].FileSHA256)]
+	for envID, envShas := range byEnv {
+		risk, err := m.cachedRisk(envID, envShas)
+		if err != nil {
+			return err
+		}
+		for i := range reqs {
+			if reqs[i].EnvironmentID == envID && reqs[i].Kind != RequestKindMonitor && risk != nil {
+				reqs[i].Risk = risk[strings.ToLower(reqs[i].FileSHA256)]
+			}
 		}
 	}
 	return nil
@@ -72,7 +74,7 @@ func (m *Manager) NewRequestLinks(req Request) (approve, deny string, err error)
 func (m *Manager) DecideByLink(envID uint, token string, d Decision) (Request, error) {
 	// Risk checks call out over the network, so they run before the
 	// transaction, on the request the link names; the link is checked again inside.
-	if m.Risk != nil && d.Approve {
+	if d.Approve {
 		var links []RequestLink
 		if err := m.DB.Where("environment_id = ? AND token_hash = ?", envID, hashToken(token)).Limit(1).Find(&links).Error; err != nil {
 			return Request{}, err

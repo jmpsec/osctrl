@@ -97,6 +97,7 @@ func TestSantaSecondAdmin(t *testing.T) {
 		{"import with env allow", h.SantaRulesImportHandler, "POST", `[{"identifier":"ABCDE12348","rule_type":"TEAMID","policy":"ALLOWLIST","scope":"env"}]`, p},
 		{"MONITOR override", h.SantaModeOverrideSetHandler, "PUT", `{"scope":"tag","scope_value":"pilot","client_mode":"MONITOR"}`, p},
 		{"extend MONITOR", h.SantaMonitorExtendHandler, "POST", `{"hours":1}`, rp},
+		{"risk override for votes", h.SantaRiskOverrideHandler, "PUT", `{"reason":"false positive"}`, map[string]string{"env": p["env"], "sha256": strings.Repeat("ab", 32)}},
 		{"turn the setting off", h.SantaConfigPutHandler, "PUT", `{"client_mode":"LOCKDOWN"}`, p},
 		{"allowed path regex", h.SantaConfigPutHandler, "PUT", `{"client_mode":"LOCKDOWN","require_second_admin":true,"allowed_path_regex":"^/tmp/"}`, p},
 		{"approver user", h.SantaConfigPutHandler, "PUT", `{"client_mode":"LOCKDOWN","require_second_admin":true,"approver_users":["carol"]}`, p},

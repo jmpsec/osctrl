@@ -72,7 +72,24 @@ type EnvConfig struct {
 	// without being environment admins
 	ApproverUsers  []string `gorm:"serializer:json;type:text" json:"approver_users"`
 	ApproverGroups []string `gorm:"serializer:json;type:text" json:"approver_groups"`
+	// Risk checks of the environment: "" runs the service-wide checks, "none"
+	// runs none, "env" runs the environment's own checks below
+	RiskChecks string `gorm:"type:varchar(8)" json:"risk_checks"`
+	// The environment's own VirusTotal check: API key (never returned) and how
+	// many engines must flag a file (0 is 1)
+	RiskVirusTotalKey       string `gorm:"column:risk_virustotal_key;type:varchar(255)" json:"-"`
+	RiskVirusTotalThreshold uint32 `gorm:"column:risk_virustotal_threshold" json:"risk_virustotal_threshold"`
+	// The environment's own webhook check: https URL and HMAC secret, never returned
+	RiskWebhookURL    string `gorm:"type:varchar(1024)" json:"-"`
+	RiskWebhookSecret string `gorm:"type:varchar(255)" json:"-"`
 }
+
+// Risk check modes of an environment.
+const (
+	RiskChecksService = ""
+	RiskChecksNone    = "none"
+	RiskChecksEnv     = "env"
+)
 
 // BinaryMachine records that a machine reported a file. It is updated on every
 // event upload and kept when the events are pruned, so it holds the file's
@@ -347,7 +364,7 @@ func (Vote) TableName() string { return "santa_votes" }
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
 	newHistory := !db.Migrator().HasTable(&BinaryMachine{})
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}, &FileAccessEvent{}, &UserGroups{}, &BinaryMachine{}); err != nil {
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}, &FileAccessEvent{}, &UserGroups{}, &BinaryMachine{}, &RiskOverride{}); err != nil {
 		return err
 	}
 	if newHistory {

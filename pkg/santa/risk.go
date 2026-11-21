@@ -10,11 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -75,11 +78,91 @@ type Risk struct {
 	Checks  []Verdict `json:"checks"`
 }
 
-// RiskEngine runs the configured checks and caches their verdicts.
+// RiskEngine runs the risk checks and caches their verdicts. Checks are the
+// service-wide ones; an environment can run none or its own instead
+// (EnvConfig.RiskChecks).
 type RiskEngine struct {
 	Checks  []RiskCheck
 	TTL     time.Duration
 	Timeout time.Duration
+	// Client calls VirusTotal for environment checks; PublicClient calls
+	// environment webhooks, whose URL an admin sets through the API.
+	Client       *http.Client
+	PublicClient *http.Client
+}
+
+// envCheck is an environment's own check: its name carries the environment,
+// so its verdicts are cached apart from the service-wide check's.
+type envCheck struct {
+	RiskCheck
+	name string
+}
+
+// Name of the check.
+func (c envCheck) Name() string { return c.name }
+
+// envCheckNames are the cache names of the environment's own checks.
+func envCheckNames(envID uint) []string {
+	return []string{fmt.Sprintf("virustotal@%d", envID), fmt.Sprintf("webhook@%d", envID)}
+}
+
+// checksFor returns the risk checks of the environment; none means risk
+// checks are off there.
+func (m *Manager) checksFor(envID uint) ([]RiskCheck, error) {
+	if m.Risk == nil {
+		return nil, nil
+	}
+	cfg, err := m.Config(envID)
+	if err != nil {
+		return nil, err
+	}
+	switch cfg.RiskChecks {
+	case RiskChecksNone:
+		return nil, nil
+	case RiskChecksEnv:
+		names := envCheckNames(envID)
+		var out []RiskCheck
+		if cfg.RiskVirusTotalKey != "" {
+			out = append(out, envCheck{VirusTotal{Key: cfg.RiskVirusTotalKey, Threshold: int(cfg.RiskVirusTotalThreshold), Client: m.Risk.Client}, names[0]})
+		}
+		if cfg.RiskWebhookURL != "" {
+			out = append(out, envCheck{RiskWebhook{URL: cfg.RiskWebhookURL, Secret: cfg.RiskWebhookSecret, Client: m.Risk.PublicClient}, names[1]})
+		}
+		return out, nil
+	}
+	return m.Risk.Checks, nil
+}
+
+// ClearEnvRiskCache drops the cached verdicts of the environment's own checks,
+// after their settings change.
+func (m *Manager) ClearEnvRiskCache(envID uint) error {
+	return m.DB.Where("check_name IN ?", envCheckNames(envID)).Delete(&Verdict{}).Error
+}
+
+// RiskEnabled reports whether the environment runs any risk check.
+func (m *Manager) RiskEnabled(envID uint) (bool, error) {
+	checks, err := m.checksFor(envID)
+	return len(checks) > 0, err
+}
+
+// NewPublicClient returns an HTTP client that connects directly, never
+// through a proxy, and refuses loopback, link-local and private addresses at
+// connect time, after DNS resolution, so a rebinding hostname cannot reach
+// an internal service.
+func NewPublicClient(timeout time.Duration) *http.Client {
+	dialer := &net.Dialer{Timeout: timeout, Control: func(_, address string, _ syscall.RawConn) error {
+		host, _, err := net.SplitHostPort(address)
+		if err != nil {
+			return err
+		}
+		ip := net.ParseIP(host)
+		if ip == nil || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return fmt.Errorf("refusing to connect to non-public address %s", host)
+		}
+		return nil
+	}}
+	return &http.Client{Timeout: timeout, Transport: &http.Transport{DialContext: dialer.DialContext},
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
 func aggregate(checks []Verdict) string {
@@ -100,11 +183,16 @@ func aggregate(checks []Verdict) string {
 	return RiskUnknown
 }
 
-// cachedRisk reads the fresh cached verdicts of the hashes, without running
-// any check. Every hash gets an entry; it is nil when risk checks are off.
-func (m *Manager) cachedRisk(shas []string) (map[string]*Risk, error) {
-	if m.Risk == nil || len(shas) == 0 {
+// cachedRisk reads the fresh cached verdicts of the hashes in the environment,
+// without running any check. Every hash gets an entry; it is nil when risk
+// checks are off there.
+func (m *Manager) cachedRisk(envID uint, shas []string) (map[string]*Risk, error) {
+	if len(shas) == 0 {
 		return nil, nil
+	}
+	checks, err := m.checksFor(envID)
+	if err != nil || len(checks) == 0 {
+		return nil, err
 	}
 	lower := make([]string, 0, len(shas))
 	for _, s := range shas {
@@ -115,7 +203,7 @@ func (m *Manager) cachedRisk(shas []string) (map[string]*Risk, error) {
 		return nil, err
 	}
 	configured := map[string]bool{}
-	for _, c := range m.Risk.Checks {
+	for _, c := range checks {
 		configured[c.Name()] = true
 	}
 	byHash := map[string][]Verdict{}
@@ -131,18 +219,19 @@ func (m *Manager) cachedRisk(shas []string) (map[string]*Risk, error) {
 	return out, nil
 }
 
-// CheckRisk returns the verdict of every configured check for the hash,
-// running the checks whose cached verdict is missing or expired, in parallel.
-// It returns nil when risk checks are off.
-func (m *Manager) CheckRisk(ctx context.Context, sha256 string) (*Risk, error) {
-	if m.Risk == nil {
-		return nil, nil
-	}
+// CheckRisk returns the verdict of every check of the environment for the
+// hash, running the checks whose cached verdict is missing or expired, in
+// parallel. It returns nil when risk checks are off there.
+func (m *Manager) CheckRisk(ctx context.Context, envID uint, sha256 string) (*Risk, error) {
 	sha256 = strings.ToLower(strings.TrimSpace(sha256))
 	if !hex64.MatchString(sha256) {
 		return nil, fmt.Errorf("%w: sha256 must be 64 hex characters", ErrInvalidRequest)
 	}
-	cached, err := m.cachedRisk([]string{sha256})
+	checks, err := m.checksFor(envID)
+	if err != nil || len(checks) == 0 {
+		return nil, err
+	}
+	cached, err := m.cachedRisk(envID, []string{sha256})
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +244,7 @@ func (m *Manager) CheckRisk(ctx context.Context, sha256 string) (*Risk, error) {
 		wg    sync.WaitGroup
 		fresh []Verdict
 	)
-	for _, c := range m.Risk.Checks {
+	for _, c := range checks {
 		if v, ok := have[c.Name()]; ok {
 			fresh = append(fresh, v)
 			continue
@@ -326,7 +415,7 @@ var sha256Hash = sha256.New
 // transaction. It leaves d alone for denials, MONITOR requests and when risk
 // checks are off.
 func (m *Manager) riskForDecision(db *gorm.DB, envID, id uint, d *Decision) error {
-	if m.Risk == nil || !d.Approve {
+	if !d.Approve {
 		return nil
 	}
 	var req Request
@@ -336,10 +425,62 @@ func (m *Manager) riskForDecision(db *gorm.DB, envID, id uint, d *Decision) erro
 	if req.Kind == RequestKindMonitor || req.Status != RequestPending {
 		return nil
 	}
-	risk, err := m.CheckRisk(context.Background(), req.FileSHA256)
-	if err != nil {
+	risk, err := m.CheckRisk(context.Background(), envID, req.FileSHA256)
+	if err != nil || risk == nil {
 		return err
 	}
 	d.risk = risk.Verdict
 	return nil
+}
+
+// RiskOverride lets votes go ahead in an environment for a file that a risk
+// check flagged or could not check. It does not change the verdict, and
+// approvals keep their own override.
+type RiskOverride struct {
+	ID            uint      `gorm:"primarykey" json:"-"`
+	CreatedAt     time.Time `json:"created_at"`
+	EnvironmentID uint      `gorm:"uniqueIndex:idx_santa_risk_override" json:"-"`
+	SHA256        string    `gorm:"type:varchar(64);uniqueIndex:idx_santa_risk_override" json:"-"`
+	CreatedBy     string    `gorm:"type:varchar(255)" json:"created_by"`
+	Reason        string    `gorm:"type:varchar(1024)" json:"reason"`
+}
+
+// TableName for RiskOverride
+func (RiskOverride) TableName() string { return "santa_risk_overrides" }
+
+// SetRiskOverride stores (or replaces) the voting override of a file.
+func (m *Manager) SetRiskOverride(envID uint, sha256, by, reason string) (RiskOverride, error) {
+	sha256 = strings.ToLower(strings.TrimSpace(sha256))
+	reason = strings.TrimSpace(reason)
+	switch {
+	case !hex64.MatchString(sha256):
+		return RiskOverride{}, fmt.Errorf("%w: sha256 must be 64 hex characters", ErrInvalidRequest)
+	case reason == "" || utf8.RuneCountInString(reason) > MaxJustification:
+		return RiskOverride{}, fmt.Errorf("%w: a reason of at most %d characters is required", ErrInvalidRequest, MaxJustification)
+	case by == "":
+		return RiskOverride{}, fmt.Errorf("%w: created by is required", ErrInvalidRequest)
+	}
+	o := RiskOverride{CreatedAt: m.now(), EnvironmentID: envID, SHA256: sha256, CreatedBy: by, Reason: reason}
+	if err := m.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "environment_id"}, {Name: "sha256"}},
+		DoUpdates: clause.AssignmentColumns([]string{"created_at", "created_by", "reason"}),
+	}).Create(&o).Error; err != nil {
+		return RiskOverride{}, err
+	}
+	return o, nil
+}
+
+// DeleteRiskOverride removes the voting override of a file and reports whether there was one.
+func (m *Manager) DeleteRiskOverride(envID uint, sha256 string) (bool, error) {
+	res := m.DB.Where("environment_id = ? AND sha256 = ?", envID, strings.ToLower(strings.TrimSpace(sha256))).Delete(&RiskOverride{})
+	return res.RowsAffected > 0, res.Error
+}
+
+// riskOverride returns the voting override of a file, or nil.
+func (m *Manager) riskOverride(envID uint, sha256 string) (*RiskOverride, error) {
+	var os []RiskOverride
+	if err := m.DB.Where("environment_id = ? AND sha256 = ?", envID, strings.ToLower(sha256)).Limit(1).Find(&os).Error; err != nil || len(os) == 0 {
+		return nil, err
+	}
+	return &os[0], nil
 }

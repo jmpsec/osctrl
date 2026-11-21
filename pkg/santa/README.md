@@ -51,7 +51,7 @@ Deciding on a rule needs context, so each file hash has a detail view: the file 
 
 ### Risk checks
 
-Before a vote or an approval allows a file, `osctrl-api` can ask reputation services about its hash. Off until a check is configured on `osctrl-api` (not `osctrl-tls`):
+Before a vote or an approval allows a file, `osctrl-api` can ask reputation services about its hash. The service-wide checks are configured on `osctrl-api` (not `osctrl-tls`), and every environment runs them unless it chooses otherwise (see [Per-environment checks](#per-environment-checks)):
 
 | Setting | Flag / environment | Default |
 |---|---|---|
@@ -62,12 +62,25 @@ Before a vote or an approval allows a file, `osctrl-api` can ask reputation serv
 | Verdict cache | `--santa-risk-ttl-hours` / `SANTA_RISK_TTL_HOURS` | 24 |
 | Timeout per check | `--santa-risk-timeout-seconds` / `SANTA_RISK_TIMEOUT_SECONDS` | 10 |
 
-- **Secrets.** The key, the webhook URL and its secret come from the environment, flags or the YAML file only. They are never stored in `service_config`, never returned by the API and never logged (request errors drop the URL). Prefer the environment: a flag value shows in the process list.
+- **Secrets.** The service-wide key, webhook URL and secret come from the environment, flags or the YAML file only. They are never stored in `service_config`, never returned by the API and never logged (request errors drop the URL). Prefer the environment: a flag value shows in the process list.
 - **Only hashes are sent.** VirusTotal gets `GET /api/v3/files/{sha256}`. The webhook gets `POST {"sha256": "..."}`, signed with `X-Osctrl-Signature` (HMAC-SHA256, hex) when a secret is set, and must answer `{"verdict": "clean" | "flagged" | "unknown", "detail": "..."}`. The webhook is configured by the operator, not through the API, so private addresses are allowed.
 - **Verdicts.** VirusTotal reports `flagged` when at least the threshold of engines call the file malicious, `unknown` when it has never seen the file. Each check's verdict is cached per hash; a check that fails (timeout, quota, bad answer) is cached as `error` for 5 minutes. The overall verdict is `flagged` if any check flags the file, else `error` if any failed, else `clean` or `unknown`.
 - **Votes fail closed.** A vote for a flagged file is refused (`409`), and so is one while a check cannot answer (`503`). `unknown` is not an outage and does not stop a vote.
 - **Approvals.** Approving a flagged file is refused (`409`) unless the approver sets `override` and gives a reason. The request records it (`risk_override`) and the audit line ends with `override_risk=flagged`. A failed check does not stop an approver; the queue shows it. Denials and MONITOR requests run no check.
+- **Overriding a verdict for votes.** An environment admin can let votes go ahead for one file despite a `flagged` or `error` verdict, with a reason: **Allow votes anyway** in the binary details (`PUT /api/v1/santa/{env}/binaries/{sha256}/risk-override` with `reason`; `DELETE` removes it). Votes for that file then skip the checks in that environment. The verdict itself stays, approvals keep their own per-decision override, and both the override and its removal are audited. It weakens enforcement, so it is held for a second admin when the environment requires one.
 - **Where verdicts show.** A new request is checked in the background. The approval queue, the approve/deny link page and the binary details show the cached verdict; the binary details have a **Check now** button (`POST /api/v1/santa/{env}/binaries/{sha256}/risk`, environment admin, audited). The requester never sees a verdict.
+
+#### Per-environment checks
+
+**Settings > Risk checks** (`risk_checks` in `PUT /api/v1/santa/{env}/config`) picks the checks of one environment:
+
+- **Service-wide** (`""`, the default): the checks configured on `osctrl-api` above.
+- **None** (`none`): no check runs. Votes and approvals go ahead without a verdict.
+- **This environment's own** (`env`): a VirusTotal key and threshold (`risk_virustotal_key`, `risk_virustotal_threshold`) and/or a webhook (`risk_webhook_url`, `risk_webhook_secret`) that only this environment uses. Their verdicts are cached under their own names (`virustotal@<id>`, `webhook@<id>`), apart from the service-wide ones, and dropped when the settings change.
+
+Changing any of these needs a superuser and writes `update config risk_checks=...` to the audit log. They are not held for a second admin: a held change keeps its request body for the other admin to see, so a request that carries a secret together with a change that needs a second admin is refused (`400`); save them apart. The key, the webhook URL and its secret are write-only: the config returns `risk_virustotal_key_set`, `risk_webhook_url_set` and `risk_webhook_secret_set` instead, an empty value keeps the stored one, and `risk_clear_virustotal_key` / `risk_clear_webhook` remove them. They are stored in the database (`santa_env_configs`), like alert channel secrets. An environment webhook must be `https`, and `osctrl-api` calls it directly, not through `HTTP_PROXY`, refusing loopback, private and link-local addresses at connect time and not following redirects, because an API user sets its URL.
+
+ReversingLabs has no native check; front it with the webhook.
 - Expired verdicts are pruned daily. VirusTotal's free tier allows 4 lookups a minute and 500 a day; the cache keeps a busy queue within that only if the TTL is long enough.
 
 ### Reports

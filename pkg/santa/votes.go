@@ -122,11 +122,18 @@ func (m *Manager) Vote(envID uint, machineID, sha256, voter string) (VoteResult,
 		return res, ErrNoBlockedEvent
 	}
 	// Voting is self-service, so it fails closed: a flagged file or a check
-	// that could not answer stops the vote. Run before the transaction, as it
-	// calls out over the network.
-	risk, err := m.CheckRisk(context.Background(), sha256)
+	// that could not answer stops the vote, unless an admin overrode the
+	// verdict for voting. Run before the transaction, as it calls out over the
+	// network.
+	override, err := m.riskOverride(envID, sha256)
 	if err != nil {
 		return res, err
+	}
+	var risk *Risk
+	if override == nil {
+		if risk, err = m.CheckRisk(context.Background(), envID, sha256); err != nil {
+			return res, err
+		}
 	}
 	if risk != nil {
 		switch risk.Verdict {

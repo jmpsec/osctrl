@@ -121,6 +121,23 @@ func ValidateConfig(c *EnvConfig) error {
 	case c.MaxMonitorHours > MaxMonitorHours:
 		return fmt.Errorf("temporary MONITOR mode lasts at most %d hours", MaxMonitorHours)
 	}
+	switch c.RiskChecks {
+	case RiskChecksService, RiskChecksNone, RiskChecksEnv:
+	default:
+		return errors.New(`risk checks are "" (service-wide), none or env`)
+	}
+	if c.RiskVirusTotalThreshold > MaxRiskThreshold {
+		return fmt.Errorf("the VirusTotal threshold is at most %d engines", MaxRiskThreshold)
+	}
+	if c.RiskWebhookURL != "" {
+		u, err := url.Parse(c.RiskWebhookURL)
+		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
+			return errors.New("the risk webhook must be an https URL without credentials")
+		}
+	}
+	if len(c.RiskVirusTotalKey) > 255 || len(c.RiskWebhookSecret) > 255 || len(c.RiskWebhookURL) > 1024 {
+		return errors.New("risk check secrets are at most 255 characters, the webhook URL 1024")
+	}
 	if s := c.FullSyncIntervalSeconds; s != 0 && (s < MinSyncInterval || s > MaxSyncInterval) {
 		return fmt.Errorf("sync interval is 0 (Santa default) or %d to %d seconds", MinSyncInterval, MaxSyncInterval)
 	}
@@ -205,6 +222,9 @@ func cleanNames(names []string) ([]string, error) {
 
 // MaxVoteThreshold caps both vote thresholds.
 const MaxVoteThreshold = 10000
+
+// MaxRiskThreshold caps the VirusTotal engine threshold.
+const MaxRiskThreshold = 100
 
 // MaxVoteExpiryDays caps the vote expiry.
 const MaxVoteExpiryDays = 3650

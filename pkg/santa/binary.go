@@ -43,8 +43,10 @@ type Binary struct {
 	MachineList []BinaryMachine `json:"machine_list"`
 	// Rules of any scope naming the file, its team ID, signing ID, CDHash or leaf certificate
 	Rules []Rule `json:"rules"`
-	// Cached risk verdict, when risk checks are on
+	// Cached risk verdict, when risk checks are on in the environment
 	Risk *Risk `json:"risk,omitempty"`
+	// An admin let votes go ahead despite the verdict
+	RiskOverride *RiskOverride `json:"risk_override,omitempty"`
 	// The newest event, to retrieve the file from the machine that last ran it
 	LatestEventID   uint   `json:"latest_event_id"`
 	LatestMachineID string `json:"latest_machine_id"`
@@ -128,11 +130,14 @@ func (m *Manager) Binary(envID uint, sha256 string) (Binary, error) {
 	if err := m.DB.Where("environment_id = ?", envID).Where(ruleMatch(m.DB, newest)).Order("id").Find(&b.Rules).Error; err != nil {
 		return Binary{}, err
 	}
-	risk, err := m.cachedRisk([]string{sha256})
+	risk, err := m.cachedRisk(envID, []string{sha256})
 	if err != nil {
 		return Binary{}, err
 	}
 	b.Risk = risk[sha256]
+	if b.RiskOverride, err = m.riskOverride(envID, sha256); err != nil {
+		return Binary{}, err
+	}
 	return b, nil
 }
 

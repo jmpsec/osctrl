@@ -1244,6 +1244,12 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 			"POST "+_apiPath(apiSantaPath)+"/{env}/binaries/{sha256}/risk",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaBinaryRiskHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"PUT "+_apiPath(apiSantaPath)+"/{env}/binaries/{sha256}/risk-override",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRiskOverrideHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
+			"DELETE "+_apiPath(apiSantaPath)+"/{env}/binaries/{sha256}/risk-override",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaRiskOverrideDeleteHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"GET "+_apiPath(apiSantaPath)+"/{env}/reports",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.SantaReportHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(

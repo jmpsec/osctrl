@@ -1,7 +1,11 @@
+import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { checkSantaRisk, getSantaBinary, listSantaVoters, santaQueryKey, type SantaBinary } from '$/api/santa';
+import {
+  checkSantaRisk, deleteSantaRiskOverride, getSantaBinary, listSantaVoters, santaQueryKey, setSantaRiskOverride, type SantaBinary,
+} from '$/api/santa';
 import { Button } from '$/components/atoms/Button';
+import { Input } from '$/components/atoms/Input';
 import { Skeleton } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { useLocale } from '$/i18n/useLocale';
@@ -47,6 +51,19 @@ export function BinaryModal({ env, sha256, onClose }: {
       void qc.invalidateQueries({ queryKey: santaQueryKey(env, 'requests') });
     },
   });
+  const [reason, setReason] = useState('');
+  const override = useMutation({
+    mutationFn: () => setSantaRiskOverride(env, sha256, reason.trim()),
+    onSuccess: () => {
+      setReason('');
+      return qc.invalidateQueries({ queryKey: key });
+    },
+  });
+  const removeOverride = useMutation({ mutationFn: () => deleteSantaRiskOverride(env, sha256), onSuccess: () => qc.invalidateQueries({ queryKey: key }) });
+  function submitOverride(e: FormEvent) {
+    e.preventDefault();
+    override.mutate();
+  }
   const b = binary.data;
   const chain = b?.signing_chain ?? [];
   const rules = b?.rules ?? [];
@@ -134,6 +151,32 @@ export function BinaryModal({ env, sha256, onClose }: {
                 <div key={c.check} className={SUB}>{c.check}: {t(`santa.risk.verdicts.${c.verdict}`)}{c.detail && ` — ${c.detail}`}</div>
               ))}
               {check.isError && <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(check.error)}</p>}
+              {b.risk_override ? (
+                <div className="flex flex-wrap items-center gap-2 text-sm text-[color:var(--text-1)]">
+                  <span className="[overflow-wrap:anywhere]">{t('santa.risk.overrideBy', { by: b.risk_override.created_by, reason: b.risk_override.reason })}</span>
+                  <Button size="sm" variant="ghost" disabled={removeOverride.isPending} onClick={() => removeOverride.mutate()}>
+                    {t('santa.risk.overrideRemove')}
+                  </Button>
+                </div>
+              ) : (b.risk.verdict === 'flagged' || b.risk.verdict === 'error') && (
+                <form onSubmit={submitOverride} className="flex flex-wrap items-end gap-2">
+                  <Input
+                    aria-label={t('santa.risk.overrideReason')}
+                    placeholder={t('santa.risk.overrideReason')}
+                    maxLength={1000}
+                    required
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    className="min-w-[12rem] flex-1"
+                  />
+                  <Button type="submit" size="sm" variant="ghost" disabled={override.isPending || !reason.trim()}>{t('santa.risk.overrideAdd')}</Button>
+                </form>
+              )}
+              {(b.risk_override || b.risk.verdict === 'flagged' || b.risk.verdict === 'error') && <p className={SUB}>{t('santa.risk.overrideHint')}</p>}
+              {override.data?.message && <p role="status" className={SUB}>{override.data.message}</p>}
+              {(override.isError || removeOverride.isError) && (
+                <p role="alert" className="text-sm text-[color:var(--danger)]">{errorText(override.error ?? removeOverride.error)}</p>
+              )}
             </section>
           )}
 

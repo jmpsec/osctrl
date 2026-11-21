@@ -9,9 +9,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// santaRiskEngine builds the Santa risk checks from the service config, or
-// returns nil when none is configured. The webhook URL comes from the
-// deployment's own config, never from the API, so private targets are allowed.
+// santaRiskEngine builds the service-wide Santa risk checks from the service
+// config. It always returns an engine, so environments can run their own
+// checks even when no service-wide one is configured. The service-wide
+// webhook URL comes from the deployment's own config, never from the API, so
+// private targets are allowed; environment webhooks use a public-only client.
 func santaRiskEngine(s *config.YAMLConfigurationService) *santa.RiskEngine {
 	timeout := time.Duration(s.SantaRiskTimeoutSeconds) * time.Second
 	if timeout <= 0 || timeout > time.Minute {
@@ -29,13 +31,10 @@ func santaRiskEngine(s *config.YAMLConfigurationService) *santa.RiskEngine {
 	if s.SantaRiskWebhookURL != "" {
 		checks = append(checks, santa.RiskWebhook{URL: s.SantaRiskWebhookURL, Secret: s.SantaRiskWebhookSecret, Client: client})
 	}
-	if len(checks) == 0 {
-		return nil
-	}
 	names := make([]string, 0, len(checks))
 	for _, c := range checks {
 		names = append(names, c.Name())
 	}
-	log.Info().Strs("checks", names).Msg("Santa risk checks enabled")
-	return &santa.RiskEngine{Checks: checks, TTL: ttl, Timeout: timeout}
+	log.Info().Strs("checks", names).Msg("Santa service-wide risk checks")
+	return &santa.RiskEngine{Checks: checks, TTL: ttl, Timeout: timeout, Client: client, PublicClient: santa.NewPublicClient(timeout)}
 }
