@@ -244,8 +244,19 @@ export interface SantaRankedBinary {
   sha256: string;
   file_name: string;
   team_id: string;
+  signing_id?: string;
+  cd_hash?: string;
   events: number;
   machines: number;
+}
+
+/** One UTC day of the report window. */
+export interface SantaTrendDay {
+  day: string;
+  blocked: number;
+  /** ALLOW_UNKNOWN executions, and the machines that had any. */
+  would_block: number;
+  would_block_machines: number;
 }
 
 export interface SantaRankedTeam {
@@ -263,6 +274,8 @@ export interface SantaReport {
   top_blocked: SantaRankedBinary[] | null;
   top_blocked_teams: SantaRankedTeam[] | null;
   coverage_gaps: SantaRankedBinary[] | null;
+  /** Oldest day first. */
+  trend?: SantaTrendDay[] | null;
 }
 
 export const SANTA_REPORT_DAYS = [7, 14, 30];
@@ -270,6 +283,11 @@ export const SANTA_REPORT_DAYS = [7, 14, 30];
 /** GET /api/v1/santa/{env}/reports?days= — 1 to 30 days. */
 export function getSantaReport(env: string, days: number): Promise<SantaReport> {
   return apiFetch<SantaReport>(`${envPath(env)}/reports?days=${days}`);
+}
+
+/** The report as CSV, for an <a href download>: the browser sends the session cookie. */
+export function getSantaReportCSVUrl(env: string, days: number): string {
+  return `${envPath(env)}/reports?days=${days}&format=csv`;
 }
 
 export interface SantaEventsPage {

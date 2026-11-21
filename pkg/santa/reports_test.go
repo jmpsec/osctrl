@@ -1,6 +1,8 @@
 package santa
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"strings"
 	"testing"
@@ -129,4 +131,65 @@ func TestReportCapsRankedLists(t *testing.T) {
 	require.Len(t, r.TopBlocked, ReportTop)
 	require.Len(t, r.TopBlockedTeams, ReportTop)
 	require.Len(t, r.CoverageGaps, ReportTop)
+}
+
+func TestReportTrendGapsAndCSV(t *testing.T) {
+	m := newTestManager(t)
+	now := time.Date(2026, 11, 21, 12, 0, 0, 0, time.UTC)
+	m.now = func() time.Time { return now }
+	a, b := "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"
+	shaTeam, shaSign, shaGap := strings.Repeat("a1", 32), strings.Repeat("b2", 32), strings.Repeat("c3", 32)
+	ev := func(machine, sha, decision string, at time.Time) Event {
+		return Event{EnvironmentID: 1, MachineID: machine, FileSHA256: sha, FileName: "=cmd|calc", Decision: decision,
+			TeamID: "TEAMAAAAAA", SigningID: "platform:com.example." + sha[:2], CreatedAt: at}
+	}
+	yesterday := now.Add(-24 * time.Hour)
+	require.NoError(t, m.AddEvents([]Event{
+		ev(a, shaTeam, "ALLOW_UNKNOWN", now.Add(-time.Hour)),
+		ev(b, shaTeam, "ALLOW_UNKNOWN", now.Add(-2*time.Hour)),
+		ev(a, shaSign, "BLOCK_UNKNOWN", now.Add(-3*time.Hour)),
+		ev(a, shaGap, "BLOCK_BINARY", yesterday),
+		ev(a, shaGap, "ALLOW_UNKNOWN", yesterday),
+	}))
+	r, err := m.Report(1, 3)
+	require.NoError(t, err)
+
+	// Trend: three UTC days, oldest first.
+	require.Len(t, r.Trend, 3)
+	require.True(t, r.Trend[2].Day.Equal(time.Date(2026, 11, 21, 0, 0, 0, 0, time.UTC)))
+	require.Equal(t, TrendDay{Day: r.Trend[2].Day, Blocked: 1, WouldBlock: 2, WouldBlockMachines: 2}, r.Trend[2])
+	require.Equal(t, TrendDay{Day: r.Trend[1].Day, Blocked: 1, WouldBlock: 1, WouldBlockMachines: 1}, r.Trend[1])
+	require.Equal(t, TrendDay{Day: r.Trend[0].Day}, r.Trend[0])
+	require.Len(t, r.CoverageGaps, 3)
+
+	// Environment-wide rules naming a gap by signing ID or hash remove it; a tag rule does not.
+	for _, rl := range []Rule{
+		{Identifier: "platform:com.example.b2", RuleType: "SIGNINGID", Policy: "ALLOWLIST", Scope: "env"},
+		{Identifier: shaGap, RuleType: "BINARY", Policy: "BLOCKLIST", Scope: "env"},
+		{Identifier: "TEAMAAAAAA", RuleType: "TEAMID", Policy: "ALLOWLIST", Scope: "tag", ScopeValue: "dev"},
+	} {
+		rl.EnvironmentID = 1
+		require.NoError(t, m.CreateRule(&rl))
+	}
+	r, err = m.Report(1, 3)
+	require.NoError(t, err)
+	require.Len(t, r.CoverageGaps, 1)
+	require.Equal(t, shaTeam, r.CoverageGaps[0].SHA256)
+	require.Len(t, r.TopBlocked, 2, "rules do not change what was blocked")
+
+	var buf bytes.Buffer
+	require.NoError(t, r.WriteCSV(&buf))
+	rows, err := csv.NewReader(&buf).ReadAll()
+	require.NoError(t, err)
+	require.Equal(t, "list", rows[0][0])
+	count := map[string]int{}
+	for _, row := range rows[1:] {
+		require.Len(t, row, len(rows[0]))
+		count[row[0]]++
+		if row[0] == "coverage_gaps" {
+			require.Equal(t, "'=cmd|calc", row[5], "a formula-looking name is neutralized")
+		}
+	}
+	require.Equal(t, map[string]int{"coverage_gaps": 1, "top_blocked": 2, "top_blocked_teams": 1, "trend": 3}, count)
+	require.Equal(t, []string{"trend", "2026-11-21", "", "", "", "", "", "", "1", "", "", "2", "2", "", ""}, rows[len(rows)-1])
 }

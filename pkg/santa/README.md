@@ -76,9 +76,13 @@ The **Reports** tab answers when an environment or a machine can move to LOCKDOW
 
 - **Ready for lockdown:** every machine assigned MONITOR at its last preflight, with its `ALLOW_UNKNOWN` count, that is, the executions no rule allowed and LOCKDOWN would have blocked. A machine is ready with none and a sync within the window; one that has not synced has reported nothing to judge it by. Ready machines come first. Machines already in LOCKDOWN are left out.
 - **Top blocked:** binaries and team IDs ranked by `BLOCK_*` events, with the number of machines (and, for a team ID, of distinct binaries).
-- **Rule coverage gaps:** the binaries most executed with no rule deciding them (`ALLOW_UNKNOWN` or `BLOCK_UNKNOWN`), the first candidates for an allow or block rule.
+- **Rule coverage gaps:** the binaries most executed with no rule deciding them (`ALLOW_UNKNOWN` or `BLOCK_UNKNOWN`), the first candidates for an allow or block rule. Events keep the decision of their time, so a binary that an environment-wide rule now names by hash, team ID, signing ID or CDHash is left out. Certificate rules and tag or node rules are not checked.
+- **Over time** (`trend`): per UTC day of the window, the blocked executions, the would-be blocks (`ALLOW_UNKNOWN`) and the machines that had any. Fewer machines with would-be blocks means more of the fleet is ready.
 
 Each ranked list has at most 20 entries. The window is on the time osctrl received each event, not the client's clock, and cannot exceed the 30 days events are kept. A binary name opens the binary details. The queries read one environment's events in the window through the `(environment_id, created_at)` index `idx_santa_events_env_created`, which `osctrl-api` builds in the background at startup (concurrently on PostgreSQL), so a large events table does not hold up startup. All names and team IDs are written by Santa clients.
+
+- **Export:** **Export CSV** downloads `GET /api/v1/santa/{env}/reports?days=N&format=csv`: one table whose `list` column names the section of each row (`lockdown_ready`, `coverage_gaps`, `top_blocked`, `top_blocked_teams`, `trend`); columns that do not apply to a row are empty. A client-written value that starts like a spreadsheet formula (`=`, `+`, `-`, `@`) is prefixed with `'`. **Export JSON** saves the report as shown.
+- **LOCKDOWN from the report:** select ready machines (or **Select all ready**) and **Apply LOCKDOWN**. Each machine gets a permanent `LOCKDOWN` node override through `PUT /api/v1/santa/{env}/modes`, so it needs environment admin and writes the usual `set mode override` audit line; it replaces a temporary MONITOR override of the machine. Machines switch at their next sync. Failures are listed per machine and do not stop the others.
 
 ### Bulk import and export
 
