@@ -67,6 +67,14 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
     }, []),
   );
 
+  // Read through a ref: if runRequest depended on the live flag, its turning
+  // true would change loadDirectory and re-run the session effect, which
+  // closes the session and opens a new one, in a loop.
+  const liveRef = useRef(fileExplorerLive);
+  useEffect(() => {
+    liveRef.current = fileExplorerLive;
+  }, [fileExplorerLive]);
+
   const waitForRequestChange = useCallback((requestId: number, live: boolean) => {
     if (!live) return delay(requestPollMs);
     return new Promise<void>((resolve) => {
@@ -96,12 +104,12 @@ export function NodeFileExplorerTab({ env, uuid }: { env: string; uuid: string }
   }, []);
 
   const runRequest = useCallback(async (activeSession: FileExplorerSession, request: FileExplorerRequest) => {
-    const completed = await waitForRequest(env, activeSession.id, request, fileExplorerLive, waitForRequestChange);
+    const completed = await waitForRequest(env, activeSession.id, request, liveRef.current, waitForRequestChange);
     if (completed.status !== 'completed') {
       throw new Error(completed.error || `Request ${completed.status}`);
     }
     return getFileExplorerRequestResults(env, activeSession.id, request.id);
-  }, [env, fileExplorerLive, waitForRequestChange]);
+  }, [env, waitForRequestChange]);
 
   const loadDirectory = useCallback(async (activeSession: FileExplorerSession, path: string) => {
     if (loadingPathsRef.current.has(path)) return;
