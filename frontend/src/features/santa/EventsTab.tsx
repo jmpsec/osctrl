@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
@@ -8,7 +8,6 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { Pagination } from '$/components/data/Pagination';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { useLocale } from '$/i18n/useLocale';
-import { BinaryModal } from './BinaryModal';
 import { CarveRetrieve } from './CarveRetrieve';
 import { FilterBar } from './FilterBar';
 import { EMPTY_RULE } from './RulesTab';
@@ -19,13 +18,11 @@ function ruleFor(e: SantaEvent, policy: SantaRuleInput['policy']): SantaRuleInpu
   return { ...EMPTY_RULE, identifier: e.file_sha256, rule_type: 'BINARY', policy, scope: 'env' };
 }
 
-export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRuleInput) => void }) {
+export function EventsTab({ env, onRule, onBinary }: { env: string; onRule: (rule: SantaRuleInput) => void; onBinary: (sha256: string) => void }) {
   const { t } = useTranslation();
   const { formatDateTime } = useLocale();
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<SantaEventFilter>({});
-  const [binary, setBinary] = useState<string | null>(null);
-  const closeBinary = useCallback(() => setBinary(null), []);
   const events = useQuery({
     queryKey: santaQueryKey(env, 'events', page, filter),
     queryFn: () => listSantaEvents(env, page, filter),
@@ -85,7 +82,7 @@ export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRu
                         type="button"
                         className={BINARY_LINK}
                         aria-label={`${t('santa.binary.title')}: ${e.file_name || e.file_path || e.file_sha256}`}
-                        onClick={() => setBinary(e.file_sha256)}
+                        onClick={() => onBinary(e.file_sha256)}
                       >
                         {e.file_name || e.file_path || e.file_sha256}
                       </button>
@@ -122,7 +119,6 @@ export function EventsTab({ env, onRule }: { env: string; onRule: (rule: SantaRu
           onPageChange={setPage}
         />
       )}
-      {binary && <BinaryModal env={env} sha256={binary} onClose={closeBinary} />}
     </section>
   );
 }

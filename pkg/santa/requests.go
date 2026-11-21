@@ -105,7 +105,7 @@ func (m *Manager) attach(reqs []Request) error {
 	return m.attachEvents(reqs)
 }
 
-// attachEvents fills the leaf certificate and the bundle binary count of file
+// attachEvents fills the leaf certificate, the bundle binary count and the carve of file
 // requests from their blocked events, for the rule types an approval can use.
 func (m *Manager) attachEvents(reqs []Request) error {
 	var ids []uint
@@ -118,7 +118,7 @@ func (m *Manager) attachEvents(reqs []Request) error {
 		return nil
 	}
 	var evs []Event
-	if err := m.DB.Select("id", "bundle_hash", "signing_chain").Where("id IN ?", ids).Find(&evs).Error; err != nil {
+	if err := m.DB.Select("id", "bundle_hash", "signing_chain", "carve_name").Where("id IN ?", ids).Find(&evs).Error; err != nil {
 		return err
 	}
 	byID := map[uint]Event{}
@@ -153,6 +153,7 @@ func (m *Manager) attachEvents(reqs []Request) error {
 			reqs[i].CertSHA256 = e.SigningChain[0].SHA256
 		}
 		reqs[i].BundleBinaries = counts[e.BundleHash]
+		reqs[i].Carve = e.CarveName
 	}
 	return nil
 }

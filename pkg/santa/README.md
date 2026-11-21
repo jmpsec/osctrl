@@ -34,7 +34,7 @@ After an upload is stored, `osctrl-tls` forwards its execution events and its fi
 
 ### Binary details
 
-Deciding on a rule needs context, so each file hash has a detail view: the file name in **Events** and in the approval queue opens it.
+Deciding on a rule needs context, so each file hash has a detail view: the file name in **Events**, **Reports** and the approval queue opens it. The open view and the Santa tab are in the page URL (`/_app/env/{env}/santa?tab=requests&binary={sha256}`), so either can be shared. The approve/deny link page links to the Requests tab.
 
 - `GET /api/v1/santa/{env}/binaries/{sha256}` (environment admin) returns what osctrl knows about the file: name, path, team ID, signing ID, CDHash, bundle (ID, name, version, path) and signing chain from its newest kept event; first and last seen; the number of kept events and blocks; the number of distinct machines and the 100 that reported it most recently (`machine_list`, with hostname, first and last seen and event count); and every rule of the environment that names the file, its team ID, signing ID, CDHash or leaf certificate, whatever its scope. `404` when osctrl never received an event of the hash in the environment.
 - Events now keep `bundle_name`, `bundle_version`, `bundle_path` and `signing_chain` (leaf first, at most 8 certificates) from `eventupload`. They are also in the event list and the log sinks; the MCP event tool keeps its own shorter field list. Events stored before this have them empty; no client change is needed.
@@ -43,7 +43,7 @@ Deciding on a rule needs context, so each file hash has a detail view: the file 
 
 ### Retrieving a binary
 
-**Retrieve file** on an event, or in the binary details (from the machine that last ran it), starts an osquery file carve of the event's path on that machine.
+**Retrieve file** on an event, on a request in the approval queue (from the event the request was made from), or in the binary details (from the machine that last ran it), starts an osquery file carve of the event's path on that machine. Once carved, **Retrieve again** starts a new carve; the newest one is kept on the event. Requests carry that carve as `carve`. Approvers who are not environment admins get no carve button, and the carve itself needs environment admin.
 
 - `POST /api/v1/santa/{env}/events/{id}/carve` (environment admin) dispatches to the carves endpoint, so carve access, sensitive paths, node scope, storage and the carve audit line all apply as for any carve. The carve name is kept on the event (`carve_name`) and the Santa audit line names it; the event row then shows the carve status and links to it. The file comes back through the existing osquery carve upload; `osctrl-tls` has no new upload path.
 - The machine must be an osquery node of the same environment (Santa machine ID = osquery UUID), else `409`. The path is the event's `file_path` joined with `file_name`, both written by the Santa client: a compromised client can point the carve at another file, which the sensitive-path list still guards.
@@ -129,6 +129,7 @@ The environment sets the default client mode (MONITOR or LOCKDOWN). A tag or a s
 
 - `PUT /api/v1/santa/{env}/modes` with `scope` (`tag` or `node`), `scope_value` (tag name or node UUID) and `client_mode`. Setting the same tag or node again replaces its mode.
 - `GET /api/v1/santa/{env}/modes` lists the overrides and `DELETE /api/v1/santa/{env}/modes/{id}` removes one.
+- The page of a macOS node shows its own override under **Santa mode**, for environment admins, with the same actions as **Settings**.
 
 At preflight the node gets the most specific mode: a node override wins over a tag override, which wins over the environment mode. If the node has several tags with different modes, LOCKDOWN wins. A change takes effect on the client's next sync; it does not force a clean rule sync, because the mode is not part of the rule digest.
 

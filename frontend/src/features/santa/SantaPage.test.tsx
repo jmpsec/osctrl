@@ -51,8 +51,10 @@ vi.mock('$/api/santa', async () => {
     listSantaFileAccessEvents: (...args: unknown[]) => mockFileAccess(...args),
     getSantaAccess: () => mockAccess(),
     listSantaRequests: () => mockRequests(),
+    getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256),
   };
 });
+const mockBinary = vi.fn<(env: string, sha256: string) => Promise<never>>(() => Promise.reject(new Error('no events for this file')));
 const mockCarve = vi.fn<(env: string, id: number) => Promise<{ query_name: string }>>();
 const mockGetCarve = vi.fn<(env: string, name: string) => Promise<unknown>>();
 vi.mock('$/api/carves', () => ({ getCarve: (env: string, name: string) => mockGetCarve(env, name) }));
@@ -76,14 +78,14 @@ const config: SantaConfig = {
   event_detail_url: '', event_detail_text: '', token_set: true,
 };
 
-function renderPage() {
+function renderPage(path = '/_app/env/dev/santa') {
   const rootRoute = createRootRoute({ component: Outlet });
   const appRoute = createRoute({ getParentRoute: () => rootRoute, path: '/_app', component: Outlet });
   const envRoute = createRoute({ getParentRoute: () => appRoute, path: 'env/$env', component: Outlet });
   const pageRoute = createRoute({ getParentRoute: () => envRoute, path: 'santa', component: SantaPage });
   const router = createRouter({
     routeTree: rootRoute.addChildren([appRoute.addChildren([envRoute.addChildren([pageRoute])])]),
-    history: createMemoryHistory({ initialEntries: ['/_app/env/dev/santa'] }),
+    history: createMemoryHistory({ initialEntries: [path] }),
   });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -91,7 +93,8 @@ function renderPage() {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return qc;
+  Object.assign(qc, { router });
+  return qc as QueryClient & { router: typeof router };
 }
 
 describe('SantaPage', () => {
@@ -123,6 +126,23 @@ describe('SantaPage', () => {
     mockRotate.mockResolvedValue({ token: 'SECRET-TOKEN-123' });
     mockAccess.mockResolvedValue({ admin: true, approver: false });
     mockRequests.mockResolvedValue([]);
+  });
+
+  it('opens the tab and the binary details named in the URL, and keeps them there', async () => {
+    const sha = 'c'.repeat(64);
+    const { router } = renderPage(`/_app/env/dev/santa?tab=requests&binary=${sha}`);
+    expect(await screen.findByRole('dialog', { name: 'Binary details' })).toBeInTheDocument();
+    expect(mockBinary).toHaveBeenCalledWith('dev', sha);
+    expect(screen.getByRole('tab', { name: 'Requests' })).toHaveAttribute('aria-selected', 'true');
+
+    const user = userEvent.setup();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(router.state.location.search).toEqual({ tab: 'requests' });
+    await user.click(screen.getByRole('tab', { name: 'Events' }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ tab: 'events' }));
+    await user.click(await screen.findByRole('button', { name: 'Binary details: bad' }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ tab: 'events', binary: 'b'.repeat(64) }));
   });
 
   it('shows approvers the approval queue only', async () => {

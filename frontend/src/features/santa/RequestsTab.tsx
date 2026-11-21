@@ -20,7 +20,7 @@ import { EmptyState } from '$/components/data/EmptyState';
 import { SkeletonRow } from '$/components/data/Skeleton';
 import { ModalShell } from '$/components/feedback/ModalShell';
 import { useLocale } from '$/i18n/useLocale';
-import { BinaryModal } from './BinaryModal';
+import { CarveRetrieve } from './CarveRetrieve';
 import { RiskBadge } from './RiskBadge';
 import { BINARY_LINK, MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
@@ -49,15 +49,13 @@ export function requestName(r: SantaRequest, t: (key: string, o?: Record<string,
  * The approval queue: requests from blocked users, decided one at a time or in bulk.
  * Approvers who are not environment admins (admin false) get no machine names or binary details.
  */
-export function RequestsTab({ env, admin = true }: { env: string; admin?: boolean }) {
+export function RequestsTab({ env, admin = true, onBinary }: { env: string; admin?: boolean; onBinary?: (sha256: string) => void }) {
   const { t } = useTranslation();
   const { formatDateTime } = useLocale();
   const [status, setStatus] = useState<SantaRequestStatus | ''>('pending');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [dialog, setDialog] = useState<Pending | null>(null);
-  const [binary, setBinary] = useState<string | null>(null);
-  const closeBinary = useCallback(() => setBinary(null), []);
   const closeDialog = useCallback(() => {
     setDialog(null);
     setSelected(new Set());
@@ -155,7 +153,8 @@ export function RequestsTab({ env, admin = true }: { env: string; admin?: boolea
                     when={formatDateTime(new Date(r.created_at))}
                     selected={selected.has(r.id)}
                     onToggle={() => toggle(r.id)}
-                    onBinary={admin ? () => setBinary(r.file_sha256) : undefined}
+                    onBinary={admin && onBinary ? () => onBinary(r.file_sha256) : undefined}
+                    carveEnv={admin ? env : undefined}
                     onDecide={(approve) => setDialog({ approve, ids: [r.id], monitor: r.kind === 'monitor', flagged: r.risk?.verdict === 'flagged', request: admin ? r : undefined })}
                   />
                 ))}
@@ -165,7 +164,6 @@ export function RequestsTab({ env, admin = true }: { env: string; admin?: boolea
         )}
       </section>
       {dialog && <DecisionModal env={env} pending={dialog} onClose={closeDialog} />}
-      {binary && <BinaryModal env={env} sha256={binary} onClose={closeBinary} />}
     </div>
   );
 }
@@ -178,6 +176,7 @@ function RequestRow({
   onToggle,
   onDecide,
   onBinary,
+  carveEnv,
 }: {
   r: SantaRequest;
   hostname?: string;
@@ -186,6 +185,8 @@ function RequestRow({
   onToggle: () => void;
   /** Opens the binary details; without it the name is plain text. */
   onBinary?: () => void;
+  /** Environment to carve the request's file in; without it there is no carve button. */
+  carveEnv?: string;
   onDecide: (approve: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -208,6 +209,9 @@ function RequestRow({
         {r.risk && <div className="mt-1"><RiskBadge risk={r.risk} /></div>}
         {r.risk_override && <div className={sub}>{t('santa.risk.overridden')}</div>}
         {r.signing_id && <div className={`${MONO} ${sub}`}>{r.signing_id}</div>}
+        {carveEnv && r.event_id > 0 && r.file_path && (
+          <div className="mt-1"><CarveRetrieve env={carveEnv} eventId={r.event_id} carve={r.carve ?? ''} /></div>
+        )}
       </td>
       <td className={TD}>
         <div className="[overflow-wrap:anywhere]">{hostname || r.machine_id}</div>

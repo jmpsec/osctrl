@@ -521,19 +521,21 @@ const SELECT =
   'h-8 w-full rounded-md border border-[color:var(--border-strong)] bg-[color:var(--bg-1)] px-2 text-sm text-[color:var(--text-1)]';
 const EMPTY_OVERRIDE: SantaModeOverrideInput = { scope: 'tag', scope_value: '', client_mode: 'LOCKDOWN', hours: 0 };
 
-function ModeOverridesCard({ env }: { env: string }) {
+/** With node set, only that node's overrides are listed and added (the node page). */
+export function ModeOverridesCard({ env, node }: { env: string; node?: string }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const key = santaQueryKey(env, 'modes');
   const overrides = useQuery({ queryKey: key, queryFn: () => listSantaModeOverrides(env) });
-  const [form, setForm] = useState(EMPTY_OVERRIDE);
+  const empty = node ? { ...EMPTY_OVERRIDE, scope: 'node' as const, scope_value: node } : EMPTY_OVERRIDE;
+  const [form, setForm] = useState(empty);
   const refresh = () => qc.invalidateQueries({ queryKey: key });
   // Only MONITOR on a node can be temporary.
   const temporary = form.scope === 'node' && form.client_mode === 'MONITOR';
   const save = useMutation({
     mutationFn: () => setSantaModeOverride(env, { ...form, hours: temporary ? form.hours : 0 }),
     onSuccess: () => {
-      setForm(EMPTY_OVERRIDE);
+      setForm(empty);
       return refresh();
     },
   });
@@ -541,7 +543,8 @@ function ModeOverridesCard({ env }: { env: string }) {
   // Hours to add, per override.
   const [extendBy, setExtendBy] = useState<Record<number, number>>({});
   const extend = useMutation({ mutationFn: (id: number) => extendSantaMonitor(env, id, extendBy[id] ?? SANTA_MONITOR_HOURS[0]), onSuccess: refresh });
-  const rows = overrides.data ?? [];
+  // The server stores node UUIDs in upper case.
+  const rows = (overrides.data ?? []).filter((o) => !node || (o.scope === 'node' && o.scope_value === node.toUpperCase()));
   const error = save.error ?? remove.error ?? extend.error ?? overrides.error;
 
   function submit(e: FormEvent) {
@@ -552,8 +555,8 @@ function ModeOverridesCard({ env }: { env: string }) {
   return (
     <section className={CARD}>
       <div>
-        <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{t('santa.modeOverrides')}</h2>
-        <p className="text-xs text-[color:var(--text-3)]">{t('santa.modeOverridesHint')}</p>
+        <h2 className="text-sm font-semibold text-[color:var(--text-1)]">{node ? t('santa.nodeMode') : t('santa.modeOverrides')}</h2>
+        <p className="text-xs text-[color:var(--text-3)]">{node ? t('santa.nodeModeHint') : t('santa.modeOverridesHint')}</p>
       </div>
       {rows.length === 0 ? (
         !overrides.isLoading && !overrides.isError && <p className="text-sm text-[color:var(--text-3)]">{t('santa.noOverrides')}</p>
@@ -633,7 +636,8 @@ function ModeOverridesCard({ env }: { env: string }) {
           </table>
         </div>
       )}
-      <form onSubmit={submit} className="grid items-end gap-3 sm:grid-cols-[8rem_1fr_9rem_8rem_auto]">
+      <form onSubmit={submit} className={node ? 'grid items-end gap-3 sm:grid-cols-[9rem_8rem_auto]' : 'grid items-end gap-3 sm:grid-cols-[8rem_1fr_9rem_8rem_auto]'}>
+        {!node && (<>
         <div>
           <Label htmlFor="santa-override-scope">{t('santa.scope')}</Label>
           <select
@@ -656,6 +660,7 @@ function ModeOverridesCard({ env }: { env: string }) {
             onChange={(e) => setForm({ ...form, scope_value: e.target.value.trim() })}
           />
         </div>
+        </>)}
         <div>
           <Label htmlFor="santa-override-mode">{t('santa.mode')}</Label>
           <select

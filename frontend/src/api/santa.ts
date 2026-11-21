@@ -460,6 +460,10 @@ export interface SantaRequest extends SantaOwnRequest {
   cert_sha256?: string;
   /** Binaries the client uploaded for the file's bundle. */
   bundle_binaries?: number;
+  /** The blocked event the request was made from; 0 for MONITOR requests. */
+  event_id: number;
+  /** Latest carve of the file, from the request's event. */
+  carve?: string;
   /** Cached verdict; absent when no risk check is configured. */
   risk?: SantaRisk;
 }

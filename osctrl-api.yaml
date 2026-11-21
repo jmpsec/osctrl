@@ -16596,6 +16596,9 @@ components:
         bundle_binaries:
           description: Binaries the client uploaded for the file's bundle; not stored
           type: integer
+        carve:
+          description: Latest carve of the file from the request's event; not stored
+          type: string
         cert_sha256:
           description: Leaf certificate of the blocked file, from its event; not stored
           type: string
