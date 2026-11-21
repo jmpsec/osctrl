@@ -50,6 +50,7 @@ export function BinaryModal({ env, sha256, onClose }: {
   const b = binary.data;
   const chain = b?.signing_chain ?? [];
   const rules = b?.rules ?? [];
+  const ranOn = b?.machine_list ?? [];
   const when = (v: string) => formatDateTime(new Date(v));
 
   return (
@@ -80,6 +81,38 @@ export function BinaryModal({ env, sha256, onClose }: {
             <Field label={t('santa.binary.blocked')} value={String(b.blocked)} />
           </dl>
           <p className={SUB}>{t('santa.binary.retention')}</p>
+
+          {ranOn.length > 0 && (
+            <section className="space-y-1">
+              <h3 className={HEADING}>{t('santa.binary.ranOn', { n: b.machines })}</h3>
+              <div className="overflow-x-auto">
+                <table className={TABLE}>
+                  <thead>
+                    <tr className="border-b border-[color:var(--border)]">
+                      <th scope="col" className={TH}>{t('santa.request.machine')}</th>
+                      <th scope="col" className={TH}>{t('santa.binary.firstSeen')}</th>
+                      <th scope="col" className={TH}>{t('santa.binary.lastSeen')}</th>
+                      <th scope="col" className={TH}>{t('santa.binary.uploads')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ranOn.map((mc) => (
+                      <tr key={mc.machine_id} className={ROW}>
+                        <td className={TD}>
+                          {mc.hostname && <div className="text-[color:var(--text-1)] [overflow-wrap:anywhere]">{mc.hostname}</div>}
+                          <div className={`${MONO} ${SUB}`}>{mc.machine_id}</div>
+                        </td>
+                        <td className={TD}>{when(mc.first_seen)}</td>
+                        <td className={TD}>{when(mc.last_seen)}</td>
+                        <td className={TD}>{mc.events}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {b.machines > ranOn.length && <p className={SUB}>{t('santa.binary.ranOnMore', { n: ranOn.length })}</p>}
+            </section>
+          )}
 
           {b.file_path && b.latest_event_id > 0 && (
             <div className="flex flex-wrap items-center gap-2">

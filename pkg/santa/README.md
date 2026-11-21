@@ -2,7 +2,7 @@
 
 Optional Santa (North Pole Security, macOS) sync server. Disabled by default; enable with `--santa-enabled` (env `SERVICE_SANTA_ENABLED`, YAML `service.santaEnabled`) on both `osctrl-tls` and `osctrl-api`. Requires a restart. When off, no tables are migrated, no TLS or API routes are registered and `/api/v1/features` reports `santa: false`.
 
-Tables (`santa_env_configs`, `santa_rules`, `santa_mode_overrides`, `santa_machines`, `santa_events`) are migrated only when `santa.NewManager` is constructed.
+Tables (`santa_env_configs`, `santa_rules`, `santa_mode_overrides`, `santa_machines`, `santa_events`, `santa_binary_machines` and the others below) are migrated only when `santa.NewManager` is constructed.
 
 ## Data flow
 
@@ -36,9 +36,9 @@ After an upload is stored, `osctrl-tls` forwards its execution events and its fi
 
 Deciding on a rule needs context, so each file hash has a detail view: the file name in **Events** and in the approval queue opens it.
 
-- `GET /api/v1/santa/{env}/binaries/{sha256}` (environment admin) returns what the stored events say about the file: name, path, team ID, signing ID, CDHash, bundle (ID, name, version, path) and signing chain from its newest event; first and last seen; the number of events, blocks and distinct machines; and every rule of the environment that names the file, its team ID, signing ID, CDHash or leaf certificate, whatever its scope. `404` when the environment has no event for the hash.
+- `GET /api/v1/santa/{env}/binaries/{sha256}` (environment admin) returns what osctrl knows about the file: name, path, team ID, signing ID, CDHash, bundle (ID, name, version, path) and signing chain from its newest kept event; first and last seen; the number of kept events and blocks; the number of distinct machines and the 100 that reported it most recently (`machine_list`, with hostname, first and last seen and event count); and every rule of the environment that names the file, its team ID, signing ID, CDHash or leaf certificate, whatever its scope. `404` when osctrl never received an event of the hash in the environment.
 - Events now keep `bundle_name`, `bundle_version`, `bundle_path` and `signing_chain` (leaf first, at most 8 certificates) from `eventupload`. They are also in the event list and the log sinks; the MCP event tool keeps its own shorter field list. Events stored before this have them empty; no client change is needed.
-- Everything comes from `santa_events`, which is pruned after 30 days. First seen, last seen and the counts cover that window only, not the file's whole history.
+- **History beyond retention.** Every event upload also updates `santa_binary_machines`: one row per environment, file and machine, with first and last seen and an event count. It is not pruned, so first seen, last seen, the machine count and the machine list survive the 30-day event pruning; after it, the identity fields and the event and block counts are empty, and only a rule on the file's hash still matches. First and last seen are when osctrl received the events, not the client's clock, so a client cannot backdate them. Bundle listings (`BUNDLE_BINARY`) are not executions and are left out. When the table is created, it is filled once from the events still kept.
 - All of it is written by Santa clients and is untrusted: a compromised client can report any name, signer or chain for a hash. The view is context for a decision, not proof of who signed the file.
 
 ### Retrieving a binary

@@ -74,6 +74,27 @@ type EnvConfig struct {
 	ApproverGroups []string `gorm:"serializer:json;type:text" json:"approver_groups"`
 }
 
+// BinaryMachine records that a machine reported a file. It is updated on every
+// event upload and kept when the events are pruned, so it holds the file's
+// history beyond event retention. Times are when osctrl received the events.
+type BinaryMachine struct {
+	ID            uint   `gorm:"primarykey" json:"-"`
+	EnvironmentID uint   `gorm:"uniqueIndex:idx_santa_binary_machine" json:"-"`
+	SHA256        string `gorm:"type:varchar(64);uniqueIndex:idx_santa_binary_machine" json:"-"` // lowercase
+	MachineID     string `gorm:"type:varchar(64);uniqueIndex:idx_santa_binary_machine" json:"machine_id"`
+	// From santa_machines when listed; empty for a machine no longer known
+	Hostname string `gorm:"-" json:"hostname"`
+	// The file name of its newest event from the machine
+	FileName  string    `gorm:"type:varchar(255)" json:"file_name"`
+	FirstSeen time.Time `json:"first_seen"`
+	LastSeen  time.Time `json:"last_seen"`
+	// Events of the file the machine uploaded, including pruned ones
+	Events int64 `json:"events"`
+}
+
+// TableName for BinaryMachine
+func (BinaryMachine) TableName() string { return "santa_binary_machines" }
+
 // GroupTag maps an IdP group to a node tag of the environment.
 type GroupTag struct {
 	Group string `json:"group"`
@@ -325,8 +346,14 @@ func (Vote) TableName() string { return "santa_votes" }
 // Migrate creates the Santa tables and fills RemovableMedia for configs saved
 // before it existed, from the deprecated BlockUSBMount.
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}, &FileAccessEvent{}, &UserGroups{}); err != nil {
+	newHistory := !db.Migrator().HasTable(&BinaryMachine{})
+	if err := db.AutoMigrate(&EnvConfig{}, &Rule{}, &Machine{}, &Event{}, &ModeOverride{}, &Request{}, &RequestLink{}, &Vote{}, &Verdict{}, &FileAccessEvent{}, &UserGroups{}, &BinaryMachine{}); err != nil {
 		return err
+	}
+	if newHistory {
+		if err := backfillBinaryMachines(db); err != nil {
+			return err
+		}
 	}
 	const unset = "(removable_media = '' OR removable_media IS NULL)"
 	if err := db.Model(&EnvConfig{}).Where(unset+" AND block_usb_mount = ?", true).

@@ -8717,11 +8717,15 @@ paths:
   "/api/v1/santa/{env}/binaries/{sha256}":
     get:
       description: Requires environment admin. Identity fields (names, signing chain,
-        bundle) come from the file's newest event and are written by Santa
-        clients. First and last seen, the event counts and the machine count
-        only cover the events osctrl still keeps (30 days). Rules lists every
-        rule of the environment naming the file, its team ID, signing ID, CDHash
-        or leaf certificate. 404 when the environment has no event for the hash.
+        bundle) come from the file's newest kept event and are written by Santa
+        clients; they are empty once its events are pruned. First and last seen
+        (when osctrl received its events), the machine count and machine_list
+        (the 100 machines that reported it most recently) come from the binary
+        history and outlive event retention. The event counts only cover the
+        events osctrl still keeps (30 days). Rules lists every rule of the
+        environment naming the file, its team ID, signing ID, CDHash or leaf
+        certificate. 404 when osctrl never received an event of the hash in the
+        environment.
       parameters:
         - description: Environment name or UUID
           in: path
@@ -15966,13 +15970,14 @@ components:
         cd_hash:
           type: string
         events:
-          description: Events of the file, and how many of them were blocks
+          description: Kept events of the file, and how many of them were blocks
           type: integer
         file_name:
           type: string
         file_path:
           type: string
         first_seen:
+          description: When osctrl first and last received an event of the file
           type: string
         last_seen:
           type: string
@@ -15984,6 +15989,12 @@ components:
           type: integer
         latest_machine_id:
           type: string
+        machine_list:
+          description: The machines that reported it most recently, at most
+            MaxBinaryMachines
+          items:
+            $ref: "#/components/schemas/santa.BinaryMachine"
+          type: array
         machines:
           description: Distinct machines that reported the file
           type: integer
@@ -16007,6 +16018,24 @@ components:
         signing_id:
           type: string
         team_id:
+          type: string
+      type: object
+    santa.BinaryMachine:
+      properties:
+        events:
+          description: Events of the file the machine uploaded, including pruned ones
+          type: integer
+        file_name:
+          description: The file name of its newest event from the machine
+          type: string
+        first_seen:
+          type: string
+        hostname:
+          description: From santa_machines when listed; empty for a machine no longer known
+          type: string
+        last_seen:
+          type: string
+        machine_id:
           type: string
       type: object
     santa.Cert:
