@@ -30,7 +30,7 @@ const defaultCommandTimeout = 10 * time.Second
 //
 // It is a single statement (no semicolons) so validateSelect stays happy
 // and osquery treats it atomically.
-const PrimingMetadataSQL = "select version, build_platform, build_distro, start_time, config_valid, optimizations from osquery_info"
+const PrimingMetadataSQL = "select version, build_platform, build_distro, start_time, config_valid from osquery_info"
 
 type Manager struct {
 	DB           *gorm.DB
