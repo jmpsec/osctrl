@@ -435,6 +435,17 @@ The `WatchItems` key (here `ChromeCookies`) is the rule name that osctrl shows, 
 3. Pilot enforcement on a few Macs first: under **Settings > Mode overrides**, set **LOCKDOWN** for a tag (or a single node) while the environment stays in MONITOR.
 4. When no new legitimate binaries show up in **Events**, switch the environment to **LOCKDOWN** and remove the pilot override.
 
+## Testing
+
+`go test ./pkg/santa` runs on SQLite in memory. To run the same tests on PostgreSQL or MySQL, point them at an empty server; each test gets its own schema (PostgreSQL) or database (MySQL), dropped at the end, and MySQL connects with the `sql_mode` osctrl uses:
+
+```sh
+OSCTRL_TEST_SANTA_ENGINE=POSTGRES OSCTRL_TEST_POSTGRES_DSN="host=127.0.0.1 port=5432 user=postgres password=test dbname=osctrl_test sslmode=disable" go test ./pkg/santa
+OSCTRL_TEST_SANTA_ENGINE=MYSQL OSCTRL_TEST_MYSQL_DSN="root:test@tcp(127.0.0.1:3306)/osctrl_test?parseTime=True" go test ./pkg/santa
+```
+
+The pull request CI runs both on PostgreSQL 16 and MySQL 8.4. Browser workflows (request, approval in the Requests tab or from a notification link, the resulting rule) are Playwright specs in `frontend/tests/e2e`, run with `cd frontend && npm run test:e2e` against the Vite dev server and an in-memory API.
+
 ## Not implemented
 
 The `commands`, `metrics` and `signalupload` stages; FCM/NATS push (see [Sync interval](#sync-interval)); delivering file access rules (a v2-only stage; deploy them with MDM), network-flow, telemetry signal and package rules; Santa-side mode transitions; `export_configuration` (telemetry export to a signed POST URL; no osctrl log sink issues one); one-step rules for a whole bundle.

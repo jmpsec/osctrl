@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 func TestValidateRule(t *testing.T) {
@@ -72,8 +70,7 @@ func TestValidClientMode(t *testing.T) {
 }
 
 func TestMigrate(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory"), &gorm.Config{})
-	require.NoError(t, err)
+	db := testDB(t, "file:"+t.Name()+"?mode=memory")
 	require.NoError(t, Migrate(db))
 	for _, tbl := range []string{"santa_env_configs", "santa_rules", "santa_machines", "santa_events"} {
 		require.True(t, db.Migrator().HasTable(tbl), tbl)

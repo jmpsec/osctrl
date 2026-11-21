@@ -11,7 +11,7 @@ import (
 
 func TestGrantMonitor(t *testing.T) {
 	m := newTestManager(t)
-	now := time.Now()
+	now := time.Now().Truncate(time.Second) // whole seconds: MySQL rounds stored fractions
 	m.now = func() time.Time { return now }
 	machine := strings.ToUpper(testUUID)
 	require.NoError(t, m.SaveConfig(EnvConfig{EnvironmentID: 1, ClientMode: "LOCKDOWN"}))
@@ -75,7 +75,7 @@ func TestGrantMonitor(t *testing.T) {
 
 func TestMonitorRequest(t *testing.T) {
 	m := newTestManager(t)
-	now := time.Now()
+	now := time.Now().Truncate(time.Second) // whole seconds: MySQL rounds stored fractions
 	m.now = func() time.Time { return now }
 	machine := strings.ToUpper(testUUID)
 
@@ -135,7 +135,7 @@ func TestMonitorRequest(t *testing.T) {
 
 func TestExtendMonitor(t *testing.T) {
 	m := newTestManager(t)
-	now := time.Now()
+	now := time.Now().Truncate(time.Second) // whole seconds: MySQL rounds stored fractions
 	m.now = func() time.Time { return now }
 	machine := strings.ToUpper(testUUID)
 	require.NoError(t, m.SaveConfig(EnvConfig{EnvironmentID: 1, ClientMode: "LOCKDOWN", MaxMonitorHours: 4}))

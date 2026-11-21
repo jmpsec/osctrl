@@ -5,8 +5,6 @@ import (
 
 	syncv1 "buf.build/gen/go/northpolesec/protos/protocolbuffers/go/sync"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 func TestValidateConfigMedia(t *testing.T) {
@@ -93,8 +91,7 @@ func TestPreflightRemovableMedia(t *testing.T) {
 }
 
 func TestMigrateBackfillsRemovableMedia(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory"), &gorm.Config{})
-	require.NoError(t, err)
+	db := testDB(t, "file:"+t.Name()+"?mode=memory")
 	require.NoError(t, db.AutoMigrate(&EnvConfig{}))
 	// Rows as saved before removable_media existed.
 	require.NoError(t, db.Exec("INSERT INTO santa_env_configs (environment_id, client_mode, block_usb_mount, removable_media) VALUES (1, 'MONITOR', true, ''), (2, 'MONITOR', false, NULL), (3, 'MONITOR', true, 'REMOUNT')").Error)
