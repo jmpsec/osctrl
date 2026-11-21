@@ -22,7 +22,7 @@ vi.mock('$/api/santa', async () => {
 const pending: SantaRequest = {
   id: 7, file_sha256: 'ab'.repeat(32), machine_id: 'M-1', status: 'pending', created_at: '2026-11-13T10:00:00Z',
   justification: 'I need it', reason: '', file_name: 'tool', file_path: '/Applications/tool', signing_id: '', team_id: '',
-  executing_user: 'ada', requester: 'dave', decided_by: '', decided_at: null, rule_id: 0, kind: '', monitor_hours: 0, risk_override: false,
+  executing_user: 'ada', requester: 'dave', decided_by: '', decided_at: null, rule_id: 0, kind: '', monitor_hours: 0, risk_override: false, event_id: 3,
 };
 
 function renderPage(approve: boolean, token = 'TOKEN', requestId = 7) {
@@ -35,6 +35,11 @@ function renderPage(approve: boolean, token = 'TOKEN', requestId = 7) {
 }
 
 describe('DecideLinkPage', () => {
+  it('links to the Requests tab of the environment', async () => {
+    renderPage(true);
+    expect(await screen.findByRole('link', { name: 'Open the Requests tab' })).toHaveAttribute('href', expect.stringMatching(/\/_app\/env\/ENV-UUID\/santa\?tab=requests$/));
+  });
+
   beforeEach(() => {
     mockGet.mockReset().mockResolvedValue(pending);
     mockDecide.mockReset();

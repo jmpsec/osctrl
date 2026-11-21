@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ApiError } from '$/api/client';
 import { decideSantaRequestByLink, getSantaRequest, type SantaDecision } from '$/api/santa';
+import { appPath } from '$/lib/base-path';
 import { DecisionForm, requestName } from './RequestsTab';
 import { RiskBadge } from './RiskBadge';
 import { MONO, errorText } from './table';
@@ -57,6 +58,9 @@ export function DecideLinkPage({ env, requestId, approve, token }: { env: string
           </section>
         )
       )}
+      <a href={appPath(`/_app/env/${encodeURIComponent(env)}/santa?tab=requests`)} className="text-sm text-[color:var(--accent)] underline">
+        {t('santa.link.openRequests')}
+      </a>
     </main>
   );
 }

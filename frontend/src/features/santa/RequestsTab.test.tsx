@@ -16,15 +16,22 @@ vi.mock('$/api/santa', async () => {
     decideSantaRequest: (env: string, id: number, body: SantaDecision) => mockDecide(env, id, body),
     listSantaMachines: () => Promise.resolve([{ machine_id: 'M-1', hostname: 'ada-mbp' }]),
     getSantaBinary: (env: string, sha256: string) => mockBinary(env, sha256),
+    carveSantaEvent: (env: string, id: number) => mockCarve(env, id),
   };
 });
 const mockBinary = vi.fn<(env: string, sha256: string) => Promise<never>>(() => Promise.reject(new Error('no events for this file')));
+const mockCarve = vi.fn<(env: string, id: number) => Promise<{ query_name: string }>>();
+vi.mock('$/api/carves', () => ({ getCarve: () => Promise.reject(new Error('no access')) }));
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, params }: { children: React.ReactNode; params: { name: string } }) => <a href={`/carves/${params.name}`}>{children}</a>,
+}));
+const onBinary = vi.fn<(sha256: string) => void>();
 
 function request(id: number, over: Partial<SantaRequest> = {}): SantaRequest {
   return {
     id, file_sha256: `${id}`.repeat(64).slice(0, 64), machine_id: 'M-1', status: 'pending', created_at: '2026-11-13T10:00:00Z',
     justification: `why ${id}`, reason: '', file_name: `tool-${id}`, file_path: `/Applications/tool-${id}`, signing_id: '', team_id: '',
-    executing_user: 'ada', requester: `user${id}`, decided_by: '', decided_at: null, rule_id: 0, kind: '', monitor_hours: 0, risk_override: false, ...over,
+    executing_user: 'ada', requester: `user${id}`, decided_by: '', decided_at: null, rule_id: 0, kind: '', monitor_hours: 0, risk_override: false, event_id: 100 + id, ...over,
   };
 }
 
@@ -32,7 +39,7 @@ function renderTab() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <RequestsTab env="dev" />
+      <RequestsTab env="dev" onBinary={onBinary} />
     </QueryClientProvider>,
   );
 }
@@ -108,8 +115,25 @@ describe('RequestsTab', () => {
   it('opens the binary details from the file name', async () => {
     renderTab();
     await userEvent.click(await screen.findByRole('button', { name: 'Binary details: tool-1' }));
-    expect(await screen.findByRole('dialog', { name: 'Binary details' })).toBeInTheDocument();
-    expect(mockBinary).toHaveBeenCalledWith('dev', request(1).file_sha256);
+    expect(onBinary).toHaveBeenCalledWith(request(1).file_sha256);
+  });
+
+  it('carves the file from the queue, and again once carved', async () => {
+    mockList.mockResolvedValue([request(1), request(2, { carve: 'carve-old' })]);
+    mockCarve.mockResolvedValue({ query_name: 'carve-new' });
+    renderTab();
+    await userEvent.click((await screen.findAllByRole('button', { name: 'Retrieve file' }))[0]);
+    await waitFor(() => expect(mockCarve).toHaveBeenCalledWith('dev', 101));
+    expect(await screen.findAllByRole('link', { name: 'View carve' })).toHaveLength(2);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Retrieve again' })[1]);
+    await waitFor(() => expect(mockCarve).toHaveBeenCalledWith('dev', 102));
+  });
+
+  it('offers no carve to approvers who are not admins', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><RequestsTab env="dev" admin={false} /></QueryClientProvider>);
+    await screen.findByRole('button', { name: 'Approve tool-1' });
+    expect(screen.queryByRole('button', { name: 'Retrieve file' })).not.toBeInTheDocument();
   });
 
   it('approves a MONITOR request without a rule scope', async () => {

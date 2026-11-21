@@ -322,6 +322,8 @@ type Request struct {
 	CertSHA256 string `gorm:"-" json:"cert_sha256,omitempty"`
 	// Binaries the client uploaded for the file's bundle; not stored
 	BundleBinaries int `gorm:"-" json:"bundle_binaries,omitempty"`
+	// Latest carve of the file from the request's event; not stored
+	Carve string `gorm:"-" json:"carve,omitempty"`
 	// Cached risk verdict of the file, when risk checks are on; not stored
 	Risk *Risk `gorm:"-" json:"risk,omitempty"`
 }

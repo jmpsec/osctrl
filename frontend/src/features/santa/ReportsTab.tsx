@@ -7,7 +7,6 @@ import {
 import { Button } from '$/components/atoms/Button';
 import { Skeleton } from '$/components/data/Skeleton';
 import { useLocale } from '$/i18n/useLocale';
-import { BinaryModal } from './BinaryModal';
 import { BINARY_LINK, MONO, ROW, TABLE, TD, TH, errorText } from './table';
 
 const CARD = 'space-y-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-1)] p-4';
@@ -39,12 +38,10 @@ function exportJSON(env: string, report: SantaReport) {
 }
 
 /** When an environment or a machine can move to LOCKDOWN, and which rules are missing. */
-export function ReportsTab({ env }: { env: string }) {
+export function ReportsTab({ env, onBinary }: { env: string; onBinary: (sha256: string) => void }) {
   const { t } = useTranslation();
   const { formatDateTime } = useLocale();
   const [days, setDays] = useState(14);
-  const [binary, setBinary] = useState<string | null>(null);
-  const closeBinary = useCallback(() => setBinary(null), []);
   const report = useQuery({
     queryKey: santaQueryKey(env, 'reports', days),
     queryFn: () => getSantaReport(env, days),
@@ -93,7 +90,7 @@ export function ReportsTab({ env }: { env: string }) {
                 type="button"
                 className={BINARY_LINK}
                 aria-label={`${t('santa.binary.title')}: ${b.file_name || b.sha256}`}
-                onClick={() => setBinary(b.sha256)}
+                onClick={() => onBinary(b.sha256)}
               >
                 {b.file_name || b.sha256}
               </button>
@@ -269,7 +266,6 @@ export function ReportsTab({ env }: { env: string }) {
           <p className={SUB}>{t('santa.reports.footnote')}</p>
         </>
       )}
-      {binary && <BinaryModal env={env} sha256={binary} onClose={closeBinary} />}
     </div>
   );
 }

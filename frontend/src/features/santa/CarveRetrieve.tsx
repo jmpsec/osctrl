@@ -23,8 +23,10 @@ export function CarveRetrieve({ env, eventId, carve }: { env: string; eventId: n
       setStarted(r.query_name);
       void qc.invalidateQueries({ queryKey: santaQueryKey(env, 'events') });
       void qc.invalidateQueries({ queryKey: santaQueryKey(env, 'binaries') });
+      void qc.invalidateQueries({ queryKey: santaQueryKey(env, 'requests') });
     },
   });
+  const error = start.isError && <span role="alert" className="text-xs text-[color:var(--danger)]">{errorText(start.error)}</span>;
   // A caller without carve read access gets an error here: the link stays.
   const status = useQuery({ queryKey: ['carve', env, name], queryFn: () => getCarve(env, name), enabled: !!name, retry: false });
 
@@ -35,6 +37,10 @@ export function CarveRetrieve({ env, eventId, carve }: { env: string; eventId: n
         <Link to="/_app/env/$env/carves/$name" params={{ env, name }} className="text-xs text-[color:var(--accent)] underline">
           {t('santa.carve.view')}
         </Link>
+        <Button size="sm" variant="ghost" disabled={start.isPending} onClick={() => start.mutate()}>
+          {t('santa.carve.again')}
+        </Button>
+        {error}
       </span>
     );
   }
@@ -43,7 +49,7 @@ export function CarveRetrieve({ env, eventId, carve }: { env: string; eventId: n
       <Button size="sm" variant="ghost" disabled={start.isPending} onClick={() => start.mutate()}>
         {t('santa.carve.retrieve')}
       </Button>
-      {start.isError && <span role="alert" className="text-xs text-[color:var(--danger)]">{errorText(start.error)}</span>}
+      {error}
     </span>
   );
 }

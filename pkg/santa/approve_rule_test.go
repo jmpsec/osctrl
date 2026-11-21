@@ -38,6 +38,12 @@ func TestApproveRuleTypes(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, cert, reqs[0].CertSHA256)
 	require.Equal(t, 3, reqs[0].BundleBinaries, "as uploaded; rules skip what is not a hash")
+	// The queue shows the carve of the request's event, for carving from it.
+	require.Empty(t, reqs[0].Carve)
+	require.NoError(t, m.SetEventCarve(1, reqs[0].EventID, "carve-1"))
+	reqs, err = m.Requests(1, RequestPending, "")
+	require.NoError(t, err)
+	require.Equal(t, "carve-1", reqs[0].Carve)
 
 	for _, tt := range []struct {
 		ruleType, want string

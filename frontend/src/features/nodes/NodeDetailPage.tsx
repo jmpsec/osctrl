@@ -51,6 +51,7 @@ import { HealthBadge, TagChips } from './nodeSignals';
 import { NodeConfigTab } from './NodeConfigTab';
 import { getNodeExtensions } from '$/api/extensions';
 import { NodeFileExplorerTab } from './NodeFileExplorerTab';
+import { ModeOverridesCard } from '$/features/santa/SettingsTab';
 import { NodeVulnerabilitiesTab } from '$/features/vulnerabilities/NodeVulnerabilitiesTab';
 import { recomputePostureScore, controlKey } from './postureScore';
 import { appPath } from '$/lib/base-path'
@@ -712,6 +713,7 @@ export function NodeDetailPage() {
   const fileExplorerEnabled = features?.file_explorer === true;
   const vulnsEnabled = features?.vulnerabilities === true;
   const alertsEnabled = features?.alerts === true;
+  const santaEnabled = features?.santa === true;
   // Decide whether to show destructive actions (Delete). The server
   // requires AdminLevel on the env for DELETE; we mirror that gate
   // in the UI so non-admins don't see a button that would 403.
@@ -1489,6 +1491,12 @@ export function NodeDetailPage() {
                   },
                 ]}
               />
+              {/* Santa runs on macOS only; overrides need environment admin, as on the server. */}
+              {santaEnabled && canAdminNode && node.platform === 'darwin' && (
+                <div className="mt-5">
+                  <ModeOverridesCard env={env} node={uuid} />
+                </div>
+              )}
             </>
           );
         })()}

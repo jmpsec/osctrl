@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within, act } from '@testing-library/react';
+import { render, screen, waitFor, within, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -100,6 +100,17 @@ vi.mock('$/api/tags', () => ({
   listEnvTags: (...args: unknown[]) => mockListEnvTags(...(args as [])),
   tagNode: (...args: unknown[]) => mockTagNode(...(args as [])),
 }));
+
+const mockListModes = vi.fn<() => Promise<unknown[]>>();
+const mockSetMode = vi.fn<(env: string, body: unknown) => Promise<unknown>>();
+vi.mock('$/api/santa', async () => {
+  const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
+  return {
+    ...actual,
+    listSantaModeOverrides: () => mockListModes(),
+    setSantaModeOverride: (env: string, body: unknown) => mockSetMode(env, body),
+  };
+});
 
 vi.mock('./NodeConfigTab', () => ({
   NodeConfigTab: () => <div data-testid="config-panel" />,
@@ -832,6 +843,33 @@ describe('NodeDetailPage', () => {
 
     expect(screen.queryByText('Uptime')).not.toBeInTheDocument();
     expect(screen.queryByText('7d 3h 12m')).not.toBeInTheDocument();
+  });
+
+  it('sets a Santa mode override for a macOS node from its page', async () => {
+    const uuid = 'abc12345-0000-0000-0000-000000000001';
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, santa: true });
+    mockGetNode.mockResolvedValue(makeNode({ platform: 'darwin' }));
+    mockListModes.mockResolvedValue([
+      { id: 1, scope: 'node', scope_value: uuid.toUpperCase(), client_mode: 'MONITOR', created_by: 'admin', expires_at: null },
+      { id: 2, scope: 'tag', scope_value: 'pilot', client_mode: 'LOCKDOWN', created_by: 'admin', expires_at: null },
+    ]);
+    mockSetMode.mockResolvedValue({});
+    renderWithProviders(makeTestRouter());
+
+    expect(await screen.findByRole('heading', { name: 'Santa mode' })).toBeInTheDocument();
+    expect(await screen.findByText(uuid.toUpperCase())).toBeInTheDocument();
+    expect(screen.queryByText('pilot')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Mode'), { target: { value: 'LOCKDOWN' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add override' }));
+    await waitFor(() => expect(mockSetMode).toHaveBeenCalledWith('test-env', { scope: 'node', scope_value: uuid, client_mode: 'LOCKDOWN', hours: 0 }));
+  });
+
+  it('shows no Santa mode on a node that is not macOS', async () => {
+    mockGetFeatures.mockResolvedValue({ posture: false, service_config: false, accelerated: false, file_explorer: false, santa: true });
+    renderWithProviders(makeTestRouter());
+    await screen.findByRole('heading', { name: 'web-server-01' });
+    expect(screen.queryByRole('heading', { name: 'Santa mode' })).not.toBeInTheDocument();
+    expect(mockListModes).not.toHaveBeenCalled();
   });
 
   it('shows the console action when console is enabled', async () => {

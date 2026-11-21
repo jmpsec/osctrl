@@ -8,6 +8,7 @@ import { ReportsTab } from './ReportsTab';
 const mockReport = vi.fn<(env: string, days: number) => Promise<SantaReport>>();
 const mockBinary = vi.fn<(env: string, sha256: string) => Promise<never>>();
 const mockSetMode = vi.fn<(env: string, body: { scope_value: string }) => Promise<unknown>>();
+const onBinary = vi.fn<(sha256: string) => void>();
 
 vi.mock('$/api/santa', async () => {
   const actual = await vi.importActual<typeof import('$/api/santa')>('$/api/santa');
@@ -41,7 +42,7 @@ function renderTab() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <ReportsTab env="dev" />
+      <ReportsTab env="dev" onBinary={onBinary} />
     </QueryClientProvider>,
   );
 }
@@ -114,8 +115,7 @@ describe('ReportsTab', () => {
     await user.selectOptions(await screen.findByLabelText('Window'), '30');
     await waitFor(() => expect(mockReport).toHaveBeenLastCalledWith('dev', 30));
     await user.click(screen.getByRole('button', { name: 'Binary details: tool' }));
-    expect(await screen.findByRole('dialog', { name: 'Binary details' })).toBeInTheDocument();
-    expect(mockBinary).toHaveBeenCalledWith('dev', SHA);
+    expect(onBinary).toHaveBeenCalledWith(SHA);
   });
 
   it('shows the API error', async () => {
