@@ -222,7 +222,7 @@ func (h *HandlersApi) SAMLACSHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, h.pub("/"), http.StatusFound)
 		return
 	}
-	h.santaRecordGroups(user.Username, identity.Groups)
+	h.recordSSOGroups(user.Username, identity.Groups, utils.GetIP(r))
 
 	if _, err := h.userJWTSessionTokens(w, user, 0, utils.GetIP(r), r.UserAgent()); err != nil {
 		// userJWTSessionTokens has already written an apiErrorResponse.

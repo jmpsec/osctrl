@@ -112,6 +112,10 @@ func CreateUserManager(backend *gorm.DB) *UserManager {
 	if err := backend.AutoMigrate(&UserScopeTag{}); err != nil {
 		log.Fatal().Msgf("Failed to AutoMigrate table (user_scope_tags): %v", err)
 	}
+	// tables user_group_mappings, user_group_grants and user_idp_groups
+	if err := backend.AutoMigrate(&GroupMapping{}, &GroupGrant{}, &UserIdPGroups{}); err != nil {
+		log.Fatal().Msgf("Failed to AutoMigrate IdP group access tables: %v", err)
+	}
 	return u
 }
 

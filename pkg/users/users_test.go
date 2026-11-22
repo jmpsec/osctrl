@@ -72,8 +72,27 @@ func setupTestManager(t *testing.T) (*UserManager, sqlmock.Sqlmock) {
 			WillReturnResult(sqlmock.NewResult(1, 1))
 	}
 
+	expectGroupAccessMigration(mock)
+
 	manager := CreateUserManager(_postgres).WithJWT(&conf)
 	return manager, mock
+}
+
+// expectGroupAccessMigration expects the IdP group access tables, each with
+// one unique index but user_idp_groups.
+func expectGroupAccessMigration(mock sqlmock.Sqlmock) {
+	for _, table := range []string{"user_group_mappings", "user_group_grants", "user_idp_groups"} {
+		mock.ExpectQuery(
+			regexp.QuoteMeta(`SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1 AND table_type = $2`)).
+			WithArgs(table, "BASE TABLE").
+			WillReturnRows(sqlmock.NewRows([]string{"count(*)"}).AddRow(0))
+		mock.ExpectExec(`CREATE TABLE "` + table + `" .*`).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		if table != "user_idp_groups" {
+			mock.ExpectExec(`CREATE UNIQUE INDEX IF NOT EXISTS .*`).
+				WillReturnResult(sqlmock.NewResult(1, 1))
+		}
+	}
 }
 
 func TestCreateUserManager(t *testing.T) {

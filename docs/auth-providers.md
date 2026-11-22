@@ -13,6 +13,7 @@ for each tested provider.
 - [Username rules](#username-rules)
 - [Linking existing local accounts](#linking-existing-local-accounts)
 - [SCIM provisioning](#scim-provisioning)
+- [Access from IdP groups](#access-from-idp-groups)
 - [Multi-factor authentication](#multi-factor-authentication)
 - [OIDC](#oidc)
   - [Generic OIDC setup](#generic-oidc-setup)
@@ -233,8 +234,9 @@ before groups.
 | `active: false` | Disables the account: password and SSO login are refused, and its API token and sessions end at once. `active: true` restores the same account with its roles and permissions. |
 | Delete user | Deletes the account, its permissions and its second factors. |
 
-- **Access is still granted in osctrl.** SCIM decides who has an account, not
-  what it can do: roles and environment permissions are set on the Users page.
+- **Access comes from osctrl.** SCIM decides who has an account; roles and
+  environment permissions are set on the Users page or come from
+  [IdP group mappings](#access-from-idp-groups).
 - **Local and service accounts are never taken over.** Creating a SCIM user
   whose name matches one fails with `409`, independent of `linkLocalAccounts`.
 - **The last active superuser** is never disabled or deleted through SCIM
@@ -250,7 +252,61 @@ before groups.
 - **Audit.** Token changes are logged under the superuser, every SCIM change
   under the user `scim` (`scim: create user jdoe@corp.com account=jdoe@corp.com active=true`).
 - **Trust.** The token can create, disable and delete accounts and change
-  everyone's groups. Treat it like an IdP admin credential.
+  everyone's groups, and with group mappings their access. Treat it like an
+  IdP admin credential.
+
+## Access from IdP groups
+
+A mapping gives the members of an IdP group global roles and environment
+permissions, so joining or leaving a team at the IdP changes what someone can
+do in osctrl. Groups are matched by display name: from SCIM for SCIM users, and
+from the groups claim of the SSO login for everyone else.
+
+**Setup.** A superuser replaces the whole list with
+`PUT /api/v1/group-mappings`; user admins can read it with `GET`:
+
+```json
+[
+  {
+    "group": "Security",
+    "roles": ["read_only_admin", "alert_admin"],
+    "environments": [
+      {"environment": "<environment UUID>", "user": true, "query_tier": "standard", "carve_tier": "", "admin": false}
+    ]
+  }
+]
+```
+
+- **Roles:** `user_admin`, `env_manager`, `read_only_admin`, `alert_admin`.
+  Superuser is never granted by a mapping.
+- **Environments:** `user` and `admin` access, and `standard` or `full` query
+  and carve tiers. The `tags` tier needs per-user scope tags, so it is set by hand.
+  Several groups combine: any role or access, and the highest tier.
+
+**When it applies:**
+
+- On every SCIM change to a user or group, for the accounts it touches. No
+  osctrl login is needed.
+- At each SSO login that carries a groups claim, for users SCIM does not
+  provision. A login without the claim changes nothing.
+- When the mappings change, for every user osctrl has seen the groups of.
+  Other SSO users get them at their next login.
+
+**Only what a mapping granted is revoked.** osctrl records each piece of
+access a mapping gives (`user_group_grants`). When a user leaves the group, or
+the mapping changes, it revokes those and nothing else:
+
+- Access the user already held, granted by hand, is not recorded, so it stays.
+- If an admin changes granted access by hand (say, a different tier), it
+  becomes theirs: the mapping no longer changes or revokes it.
+- A mapped access an admin revoked by hand is granted again at the next sync,
+  since the IdP still says the user belongs.
+
+**Audit.** The mapping change is logged under the superuser
+(`users: set group mappings groups=Security`), and every grant, change and
+revoke under the user who caused it: `scim` for SCIM, the user for their SSO
+login, the superuser for a mapping change
+(`idp groups: grant jdoe role:read_only_admin=true`).
 
 ## Multi-factor authentication
 

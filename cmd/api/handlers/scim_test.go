@@ -201,7 +201,7 @@ func TestSCIMSantaGroupTags(t *testing.T) {
 	require.Equal(t, []string{"finance"}, groupTags())
 
 	// A later SSO login does not overwrite the groups SCIM provisions.
-	h.santaRecordGroups("jdoe", []string{})
+	h.recordSSOGroups("jdoe", []string{}, "127.0.0.1")
 	require.Equal(t, []string{"finance"}, groupTags())
 
 	require.Equal(t, http.StatusBadRequest, scimDo(t, mux, "GET", `/v2/Groups?filter=displayName+co+%22F%22`, tok, "", nil))

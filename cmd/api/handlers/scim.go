@@ -118,18 +118,19 @@ func (h *HandlersApi) SCIMAuth(next http.Handler) http.Handler {
 	})
 }
 
-// scimApplied audits a change and, with Santa enabled, rewrites the Santa
-// groups of the accounts it touched. A failure answers 500 so the identity
-// provider retries; the rewrite is idempotent.
+// scimApplied audits a change and brings the accounts it touched in line with
+// their groups: the IdP group mappings and, with Santa enabled, the Santa
+// groups. A failure answers 500 so the identity provider retries; both are
+// idempotent.
 func (h *HandlersApi) scimApplied(w http.ResponseWriter, r *http.Request, action string, names []string) bool {
 	h.AuditLog.UserAction("scim", "scim: "+action, utils.GetIP(r))
 	for _, n := range names {
-		if h.Santa == nil {
-			break
-		}
 		groups, err := h.SCIM.Groups(n)
-		if err == nil {
+		if err == nil && h.Santa != nil {
 			err = h.Santa.SetUserGroups(n, groups)
+		}
+		if err == nil {
+			err = h.syncGroupAccess("scim", utils.GetIP(r), n, groups)
 		}
 		if err != nil {
 			scimError(w, fmt.Errorf("syncing groups of %s: %w", n, err))
