@@ -221,12 +221,12 @@ func TestSantaConfigGroupTags(t *testing.T) {
 	require.Equal(t, http.StatusOK, putMatch(santa.MatchExact))
 
 	// SSO login stores groups; nil (no groups claim configured) keeps them.
-	h.santaRecordGroups("jdoe", []string{"Finance"})
-	h.santaRecordGroups("jdoe", nil)
+	h.recordSSOGroups("jdoe", []string{"Finance"}, "127.0.0.1")
+	h.recordSSOGroups("jdoe", nil, "127.0.0.1")
 	got, err := h.Santa.GroupTags(envA.ID, "jdoe")
 	require.NoError(t, err)
 	require.Equal(t, []string{"finance"}, got)
-	h.santaRecordGroups("jdoe", []string{})
+	h.recordSSOGroups("jdoe", []string{}, "127.0.0.1")
 	got, err = h.Santa.GroupTags(envA.ID, "jdoe")
 	require.NoError(t, err)
 	require.Empty(t, got)

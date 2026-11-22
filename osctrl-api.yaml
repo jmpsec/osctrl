@@ -4710,6 +4710,71 @@ paths:
       summary: Get enabled API features
       tags:
         - Features
+  /api/v1/group-mappings:
+    get:
+      description: Requires the user management role. Each mapping gives the members
+        of an IdP group (display name, from SCIM or the groups claim of an SSO
+        login) global roles and environment permissions.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.GroupMappingsResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List the IdP group mappings
+      tags:
+        - users
+    put:
+      description: "Requires superuser. Replaces every mapping, then applies them to
+        the users whose IdP groups osctrl has seen: SCIM-provisioned users and
+        SSO users after a login with a groups claim. Roles are user_admin,
+        env_manager, read_only_admin and alert_admin; superuser is never
+        granted. Environment tiers are standard or full. A mapping only grants
+        access the user does not hold, and only revokes access a mapping
+        granted; access granted by hand is never changed. Every grant and revoke
+        is audited."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              items:
+                $ref: "#/components/schemas/users.GroupMapping"
+              type: array
+        description: Mappings
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/handlers.GroupMappingsResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: Replace the IdP group mappings
+      tags:
+        - users
   /api/v1/health/status:
     get:
       description: Component health, per-service runtime detail, live-update transport
@@ -14948,6 +15013,15 @@ components:
             not registered and the vulnerability tables are not created.
           type: boolean
       type: object
+    handlers.GroupMappingsResponse:
+      properties:
+        changes:
+          type: integer
+        mappings:
+          items:
+            $ref: "#/components/schemas/users.GroupMapping"
+          type: array
+      type: object
     handlers.InactiveHoursRequest:
       properties:
         inactive_hours:
@@ -18700,6 +18774,38 @@ components:
         username:
           type: string
         uuid:
+          type: string
+      type: object
+    users.GroupEnvAccess:
+      properties:
+        admin:
+          type: boolean
+        carve_tier:
+          type: string
+        environment:
+          description: Environment UUID
+          type: string
+        query_tier:
+          description: '"" (none), standard or full'
+          type: string
+        user:
+          type: boolean
+      type: object
+    users.GroupMapping:
+      properties:
+        environments:
+          items:
+            $ref: "#/components/schemas/users.GroupEnvAccess"
+          type: array
+        group:
+          type: string
+        roles:
+          items:
+            type: string
+          type: array
+        updated_at:
+          type: string
+        updated_by:
           type: string
       type: object
     vulns.Advisory:

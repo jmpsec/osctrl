@@ -1532,6 +1532,13 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 	muxAPI.Handle(
 		"POST "+_apiPath(apiUsersPath)+"/{username}/{action}",
 		handlerAuthCheck(http.HandlerFunc(handlersApi.UserActionHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	// API: IdP group mappings
+	muxAPI.Handle(
+		"GET "+_apiPath("/group-mappings"),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.GroupMappingsHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+	muxAPI.Handle(
+		"PUT "+_apiPath("/group-mappings"),
+		handlerAuthCheck(http.HandlerFunc(handlersApi.GroupMappingsPutHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 	// API: platforms
 	muxAPI.Handle(
 		"GET "+_apiPath(apiPlatformsPath)+"/{env}",
