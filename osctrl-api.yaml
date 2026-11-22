@@ -14458,6 +14458,38 @@ paths:
       summary: API health check
       tags:
         - system
+  /livez:
+    get:
+      description: Returns 200 while the process is able to serve HTTP.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+      summary: Liveness probe
+      tags:
+        - checks
+  /readyz:
+    get:
+      description: Returns 200 when the database and Redis are reachable, 503 otherwise.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+        "503":
+          description: Dependency unavailable
+          content:
+            application/json:
+              schema:
+                type: string
+      summary: Readiness probe
+      tags:
+        - checks
 servers:
   - url: /
 components:

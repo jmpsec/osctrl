@@ -42,6 +42,10 @@ func TestValidateIntegerSetting(t *testing.T) {
 		{config.ServiceAPI, AuditLogRetentionDays, 1, true},
 		{config.ServiceAPI, AuditLogRetentionDays, 36500, true},
 		{config.ServiceAPI, AuditLogRetentionDays, 36501, false},
+		{config.ServiceTLS, LogRetentionDays, -1, false},
+		{config.ServiceTLS, LogRetentionDays, 0, true},
+		{config.ServiceTLS, LogRetentionDays, 36500, true},
+		{config.ServiceTLS, LogRetentionDays, 36501, false},
 		{config.ServiceTLS, InactiveHours, -5, true}, // other service: pass-through
 		{config.ServiceAPI, "other_setting", -5, true},
 	} {

@@ -58,6 +58,45 @@ func writeTempConfig(t *testing.T, body string) string {
 	return path
 }
 
+func TestLoadedYAMLCarriesMetrics(t *testing.T) {
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, `
+service:
+  listener: 127.0.0.1
+  port: 9000
+  auth: jwt
+db:
+  type: postgres
+metrics:
+  enabled: true
+  listener: 0.0.0.0
+  port: 9191
+`))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+	if params.Metrics == nil {
+		t.Fatal("Metrics params are nil — the metrics section was dropped")
+	}
+	if !params.Metrics.Enabled || params.Metrics.Listener != "0.0.0.0" || params.Metrics.Port != 9191 {
+		t.Fatalf("metrics section not carried over: %+v", *params.Metrics)
+	}
+}
+
+func TestLoadedYAMLMetricsDefaultsWhenOmitted(t *testing.T) {
+	cfg, err := loadYAMLConfiguration(writeTempConfig(t, ssoConfigYAML))
+	if err != nil {
+		t.Fatalf("loadYAMLConfiguration: %v", err)
+	}
+	params := loadedYAMLToServiceParams(cfg, "api.yml")
+	if params.Metrics == nil {
+		t.Fatal("Metrics params are nil")
+	}
+	if params.Metrics.Enabled || params.Metrics.Listener != "127.0.0.1" || params.Metrics.Port != 9091 {
+		t.Fatalf("unexpected metrics defaults: %+v", *params.Metrics)
+	}
+}
+
 func TestLoadedYAMLCarriesSSOSections(t *testing.T) {
 	cfg, err := loadYAMLConfiguration(writeTempConfig(t, ssoConfigYAML))
 	if err != nil {

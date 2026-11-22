@@ -467,6 +467,7 @@ func osctrlService() {
 	var alertsInactiveStop chan struct{}
 	var alertsVulnStop chan struct{}
 	var alertsRetentionStop chan struct{}
+	var logRetentionStop chan struct{}
 	if alertsStore != nil {
 		alertsRefreshStop = make(chan struct{})
 		go watchAlertRules(alertsRefreshStop, alertsMgr, alertsStore, alertsDispatcher)
@@ -477,6 +478,13 @@ func osctrlService() {
 	if alertsMgr != nil {
 		alertsRetentionStop = make(chan struct{})
 		go watchAlertRetention(alertsRetentionStop, alertsMgr, settingsmgr)
+	}
+	// Daily database-log retention prune. It only acts on the DB exporters
+	// that are actually configured, so disabling DB logging leaves nothing to
+	// prune, and a separate logging database is pruned in place.
+	if loggerTLS != nil {
+		logRetentionStop = make(chan struct{})
+		go watchLogRetention(logRetentionStop, loggerTLS, settingsmgr, envs)
 	}
 	// Node-inactive watcher: sweeps node liveness on a ticker and fires
 	// node_inactive / node_recovered rules on state transitions. State
@@ -662,6 +670,9 @@ func osctrlService() {
 	case err := <-serverErr:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
+		if logRetentionStop != nil {
+			close(logRetentionStop)
+		}
 		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsVulnStop, alertsRetentionStop, alertsWorker)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			if eventBus != nil {
@@ -672,6 +683,9 @@ func osctrlService() {
 	case <-restartCh:
 		stopCommandWatcher()
 		sinkStatsWriter.Stop()
+		if logRetentionStop != nil {
+			close(logRetentionStop)
+		}
 		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsVulnStop, alertsRetentionStop, alertsWorker)
 		if eventBus != nil {
 			eventBus.Close()

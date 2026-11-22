@@ -80,6 +80,10 @@ const (
 	// AlertHistoryRetentionDays bounds how long dispatched-alert rows
 	// stay in alert_history before the periodic prune deletes them.
 	AlertHistoryRetentionDays string = "alert_history_retention_days"
+	// LogRetentionDays bounds how long database-stored osquery status,
+	// result and on-demand query rows stay before the TLS retention worker
+	// deletes them. It may be set globally or per environment.
+	LogRetentionDays string = "log_retention_days"
 )
 
 // Values for generic IDs
@@ -97,6 +101,11 @@ const DefaultInactiveHours int64 = 72
 // (disable pruning) is rejected so the table can never grow unbounded by
 // accident.
 const DefaultAlertHistoryRetentionDays int64 = 30
+
+// DefaultLogRetentionDays is the fallback retention (in days) for the
+// database-backed osquery log tables. Zero disables pruning so an upgrade does
+// not delete historical logs until an operator explicitly opts in.
+const DefaultLogRetentionDays int64 = 0
 
 // SettingValue to hold each value for settings
 type SettingValue struct {
@@ -166,6 +175,15 @@ func (conf *Settings) NewValue(service, name, typeValue string, value interface{
 			return fmt.Errorf("audit retention must be an integer")
 		}
 		if err := ValidateAuditLogRetentionDays(days); err != nil {
+			return err
+		}
+	}
+	if service == config.ServiceTLS && name == LogRetentionDays {
+		days, ok := value.(int64)
+		if typeValue != TypeInteger || !ok {
+			return fmt.Errorf("log retention must be an integer")
+		}
+		if err := ValidateLogRetentionDays(days); err != nil {
 			return err
 		}
 	}
@@ -268,6 +286,11 @@ func (conf *Settings) SetInteger(intValue int64, service, name string, envID uin
 	}
 	if service == config.ServiceAPI && name == InactiveHours {
 		if err := ValidateInactiveHours(intValue); err != nil {
+			return err
+		}
+	}
+	if service == config.ServiceTLS && name == LogRetentionDays {
+		if err := ValidateLogRetentionDays(intValue); err != nil {
 			return err
 		}
 	}

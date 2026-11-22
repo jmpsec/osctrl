@@ -632,5 +632,10 @@ func Indexes() []dbutil.Index {
 		{Model: &OsqueryStatusData{}, Name: "idx_osquery_status_data_uuid_created", Columns: []string{"uuid", "created_at"}, Replaces: []string{"uuid"}},
 		{Model: &OsqueryResultData{}, Name: "idx_osquery_result_data_uuid_created", Columns: []string{"uuid", "created_at"}, Replaces: []string{"uuid"}},
 		{Model: &OsqueryQueryData{}, Name: "idx_osquery_query_data_name_created", Columns: []string{"name", "created_at"}},
+		// Retention deletes are scoped by environment and cutoff. Without
+		// these indexes a daily prune scans every row the table has ever held.
+		{Model: &OsqueryStatusData{}, Name: "idx_osquery_status_data_env_created", Columns: []string{"environment", "created_at"}},
+		{Model: &OsqueryResultData{}, Name: "idx_osquery_result_data_env_created", Columns: []string{"environment", "created_at"}},
+		{Model: &OsqueryQueryData{}, Name: "idx_osquery_query_data_env_created", Columns: []string{"environment", "created_at"}},
 	}
 }

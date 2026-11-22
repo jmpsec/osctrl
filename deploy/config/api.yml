@@ -204,6 +204,15 @@ db:
     maxOpenConns: 0
 
 # Redis cache configuration. Used for env cache, activity tiles, and query cache.
+# Metrics configuration (Prometheus)
+metrics:
+  # Enables a separate Prometheus metrics listener for osctrl-api.
+  enabled: false
+  # Metrics listener address.
+  listener: 127.0.0.1
+  # Metrics listener port.
+  port: 9091
+
 redis:
   # Redis host when connectionString is empty.
   host: 127.0.0.1

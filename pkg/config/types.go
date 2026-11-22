@@ -109,6 +109,7 @@ type APIConfiguration struct {
 	Carver     *YAMLConfigurationCarver     `mapstructure:"carver"`
 	Debug      *YAMLConfigurationDebug      `mapstructure:"debug"`
 	MCP        *YAMLConfigurationMCP        `mapstructure:"mcp"`
+	Metrics    *YAMLConfigurationMetrics    `mapstructure:"metrics"`
 	RateLimits *YAMLConfigurationRateLimits `mapstructure:"rateLimits"`
 }
 

@@ -63,6 +63,11 @@ func (c *CountedExporter) Name() string    { return c.inner.Name() }
 func (c *CountedExporter) IsEnabled() bool { return c.inner.IsEnabled() }
 func (c *CountedExporter) Close() error    { return c.inner.Close() }
 
+// Unwrap returns the exporter underneath the stats counter. Background
+// maintenance (for example log retention) uses it to reach concrete exporters
+// such as *LoggerDB without changing the hot-path interface.
+func (c *CountedExporter) Unwrap() DataExporter { return c.inner }
+
 func (c *CountedExporter) Export(logType string, data []byte, params ExportParams) error {
 	c.stats.BytesSent.Add(int64(len(data)))
 	c.stats.ExportCount.Add(1)
@@ -129,6 +134,18 @@ func (m *MultiExporter) Stats() []*SinkStats {
 		return nil
 	}
 	return m.stats
+}
+
+// DataExporters returns a snapshot of the underlying exporters, with stats
+// wrappers left in place. Background maintenance that needs the concrete
+// exporter type should call CountedExporter.Unwrap.
+func (m *MultiExporter) DataExporters() []DataExporter {
+	if m == nil {
+		return nil
+	}
+	out := make([]DataExporter, len(m.exporters))
+	copy(out, m.exporters)
+	return out
 }
 
 // Name returns a comma-separated list of destination names for diagnostics.

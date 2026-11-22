@@ -115,7 +115,7 @@ func InitTLSFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initServiceFlags(params)...)
 	allFlags = append(allFlags, initAuthFlag(params, AuthNone, "Authentication mechanism for the service"))
 	allFlags = append(allFlags, initLoggingFlags(params)...)
-	allFlags = append(allFlags, initMetricsFlags(params)...)
+	allFlags = append(allFlags, initMetricsFlags(params, 9090)...)
 	allFlags = append(allFlags, initWriterFlags(params)...)
 	allFlags = append(allFlags, initRedisFlags(params)...)
 	allFlags = append(allFlags, initDBFlags(params)...)
@@ -161,6 +161,7 @@ func InitAPIFlags(params *ServiceParameters) []cli.Flag {
 	allFlags = append(allFlags, initSantaRiskFlags(params)...)
 	allFlags = append(allFlags, initAuthFlag(params, AuthJWT, "Authentication mechanism for the service (jwt|none — `none` requires OSCTRL_INSECURE_NO_AUTH=1)"))
 	allFlags = append(allFlags, initLoggingFlags(params)...)
+	allFlags = append(allFlags, initMetricsFlags(params, 9091)...)
 	allFlags = append(allFlags, initRedisFlags(params)...)
 	allFlags = append(allFlags, initDBFlags(params)...)
 	allFlags = append(allFlags, initTLSSecurityFlags(params)...)
@@ -565,7 +566,7 @@ func initLoggingFlags(params *ServiceParameters) []cli.Flag {
 }
 
 // initMetricsFlags initializes metrics-related flags
-func initMetricsFlags(params *ServiceParameters) []cli.Flag {
+func initMetricsFlags(params *ServiceParameters, defaultPort int) []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:        "metrics-listener",
@@ -576,7 +577,7 @@ func initMetricsFlags(params *ServiceParameters) []cli.Flag {
 		},
 		&cli.IntFlag{
 			Name:        "metrics-port",
-			Value:       9090,
+			Value:       defaultPort,
 			Usage:       "Port for exposing prometheus metrics",
 			Sources:     cli.EnvVars("METRICS_PORT"),
 			Destination: &params.Metrics.Port,
