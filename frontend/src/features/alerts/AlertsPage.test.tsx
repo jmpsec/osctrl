@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -10,6 +10,7 @@ import {
   RouterProvider,
   Outlet,
 } from '@tanstack/react-router';
+import { i18n, setLanguage } from '$/i18n/i18n';
 import { AlertsPage } from './AlertsPage';
 import type { AlertRule, AlertChannel, AlertChannelTypeSpec } from '$/api/alerts';
 import type { ServiceCommand } from '$/api/service-config';
@@ -227,6 +228,26 @@ describe('AlertsPage', () => {
         expect.objectContaining({ source: 'santa_file_access', match_field: 'target', match_value: '/.ssh/' }),
       );
     });
+  });
+
+  it('shows the rule sources in the UI language, with field names as written', async () => {
+    const user = userEvent.setup();
+    mockGetFeatures.mockResolvedValue({
+      posture: false, service_config: true, log_sinks: true, alerts: true,
+      accelerated: false, file_explorer: false, vulnerabilities: false, santa: true,
+    });
+    await setLanguage('de', false);
+    try {
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: i18n.t('alertsPage.newRule') }));
+      const source = screen.getByLabelText('Quelle');
+      expect(within(source).getByRole('option', { name: 'Santa-Dateizugriff' })).toBeInTheDocument();
+      await user.selectOptions(source, 'santa_file_access');
+      expect(screen.getByText(/Verstöße gegen per MDM verteilte Dateizugriffsregeln/)).toBeInTheDocument();
+      expect(screen.getByText(/process_signing_id/)).toHaveClass('font-mono');
+    } finally {
+      await setLanguage('en', false);
+    }
   });
 
   it('offers no Santa source when Santa is off', async () => {
