@@ -51,6 +51,19 @@ func loadedYAMLToServiceParams(yml config.APIConfiguration, loadedFile string) *
 	if yml.MCP != nil {
 		params.MCP = yml.MCP
 	}
+	if yml.Metrics != nil {
+		params.Metrics = yml.Metrics
+	} else {
+		// Keep the flag defaults (and the metrics listener/port defaults)
+		// when the YAML file omits the section.
+		params.Metrics = &config.YAMLConfigurationMetrics{}
+	}
+	if params.Metrics.Listener == "" {
+		params.Metrics.Listener = "127.0.0.1"
+	}
+	if params.Metrics.Port == 0 {
+		params.Metrics.Port = 9091
+	}
 	if yml.RateLimits != nil {
 		params.RateLimits = yml.RateLimits
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 // AlertMatcher is the ingest-path hook into the alerting subsystem.
@@ -116,6 +117,36 @@ func (logTLS *LoggerTLS) AllExporters() map[uint]*MultiExporter {
 	out := make(map[uint]*MultiExporter, len(logTLS.exporters))
 	for k, v := range logTLS.exporters {
 		out[k] = v
+	}
+	return out
+}
+
+// DBLoggers returns the unique database exporters currently in the live
+// exporter map. Retention uses it so it prunes the same database the DB sink
+// writes to, including a dedicated logging database and per-environment sinks.
+// The result is deduplicated by underlying *gorm.DB so two sink rows pointing
+// at one database are pruned once per run.
+func (logTLS *LoggerTLS) DBLoggers() []*LoggerDB {
+	if logTLS == nil {
+		return nil
+	}
+	var out []*LoggerDB
+	seen := make(map[*gorm.DB]struct{})
+	for _, multi := range logTLS.AllExporters() {
+		for _, exporter := range multi.DataExporters() {
+			if counted, ok := exporter.(*CountedExporter); ok {
+				exporter = counted.Unwrap()
+			}
+			dbLogger, ok := exporter.(*LoggerDB)
+			if !ok || dbLogger == nil || dbLogger.Database == nil || dbLogger.Database.Conn == nil {
+				continue
+			}
+			if _, ok := seen[dbLogger.Database.Conn]; ok {
+				continue
+			}
+			seen[dbLogger.Database.Conn] = struct{}{}
+			out = append(out, dbLogger)
+		}
 	}
 	return out
 }

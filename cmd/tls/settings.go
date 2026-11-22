@@ -21,5 +21,12 @@ func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) erro
 			return fmt.Errorf("failed to add %s to configuration: %w", settings.OnelinerExpiration, err)
 		}
 	}
+	// Seed the global database-log retention so operators can see and edit
+	// it from the Settings page instead of discovering a hidden default.
+	if !mgr.IsValue(config.ServiceTLS, settings.LogRetentionDays, settings.NoEnvironmentID) {
+		if err := mgr.NewIntegerValue(config.ServiceTLS, settings.LogRetentionDays, settings.DefaultLogRetentionDays, settings.NoEnvironmentID); err != nil {
+			return fmt.Errorf("failed to add %s to configuration: %w", settings.LogRetentionDays, err)
+		}
+	}
 	return nil
 }

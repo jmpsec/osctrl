@@ -43,5 +43,8 @@ func ValidateIntegerSetting(service, name string, value int64) error {
 	if service == config.ServiceAPI && name == AuditLogRetentionDays {
 		return ValidateAuditLogRetentionDays(value)
 	}
+	if service == config.ServiceTLS && name == LogRetentionDays {
+		return ValidateLogRetentionDays(value)
+	}
 	return nil
 }

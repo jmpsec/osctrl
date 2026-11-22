@@ -127,6 +127,7 @@ Representative routes (some are feature-gated):
   - `POST /{env}/block`
   - `POST /{env}/santa/sync/{stage}/{machineid}` (only with `--santa-enabled`)
 - API routes in [`cmd/api/main.go`](./cmd/api/main.go):
+  - `GET /livez` and `GET /readyz` — unauthenticated orchestrator probes; readiness fails on a degraded database or unreachable Redis
   - `POST /api/v1/login`
   - `POST /api/v1/login/{env}`
   - `GET /api/v1/nodes/{env}/all`

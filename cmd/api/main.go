@@ -33,6 +33,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/fileexplorer"
 	"github.com/jmpsec/osctrl/pkg/geoip"
 	"github.com/jmpsec/osctrl/pkg/health"
+	"github.com/jmpsec/osctrl/pkg/httpmetrics"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/logsinks"
 	"github.com/jmpsec/osctrl/pkg/mfa"
@@ -92,6 +93,9 @@ var basePath string
 const (
 	// HTTP health path
 	healthPath = "/health"
+	// Unauthenticated orchestrator probes.
+	livenessPath  = "/livez"
+	readinessPath = "/readyz"
 	// HTTP errors path
 	errorPath     = "/error"
 	forbiddenPath = "/forbidden"
@@ -244,6 +248,7 @@ func init() {
 		MCP:     &config.YAMLConfigurationMCP{},
 		TLS:     &config.YAMLConfigurationTLS{},
 		Osquery: &config.YAMLConfigurationOsquery{},
+		Metrics: &config.YAMLConfigurationMetrics{},
 		Logger: &config.YAMLConfigurationLogger{
 			DB:       &config.YAMLConfigurationDB{},
 			S3:       &config.S3Logger{},
@@ -874,6 +879,11 @@ func osctrlAPIService() {
 	// Create router for API endpoint
 	muxAPI := http.NewServeMux()
 	registerRoutes(muxAPI, handlersApi, flagParams, eventBus, alertsMgr, logSinksEnabled, authProvidersEnabled, auditLog)
+	var apiHandler http.Handler = muxAPI
+	if flagParams.Metrics != nil && flagParams.Metrics.Enabled {
+		startAPIMetrics(flagParams)
+		apiHandler = httpmetrics.Middleware(apiHandler)
+	}
 	// Launch listeners for API server. The server runs in a goroutine so
 	// the main goroutine can wait on the restart channel and trigger a
 	// graceful shutdown when the operator applies config changes.
@@ -881,7 +891,7 @@ func osctrlAPIService() {
 	tlsTermination := flagParams.TLS != nil && flagParams.TLS.Termination
 	srv := &http.Server{
 		Addr:    serviceListener,
-		Handler: muxAPI,
+		Handler: apiHandler,
 	}
 	if tlsTermination {
 		srv.TLSConfig = &tls.Config{
@@ -970,6 +980,10 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 	muxAPI.HandleFunc("GET /", handlersApi.RootHandler)
 	// API: testing
 	muxAPI.HandleFunc("GET "+healthPath, handlersApi.HealthHandler)
+	// Orchestrator probes are intentionally unauthenticated and always
+	// registered, independent of the optional health dashboard feature.
+	muxAPI.HandleFunc("GET "+livenessPath, handlersApi.LivezHandler)
+	muxAPI.HandleFunc("GET "+readinessPath, handlersApi.ReadyzHandler)
 	// API: error
 	muxAPI.HandleFunc("GET "+errorPath, handlersApi.ErrorHandler)
 	// API: forbidden
