@@ -682,40 +682,12 @@ func osctrlAPIService() {
 	if vulnWorker != nil {
 		go vulnWorker.Run(vulnCtx)
 	}
-	if santaMgr != nil {
-		go func() {
-			t := time.NewTicker(24 * time.Hour)
-			defer t.Stop()
-			for {
-				// shortcut: fixed 30-day retention, add a flag if operators ask
-				if _, err := santaMgr.PruneEvents(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
-					log.Err(err).Msg("error pruning santa events")
-				}
-				// Same window: a pending request whose event is gone has nothing left to decide on.
-				if _, err := santaMgr.ExpireRequests(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
-					log.Err(err).Msg("error expiring santa requests")
-				}
-				// ponytail: pruned here because Santa is the only action held today.
-				if _, err := changesMgr.Prune(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
-					log.Err(err).Msg("error pruning held changes")
-				}
-				if _, err := santaMgr.PruneVotes(time.Now()); err != nil {
-					log.Err(err).Msg("error expiring santa votes")
-				}
-				if _, err := santaMgr.PruneLinks(time.Now()); err != nil {
-					log.Err(err).Msg("error pruning santa approval links")
-				}
-				if _, err := santaMgr.PruneVerdicts(time.Now()); err != nil {
-					log.Err(err).Msg("error pruning santa risk verdicts")
-				}
-				select {
-				case <-vulnCtx.Done():
-					return
-				case <-t.C:
-				}
-			}
-		}()
-	}
+	// Daily retention for completed carves, Santa events, completed query
+	// metadata, and inactive console/file-explorer sessions. The worker is
+	// always started; each manager is optional, so disabled features simply
+	// contribute nothing.
+	dataRetentionCtx, stopDataRetention := context.WithCancel(context.Background())
+	go watchDataRetention(dataRetentionCtx.Done(), settingsmgr, santaMgr, changesMgr, queriesmgr, filecarves, consolemgr, fileexplorermgr)
 	// Secondary indexes for the hot read paths, beyond the struct tags. Built
 	// in the background, so a large table does not hold up startup; osctrl-api
 	// and osctrl-tls both run this and are safe to race.
@@ -925,6 +897,7 @@ func osctrlAPIService() {
 	case err := <-serverErr:
 		stopAuditRetention()
 		stopVulns()
+		stopDataRetention()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			if eventBus != nil {
 				eventBus.Close()
@@ -934,6 +907,7 @@ func osctrlAPIService() {
 	case <-shutdownSignals:
 		stopAuditRetention()
 		stopVulns()
+		stopDataRetention()
 		if eventBus != nil {
 			eventBus.Close()
 		}
@@ -945,6 +919,7 @@ func osctrlAPIService() {
 	case <-restartCh:
 		stopAuditRetention()
 		stopVulns()
+		stopDataRetention()
 		if eventBus != nil {
 			eventBus.Close()
 		}

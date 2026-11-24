@@ -83,6 +83,38 @@ Main runtime components:
 - `deploy`: Docker, nginx, systemd, osquery assets, sample YAML configs.
 - `tools`: helper scripts, Bruno collections, release tooling.
 
+## Data Retention
+
+osctrl has two retention workers:
+
+- `osctrl-tls` prunes database-backed osquery logs.
+- `osctrl-api` prunes completed operations, Santa events, completed query metadata, and inactive sessions.
+
+Both run once shortly after boot, then daily. Each class has its own setting. A value of `0` keeps that class forever. Santa events keep their historical 30-day default.
+
+| Setting | Service | Default | Data pruned |
+| --- | --- | --- | --- |
+| `log_retention_days` | TLS | `0` | `osquery_status_data`, `osquery_result_data`, `osquery_query_data` |
+| `santa_event_retention_days` | API | `30` | `santa_events`, `santa_file_access_events`, pending requests whose event is gone, held changes |
+| `carve_retention_days` | API | `0` | Completed carves, their blocks, S3 objects, and local archives |
+| `query_metadata_retention_days` | API | `0` | Completed/expired/deleted distributed queries, node-query rows, and targets |
+| `session_retention_days` | API | `0` | Inactive console and file-explorer sessions and their command/request rows |
+
+`log_retention_days` may also be set with an environment scope; environment values win over the global value. The other settings are global.
+
+Safety rules:
+
+- Active, pending, scheduled, or in-progress rows are never pruned.
+- `0` disables pruning for that class.
+- Carve storage is deleted before its database rows. A storage failure leaves the metadata in place so the next run can retry instead of orphaning objects.
+- Local DB-carver archives can only be removed by a replica that can see the archive path. Use the S3 carver for multi-replica deployments so any replica can complete cleanup.
+- Inactive sessions are pruned with their child rows; active sessions are never deleted.
+- Deletes are scoped and idempotent. Multiple API/TLS replicas may run the same sweep; the second delete simply affects no rows.
+
+Keep `query_metadata_retention_days` at least as long as `log_retention_days`, otherwise the UI can remove a query while its retained result rows are still present. `osctrl-tls` logs per-environment log-prune counts; `osctrl-api` logs per-class counts and exports `osctrl_api_retention_pruned_total{class="..."}` when metrics are enabled.
+
+The safe upgrade defaults keep logs, carves, query metadata, and sessions forever; Santa events remain at 30 days. Operators should enable retention explicitly after reviewing their storage and compliance requirements.
+
 ## Startup Flow
 
 Both long-lived backend services follow the same pattern in their `main.go`:
@@ -100,7 +132,7 @@ Both long-lived backend services follow the same pattern in their `main.go`:
 Service-specific additions:
 
 - `osctrl-tls` wires Redis-backed environment/settings/query-dispatch caches, node activity batching, node metadata batching, persisted log sinks, service-command polling, and optional DB-health, posture, vulnerability-inventory, alerting (including the vulnerability-finding watcher), and Prometheus components. When `--health-enabled` is set, it also writes a `service_status` heartbeat (version, uptime, goroutines, worker counters) every 60s by riding the existing 5s service-command poll loop rather than starting a new ticker.
-- `osctrl-api` wires the shared environment/query caches and activity reader; initializes audit, MFA, console, file-explorer, service-config, log-sink, and auth-provider managers; and conditionally registers posture, vulnerability (plus its feed-sync worker, single-active across replicas through a SQL lease), alerting, service-management, federated-auth, and hosted-MCP routes.
+- `osctrl-api` wires the shared environment/query caches and activity reader; initializes audit, MFA, console, file-explorer, service-config, log-sink, and auth-provider managers; runs a daily retention worker for completed carves, Santa events, completed query metadata, and inactive console/file-explorer sessions; and conditionally registers posture, vulnerability (plus its feed-sync worker, single-active across replicas through a SQL lease), alerting, service-management, federated-auth, and hosted-MCP routes.
 
 The standalone `osctrl-mcp` process has a smaller startup flow:
 

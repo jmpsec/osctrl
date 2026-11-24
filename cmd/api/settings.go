@@ -36,5 +36,17 @@ func loadingSettings(mgr *settings.Settings, cfg *config.ServiceParameters) erro
 			return fmt.Errorf("failed to add audit retention setting: %w", err)
 		}
 	}
+	for name, def := range map[string]int64{
+		settings.SantaEventRetentionDays:    settings.DefaultSantaEventRetentionDays,
+		settings.CarveRetentionDays:         settings.DefaultCarveRetentionDays,
+		settings.QueryMetadataRetentionDays: settings.DefaultQueryMetadataRetentionDays,
+		settings.SessionRetentionDays:       settings.DefaultSessionRetentionDays,
+	} {
+		if !mgr.IsValue(config.ServiceAPI, name, settings.NoEnvironmentID) {
+			if err := mgr.NewIntegerValue(config.ServiceAPI, name, def, settings.NoEnvironmentID); err != nil {
+				return fmt.Errorf("failed to add %s to configuration: %w", name, err)
+			}
+		}
+	}
 	return nil
 }
