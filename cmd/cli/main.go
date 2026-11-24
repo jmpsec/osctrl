@@ -705,7 +705,7 @@ func init() {
 							Name:    "query-name",
 							Aliases: []string{"Q"},
 							Value:   "",
-							Usage:   "Query name to be idenfified in the schedule",
+							Usage:   "Query name to be identified in the schedule",
 						},
 						&cli.IntFlag{
 							Name:    "interval",
@@ -1704,7 +1704,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Tage name to be used",
+							Usage:   "Tag name to be used",
 						},
 						&cli.StringFlag{
 							Name:    "env",
@@ -1753,7 +1753,7 @@ func init() {
 						&cli.StringFlag{
 							Name:    "name",
 							Aliases: []string{"n"},
-							Usage:   "Tage name to be used",
+							Usage:   "Tag name to be used",
 						},
 						&cli.StringFlag{
 							Name:    "env-uuid",

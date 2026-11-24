@@ -134,7 +134,7 @@ clean:
 	rm -rf $(OUTPUT)/$(CLI_NAME)
 	make clean-dist
 
-# Dekete all dependencies go.sum files
+# Delete all dependencies go.sum files
 clean_go:
 	find . -name "go.sum" -type f -exec rm -rf {} \;
 
