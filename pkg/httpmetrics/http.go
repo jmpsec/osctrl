@@ -30,12 +30,25 @@ var (
 		Name: "osctrl_api_requests_in_flight",
 		Help: "HTTP requests currently being served by osctrl-api",
 	})
+	retentionPrunedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "osctrl_api_retention_pruned_total",
+		Help: "Rows or objects pruned by the osctrl-api retention worker, by data class",
+	}, []string{"class"})
 )
 
 // Register adds the HTTP metrics to reg. Call once during startup when metrics
 // are enabled; the middleware itself is safe to use before or after.
 func Register(reg prometheus.Registerer) {
-	reg.MustRegister(requestsTotal, requestDuration, requestsInFlight)
+	reg.MustRegister(requestsTotal, requestDuration, requestsInFlight, retentionPrunedTotal)
+}
+
+// RecordRetentionPruned adds one retention sweep's count for a data class.
+// Recording is safe before Register: the counter simply becomes visible once
+// the metrics listener registers it.
+func RecordRetentionPruned(class string, count int64) {
+	if count > 0 {
+		retentionPrunedTotal.WithLabelValues(class).Add(float64(count))
+	}
 }
 
 // Middleware records method, matched route pattern, final status and duration

@@ -58,3 +58,10 @@ func TestRegisterOnlyOnce(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	require.NotPanics(t, func() { Register(reg) })
 }
+
+func TestRecordRetentionPruned(t *testing.T) {
+	retentionPrunedTotal.Reset()
+	RecordRetentionPruned("carves", 3)
+	RecordRetentionPruned("carves", 0)
+	require.Equal(t, float64(3), testutil.ToFloat64(retentionPrunedTotal.WithLabelValues("carves")))
+}

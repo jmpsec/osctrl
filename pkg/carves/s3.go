@@ -171,6 +171,22 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 	return res, nil
 }
 
+// DeleteKey removes one object from the carve bucket. Retention uses it to
+// delete block and archive objects before their metadata rows are removed.
+func (carveS3 *CarverS3) DeleteKey(key string) error {
+	if key == "" {
+		return nil
+	}
+	_, err := carveS3.Client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
+		Bucket: aws.String(carveS3.S3Config.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("delete s3 object %s - %w", key, err)
+	}
+	return nil
+}
+
 // Download - Function to download an archived carve from s3
 func (carveS3 *CarverS3) Download(carve CarvedFile) (io.WriterAt, error) {
 	ctx := context.Background()

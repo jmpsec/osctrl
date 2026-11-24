@@ -187,6 +187,15 @@ func (conf *Settings) NewValue(service, name, typeValue string, value interface{
 			return err
 		}
 	}
+	if service == config.ServiceAPI && isDataRetentionSetting(name) {
+		days, ok := value.(int64)
+		if typeValue != TypeInteger || !ok {
+			return fmt.Errorf("%s must be an integer", name)
+		}
+		if err := ValidateRetentionDays(days); err != nil {
+			return err
+		}
+	}
 	// Empty new value
 	entry := conf.EmptyValue(service, name, typeValue, envID)
 	switch typeValue {
@@ -291,6 +300,11 @@ func (conf *Settings) SetInteger(intValue int64, service, name string, envID uin
 	}
 	if service == config.ServiceTLS && name == LogRetentionDays {
 		if err := ValidateLogRetentionDays(intValue); err != nil {
+			return err
+		}
+	}
+	if service == config.ServiceAPI && isDataRetentionSetting(name) {
+		if err := ValidateRetentionDays(intValue); err != nil {
 			return err
 		}
 	}
