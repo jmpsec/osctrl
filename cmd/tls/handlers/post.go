@@ -912,7 +912,7 @@ func (h *HandlersTLS) CarveInitHandler(w http.ResponseWriter, r *http.Request) {
 		carveSessionID = generateCarveSessionID()
 		// Process carve init
 		if err := h.ProcessCarveInit(t, carveSessionID, env.Name, node); err != nil {
-			log.Err(err).Msg("error procesing carve init")
+			log.Err(err).Msg("error processing carve init")
 			initCarve = false
 		}
 		// Refresh last seen

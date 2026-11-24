@@ -628,7 +628,7 @@ else
     _dh_file="$_certificates_dir/dhparam.pem"
     _dh_bits="2048"
 
-    # Mode dev checks for existance of certificates
+    # Mode dev checks for existence of certificates
     if [[ "$MODE" == "dev" ]]; then
       # Do we have certificates already for admin/API?
       # This is done just in case we have certificates from a local CA
