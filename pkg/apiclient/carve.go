@@ -34,6 +34,21 @@ func (api *OsctrlAPI) GetCarves(env string) ([]queries.DistributedQuery, error) 
 	return getAllPages[queries.DistributedQuery](api, reqURL)
 }
 
+// GetCarveOrphans reports S3 carve objects with no metadata. The API must use
+// the S3 carver; graceSeconds ignores objects newer than that many seconds.
+func (api *OsctrlAPI) GetCarveOrphans(env string, graceSeconds int) (carves.OrphanReport, error) {
+	var report carves.OrphanReport
+	reqURL := fmt.Sprintf("%s%s?grace_seconds=%d", api.Configuration.URL, path.Join(APIPath, APICarves, env, "orphans"), graceSeconds)
+	raw, err := api.GetGeneric(reqURL, nil)
+	if err != nil {
+		return report, fmt.Errorf("error api request - %w - %s", err, string(raw))
+	}
+	if err := json.Unmarshal(raw, &report); err != nil {
+		return report, fmt.Errorf("can not parse body - %w", err)
+	}
+	return report, nil
+}
+
 // GetCarve to retrieve one carve from osctrl
 func (api *OsctrlAPI) GetCarve(env, name string) (carves.CarvedFile, error) {
 	var c carves.CarvedFile

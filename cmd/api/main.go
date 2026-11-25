@@ -1475,6 +1475,9 @@ func registerRoutes(muxAPI *http.ServeMux, handlersApi *handlers.HandlersApi, fl
 			"POST "+_apiPath(apiCarvesPath)+"/{env}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.CarvesRunHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
+			"GET "+_apiPath(apiCarvesPath)+"/{env}/orphans",
+			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveOrphansHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
+		muxAPI.Handle(
 			"GET "+_apiPath(apiCarvesPath)+"/{env}/{name}",
 			handlerAuthCheck(http.HandlerFunc(handlersApi.CarveShowHandler), flagParams.Service.Auth, flagParams.JWT.JWTSecret))
 		muxAPI.Handle(
