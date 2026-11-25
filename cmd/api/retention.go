@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -13,6 +14,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/santa"
 	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/tracing"
 )
 
 // dataRetentionInterval is the cadence for non-log retention. These tables
@@ -54,6 +56,9 @@ func watchDataRetention(stop <-chan struct{}, settingsMgr *settings.Settings, sa
 }
 
 func pruneDataRetentionOnce(settingsMgr *settings.Settings, santaMgr *santa.Manager, changesMgr *changes.Manager, queriesMgr *queries.Queries, carvesMgr *carves.Carves, consoleMgr *console.Manager, explorerMgr *fileexplorer.Manager) dataRetentionStats {
+	_, span := tracing.StartSpan(context.Background(), "retention.api")
+	defer span.End()
+
 	var stats dataRetentionStats
 	if settingsMgr == nil {
 		return stats

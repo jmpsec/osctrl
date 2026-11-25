@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/nodes"
+	"github.com/jmpsec/osctrl/pkg/tracing"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -152,6 +153,9 @@ func (w *Worker) Run(ctx context.Context) {
 
 // Tick does one round of work if this replica holds the lease.
 func (w *Worker) Tick(ctx context.Context) error {
+	ctx, span := tracing.StartSpan(ctx, "vulns.worker.tick")
+	defer span.End()
+
 	ok, err := w.acquireLease()
 	if err != nil || !ok {
 		return err

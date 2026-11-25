@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 
+	"github.com/jmpsec/osctrl/pkg/backend"
 	"github.com/jmpsec/osctrl/pkg/cache"
 	"github.com/jmpsec/osctrl/pkg/config"
 	"github.com/jmpsec/osctrl/pkg/httpmetrics"
@@ -16,9 +17,10 @@ import (
 // startAPIMetrics registers the API's request metrics and starts the separate
 // Prometheus listener. Keeping it on its own port lets operators expose metrics
 // only on a private interface while the API listens on its normal address.
-func startAPIMetrics(params *config.ServiceParameters) {
+func startAPIMetrics(params *config.ServiceParameters, db *backend.DBManager) {
 	httpmetrics.Register(prometheus.DefaultRegisterer)
 	cache.RegisterMetrics(prometheus.DefaultRegisterer)
+	backend.RegisterDBPoolMetrics(prometheus.DefaultRegisterer, db)
 
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.Handler())

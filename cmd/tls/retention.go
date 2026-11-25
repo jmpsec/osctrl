@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/jmpsec/osctrl/pkg/environments"
 	"github.com/jmpsec/osctrl/pkg/logging"
 	"github.com/jmpsec/osctrl/pkg/settings"
+	"github.com/jmpsec/osctrl/pkg/tracing"
 	"github.com/rs/zerolog/log"
 )
 
@@ -38,6 +40,9 @@ func watchLogRetention(stop <-chan struct{}, loggerTLS *logging.LoggerTLS, setti
 // returns the total rows deleted across every environment and database so a
 // caller (or a test) can assert the sweep ran without parsing logs.
 func pruneLogRetentionOnce(loggerTLS *logging.LoggerTLS, settingsMgr *settings.Settings, envs *environments.EnvManager) logging.PruneStats {
+	_, span := tracing.StartSpan(context.Background(), "retention.logs")
+	defer span.End()
+
 	var total logging.PruneStats
 	if loggerTLS == nil || settingsMgr == nil || envs == nil {
 		return total
