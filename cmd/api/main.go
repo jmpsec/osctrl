@@ -50,6 +50,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/tracing"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/jmpsec/osctrl/pkg/users"
 	"github.com/jmpsec/osctrl/pkg/utils"
@@ -187,6 +188,8 @@ var (
 	flagParams    *config.ServiceParameters
 	auditLog      *auditlog.AuditLogManager
 	osqueryTables []types.OsqueryTable
+	// tracingShutdown flushes the tracer provider on graceful shutdown.
+	tracingShutdown func(context.Context) error
 )
 
 // Valid values for auth and logging in configuration
@@ -206,6 +209,9 @@ func loadYAMLConfiguration(file string) (config.APIConfiguration, error) {
 	// cookie). A zero-value bool can't distinguish "absent" from
 	// "explicitly false", so the default has to live here.
 	v.SetDefault("saml.forceAuthn", true)
+	// Keep the tracing sample ratio useful when the section is enabled but the
+	// optional ratio key is omitted. An explicit 0 still disables sampling.
+	v.SetDefault("service.tracingSampleRatio", 0.1)
 	// Load file and read config
 	v.SetConfigFile(file)
 	v.SetConfigType(config.YAMLConfigType)
@@ -336,6 +342,23 @@ func osctrlAPIService() {
 		log.Fatal().Err(err).Msg("Invalid --base-path")
 	}
 	basePath = bp
+	// ////////////////////////////// Tracing
+	if flagParams.Service.TracingEnabled {
+		shutdown, terr := tracing.Setup(context.Background(), tracing.Config{
+			Enabled:        true,
+			Endpoint:       flagParams.Service.TracingEndpoint,
+			Insecure:       flagParams.Service.TracingInsecure,
+			SampleRatio:    flagParams.Service.TracingSampleRatio,
+			ServiceName:    serviceName,
+			ServiceVersion: buildVersion,
+			Environment:    flagParams.Service.Host,
+		})
+		if terr != nil {
+			log.Fatal().Err(terr).Msg("Failed to initialize tracing")
+		}
+		tracingShutdown = shutdown
+		log.Info().Msg("OpenTelemetry tracing enabled")
+	}
 	// ////////////////////////////// Backend
 	log.Info().Msg("Initializing backend...")
 	for {
@@ -352,6 +375,10 @@ func osctrlAPIService() {
 		}
 		log.Info().Msgf("Backend NOT ready! Retrying in %d seconds...\n", flagParams.DB.ConnRetry)
 		time.Sleep(time.Duration(flagParams.DB.ConnRetry) * time.Second)
+	}
+	tracing.InstrumentDB(db.Conn)
+	if db.Read != nil && db.Read != db.Conn {
+		tracing.InstrumentDB(db.Read)
 	}
 	// ////////////////////////////// Cache
 	log.Info().Msg("Initializing cache...")
@@ -370,6 +397,7 @@ func osctrlAPIService() {
 		log.Info().Msgf("Cache NOT ready! Retrying in %d seconds...\n", flagParams.Redis.ConnRetry)
 		time.Sleep(time.Duration(flagParams.Redis.ConnRetry) * time.Second)
 	}
+	tracing.InstrumentRedis(redis.Client)
 	log.Info().Msg("Initialize users")
 	apiUsers = users.CreateUserManager(db.Conn).WithJWT(flagParams.JWT)
 	log.Info().Msg("Initialize tags")
@@ -853,8 +881,11 @@ func osctrlAPIService() {
 	registerRoutes(muxAPI, handlersApi, flagParams, eventBus, alertsMgr, logSinksEnabled, authProvidersEnabled, auditLog)
 	var apiHandler http.Handler = muxAPI
 	if flagParams.Metrics != nil && flagParams.Metrics.Enabled {
-		startAPIMetrics(flagParams)
+		startAPIMetrics(flagParams, db)
 		apiHandler = httpmetrics.Middleware(apiHandler)
+	}
+	if tracing.Enabled() {
+		apiHandler = tracing.HTTPMiddleware(apiHandler)
 	}
 	// Launch listeners for API server. The server runs in a goroutine so
 	// the main goroutine can wait on the restart channel and trigger a
@@ -898,6 +929,7 @@ func osctrlAPIService() {
 		stopAuditRetention()
 		stopVulns()
 		stopDataRetention()
+		stopTracing()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			if eventBus != nil {
 				eventBus.Close()
@@ -908,6 +940,7 @@ func osctrlAPIService() {
 		stopAuditRetention()
 		stopVulns()
 		stopDataRetention()
+		stopTracing()
 		if eventBus != nil {
 			eventBus.Close()
 		}
@@ -920,6 +953,7 @@ func osctrlAPIService() {
 		stopAuditRetention()
 		stopVulns()
 		stopDataRetention()
+		stopTracing()
 		if eventBus != nil {
 			eventBus.Close()
 		}
@@ -940,6 +974,14 @@ func osctrlAPIService() {
 		// as "done, no restart needed." Using exit 1 ensures restart in
 		// both dev (air) and production (systemd/k8s) environments.
 		os.Exit(1)
+	}
+}
+
+// stopTracing flushes pending spans on shutdown. The tracer provider is
+// idempotent, so calling this from more than one shutdown path is safe.
+func stopTracing() {
+	if tracingShutdown != nil {
+		_ = tracingShutdown(context.Background())
 	}
 }
 

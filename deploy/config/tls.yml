@@ -24,6 +24,14 @@ service:
   eventsEnabled: false
   # Set a shared deployment-unique Redis channel namespace before enabling.
   eventsNamespace: ""
+  # Optional OpenTelemetry tracing over OTLP HTTP. Disabled by default.
+  tracingEnabled: false
+  # OTLP HTTP endpoint as host:port or URL. Empty uses OTEL_EXPORTER_OTLP_*.
+  tracingEndpoint: ""
+  # Disable TLS for the OTLP exporter. http:// endpoints imply this.
+  tracingInsecure: false
+  # Parent-based trace-id sampling ratio between 0 and 1.
+  tracingSampleRatio: 0.1
   # Address to bind. Use 0.0.0.0 inside containers or behind a proxy.
   listener: 127.0.0.1
   # TCP port for osctrl-tls.

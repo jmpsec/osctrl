@@ -39,6 +39,7 @@ import (
 	"github.com/jmpsec/osctrl/pkg/serviceconfig"
 	"github.com/jmpsec/osctrl/pkg/settings"
 	"github.com/jmpsec/osctrl/pkg/tags"
+	"github.com/jmpsec/osctrl/pkg/tracing"
 	"github.com/jmpsec/osctrl/pkg/utils"
 	"github.com/jmpsec/osctrl/pkg/version"
 	"github.com/jmpsec/osctrl/pkg/vulns"
@@ -98,6 +99,8 @@ var (
 	serviceConfiguration config.TLSConfiguration
 	// FIXME this struct is temporary until we refactor to write settings to the DB
 	flagParams *config.ServiceParameters
+	// tracingShutdown flushes the tracer provider on graceful shutdown.
+	tracingShutdown func(context.Context) error
 )
 
 // Function to load the configuration from a single YAML file
@@ -106,6 +109,9 @@ func loadYAMLConfiguration(file string) (config.TLSConfiguration, error) {
 	// (e.g. limits added after it was written) keep their default values.
 	cfg := config.TLSConfiguration{RateLimits: config.DefaultRateLimitsPtr()}
 	v := viper.New()
+	// Keep the tracing sample ratio useful when the section is enabled but the
+	// optional ratio key is omitted. An explicit 0 still disables sampling.
+	v.SetDefault("service.tracingSampleRatio", 0.1)
 	// Load file and read config
 	v.SetConfigFile(file)
 	v.SetConfigType(config.YAMLConfigType)
@@ -191,6 +197,23 @@ func osctrlService() {
 		utils.SetTrustedProxies(strings.Split(tp, ","))
 		log.Info().Msgf("Trusting forwarding headers from: %s", tp)
 	}
+	// ////////////////////////////// Tracing
+	if flagParams.Service.TracingEnabled {
+		shutdown, terr := tracing.Setup(context.Background(), tracing.Config{
+			Enabled:        true,
+			Endpoint:       flagParams.Service.TracingEndpoint,
+			Insecure:       flagParams.Service.TracingInsecure,
+			SampleRatio:    flagParams.Service.TracingSampleRatio,
+			ServiceName:    serviceName,
+			ServiceVersion: buildVersion,
+			Environment:    flagParams.Service.Host,
+		})
+		if terr != nil {
+			log.Fatal().Err(terr).Msg("Failed to initialize tracing")
+		}
+		tracingShutdown = shutdown
+		log.Info().Msg("OpenTelemetry tracing enabled")
+	}
 	// ////////////////////////////// Backend
 	log.Info().Msg("Initializing backend...")
 	// Attempt to connect to backend waiting until is ready
@@ -209,6 +232,10 @@ func osctrlService() {
 		}
 		log.Info().Msgf("Backend NOT ready! Retrying in %d seconds...\n", flagParams.DB.ConnRetry)
 		time.Sleep(time.Duration(flagParams.DB.ConnRetry) * time.Second)
+	}
+	tracing.InstrumentDB(db.Conn)
+	if db.Read != nil && db.Read != db.Conn {
+		tracing.InstrumentDB(db.Read)
 	}
 	// ////////////////////////////// Cache
 	log.Info().Msg("Initializing cache...")
@@ -229,6 +256,7 @@ func osctrlService() {
 		log.Debug().Msgf("Cache NOT ready! Retrying in %d seconds...\n", flagParams.Redis.ConnRetry)
 		time.Sleep(time.Duration(flagParams.Redis.ConnRetry) * time.Second)
 	}
+	tracing.InstrumentRedis(redis.Client)
 	log.Info().Msg("Initialize environment")
 	envs = environments.CreateEnvironment(db.Conn)
 
@@ -523,6 +551,7 @@ func osctrlService() {
 			prometheus.DefaultRegisterer.MustRegister(handlers.NewOsctrldRolloutPausedCollector(osqueryVersionsMgr.Replica(), envs))
 		}
 		cache.RegisterMetrics(prometheus.DefaultRegisterer)
+		backend.RegisterDBPoolMetrics(prometheus.DefaultRegisterer, db)
 		if alertsWorker != nil {
 			alerts.RegisterWorkerMetrics(prometheus.DefaultRegisterer, alertsWorker)
 		}
@@ -636,9 +665,13 @@ func osctrlService() {
 
 	// ////////////////////////////// Everything is ready at this point!
 	serviceListener := flagParams.Service.Listener + ":" + strconv.Itoa(flagParams.Service.Port)
+	var tlsHandler http.Handler = muxTLS
+	if tracing.Enabled() {
+		tlsHandler = tracing.HTTPMiddleware(tlsHandler)
+	}
 	srv := &http.Server{
 		Addr:    serviceListener,
-		Handler: muxTLS,
+		Handler: tlsHandler,
 	}
 	if flagParams.TLS.Termination {
 		log.Info().Msg("TLS Termination is enabled")
@@ -674,6 +707,7 @@ func osctrlService() {
 			close(logRetentionStop)
 		}
 		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsVulnStop, alertsRetentionStop, alertsWorker)
+		stopTracing()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			if eventBus != nil {
 				eventBus.Close()
@@ -687,11 +721,19 @@ func osctrlService() {
 			close(logRetentionStop)
 		}
 		stopAlerts(alertsRefreshStop, alertsInactiveStop, alertsVulnStop, alertsRetentionStop, alertsWorker)
+		stopTracing()
 		if eventBus != nil {
 			eventBus.Close()
 		}
 		log.Info().Msg("TLS service command consumed — exiting for restart")
 		os.Exit(1)
+	}
+}
+
+// stopTracing flushes pending spans on shutdown.
+func stopTracing() {
+	if tracingShutdown != nil {
+		_ = tracingShutdown(context.Background())
 	}
 }
 

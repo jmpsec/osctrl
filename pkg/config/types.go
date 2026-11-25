@@ -197,6 +197,16 @@ type YAMLConfigurationService struct {
 	EventsEnabled bool `yaml:"eventsEnabled"`
 	// EventsNamespace must be shared by API/TLS and unique within Redis.
 	EventsNamespace string `yaml:"eventsNamespace"`
+	// TracingEnabled turns on OpenTelemetry tracing for this service.
+	TracingEnabled bool `yaml:"tracingEnabled"`
+	// TracingEndpoint is the OTLP HTTP endpoint (host:port or URL). Empty uses
+	// the standard OTEL_EXPORTER_OTLP_* environment variables.
+	TracingEndpoint string `yaml:"tracingEndpoint"`
+	// TracingInsecure disables TLS for the OTLP exporter. http:// endpoints
+	// imply this automatically.
+	TracingInsecure bool `yaml:"tracingInsecure"`
+	// TracingSampleRatio is the parent-based trace-id sampling ratio (0..1).
+	TracingSampleRatio float64 `yaml:"tracingSampleRatio"`
 	// ServiceConfigEnabled controls whether the service-config API and the
 	// matching SPA section exist. It does not change how configuration is
 	// loaded: every boot seeds the YAML sections into the database and

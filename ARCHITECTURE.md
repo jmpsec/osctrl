@@ -225,6 +225,35 @@ When health reporting is enabled, `/api/v1/health/status` includes a live
 updates component with API subscriber counts and API/TLS drop counters. The
 details intentionally omit users, environment UUIDs, query names, and payloads.
 
+## Tracing
+
+OpenTelemetry tracing is optional and disabled by default. Enable it per service with `--tracing-enabled` / `SERVICE_TRACING_ENABLED` and configure:
+
+- `--tracing-endpoint` / `SERVICE_TRACING_ENDPOINT` — OTLP HTTP host:port or URL; empty uses the standard `OTEL_EXPORTER_OTLP_*` environment variables.
+- `--tracing-insecure` / `SERVICE_TRACING_INSECURE` — disable TLS; `http://` endpoints imply this.
+- `--tracing-sample-ratio` / `SERVICE_TRACING_SAMPLE_RATIO` — parent-based trace-id sampling ratio, default `0.1`.
+
+When enabled, osctrl emits server spans for API/TLS HTTP requests, client spans for GORM operations and Redis commands, and spans for the data-retention workers. HTTP spans carry the matched route and response status; database spans carry only the operation, dialect, table, and rows affected (never SQL text or parameters). W3C trace context is propagated through inbound `traceparent` headers.
+
+Example PromQL for the metrics exposed by both services:
+
+```promql
+# API request rate by route
+sum by (route) (rate(osctrl_api_requests_total[5m]))
+
+# API p95 latency by route
+histogram_quantile(0.95, sum by (le, route) (rate(osctrl_api_request_duration_seconds_bucket[5m])))
+
+# Database pool saturation
+osctrl_db_pool_in_use_connections / osctrl_db_pool_max_open_connections
+
+# DB wait pressure
+rate(osctrl_db_pool_wait_count_total[5m])
+
+# Retention work
+sum by (class) (rate(osctrl_api_retention_pruned_total[1h]))
+```
+
 ## Authentication / Session Model
 
 ### API

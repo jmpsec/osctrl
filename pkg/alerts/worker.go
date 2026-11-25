@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/jmpsec/osctrl/pkg/tracing"
 	"github.com/rs/zerolog/log"
 )
 
@@ -236,6 +237,9 @@ func (w *Worker) Deliver(ctx context.Context, h Hit) bool {
 // dispatch runs the claim → sink → history pipeline for one hit. It returns
 // false only when the sink failed.
 func (w *Worker) dispatch(ctx context.Context, h Hit) bool {
+	ctx, span := tracing.StartSpan(ctx, "alerts.dispatch")
+	defer span.End()
+
 	// Cooldown gate. A nil state (no Redis configured) fails open.
 	if w.state != nil {
 		ok, err := w.state.Claim(ctx, h)
