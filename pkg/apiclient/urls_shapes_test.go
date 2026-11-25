@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jmpsec/osctrl/pkg/carves"
 	"github.com/jmpsec/osctrl/pkg/queries"
 	"github.com/jmpsec/osctrl/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -71,6 +72,27 @@ func TestGetCarvesDecodesPagedResponse(t *testing.T) {
 	require.Len(t, cs, 1)
 	require.Equal(t, "c1", cs[0].Name)
 	require.Equal(t, "1/500", got)
+}
+
+func TestGetCarveOrphansSendsGraceAndDecodes(t *testing.T) {
+	mux := http.NewServeMux()
+	var got string
+	mux.HandleFunc("GET /api/v1/carves/{env}/orphans", func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Query().Get("grace_seconds")
+		writeJSON(w, carves.OrphanReport{
+			Environment: "dev",
+			Scanned:     3,
+			Referenced:  2,
+			Orphans:     []carves.OrphanObject{{Key: "k", Size: 7}},
+		})
+	})
+	api := newRealURLServer(t, mux)
+	report, err := api.GetCarveOrphans("dev", 120)
+	require.NoError(t, err)
+	require.Equal(t, "120", got)
+	require.Equal(t, "dev", report.Environment)
+	require.Len(t, report.Orphans, 1)
+	require.EqualValues(t, 7, report.Orphans[0].Size)
 }
 
 func TestGetAuditLogsDecodesPagedResponse(t *testing.T) {

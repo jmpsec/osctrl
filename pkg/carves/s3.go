@@ -171,6 +171,34 @@ func (carveS3 *CarverS3) Archive(carve CarvedFile, blocks []CarvedBlock) (*Carve
 	return res, nil
 }
 
+// ListObjects lists every object under prefix with its size and timestamp.
+// The orphan scan uses it to compare storage against carve metadata.
+func (carveS3 *CarverS3) ListObjects(ctx context.Context, prefix string) ([]S3Object, error) {
+	paginator := s3.NewListObjectsV2Paginator(carveS3.Client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(carveS3.S3Config.Bucket),
+		Prefix: aws.String(prefix),
+	})
+	var out []S3Object
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, object := range page.Contents {
+			key := aws.ToString(object.Key)
+			if key == "" {
+				continue
+			}
+			item := S3Object{Key: key, Size: aws.ToInt64(object.Size)}
+			if object.LastModified != nil {
+				item.LastModified = *object.LastModified
+			}
+			out = append(out, item)
+		}
+	}
+	return out, nil
+}
+
 // DeleteKey removes one object from the carve bucket. Retention uses it to
 // delete block and archive objects before their metadata rows are removed.
 func (carveS3 *CarverS3) DeleteKey(key string) error {

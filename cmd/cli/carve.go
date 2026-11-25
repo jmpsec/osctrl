@@ -213,6 +213,58 @@ func printCarveQueries(target string, qs []queries.DistributedQuery) error {
 	return nil
 }
 
+func listCarveOrphans(ctx context.Context, cmd *cli.Command) error {
+	env := cmd.String("env")
+	if env == "" {
+		return fmt.Errorf("environment is required")
+	}
+	grace := cmd.Int("grace")
+	if grace < 0 {
+		return fmt.Errorf("grace must be zero or greater")
+	}
+	report, err := osctrlAPI.GetCarveOrphans(env, grace)
+	if err != nil {
+		return err
+	}
+	switch formatFlag {
+	case jsonFormat:
+		raw, err := json.Marshal(report)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(raw))
+	case csvFormat:
+		w := csv.NewWriter(os.Stdout)
+		if err := w.Write([]string{"Key", "Size", "LastModified"}); err != nil {
+			return err
+		}
+		for _, orphan := range report.Orphans {
+			if err := w.Write([]string{orphan.Key, strconv.FormatInt(orphan.Size, 10), orphan.LastModified.Format(time.RFC3339)}); err != nil {
+				return err
+			}
+		}
+		w.Flush()
+		return w.Error()
+	case prettyFormat:
+		if len(report.Orphans) == 0 {
+			fmt.Printf("No orphaned carve objects in %s (%d scanned, %d referenced)\n", report.Environment, report.Scanned, report.Referenced)
+			return nil
+		}
+		table := tablewriter.NewWriter(os.Stdout)
+		table.Header("Key", "Size", "LastModified")
+		rows := make([][]string, 0, len(report.Orphans))
+		for _, orphan := range report.Orphans {
+			rows = append(rows, []string{orphan.Key, strconv.FormatInt(orphan.Size, 10), orphan.LastModified.Format(time.RFC3339)})
+		}
+		if err := table.Bulk(rows); err != nil {
+			return fmt.Errorf("error bulk table - %w", err)
+		}
+		fmt.Printf("Orphaned carve objects in %s (%d scanned, %d referenced, %d orphans):\n", report.Environment, report.Scanned, report.Referenced, len(report.Orphans))
+		return table.Render()
+	}
+	return nil
+}
+
 func completeCarve(ctx context.Context, cmd *cli.Command) error {
 	// Get values from flags
 	name := cmd.String("name")

@@ -115,6 +115,8 @@ Keep `query_metadata_retention_days` at least as long as `log_retention_days`, o
 
 The safe upgrade defaults keep logs, carves, query metadata, and sessions forever; Santa events remain at 30 days. Operators should enable retention explicitly after reviewing their storage and compliance requirements.
 
+For the S3 carver, `GET /api/v1/carves/{env}/orphans` and `osctrl-cli carve orphans --env <env>` report objects whose keys are not referenced by `carved_blocks` or archived `carved_files` rows. The scan is report-only, scoped to the environment prefix, and ignores objects newer than `--grace` seconds (default 3600) so in-flight uploads are not reported.
+
 ## Startup Flow
 
 Both long-lived backend services follow the same pattern in their `main.go`:

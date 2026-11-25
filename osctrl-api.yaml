@@ -1772,6 +1772,76 @@ paths:
       summary: List file carves
       tags:
         - carves
+  "/api/v1/carves/{env}/orphans":
+    get:
+      description: Reports S3 carve objects with no matching carve metadata row.
+      parameters:
+        - description: Environment name or UUID
+          in: path
+          name: env
+          required: true
+          schema:
+            type: string
+        - description: Ignore objects newer than this many seconds (default 3600, max
+            604800)
+          in: query
+          name: grace_seconds
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/carves.OrphanReport"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/types.ApiErrorResponse"
+      security:
+        - ApiKeyAuth: []
+      summary: List orphaned carve objects
+      tags:
+        - carves
   "/api/v1/carves/{env}/queries/{target}":
     get:
       description: Returns file carve queries by target and environment.
@@ -14726,6 +14796,28 @@ components:
         - CarvePlatformLinux
         - CarvePlatformDarwin
         - CarvePlatformWindows
+    carves.OrphanObject:
+      properties:
+        key:
+          type: string
+        last_modified:
+          type: string
+        size:
+          type: integer
+      type: object
+    carves.OrphanReport:
+      properties:
+        environment:
+          type: string
+        orphans:
+          items:
+            $ref: "#/components/schemas/carves.OrphanObject"
+          type: array
+        referenced:
+          type: integer
+        scanned:
+          type: integer
+      type: object
     changes.Change:
       properties:
         action:

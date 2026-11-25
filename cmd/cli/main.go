@@ -485,6 +485,24 @@ func init() {
 					Action: cliWrapper(listCarves),
 				},
 				{
+					Name:    "orphans",
+					Aliases: []string{"o"},
+					Usage:   "Report S3 carve objects with no matching metadata (API mode only)",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:    "env",
+							Aliases: []string{"e"},
+							Usage:   "Environment to be used",
+						},
+						&cli.IntFlag{
+							Name:  "grace",
+							Usage: "Ignore objects newer than this many seconds",
+							Value: 3600,
+						},
+					},
+					Action: cliWrapperMode(modeAPI, listCarveOrphans),
+				},
+				{
 					Name:    "list-queries",
 					Aliases: []string{"l"},
 					Usage:   "List file carves queries",
